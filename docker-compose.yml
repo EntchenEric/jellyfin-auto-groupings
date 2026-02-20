@@ -12,14 +12,18 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      # Persist settings (Jellyfin URL, API key, groups) across restarts
-      - ./config.json:/app/config.json
+      # Persist config.json across restarts – no need to create the file manually.
+      # The app auto-creates it on first start.
+      - app_config:/app/config
 
       # Output directory where virtual grouping folders are created.
       # Set "Target Path" in the app to /groupings.
-      - /home/entcheneric/jellyfin-groupings-virtual:/groupings
+      - /path/to/your/groupings-virtual:/groupings
 
       # Mount your media root so symlinks can resolve to real files.
       # Set "Host Root" in the app to /media (adjust to your layout).
       # - /mnt/media:/media:ro
     restart: unless-stopped
+
+volumes:
+  app_config:

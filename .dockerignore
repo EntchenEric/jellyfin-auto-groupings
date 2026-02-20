@@ -1,0 +1,17 @@
+# Never bake the local config into the image
+config.json
+
+# Git internals
+.git/
+.github/
+
+# Python caches
+__pycache__/
+*.py[cod]
+
+# Dev files
+.venv/
+venv/
+*.md
+docker-compose.yml
+unraid/

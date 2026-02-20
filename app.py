@@ -12,7 +12,8 @@ from flask.typing import ResponseReturnValue
 
 app = Flask(__name__)
 
-CONFIG_FILE = "config.json"
+CONFIG_DIR = os.path.join(os.path.dirname(__file__), "config")
+CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
 
 # ---------------------------------------------------------------------------
 # Config helpers
@@ -27,6 +28,7 @@ def load_config() -> dict[str, Any]:
         "trakt_client_id": "",
     }
     if not os.path.exists(CONFIG_FILE):
+        save_config(defaults)
         return defaults
     try:
         with open(CONFIG_FILE, "r") as f:
@@ -40,6 +42,7 @@ def load_config() -> dict[str, Any]:
 
 
 def save_config(config: dict[str, Any]) -> None:
+    os.makedirs(CONFIG_DIR, exist_ok=True)
     with open(CONFIG_FILE, "w") as f:
         json.dump(config, f, indent=4)
 
