@@ -1,0 +1,12 @@
+# Local config – contains secrets (API key etc.), never commit
+config.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual envs
+.venv/
+venv/
+env/

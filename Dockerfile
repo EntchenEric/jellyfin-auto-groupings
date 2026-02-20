@@ -27,6 +27,4 @@ LABEL org.opencontainers.image.title="Jellyfin Groupings" \
 
 EXPOSE 5000
 
-# config.json and the groupings output dir are mounted at runtime.
-# See docker-compose.yml or the Unraid template for example mounts.
 CMD ["python", "app.py"]
