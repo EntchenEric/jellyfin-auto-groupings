@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jellyfin Groupings | Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0d0d12;
+            --surface-color: #1a1a24;
+            --accent-color: #6366f1;
+            --accent-hover: #4f46e5;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --success-color: #10b981;
+            --error-color: #ef4444;
+            --radius-lg: 16px;
+            --radius-md: 12px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --container-width: 1200px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        .background-blob {
+            position: fixed;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
+            border-radius: 50%;
+            z-index: -1;
+            filter: blur(80px);
+            animation: move-blob 20s infinite alternate;
+        }
+
+        @keyframes move-blob {
+            0% {
+                transform: translate(-20%, -20%) scale(1);
+            }
+
+            100% {
+                transform: translate(20%, 20%) scale(1.2);
+            }
+        }
+
+        .container {
+            width: 100%;
+            max-width: var(--container-width);
+            padding: 2rem;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            font-weight: 300;
+        }
+
+        .card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 2.5rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        @media (min-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 400px 1fr;
+            }
+        }
+
+        h2,
+        h3 {
+            font-family: 'Outfit', sans-serif;
+            margin-bottom: 1.5rem;
+            color: var(--text-primary);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        input[type="url"],
+        input[type="password"],
+        input[type="text"] {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        button {
+            width: 100%;
+            padding: 1rem;
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            margin-top: 1rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        button:hover {
+            background: var(--accent-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .secondary-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            border-radius: var(--radius-md);
+        }
+
+        .secondary-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--accent-color);
+            color: var(--text-primary);
+        }
+
+        .group-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: var(--transition);
+        }
+
+        .group-card:hover {
+            border-color: var(--accent-color);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .group-info h4 {
+            font-size: 1.1rem;
+            margin-bottom: 0.2rem;
+        }
+
+        .group-meta {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .delete-btn {
+            background: transparent;
+            color: var(--error-color);
+            border: 1px solid var(--error-color);
+            padding: 0.5rem 0.8rem;
+            font-size: 0.8rem;
+            width: auto;
+            margin: 0;
+        }
+
+        .delete-btn:hover {
+            background: var(--error-color);
+            color: white;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+        }
+
+        .status-msg {
+            margin-top: 1.5rem;
+            text-align: center;
+            font-weight: 500;
+            padding: 0.8rem;
+            border-radius: var(--radius-md);
+            display: none;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .status-msg.success {
+            display: block;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success-color);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .status-msg.error {
+            display: block;
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error-color);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .loading-spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: none;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .btn-loading .loading-spinner {
+            display: block;
+        }
+
+        .btn-loading .btn-text {
+            display: none;
+        }
+
+        .footer {
+            margin-top: 2rem;
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .modal-item {
+            padding: 0.8rem;
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .modal-item:last-child {
+            border-bottom: none;
+        }
+
+        .locked-section {
+            opacity: 0.5;
+            pointer-events: none;
+            filter: grayscale(0.2);
+            position: relative;
+        }
+
+        .locked-overlay-text {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-5deg);
+            background: var(--error-color);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            z-index: 10;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+            pointer-events: none;
+            text-transform: uppercase;
+        }
+
+        .locked-section .locked-overlay-text {
+            display: block;
+        }
+
+        .connection-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+            background: #444;
+        }
+
+        .connection-dot.online {
+            background: var(--success-color);
+            box-shadow: 0 0 8px var(--success-color);
+        }
+
+        .connection-dot.offline {
+            background: var(--error-color);
+            box-shadow: 0 0 8px var(--error-color);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="background-blob"></div>
+    <div class="container">
+        <!-- Connectivity Warning -->
+        <div id="connection-warning" class="status-msg error"
+            style="margin-bottom: 2rem; border-radius: var(--radius-lg); padding: 1.5rem; display: none;">
+            <h3 style="color: var(--error-color); margin-bottom: 0.5rem; border-bottom: none;">⚠️ Server Not Connected
+            </h3>
+            <p style="font-size: 0.9rem; margin-bottom: 1rem;">You are accessing this page directly from your
+                filesystem. The settings <b>cannot be saved</b> because the backend API is unreachable.</p>
+            <p style="font-size: 0.8rem;">Please run <code>python app.py</code> and open <a href="http://localhost:5000"
+                    style="color: var(--accent-color); font-weight: 600;">http://localhost:5000</a> instead.</p>
+        </div>
+
+        <header>
+            <h1>Jellyfin Groupings</h1>
+            <p class="subtitle">Create virtual Jellyfin libraries grouped by genre, actor, tag or external lists</p>
+        </header>
+
+        <!-- How It Works banner -->
+        <div style="display: flex; gap: 1rem; margin-bottom: 2.5rem; flex-wrap: wrap;">
+            <div
+                style="flex: 1; min-width: 200px; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 1.2rem; display: flex; gap: 1rem; align-items: flex-start;">
+                <div
+                    style="width: 32px; height: 32px; border-radius: 50%; background: var(--accent-color); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; flex-shrink: 0;">
+                    1</div>
+                <div>
+                    <div style="font-weight: 600; margin-bottom: 0.2rem;">Connect Jellyfin</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary);">Enter your server URL and API key so
+                        this tool can read your library metadata.</div>
+                </div>
+            </div>
+            <div
+                style="flex: 1; min-width: 200px; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 1.2rem; display: flex; gap: 1rem; align-items: flex-start;">
+                <div
+                    style="width: 32px; height: 32px; border-radius: 50%; background: var(--accent-color); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; flex-shrink: 0;">
+                    2</div>
+                <div>
+                    <div style="font-weight: 600; margin-bottom: 0.2rem;">Define Groupings</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary);">A grouping becomes a new Jellyfin
+                        library. Choose what to group by (genre, actor, tag…) and give it a name.</div>
+                </div>
+            </div>
+            <div
+                style="flex: 1; min-width: 200px; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 1.2rem; display: flex; gap: 1rem; align-items: flex-start;">
+                <div
+                    style="width: 32px; height: 32px; border-radius: 50%; background: var(--accent-color); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; flex-shrink: 0;">
+                    3</div>
+                <div>
+                    <div style="font-weight: 600; margin-bottom: 0.2rem;">Sync &amp; Add Libraries</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary);">Hit "Sync All Groupings" to create
+                        symlinks on disk. Then <strong style="color: var(--text-primary);">manually add each folder as a
+                            library</strong> in Jellyfin
+                        (Content Type: <code style="font-size:0.75rem;">Mixed Movies and Shows</code>).</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <section class="settings-column">
+                <main class="card">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                        <h2 style="margin-bottom: 0;">① Server Settings</h2>
+                        <div id="connection-status"
+                            style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary);">
+                            <span class="connection-dot" id="status-dot"></span>
+                            <span id="status-text">Disconnected</span>
+                        </div>
+                    </div>
+                    <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 1.5rem;">Point this tool
+                        at your Jellyfin server to get started.</p>
+                    <form id="config-form">
+                        <div class="form-group">
+                            <label for="jellyfin_url">Jellyfin Server URL</label>
+                            <input type="url" id="jellyfin_url" placeholder="https://jellyfin.yourdomain.com" required>
+                            <small style="color: var(--text-secondary); font-size: 0.75rem;">The full URL to your
+                                Jellyfin instance, including protocol and port if needed.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="api_key">API Key</label>
+                            <input type="password" id="api_key" placeholder="Enter your Jellyfin API Key" required>
+                            <small style="color: var(--text-secondary); font-size: 0.75rem;">Generate at Jellyfin →
+                                Dashboard → API Keys. This is used to read library metadata.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="target_path">Base Target Path</label>
+                            <input type="text" id="target_path" placeholder="/path/to/virtual/libraries" required>
+                            <small style="color: var(--text-secondary); font-size: 0.75rem;">A folder on <em>this
+                                    machine</em> where symlink folders will be created for each grouping. Jellyfin must
+                                be able to see this path.</small>
+                        </div>
+
+
+                        <div class="form-group"
+                            style="margin-top: 1rem; padding: 1rem; background: rgba(0,0,0,0.1); border-radius: var(--radius-md); border: 1px dashed var(--glass-border);">
+                            <h3
+                                style="font-size: 0.9rem; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <span>🐳</span> Docker Path Mapping <span
+                                    style="font-weight: 400; color: var(--text-secondary);">(Optional)</span>
+                            </h3>
+                            <p style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.8rem;">Only
+                                needed when Jellyfin runs inside Docker and its media paths differ from your host paths.
+                                Leave blank if Jellyfin is installed natively.</p>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div>
+                                    <label for="jellyfin_root" style="font-size: 0.75rem; opacity: 0.8;">Jellyfin Root —
+                                        path <em>inside</em> the container</label>
+                                    <input type="text" id="jellyfin_root" placeholder="e.g. /media"
+                                        style="padding: 0.5rem; font-size: 0.85rem;">
+                                </div>
+                                <div>
+                                    <label for="host_root" style="font-size: 0.75rem; opacity: 0.8;">Host Root — same
+                                        path on <em>this</em> machine</label>
+                                    <input type="text" id="host_root" placeholder="e.g. /home/user/media"
+                                        style="padding: 0.5rem; font-size: 0.85rem;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group"
+                            style="margin-top: 0.8rem; padding: 1rem; background: rgba(0,0,0,0.1); border-radius: var(--radius-md); border: 1px dashed var(--glass-border);">
+                            <h3
+                                style="font-size: 0.9rem; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <span>📡</span> Trakt API <span
+                                    style="font-weight: 400; color: var(--text-secondary);">(Optional)</span>
+                            </h3>
+                            <p style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.8rem;">Only
+                                needed if you want to use Trakt lists as a grouping source. Create a free API app at
+                                <a href="https://trakt.tv/oauth/applications/new" target="_blank"
+                                    style="color: var(--accent-color);">trakt.tv/oauth/applications</a> to get your
+                                Client ID.
+                            </p>
+                            <label for="trakt_client_id" style="font-size: 0.75rem; opacity: 0.8;">Trakt Client
+                                ID</label>
+                            <input type="text" id="trakt_client_id" placeholder="Your Trakt API Client ID"
+                                style="padding: 0.5rem; font-size: 0.85rem;">
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                            <button type="button" id="auto-detect-btn" onclick="autoDetectPaths()" class="secondary-btn"
+                                style="border-color: var(--accent-color); color: var(--accent-color);">
+                                <span class="loading-spinner"></span>
+                                <span class="btn-text">✨ Auto-Detect Settings</span>
+                            </button>
+                            <button type="button" id="test-btn" onclick="testConnection()" class="secondary-btn">
+                                <span class="loading-spinner"></span>
+                                <span class="btn-text">Test Connection</span>
+                            </button>
+                        </div>
+                        <button type="submit" id="save-btn" style="margin-top: 1rem; width: 100%;">
+                            <span class="loading-spinner"></span>
+                            <span class="btn-text">Save All Settings</span>
+                        </button>
+                    </form>
+                </main>
+
+                <main class="card locked-section" id="maintenance-card" style="margin-top: 2rem;">
+                    <div class="locked-overlay-text">Server Required</div>
+                    <h2>③ Sync &amp; Maintenance</h2>
+                    <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 1.2rem;">After defining
+                        your groupings, press Sync to build the symlink folders on disk.</p>
+                    <div
+                        style="padding: 0.8rem 1rem; background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.3); border-radius: var(--radius-md); margin-bottom: 1rem;">
+                        <p style="font-size: 0.78rem; color: #fbbf24; margin: 0; line-height: 1.5;">
+                            ⚠️ <strong>Libraries are NOT created automatically.</strong><br>
+                            After syncing, go to Jellyfin → <strong>Dashboard → Libraries → Add Media
+                                Library</strong>.<br>
+                            Set <strong>Content Type</strong> to <code
+                                style="font-size:0.75rem; background:rgba(0,0,0,0.2); padding: 0.1rem 0.3rem; border-radius:3px;">Mixed Movies and Shows</code>
+                            and point it at each group's subfolder.
+                        </p>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div>
+                            <button id="sync-btn" onclick="syncAll()" class="primary-btn"
+                                style="width: 100%; padding: 1rem; background: var(--accent-color); border: none; font-weight: 600;">
+                                <span class="loading-spinner"></span>
+                                <span class="btn-text">🚀 Sync All Groupings</span>
+                            </button>
+                            <p
+                                style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.4rem; text-align: center;">
+                                Creates symlinks inside the Base Target Path for every defined grouping.</p>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div>
+                                <button onclick="openExportModal()" class="secondary-btn"
+                                    style="width: 100%; padding: 0.9rem;">⬇ Export Config</button>
+                                <p
+                                    style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.3rem; text-align: center;">
+                                    Download settings &amp; groupings as JSON</p>
+                            </div>
+                            <div>
+                                <button onclick="openImportModal()" class="secondary-btn"
+                                    style="width: 100%; padding: 0.9rem;">⬆ Import Config</button>
+                                <p
+                                    style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.3rem; text-align: center;">
+                                    Restore from a previously exported JSON</p>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </section>
+
+            <section class="groupings-column locked-section" id="groupings-section">
+                <div class="locked-overlay-text">Server Required</div>
+                <main class="card" style="height: 100%; display: flex; flex-direction: column;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                        <h2>② Groupings</h2>
+                        <button onclick="clearAllGroups()" class="secondary-btn delete-btn"
+                            style="padding: 0.5rem 0.8rem; font-size: 0.8rem; border: none;"
+                            title="Remove All Groupings">
+                            Clear All
+                        </button>
+                    </div>
+                    <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 1.5rem;">Each grouping
+                        becomes a virtual Jellyfin library. Define as many as you like — e.g. one per genre, actor, or
+                        IMDb list.</p>
+
+                    <div id="groups-list" style="margin: 0.5rem 0; flex: 1; min-height: 200px;">
+                        <!-- Group cards will be injected here -->
+                    </div>
+
+                    <hr style="border: 0; border-top: 1px solid var(--glass-border); margin: 2rem 0;">
+
+                    <h3 id="group-form-title">Create New Grouping</h3>
+                    <form id="group-form" style="margin-top: 0.5rem;">
+                        <div class="form-group">
+                            <label for="group_name">Group Name</label>
+                            <input type="text" id="group_name" placeholder="e.g. Action Movies" required>
+                            <small style="color: var(--text-secondary); font-size: 0.75rem;">This becomes the folder
+                                name and the Jellyfin library name.</small>
+                        </div>
+                        <div class="grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="form-group">
+                                <label for="source_category">Source Category</label>
+                                <select id="source_category" onchange="updateSourceTypeOptions()"
+                                    style="width: 100%; padding: 0.8rem 1rem; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-family: inherit; font-size: 1rem; appearance: none;">
+                                    <option value="jellyfin">Jellyfin (Integrated)</option>
+                                    <option value="external">External (3rd Party)</option>
+                                </select>
+                                <small style="color: var(--text-secondary); font-size: 0.75rem;">Use <em>Jellyfin</em>
+                                    to filter by data already in your server, or <em>External</em> for IMDb / Trakt
+                                    lists.</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="source_type">Filter By</label>
+                                <select id="source_type" onchange="updateSourceValueUI()"
+                                    style="width: 100%; padding: 0.8rem 1rem; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-family: inherit; font-size: 1rem; appearance: none;">
+                                    <!-- Options injected via JS -->
+                                </select>
+                                <small style="color: var(--text-secondary); font-size: 0.75rem;">The metadata field used
+                                    to collect matching media into this grouping.</small>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="source_value">Filter Value</label>
+                            <div id="source_value_container">
+                                <input type="text" id="source_value" placeholder="e.g. Action  or  ls000024390" required
+                                    style="width: 100%; padding: 0.8rem 1rem; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-family: inherit; font-size: 1rem;">
+                                <select id="source_value_select"
+                                    style="display: none; width: 100%; padding: 0.8rem 1rem; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-family: inherit; font-size: 1rem; appearance: none;">
+                                    <!-- Populated via JS -->
+                                </select>
+                            </div>
+                            <small id="source_value_help"
+                                style="color: var(--text-secondary); display: block; margin-top: 0.25rem; font-size: 0.75rem;">
+                                The specific genre, actor name, tag, or list ID to include in this grouping.
+                            </small>
+                        </div>
+                        <div class="form-group">
+                            <label
+                                style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; text-transform: none; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.05em;">
+                                <input type="checkbox" id="sort_order_enabled" onchange="toggleSortOrder(this)"
+                                    style="width: 16px; height: 16px; accent-color: var(--accent-color); cursor: pointer; flex-shrink: 0;">
+                                <span style="text-transform: uppercase; letter-spacing: 0.05em;">Custom Sort Order <span
+                                        style="font-weight:400; text-transform: none;">(optional)</span></span>
+                            </label>
+                            <div id="sort_order_panel" style="display: none; margin-top: 0.75rem;">
+                                <select id="sort_order"
+                                    style="width: 100%; padding: 0.8rem 1rem; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-family: inherit; font-size: 1rem; appearance: none;">
+                                    <option value="">None (filesystem order)</option>
+                                    <option value="imdb_list_order">📋 IMDb List Order</option>
+                                    <option value="trakt_list_order">📋 Trakt List Order</option>
+                                    <option value="CommunityRating">⭐ Community Rating (highest first)</option>
+                                    <option value="ProductionYear">📅 Production Year (newest first)</option>
+                                    <option value="SortName">🔤 Name (A → Z)</option>
+                                    <option value="DateCreated">🕐 Date Added (newest first)</option>
+                                    <option value="Random">🎲 Random</option>
+                                </select>
+                                <small
+                                    style="color: var(--text-secondary); display: block; margin-top: 0.25rem; font-size: 0.75rem;">
+                                    Symlinks are named <code style="font-size:0.7rem;">0001 - Title</code>, <code
+                                        style="font-size:0.7rem;">0002 - Title</code>… so Jellyfin's "Sort by Name"
+                                    reflects this order. <em>IMDb List Order</em> only works with the IMDb List source
+                                    type.
+                                </small>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 1rem;">
+                            <button type="submit" id="add-group-btn"
+                                style="flex: 2; background: var(--surface-color); border: 1px solid var(--accent-color); color: var(--accent-color);">
+                                Add Grouping
+                            </button>
+                            <button type="button" id="cancel-edit-btn" onclick="cancelEdit()"
+                                style="flex: 1; display: none; background: transparent; border: 1px solid var(--text-secondary); color: var(--text-secondary);">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </main>
+            </section>
+        </div>
+
+        <!-- Export Modal -->
+        <div id="export-modal" class="modal"
+            style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(8px);">
+            <div class="card" style="max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;">
+                <h2>Export Settings</h2>
+                <div class="form-group" style="margin-bottom: 2rem;">
+                    <label>What do you want to export?</label>
+                    <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;">
+                        <label
+                            style="display: flex; align-items: center; gap: 1rem; text-transform: none; cursor: pointer;">
+                            <input type="radio" name="export-type" value="all" checked
+                                onchange="toggleExportSelection()">
+                            Full Configuration (Settings + All Groups)
+                        </label>
+                        <label
+                            style="display: flex; align-items: center; gap: 1rem; text-transform: none; cursor: pointer;">
+                            <input type="radio" name="export-type" value="selective" onchange="toggleExportSelection()">
+                            Selected Groupings Only
+                        </label>
+                    </div>
+                </div>
+
+                <div id="export-selection-list"
+                    style="display: none; border-top: 1px solid var(--glass-border); padding-top: 1rem; margin-bottom: 1.5rem;">
+                    <label>Select Groups</label>
+                    <div id="export-groups-container"></div>
+                </div>
+
+                <div style="display: flex; gap: 1rem;">
+                    <button onclick="execExport()" style="flex: 2;">Download Export</button>
+                    <button onclick="closeModal('export-modal')" class="secondary-btn"
+                        style="flex: 1; border-color: var(--error-color); color: var(--error-color);">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Import Modal -->
+        <div id="import-modal" class="modal"
+            style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(8px);">
+            <div class="card" style="max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;">
+                <h2>Import Settings</h2>
+
+                <div id="import-step-1">
+                    <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Select a file to begin the import
+                        process.</p>
+                    <button onclick="document.getElementById('import-file-input').click()" style="width: 100%;">Select
+                        JSON File</button>
+                    <input type="file" id="import-file-input" style="display: none;" accept=".json"
+                        onchange="handleFileSelected(event)">
+                </div>
+
+                <div id="import-step-2" style="display: none;">
+                    <div id="import-warning" class="status-msg error" style="margin-bottom: 1.5rem; display: none;">
+                        WARNING: This will overwrite your entire current configuration!
+                    </div>
+                    <div id="import-selection-list">
+                        <label>Select items to import</label>
+                        <div id="import-groups-container" style="margin-top: 0.5rem;"></div>
+                    </div>
+                    <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                        <button id="confirm-import" style="flex: 2;">Confirm Import</button>
+                        <button onclick="closeModal('import-modal')" class="secondary-btn"
+                            style="flex: 1;">Cancel</button>
+                    </div>
+                </div>
+
+                <button id="cancel-import-top" onclick="closeModal('import-modal')" class="secondary-btn"
+                    style="margin-top: 1.5rem; width: 100%;">Cancel</button>
+            </div>
+        </div>
+
+        <div id="status-msg" class="status-msg"></div>
+
+        <div class="footer">
+            <p>Run <code>python app.py</code> to start the backend &nbsp;·&nbsp; Jellyfin Groupings</p>
+        </div>
+    </div>
+
+    <script>
+        const configForm = document.getElementById('config-form');
+        const groupForm = document.getElementById('group-form');
+        const groupFormTitle = document.getElementById('group-form-title');
+        const addGroupBtn = document.getElementById('add-group-btn');
+        const cancelEditBtn = document.getElementById('cancel-edit-btn');
+        const saveBtn = document.getElementById('save-btn');
+        const testBtn = document.getElementById('test-btn');
+        const statusMsg = document.getElementById('status-msg');
+        const groupsList = document.getElementById('groups-list');
+
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+        const maintenanceCard = document.getElementById('maintenance-card');
+        const groupingsSection = document.getElementById('groupings-section');
+
+        const sourceValueInput = document.getElementById('source_value');
+        const sourceValueSelect = document.getElementById('source_value_select');
+        const sourceValueHelp = document.getElementById('source_value_help');
+
+        const sourceOptions = {
+            jellyfin: [
+                { value: 'general', label: 'General (Title, Date, Rating...)' },
+                { value: 'genre', label: 'Genre' },
+                { value: 'actor', label: 'Actor' },
+                { value: 'studio', label: 'Studio' },
+                { value: 'tag', label: 'Jellyfin Tag' }
+            ],
+            external: [
+                { value: 'imdb_list', label: 'IMDb List' },
+                { value: 'trakt_list', label: 'Trakt List' }
+            ]
+        };
+
+        const metadataTypes = ['genre', 'actor', 'studio', 'tag'];
+
+        let currentConfig = { groups: [] };
+        let pendingImportData = null;
+        let editingIndex = -1;
+        let isServerValidated = false;
+        let cachedMetadata = {};
+
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/config');
+                currentConfig = await response.json();
+                currentConfig.groups = currentConfig.groups || [];
+
+                // Backwards compatibility / Data Migration
+                currentConfig.groups.forEach(g => {
+                    if (!g.source_category) {
+                        if (['imdb_list', 'trakt_list'].includes(g.source_type)) {
+                            g.source_category = 'external';
+                        } else {
+                            g.source_category = 'jellyfin';
+                            if (g.source_type === 'jellyfin_tag') g.source_type = 'tag';
+                            if (g.source_type === 'people') g.source_type = 'actor';
+                        }
+                    } else if (g.source_type === 'people') {
+                        // Handle cases where category was set but type was still old
+                        g.source_type = 'actor';
+                    }
+                });
+
+                document.getElementById('jellyfin_url').value = currentConfig.jellyfin_url || '';
+                document.getElementById('api_key').value = currentConfig.api_key || '';
+                document.getElementById('target_path').value = currentConfig.target_path || '';
+                document.getElementById('jellyfin_root').value = currentConfig.jellyfin_root || '';
+                document.getElementById('host_root').value = currentConfig.host_root || '';
+                document.getElementById('trakt_client_id').value = currentConfig.trakt_client_id || '';
+
+                updateSourceTypeOptions();
+                renderGroups();
+
+                // Initial silent test if we have config
+                if (currentConfig.jellyfin_url && currentConfig.api_key) {
+                    await performSilentTest();
+                }
+            } catch (err) {
+                showStatus('Failed to load configuration', 'error');
+            }
+        }
+
+        async function performSilentTest() {
+            const data = {
+                jellyfin_url: currentConfig.jellyfin_url,
+                api_key: currentConfig.api_key
+            };
+            try {
+                const response = await fetch('/api/test-server', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                const isValid = result.status === 'success';
+                updateValidationUI(isValid);
+                if (isValid) refreshMetadata();
+            } catch (err) {
+                updateValidationUI(false);
+            }
+        }
+
+        async function testConnection() {
+            testBtn.classList.add('btn-loading');
+            const data = {
+                jellyfin_url: document.getElementById('jellyfin_url').value,
+                api_key: document.getElementById('api_key').value
+            };
+
+            try {
+                const response = await fetch('/api/test-server', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    showStatus(result.message, 'success');
+                    updateValidationUI(true);
+                    // Also save if successful to lock in the working settings
+                    currentConfig.jellyfin_url = data.jellyfin_url;
+                    currentConfig.api_key = data.api_key;
+                    currentConfig.target_path = document.getElementById('target_path').value;
+                    await saveAllConfig();
+                    await refreshMetadata();
+                } else {
+                    showStatus(result.message || 'Connection failed', 'error');
+                    updateValidationUI(false);
+                }
+            } catch (err) {
+                showStatus('Connection test failed - API unreachable', 'error');
+                updateValidationUI(false);
+            } finally {
+                testBtn.classList.remove('btn-loading');
+            }
+        }
+
+        async function refreshMetadata() {
+            try {
+                // Show loading state
+                sourceValueSelect.innerHTML = '<option value="" disabled selected>Loading metadata...</option>';
+                sourceValueSelect.disabled = true;
+
+                const response = await fetch('/api/jellyfin/metadata');
+                const result = await response.json();
+                if (result.status === 'success') {
+                    cachedMetadata = result.metadata;
+                    updateSourceValueUI();
+                } else {
+                    sourceValueSelect.innerHTML = '<option value="" disabled selected>Failed to load metadata</option>';
+                }
+            } catch (err) {
+                console.error('Failed to fetch metadata:', err);
+                sourceValueSelect.innerHTML = '<option value="" disabled selected>Error loading metadata</option>';
+            } finally {
+                sourceValueSelect.disabled = false;
+            }
+        }
+
+        function updateSourceTypeOptions() {
+            const category = document.getElementById('source_category').value;
+            const typeSelect = document.getElementById('source_type');
+            const currentValue = typeSelect.value;
+
+            typeSelect.innerHTML = '';
+            sourceOptions[category].forEach(opt => {
+                const o = document.createElement('option');
+                o.value = opt.value;
+                o.textContent = opt.label;
+                typeSelect.appendChild(o);
+            });
+
+            // Keep selection if possible
+            if (sourceOptions[category].some(opt => opt.value === currentValue)) {
+                typeSelect.value = currentValue;
+            }
+
+            // Always update source value UI when type header changes
+            updateSourceValueUI();
+        }
+
+        function updateSourceValueUI(preValue = null) {
+            const type = document.getElementById('source_type').value;
+            const isMetadataType = metadataTypes.includes(type);
+
+            if (isMetadataType) {
+                // Metadata types ALWAYS use select, even if disconnected (but disabled)
+                sourceValueInput.style.display = 'none';
+                sourceValueInput.required = false;
+                sourceValueInput.disabled = true;
+
+                sourceValueSelect.style.display = 'block';
+                sourceValueSelect.required = true;
+
+                if (isServerValidated) {
+                    sourceValueSelect.disabled = false;
+                    sourceValueSelect.innerHTML = '<option value="" disabled selected>Select from libraries...</option>';
+                    const options = cachedMetadata[type] || [];
+                    if (options.length === 0) {
+                        sourceValueSelect.innerHTML = `<option value="" disabled selected>No ${type}s found on server</option>`;
+                    } else {
+                        options.forEach(opt => {
+                            const o = document.createElement('option');
+                            o.value = opt;
+                            o.textContent = opt;
+                            sourceValueSelect.appendChild(o);
+                        });
+                    }
+                    if (preValue) sourceValueSelect.value = preValue;
+                    sourceValueHelp.textContent = `Select an available ${type} from your Jellyfin server.`;
+                } else {
+                    sourceValueSelect.disabled = true;
+                    sourceValueSelect.innerHTML = '<option value="" disabled selected>Connect server to see options</option>';
+                    sourceValueHelp.textContent = `You must connect your Jellyfin server to select a ${type}.`;
+                }
+            } else {
+                // Non-metadata types (External or General) use text input
+                sourceValueInput.style.display = 'block';
+                sourceValueInput.required = true;
+                sourceValueInput.disabled = false;
+
+                sourceValueSelect.style.display = 'none';
+                sourceValueSelect.required = false;
+                sourceValueSelect.disabled = true;
+
+                if (preValue) sourceValueInput.value = preValue;
+                if (type === 'imdb_list') {
+                    sourceValueInput.placeholder = 'e.g. ls000024390 or full IMDb list URL';
+                    sourceValueHelp.innerHTML = 'Enter the IMDb list ID (e.g. <code>ls000024390</code>) or paste the full URL — the ID will be extracted automatically.';
+                } else if (type === 'trakt_list') {
+                    sourceValueInput.placeholder = 'https://trakt.tv/users/username/lists/list-slug';
+                    sourceValueHelp.innerHTML = 'Paste the full Trakt list URL. Requires a <strong>Trakt Client ID</strong> in Server Settings. Matches by IMDb ID against your Jellyfin library.';
+                } else if (type === 'general') {
+                    sourceValueInput.placeholder = 'e.g. Action  or  tt1234567';
+                    sourceValueHelp.textContent = 'Enter item name or date range.';
+                } else {
+                    sourceValueInput.placeholder = 'e.g. Action  or  ls000024390';
+                    sourceValueHelp.textContent = 'Enter the ID or Value manually.';
+                }
+            }
+        }
+
+        function updateValidationUI(isValid) {
+            isServerValidated = isValid;
+            if (isValid) {
+                statusDot.className = 'connection-dot online';
+                statusText.textContent = 'Connected';
+                maintenanceCard.classList.remove('locked-section');
+                groupingsSection.classList.remove('locked-section');
+            } else {
+                statusDot.className = 'connection-dot offline';
+                statusText.textContent = 'Disconnected';
+                maintenanceCard.classList.add('locked-section');
+                groupingsSection.classList.add('locked-section');
+            }
+            updateSourceTypeOptions();
+        }
+
+        function renderGroups() {
+            groupsList.innerHTML = '';
+            if (!currentConfig.groups || currentConfig.groups.length === 0) {
+                groupsList.innerHTML = '<p style="color: var(--text-secondary); text-align: center; font-style: italic; margin-top: 2rem;">No groupings defined yet.</p>';
+                return;
+            }
+
+            currentConfig.groups.forEach((group, index) => {
+                const card = document.createElement('div');
+                card.className = 'group-card';
+
+                const catLabel = group.source_category === 'external' ? 'External' : 'Jellyfin';
+                const typeLabel = sourceOptions[group.source_category]?.find(opt => opt.value === group.source_type)?.label || group.source_type;
+
+                const sortLabels = {
+                    'imdb_list_order': '📋 IMDb List Order',
+                    'trakt_list_order': '📋 Trakt List Order',
+                    'CommunityRating': '⭐ Community Rating',
+                    'ProductionYear': '📅 Production Year',
+                    'SortName': '🔤 Name (A→Z)',
+                    'DateCreated': '🕐 Date Added',
+                    'Random': '🎲 Random',
+                };
+                const sortBadge = group.sort_order
+                    ? `<span style="display:inline-block; margin-left:0.5rem; font-size:0.72rem; background:rgba(99,102,241,0.15); color:var(--accent-color); border:1px solid rgba(99,102,241,0.3); border-radius:4px; padding:0.1rem 0.4rem;">${sortLabels[group.sort_order] || group.sort_order}</span>`
+                    : '';
+
+                card.innerHTML = `
+                    <div class="group-info">
+                        <h4>${group.name || 'Unnamed Group'}${sortBadge}</h4>
+                        <div class="group-meta">
+                            <span style="color: var(--accent-color); font-weight: 600;">${catLabel}</span> • ${typeLabel}: ${group.source_value}
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="secondary-btn" onclick="editGroup(${index})" title="Edit Group" style="padding: 0.5rem 0.8rem; font-size: 0.8rem; margin: 0; width: auto; border-color: var(--accent-color); color: var(--accent-color);">
+                            Edit
+                        </button>
+                        <button class="delete-btn" onclick="deleteGroup(${index})" title="Remove Group">
+                            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 4px;">
+                                <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                                <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                            </svg>
+                            Remove
+                        </button>
+                    </div>
+                `;
+                groupsList.appendChild(card);
+            });
+        }
+
+        async function saveAllConfig() {
+            try {
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(currentConfig)
+                });
+                if (response.ok) {
+                    showStatus('Settings saved', 'success');
+                    renderGroups();
+                } else {
+                    showStatus('Server error while saving', 'error');
+                }
+            } catch (err) {
+                showStatus('Network error - changes not saved locally', 'error');
+            }
+        }
+
+        function showStatus(msg, type) {
+            statusMsg.textContent = msg;
+            statusMsg.className = `status-msg ${type}`;
+            statusMsg.style.display = 'block';
+            setTimeout(() => { if (statusMsg.textContent === msg) statusMsg.style.display = 'none'; }, 3000);
+        }
+
+        configForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            saveBtn.classList.add('btn-loading');
+
+            currentConfig.jellyfin_url = document.getElementById('jellyfin_url').value;
+            currentConfig.api_key = document.getElementById('api_key').value;
+            currentConfig.target_path = document.getElementById('target_path').value;
+            currentConfig.jellyfin_root = document.getElementById('jellyfin_root').value;
+            currentConfig.host_root = document.getElementById('host_root').value;
+            currentConfig.trakt_client_id = document.getElementById('trakt_client_id').value;
+
+            await saveAllConfig();
+            saveBtn.classList.remove('btn-loading');
+
+            // Re-trigger metadata discovery after settings change
+            await refreshMetadata();
+        });
+
+        groupForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const source_type = document.getElementById('source_type').value;
+            const isMetadataType = metadataTypes.includes(source_type);
+            const val = (isMetadataType && isServerValidated) ? sourceValueSelect.value : sourceValueInput.value;
+
+            const groupData = {
+                name: document.getElementById('group_name').value,
+                source_category: document.getElementById('source_category').value,
+                source_type: source_type,
+                source_value: val,
+                sort_order: document.getElementById('sort_order_enabled').checked ? (document.getElementById('sort_order').value || '') : ''
+            };
+
+            if (!currentConfig.groups) currentConfig.groups = [];
+
+            if (editingIndex >= 0) {
+                currentConfig.groups[editingIndex] = groupData;
+                editingIndex = -1;
+            } else {
+                currentConfig.groups.push(groupData);
+            }
+
+            await saveAllConfig();
+            groupForm.reset();
+            resetFormUI();
+        });
+
+        function editGroup(index) {
+            editingIndex = index;
+            const group = currentConfig.groups[index];
+
+            document.getElementById('group_name').value = group.name;
+            document.getElementById('source_category').value = group.source_category || 'jellyfin';
+            updateSourceTypeOptions();
+            document.getElementById('source_type').value = group.source_type;
+            const hasSortOrder = !!(group.sort_order);
+            document.getElementById('sort_order_enabled').checked = hasSortOrder;
+            document.getElementById('sort_order_panel').style.display = hasSortOrder ? 'block' : 'none';
+            document.getElementById('sort_order').value = group.sort_order || '';
+
+            updateSourceValueUI(group.source_value);
+
+            groupFormTitle.textContent = 'Edit Grouping';
+            addGroupBtn.textContent = 'Update Grouping';
+            cancelEditBtn.style.display = 'block';
+
+            // Scroll form into view
+            groupForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function cancelEdit() {
+            editingIndex = -1;
+            groupForm.reset();
+            resetFormUI();
+        }
+
+        function resetFormUI() {
+            groupFormTitle.textContent = 'Create New Grouping';
+            addGroupBtn.textContent = 'Add Grouping';
+            cancelEditBtn.style.display = 'none';
+            document.getElementById('sort_order_enabled').checked = false;
+            document.getElementById('sort_order_panel').style.display = 'none';
+            updateSourceTypeOptions();
+        }
+
+        function toggleSortOrder(checkbox) {
+            document.getElementById('sort_order_panel').style.display = checkbox.checked ? 'block' : 'none';
+        }
+
+        async function deleteGroup(index) {
+            if (confirm('Permanently remove this grouping?')) {
+                if (editingIndex === index) cancelEdit();
+                currentConfig.groups.splice(index, 1);
+                await saveAllConfig();
+            }
+        }
+
+        async function clearAllGroups() {
+            if (confirm('Are you sure you want to remove ALL groupings? This cannot be undone.')) {
+                currentConfig.groups = [];
+                await saveAllConfig();
+            }
+        }
+
+        // --- Streamlined Import / Export Logic ---
+
+        function openExportModal() {
+            const container = document.getElementById('export-groups-container');
+            container.innerHTML = '';
+
+            if (currentConfig.groups.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.9rem;">No groups available to export.</p>';
+            } else {
+                currentConfig.groups.forEach((g, i) => {
+                    const item = document.createElement('div');
+                    item.className = 'modal-item';
+                    item.innerHTML = `
+                        <input type="checkbox" checked class="export-check" data-index="${i}" style="width:18px; height:18px; accent-color: var(--accent-color);">
+                        <div>
+                            <div style="font-weight:600; font-size:0.95rem;">${g.name}</div>
+                            <div style="font-size:0.8rem; color:var(--text-secondary);">${g.source_type}</div>
+                        </div>
+                    `;
+                    container.appendChild(item);
+                });
+            }
+
+            document.querySelector('input[name="export-type"][value="all"]').checked = true;
+            toggleExportSelection();
+            document.getElementById('export-modal').style.display = 'flex';
+        }
+
+        function toggleExportSelection() {
+            const type = document.querySelector('input[name="export-type"]:checked').value;
+            document.getElementById('export-selection-list').style.display = (type === 'selective') ? 'block' : 'none';
+        }
+
+        function execExport() {
+            const type = document.querySelector('input[name="export-type"]:checked').value;
+            let dataToExport = {};
+            let filename = 'jellyfin-groupings-export.json';
+
+            if (type === 'all') {
+                dataToExport = currentConfig;
+                filename = 'jellyfin-config-full.json';
+            } else {
+                const selectedIndices = Array.from(document.querySelectorAll('.export-check:checked'))
+                    .map(cb => parseInt(cb.dataset.index));
+
+                if (selectedIndices.length === 0) {
+                    alert('Please select at least one grouping.');
+                    return;
+                }
+                dataToExport = { groups: selectedIndices.map(i => currentConfig.groups[i]) };
+                filename = 'jellyfin-selected-groupings.json';
+            }
+
+            downloadJSON(dataToExport, filename);
+            closeModal('export-modal');
+        }
+
+        function openImportModal() {
+            document.getElementById('import-step-1').style.display = 'block';
+            document.getElementById('import-step-2').style.display = 'none';
+            document.getElementById('cancel-import-top').style.display = 'block';
+            document.getElementById('import-modal').style.display = 'flex';
+        }
+
+        function handleFileSelected(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    pendingImportData = data;
+                    setupImportStep2(data);
+                } catch (err) {
+                    showStatus('Invalid JSON file', 'error');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = ''; // Reset
+        }
+
+        function setupImportStep2(data) {
+            document.getElementById('import-step-1').style.display = 'none';
+            document.getElementById('import-step-2').style.display = 'block';
+            document.getElementById('cancel-import-top').style.display = 'none';
+
+            const warning = document.getElementById('import-warning');
+            const selectionList = document.getElementById('import-selection-list');
+            const container = document.getElementById('import-groups-container');
+            const confirmBtn = document.getElementById('confirm-import');
+
+            container.innerHTML = '';
+
+            // Detection: Is it a full config or just groups?
+            const isFullConfig = data.jellyfin_url !== undefined && data.api_key !== undefined;
+            const groups = data.groups || (Array.isArray(data) ? data : null);
+
+            if (isFullConfig) {
+                warning.style.display = 'block';
+                selectionList.style.display = 'none';
+                confirmBtn.textContent = 'Overwrite Over All';
+                confirmBtn.onclick = () => performImport('full');
+            } else if (groups) {
+                warning.style.display = 'none';
+                selectionList.style.display = 'block';
+                confirmBtn.textContent = 'Import Selected';
+
+                groups.forEach((g, i) => {
+                    const item = document.createElement('div');
+                    item.className = 'modal-item';
+                    item.innerHTML = `
+                        <input type="checkbox" checked class="import-check" data-index="${i}" style="width:18px; height:18px; accent-color: var(--accent-color);">
+                        <div>
+                            <div style="font-weight:600; font-size:0.95rem;">${g.name}</div>
+                            <div style="font-size:0.8rem; color:var(--text-secondary);">${g.source_type}: ${g.source_value}</div>
+                        </div>
+                    `;
+                    container.appendChild(item);
+                });
+                confirmBtn.onclick = () => performImport('groups', groups);
+            } else {
+                showStatus('Incompatible file structure', 'error');
+                closeModal('import-modal');
+            }
+        }
+
+        async function performImport(type, sourceGroups = null) {
+            if (type === 'full') {
+                currentConfig = pendingImportData;
+            } else {
+                const selectedIndices = Array.from(document.querySelectorAll('.import-check:checked'))
+                    .map(cb => parseInt(cb.dataset.index));
+
+                const toImport = selectedIndices.map(i => sourceGroups[i]);
+                currentConfig.groups = [...currentConfig.groups, ...toImport];
+            }
+
+            await saveAllConfig();
+            closeModal('import-modal');
+            showStatus('Import successful!', 'success');
+            loadConfig();
+        }
+
+        function downloadJSON(data, filename) {
+            const blob = new Blob([JSON.stringify(data, null, 4)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+            pendingImportData = null;
+        }
+
+        async function autoDetectPaths() {
+            const detectBtn = document.getElementById('auto-detect-btn');
+            detectBtn.classList.add('btn-loading');
+
+            try {
+                const response = await fetch('/api/jellyfin/auto-detect-paths', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const result = await response.json();
+
+                if (result.status === 'success' && result.detected.host_root) {
+                    document.getElementById('jellyfin_root').value = result.detected.jellyfin_root;
+                    document.getElementById('host_root').value = result.detected.host_root;
+                    document.getElementById('target_path').value = result.detected.target_path;
+
+                    // Update currentConfig in memory too
+                    currentConfig.jellyfin_root = result.detected.jellyfin_root;
+                    currentConfig.host_root = result.detected.host_root;
+                    currentConfig.target_path = result.detected.target_path;
+
+                    showStatus('Paths auto-detected! Remember to Save.', 'success');
+                } else if (result.status === 'success') {
+                    showStatus('Auto-detection finished but could not find matching host paths. You may need to set them manually.', 'error');
+                } else {
+                    showStatus(result.message || 'Auto-detection failed', 'error');
+                }
+            } catch (err) {
+                showStatus('Auto-detection failed - API unreachable', 'error');
+            } finally {
+                detectBtn.classList.remove('btn-loading');
+            }
+        }
+
+        async function syncAll() {
+            const syncBtn = document.getElementById('sync-btn');
+            syncBtn.classList.add('btn-loading');
+
+            try {
+                const response = await fetch('/api/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    let totalLinks = result.results.reduce((acc, r) => acc + r.links, 0);
+                    showStatus(`Sync complete! Created ${totalLinks} symbolic links.`, 'success');
+                } else {
+                    showStatus(result.message || 'Sync failed', 'error');
+                }
+            } catch (err) {
+                showStatus('Sync failed - API unreachable', 'error');
+            } finally {
+                syncBtn.classList.remove('btn-loading');
+            }
+        }
+
+
+        // Initialize
+        if (window.location.protocol === 'file:') {
+            document.getElementById('connection-warning').style.display = 'block';
+        } else {
+            loadConfig();
+        }
+    </script>
+</body>
+
+</html>

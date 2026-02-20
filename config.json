@@ -1,0 +1,36 @@
+{
+    "api_key": "c12ef91d0da346bdb610ab7db755312f",
+    "auto_add_libs": true,
+    "groups": [
+        {
+            "name": "action",
+            "source_category": "jellyfin",
+            "source_type": "genre",
+            "source_value": "Action"
+        },
+        {
+            "name": "disney +",
+            "source_category": "jellyfin",
+            "source_type": "studio",
+            "source_value": "Disney+"
+        },
+        {
+            "name": "comedy",
+            "source_category": "jellyfin",
+            "source_type": "genre",
+            "source_value": "Kom\u00f6die"
+        },
+        {
+            "name": "mcu",
+            "source_category": "external",
+            "source_type": "imdb_list",
+            "source_value": "https://www.imdb.com/list/ls029032797/",
+            "sort_order": "imdb_list_order"
+        }
+    ],
+    "host_root": "/home/entcheneric/jellyfin-test",
+    "jellyfin_root": "/",
+    "jellyfin_target_root": "/virtual",
+    "jellyfin_url": "http://app.localhost:8096",
+    "target_path": "/home/entcheneric/jellyfin-groupings-virtual"
+}

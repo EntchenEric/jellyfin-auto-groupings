@@ -1,0 +1,25 @@
+# ─────────────────────────────────────────────────────────────
+# docker-compose.yml  –  for local / non-Unraid deployments
+#
+# Unraid users: use the Community Applications template instead.
+# Template path: unraid/jellyfin-groupings.xml
+# ─────────────────────────────────────────────────────────────
+services:
+  jellyfin-groupings:
+    build: .
+    # Or pull from the registry once published:
+    # image: ghcr.io/entcheneric/jellyfin-groupings:latest
+    ports:
+      - "5000:5000"
+    volumes:
+      # Persist settings (Jellyfin URL, API key, groups) across restarts
+      - ./config.json:/app/config.json
+
+      # Output directory where virtual grouping folders are created.
+      # Set "Target Path" in the app to /groupings.
+      - /home/entcheneric/jellyfin-groupings-virtual:/groupings
+
+      # Mount your media root so symlinks can resolve to real files.
+      # Set "Host Root" in the app to /media (adjust to your layout).
+      # - /mnt/media:/media:ro
+    restart: unless-stopped

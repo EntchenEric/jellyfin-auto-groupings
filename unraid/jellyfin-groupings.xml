@@ -1,0 +1,80 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <!-- ================================================================
+       Unraid Community Applications Template
+       Repository: https://github.com/entcheneric/jellyfin-groupings
+       ================================================================ -->
+
+  <Name>jellyfin-groupings</Name>
+  <Repository>ghcr.io/entcheneric/jellyfin-groupings:latest</Repository>
+  <Registry>https://github.com/entcheneric/jellyfin-groupings/pkgs/container/jellyfin-groupings</Registry>
+  <Network>bridge</Network>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/entcheneric/jellyfin-groupings/issues</Support>
+  <Project>https://github.com/entcheneric/jellyfin-groupings</Project>
+  <Overview>
+    Create virtual Jellyfin libraries by grouping media via symlinks.
+    Filter by genre, actor, studio, tag, IMDb list, or Trakt list.
+    Each grouping becomes its own folder that you can add as a Jellyfin library.
+  </Overview>
+  <Category>MediaServer:Other</Category>
+  <WebUI>http://[IP]:[PORT:5000]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/entcheneric/jellyfin-groupings/main/unraid/jellyfin-groupings.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/entcheneric/jellyfin-groupings/main/unraid/jellyfin-groupings-icon.png</Icon>
+  <ExtraParams></ExtraParams>
+  <PostArgs></PostArgs>
+  <CPUset></CPUset>
+  <DateInstalled></DateInstalled>
+  <DonateText></DonateText>
+  <DonateLink></DonateLink>
+  <Requires></Requires>
+
+  <!-- ── Web UI port ─────────────────────────────────────────── -->
+  <Config
+    Name="Web UI Port"
+    Target="5000"
+    Default="5000"
+    Mode="tcp"
+    Description="Port for the Jellyfin Groupings web interface."
+    Type="Port"
+    Display="always"
+    Required="true"
+    Mask="false">5000</Config>
+
+  <!-- ── Config file ─────────────────────────────────────────── -->
+  <Config
+    Name="Config File"
+    Target="/app/config.json"
+    Default="/mnt/user/appdata/jellyfin-groupings/config.json"
+    Mode="rw"
+    Description="Path to the config.json file on the host. This persists your settings (Jellyfin URL, API key, groups) across container restarts."
+    Type="Path"
+    Display="always"
+    Required="true"
+    Mask="false">/mnt/user/appdata/jellyfin-groupings/config.json</Config>
+
+  <!-- ── Groupings output directory ──────────────────────────── -->
+  <Config
+    Name="Groupings Output Directory"
+    Target="/groupings"
+    Default="/mnt/user/jellyfin-groupings-virtual"
+    Mode="rw"
+    Description="Directory where virtual grouping folders (with symlinks) will be created. Point your Jellyfin libraries at subdirectories of this folder. Set 'Target Path' in the app's settings to /groupings."
+    Type="Path"
+    Display="always"
+    Required="true"
+    Mask="false">/mnt/user/jellyfin-groupings-virtual</Config>
+
+  <!-- ── Media root (optional, for path mapping) ─────────────── -->
+  <Config
+    Name="Media Root (optional)"
+    Target="/media"
+    Default="/mnt/user"
+    Mode="ro"
+    Description="Mount your media root here so the container can verify and create symlinks that point to real files. Set 'Host Root' in the app's settings to /media (or the sub-path that matches your Jellyfin 'Jellyfin Root' setting). Read-only is sufficient."
+    Type="Path"
+    Display="always"
+    Required="false"
+    Mask="false">/mnt/user</Config>
+
+</Container>
