@@ -749,7 +749,7 @@ def browse_directory() -> ResponseReturnValue:
         )
     except PermissionError:
         entries = []
-    except Exception as e:
+    except OSError as e:
         return jsonify({"status": "error", "message": str(e)}), 400
 
     parent: str | None = os.path.dirname(path) if path != os.sep else None
@@ -776,6 +776,8 @@ if __name__ == "__main__":
                 "jellyfin_url": "",
                 "api_key": "",
                 "target_path": "",
+                "media_path_in_jellyfin": "",
+                "media_path_on_host": "",
                 "trakt_client_id": "",
                 "groups": [],
             }
