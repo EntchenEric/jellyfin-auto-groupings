@@ -16,17 +16,32 @@ import os
 import shutil
 from typing import Any
 
+from anilist import fetch_anilist_list
 from imdb import fetch_imdb_list
 from jellyfin import SORT_MAP, fetch_jellyfin_items
+from letterboxd import fetch_letterboxd_list
+from mal import fetch_mal_list
+from tmdb import fetch_tmdb_list
 from trakt import fetch_trakt_list
 
-# Source types that come from external lists (IMDb / Trakt) rather than from
-# a Jellyfin metadata filter.
-_LIST_SOURCES: frozenset[str] = frozenset({"imdb_list", "trakt_list"})
+# Source types that come from external lists (IMDb / Trakt / TMDb / AniList / MyAnimeList / Letterboxd) rather than
+# from a Jellyfin metadata filter.
+_LIST_SOURCES: frozenset[str] = frozenset(
+    {"imdb_list", "trakt_list", "tmdb_list", "anilist_list", "mal_list", "letterboxd_list"}
+)
 
 # ``sort_order`` values that mean "keep the order from the external list"
 # rather than applying a Jellyfin / in-memory sort.
-_LIST_ORDER_VALUES: frozenset[str] = frozenset({"imdb_list_order", "trakt_list_order"})
+_LIST_ORDER_VALUES: frozenset[str] = frozenset(
+    {
+        "imdb_list_order",
+        "trakt_list_order",
+        "tmdb_list_order",
+        "anilist_list_order",
+        "mal_list_order",
+        "letterboxd_list_order",
+    }
+)
 
 
 def _translate_path(
@@ -52,6 +67,101 @@ def _translate_path(
         rel = os.path.relpath(jellyfin_path, jellyfin_root)
         return os.path.normpath(os.path.join(host_root, rel))
     return jellyfin_path
+
+
+_LIBRARY_CACHE: dict[tuple[str, str], list[dict[str, Any]]] = {}
+
+
+def _fetch_full_library(
+    url: str,
+    api_key: str,
+    group_name: str,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """Fetch the full Jellyfin library once per run for matching.
+
+    Args:
+        url: Jellyfin base URL.
+        api_key: Jellyfin API key.
+        group_name: Human-readable group name (used for logging).
+
+    Returns:
+        A (raw_items, error) tuple.
+    """
+    cache_key = (url, api_key)
+    if cache_key in _LIBRARY_CACHE:
+        return _LIBRARY_CACHE[cache_key], None
+
+    try:
+        raw_items = fetch_jellyfin_items(
+            url,
+            api_key,
+            {
+                "Recursive": "true",
+                "Fields": "Path,ProviderIds",
+                "IncludeItemTypes": "Movie,Series",
+                "Limit": "10000",
+            },
+            timeout=60,
+        )
+        print(f"Jellyfin library: {len(raw_items)} items fetched for matching")
+        _LIBRARY_CACHE[cache_key] = raw_items
+        return raw_items, None
+    except Exception as exc:
+        print(f"Error fetching Jellyfin library for group {group_name!r}: {exc}")
+        return [], str(exc)
+
+
+def _match_jellyfin_items_by_provider(
+    external_ids: list[Any],
+    provider_key: str,
+    list_order_key: str,
+    sort_order: str,
+    url: str,
+    api_key: str,
+    group_name: str,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """Fetch all Jellyfin items and match them against a list of external IDs.
+
+    Args:
+        external_ids: List of IDs from the external provider (IMDb, TMDb, etc.).
+        provider_key: The Jellyfin ProviderId key (e.g. "Imdb", "Tmdb").
+        list_order_key: The sort_order value that triggers list-order sorting.
+        sort_order: The group's requested sort_order.
+        url: Jellyfin base URL.
+        api_key: Jellyfin API key.
+        group_name: Group name for logging.
+
+    Returns:
+        A (items, error) tuple.
+    """
+    raw_items, error = _fetch_full_library(url, api_key, group_name)
+    if error is not None:
+        return [], error
+
+    case_insensitive = provider_key == "Imdb"
+
+    # Index by provider ID for O(1) lookup
+    jf_by_provider: dict[str, dict[str, Any]] = {}
+    for item in raw_items:
+        val = item.get("ProviderIds", {}).get(provider_key)
+        if val:
+            key = str(val).lower() if case_insensitive else str(val)
+            jf_by_provider[key] = item
+
+    if sort_order == list_order_key:
+        # Preserve the external list's ordering
+        items = []
+        for eid in external_ids:
+            key = str(eid).lower() if case_insensitive else str(eid)
+            if key in jf_by_provider:
+                items.append(jf_by_provider[key])
+    else:
+        matched_ids = {str(eid).lower() if case_insensitive else str(eid) for eid in external_ids}
+        items = [v for k, v in jf_by_provider.items() if k in matched_ids]
+
+    return items, None
+
+
 
 
 def _sort_items_in_memory(
@@ -127,38 +237,9 @@ def _fetch_items_for_imdb_group(
         print(f"No IMDb IDs found for group {group_name!r}")
         return [], None
 
-    try:
-        raw_items = fetch_jellyfin_items(
-            url,
-            api_key,
-            {
-                "Recursive": "true",
-                "Fields": "Path,ProviderIds",
-                "IncludeItemTypes": "Movie,Series",
-                "Limit": "10000",
-            },
-            timeout=60,
-        )
-        print(f"Jellyfin library: {len(raw_items)} items with IMDb IDs")
-    except Exception as exc:
-        print(f"Error fetching Jellyfin library for group {group_name!r}: {exc}")
-        return [], str(exc)
-
-    # Index by lower-case IMDb ID for O(1) lookup
-    jf_by_imdb: dict[str, dict[str, Any]] = {
-        item.get("ProviderIds", {}).get("Imdb", "").lower(): item
-        for item in raw_items
-        if item.get("ProviderIds", {}).get("Imdb")
-    }
-
-    if sort_order == "imdb_list_order":
-        # Preserve the external list's ordering
-        items = [jf_by_imdb[tt.lower()] for tt in imdb_ids if tt.lower() in jf_by_imdb]
-    else:
-        matched = set(imdb_ids)
-        items = [v for k, v in jf_by_imdb.items() if k in matched]
-
-    return items, None
+    return _match_jellyfin_items_by_provider(
+        imdb_ids, "Imdb", "imdb_list_order", sort_order, url, api_key, group_name
+    )
 
 
 def _fetch_items_for_trakt_group(
@@ -199,34 +280,227 @@ def _fetch_items_for_trakt_group(
         print(f"No items found in Trakt list for group {group_name!r}")
         return [], None
 
+    return _match_jellyfin_items_by_provider(
+        trakt_ids, "Imdb", "trakt_list_order", sort_order, url, api_key, group_name
+    )
+
+
+def _fetch_items_for_tmdb_group(
+    group_name: str,
+    source_value: str,
+    sort_order: str,
+    url: str,
+    api_key: str,
+    tmdb_api_key: str,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """Resolve Jellyfin items for a TMDb-list–backed group.
+
+    Args:
+        group_name: Human-readable group name (used for logging).
+        source_value: TMDb list ID or URL.
+        sort_order: Requested sort order key.
+        url: Jellyfin base URL.
+        api_key: Jellyfin API key.
+        tmdb_api_key: TMDb API Key.
+
+    Returns:
+        A ``(items, error)`` tuple (same semantics as
+        :func:`_fetch_items_for_imdb_group`).
+    """
+    if not tmdb_api_key:
+        msg = "TMDb API Key not set — add tmdb_api_key in Server Settings"
+        print(f"No TMDb API Key configured for group {group_name!r}")
+        return [], msg
+
     try:
-        raw_items = fetch_jellyfin_items(
-            url,
-            api_key,
-            {
-                "Recursive": "true",
-                "Fields": "Path,ProviderIds",
-                "IncludeItemTypes": "Movie,Series",
-                "Limit": "10000",
-            },
-            timeout=60,
-        )
-        print(f"Jellyfin library: {len(raw_items)} items with IMDb IDs")
+        tmdb_ids = fetch_tmdb_list(source_value, tmdb_api_key)
+        print(f"TMDb list {source_value!r}: {len(tmdb_ids)} items found")
     except Exception as exc:
-        print(f"Error fetching Jellyfin library for group {group_name!r}: {exc}")
+        print(f"Error fetching TMDb list for group {group_name!r}: {exc}")
         return [], str(exc)
 
-    jf_by_imdb: dict[str, dict[str, Any]] = {
-        item.get("ProviderIds", {}).get("Imdb", "").lower(): item
-        for item in raw_items
-        if item.get("ProviderIds", {}).get("Imdb")
-    }
+    if not tmdb_ids:
+        print(f"No items found in TMDb list for group {group_name!r}")
+        return [], None
 
-    if sort_order == "trakt_list_order":
-        items = [jf_by_imdb[tt.lower()] for tt in trakt_ids if tt.lower() in jf_by_imdb]
+    return _match_jellyfin_items_by_provider(
+        tmdb_ids, "Tmdb", "tmdb_list_order", sort_order, url, api_key, group_name
+    )
+
+
+def _fetch_items_for_anilist_group(
+    group_name: str,
+    source_value: str,
+    sort_order: str,
+    url: str,
+    api_key: str,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """Resolve Jellyfin items for an AniList-list–backed group.
+
+    Args:
+        group_name: Human-readable group name (used for logging).
+        source_value: AniList username or ``"username/status"`` shorthand.
+        sort_order: Requested sort order key.
+        url: Jellyfin base URL.
+        api_key: Jellyfin API key.
+
+    Returns:
+        A ``(items, error)`` tuple (same semantics as
+        :func:`_fetch_items_for_imdb_group`).
+    """
+    username = source_value
+    status = None
+    if "/" in source_value:
+        split_val = source_value.split("/", 1)
+        username = split_val[0]
+        status = split_val[1]
+
+    try:
+        anilist_ids = fetch_anilist_list(username, status)
+        print(f"AniList user {username!r} (status={status!r}): {len(anilist_ids)} items found")
+    except Exception as exc:
+        print(f"Error fetching AniList items for group {group_name!r}: {exc}")
+        return [], str(exc)
+
+    if not anilist_ids:
+        print(f"No items found for AniList user {username!r}")
+        return [], None
+
+    return _match_jellyfin_items_by_provider(
+        anilist_ids, "AniList", "anilist_list_order", sort_order, url, api_key, group_name
+    )
+
+
+def _fetch_items_for_mal_group(
+    group_name: str,
+    source_value: str,
+    sort_order: str,
+    url: str,
+    api_key: str,
+    mal_client_id: str,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """Resolve Jellyfin items for a MyAnimeList-list–backed group.
+
+    Args:
+        group_name: Human-readable group name (used for logging).
+        source_value: MAL username or ``"username/status"`` shorthand.
+        sort_order: Requested sort order key.
+        url: Jellyfin base URL.
+        api_key: Jellyfin API key.
+        mal_client_id: MyAnimeList Client ID.
+
+    Returns:
+        A ``(items, error)`` tuple (same semantics as
+        :func:`_fetch_items_for_imdb_group`).
+    """
+    if not mal_client_id:
+        msg = "MyAnimeList Client ID not set — add mal_client_id in Server Settings"
+        print(f"No MAL Client ID configured for group {group_name!r}")
+        return [], msg
+
+    username = source_value
+    status = None
+    if "/" in source_value:
+        split_val = source_value.split("/", 1)
+        username = split_val[0]
+        status = split_val[1]
+
+    try:
+        mal_ids = fetch_mal_list(username, mal_client_id, status)
+        print(f"MyAnimeList user {username!r} (status={status!r}): {len(mal_ids)} items found")
+    except Exception as exc:
+        print(f"Error fetching MyAnimeList items for group {group_name!r}: {exc}")
+        return [], str(exc)
+
+    if not mal_ids:
+        print(f"No items found for MyAnimeList user {username!r}")
+        return [], None
+
+    return _match_jellyfin_items_by_provider(
+        mal_ids, "Mal", "mal_list_order", sort_order, url, api_key, group_name
+    )
+
+
+def _fetch_items_for_letterboxd_group(
+    group_name: str,
+    source_value: str,
+    sort_order: str,
+    url: str,
+    api_key: str,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """Resolve Jellyfin items for a Letterboxd-list–backed group.
+
+    Args:
+        group_name: Human-readable group name (used for logging).
+        source_value: Letterboxd list URL.
+        sort_order: Requested sort order key.
+        url: Jellyfin base URL.
+        api_key: Jellyfin API key.
+
+    Returns:
+        A ``(items, error)`` tuple (same semantics as
+        :func:`_fetch_items_for_imdb_group`).
+    """
+    try:
+        external_ids = fetch_letterboxd_list(source_value)
+        print(f"Letterboxd list {source_value!r}: {len(external_ids)} IDs found")
+    except Exception as exc:
+        print(f"Error fetching Letterboxd list for group {group_name!r}: {exc}")
+        return [], str(exc)
+
+    if not external_ids:
+        print(f"No items found in Letterboxd list for group {group_name!r}")
+        return [], None
+
+    # Letterboxd IDs can be IMDb (tt...) or TMDb (numeric)
+    imdb_ids = [eid for eid in external_ids if str(eid).startswith("tt")]
+    tmdb_ids = [eid for eid in external_ids if not str(eid).startswith("tt")]
+
+    # We need to fetch both and merge them if the list contains both
+    all_matched_items: list[dict[str, Any]] = []
+    
+    # We'll use a simplified version of matching here since we have two types of IDs
+    raw_items, error = _fetch_full_library(url, api_key, group_name)
+    if error is not None:
+        return [], error
+
+    # Index by both Imdb and Tmdb
+    items_by_imdb: dict[str, dict[str, Any]] = {}
+    items_by_tmdb: dict[str, dict[str, Any]] = {}
+    for item in raw_items:
+        pids = item.get("ProviderIds", {})
+        imdb_v = pids.get("Imdb")
+        if imdb_v:
+            items_by_imdb[str(imdb_v).lower()] = item
+        tmdb_v = pids.get("Tmdb")
+        if tmdb_v:
+            items_by_tmdb[str(tmdb_v)] = item
+
+    if sort_order == "letterboxd_list_order":
+        items = []
+        for eid in external_ids:
+            if str(eid).startswith("tt"):
+                key = str(eid).lower()
+                if key in items_by_imdb:
+                    items.append(items_by_imdb[key])
+            else:
+                key = str(eid)
+                if key in items_by_tmdb:
+                    items.append(items_by_tmdb[key])
     else:
-        matched = set(trakt_ids)
-        items = [v for k, v in jf_by_imdb.items() if k in matched]
+        # Just gather all that match
+        seen_jf_ids = set()
+        items = []
+        for eid in external_ids:
+            match = None
+            if str(eid).startswith("tt"):
+                match = items_by_imdb.get(str(eid).lower())
+            else:
+                match = items_by_tmdb.get(str(eid))
+            
+            if match and match["Id"] not in seen_jf_ids:
+                items.append(match)
+                seen_jf_ids.add(match["Id"])
 
     return items, None
 
@@ -295,6 +569,8 @@ def _process_group(
     jellyfin_root: str,
     host_root: str,
     trakt_client_id: str,
+    tmdb_api_key: str,
+    mal_client_id: str,
 ) -> dict[str, Any]:
     """Process a single grouping: fetch items, then create symlinks.
 
@@ -309,6 +585,8 @@ def _process_group(
         jellyfin_root: Jellyfin-side media path prefix (for path translation).
         host_root: Host-side media path prefix (for path translation).
         trakt_client_id: Trakt API Client ID (may be empty).
+        tmdb_api_key: TMDb API Key (may be empty).
+        mal_client_id: MyAnimeList Client ID (may be empty).
 
     Returns:
         A result dict with keys ``"group"``, ``"links"`` and optionally
@@ -341,6 +619,22 @@ def _process_group(
     elif source_type == "trakt_list":
         items, error = _fetch_items_for_trakt_group(
             group_name, source_value or "", sort_order, url, api_key, trakt_client_id
+        )
+    elif source_type == "tmdb_list":
+        items, error = _fetch_items_for_tmdb_group(
+            group_name, source_value or "", sort_order, url, api_key, tmdb_api_key
+        )
+    elif source_type == "anilist_list":
+        items, error = _fetch_items_for_anilist_group(
+            group_name, source_value or "", sort_order, url, api_key
+        )
+    elif source_type == "mal_list":
+        items, error = _fetch_items_for_mal_group(
+            group_name, source_value or "", sort_order, url, api_key, mal_client_id
+        )
+    elif source_type == "letterboxd_list":
+        items, error = _fetch_items_for_letterboxd_group(
+            group_name, source_value or "", sort_order, url, api_key
         )
     else:
         items, error = _fetch_items_for_metadata_group(
@@ -432,6 +726,8 @@ def run_sync(config: dict[str, Any]) -> list[dict[str, Any]]:
         config.get("media_path_on_host") or config.get("host_root", "")
     ).strip()
     trakt_client_id: str = str(config.get("trakt_client_id", "")).strip()
+    tmdb_api_key: str = str(config.get("tmdb_api_key", "")).strip()
+    mal_client_id: str = str(config.get("mal_client_id", "")).strip()
 
     if not url or not api_key or not target_base:
         raise ValueError("Server settings or target path not configured")
@@ -442,6 +738,8 @@ def run_sync(config: dict[str, Any]) -> list[dict[str, Any]]:
     print(f"Starting sync to: {target_base}")
     if jellyfin_root and host_root:
         print(f"Path translation active: {jellyfin_root} -> {host_root}")
+
+    _LIBRARY_CACHE.clear()
 
     results: list[dict[str, Any]] = []
     for group in groups:
@@ -456,7 +754,10 @@ def run_sync(config: dict[str, Any]) -> list[dict[str, Any]]:
             jellyfin_root,
             host_root,
             trakt_client_id,
+            tmdb_api_key,
+            mal_client_id,
         )
         results.append(result)
 
+    _LIBRARY_CACHE.clear()
     return results
