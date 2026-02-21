@@ -844,7 +844,7 @@
 
                             <!-- Removed complex rules container, using free-text logical parsing -->
                             <div id="preview_result"
-                                style="display: none; margin-top: 0.8rem; font-size: 0.8rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: var(--radius-sm); border: 1px dashed var(--glass-border);">
+                                style="display: none; margin-top: 0.8rem; font-size: 0.8rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: var(--radius-md); border: 1px dashed var(--glass-border);">
                             </div>
                         </div>
                         <div class="form-group">
@@ -1234,21 +1234,42 @@
                     body: JSON.stringify({ type: type, value: val })
                 });
                 const res = await response.json();
+                resultDiv.innerHTML = '';
                 if (res.status === 'success') {
-                    let html = `<strong style="color:var(--text-primary);">Estimated Items:</strong> <span style="color:var(--accent-color); font-weight: 600;">${res.count}</span><br><br>`;
+                    const summaryLine = document.createElement('div');
+                    const labelStrong = document.createElement('strong');
+                    labelStrong.setAttribute('style', 'color:var(--text-primary);');
+                    labelStrong.textContent = 'Estimated Items: ';
+                    const countSpan = document.createElement('span');
+                    countSpan.setAttribute('style', 'color:var(--accent-color); font-weight:600;');
+                    countSpan.textContent = String(res.count);
+                    summaryLine.appendChild(labelStrong);
+                    summaryLine.appendChild(countSpan);
+                    resultDiv.appendChild(summaryLine);
+
                     if (res.count > 0) {
-                        html += `<strong>First matches:</strong><ul style="margin-top:0.4rem; padding-left:1.5rem; color:var(--text-secondary);">`;
+                        const matchesLabel = document.createElement('strong');
+                        matchesLabel.textContent = 'First matches:';
+                        matchesLabel.setAttribute('style', 'display:block; margin-top:0.6rem;');
+                        resultDiv.appendChild(matchesLabel);
+
+                        const ul = document.createElement('ul');
+                        ul.setAttribute('style', 'margin-top:0.4rem; padding-left:1.5rem; color:var(--text-secondary);');
                         res.preview_items.forEach(item => {
-                            html += `<li>${item.Name} ${item.Year ? '(' + item.Year + ')' : ''}</li>`;
+                            const li = document.createElement('li');
+                            li.textContent = item.Year ? `${item.Name} (${item.Year})` : item.Name;
+                            ul.appendChild(li);
                         });
-                        html += `</ul>`;
+                        resultDiv.appendChild(ul);
                     }
-                    resultDiv.innerHTML = html;
                 } else {
-                    resultDiv.innerHTML = `<span style="color:var(--error-color);">Error: ${res.message}</span>`;
+                    const errSpan = document.createElement('span');
+                    errSpan.setAttribute('style', 'color:var(--error-color);');
+                    errSpan.textContent = `Error: ${res.message}`;
+                    resultDiv.appendChild(errSpan);
                 }
             } catch (e) {
-                resultDiv.innerHTML = `<span style="color:var(--error-color);">Network error during preview.</span>`;
+                resultDiv.innerHTML = '<span style="color:var(--error-color);">Network error during preview.</span>';
             }
         }
 
@@ -1441,7 +1462,7 @@
                     }
                     renderMetadataRules();
 
-                    sourceValueHelp.innerHTML = `Select one or more ${type}s from your Jellyfin server. Use + to combine logic operators.`;
+                    sourceValueHelp.textContent = `Select one or more ${type}s from your Jellyfin server. Use + to combine logic operators.`;
                 } else {
                     datalist.innerHTML = '';
                     container.style.display = 'none';
@@ -1549,30 +1570,50 @@
                     'DateCreated': '🕐 Date Added',
                     'Random': '🎲 Random',
                 };
-                const sortBadge = group.sort_order
-                    ? `<span style="display:inline-block; margin-left:0.5rem; font-size:0.72rem; background:rgba(99,102,241,0.15); color:var(--accent-color); border:1px solid rgba(99,102,241,0.3); border-radius:4px; padding:0.1rem 0.4rem;">${sortLabels[group.sort_order] || group.sort_order}</span>`
-                    : '';
 
-                card.innerHTML = `
-                    <div class="group-info">
-                        <h4>${group.name || 'Unnamed Group'}${sortBadge}</h4>
-                        <div class="group-meta">
-                            <span style="color: var(--accent-color); font-weight: 600;">${catLabel}</span> • ${typeLabel}: ${group.source_value}
-                        </div>
-                    </div>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <button class="secondary-btn" onclick="editGroup(${index})" title="Edit Group" style="padding: 0.5rem 0.8rem; font-size: 0.8rem; margin: 0; width: auto; border-color: var(--accent-color); color: var(--accent-color);">
-                            Edit
-                        </button>
-                        <button class="delete-btn" onclick="deleteGroup(${index})" title="Remove Group">
-                            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 4px;">
-                                <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
-                                <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
-                            </svg>
-                            Remove
-                        </button>
-                    </div>
-                `;
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'group-info';
+
+                const h4 = document.createElement('h4');
+                h4.textContent = group.name || 'Unnamed Group';
+                if (group.sort_order) {
+                    const badge = document.createElement('span');
+                    badge.setAttribute('style', 'display:inline-block; margin-left:0.5rem; font-size:0.72rem; background:rgba(99,102,241,0.15); color:var(--accent-color); border:1px solid rgba(99,102,241,0.3); border-radius:4px; padding:0.1rem 0.4rem;');
+                    badge.textContent = sortLabels[group.sort_order] || group.sort_order;
+                    h4.appendChild(badge);
+                }
+                infoDiv.appendChild(h4);
+
+                const metaDiv = document.createElement('div');
+                metaDiv.className = 'group-meta';
+                const catSpan = document.createElement('span');
+                catSpan.setAttribute('style', 'color: var(--accent-color); font-weight: 600;');
+                catSpan.textContent = catLabel;
+                metaDiv.appendChild(catSpan);
+                metaDiv.appendChild(document.createTextNode(` \u2022 ${typeLabel}: ${group.source_value || ''}`));
+                infoDiv.appendChild(metaDiv);
+                card.appendChild(infoDiv);
+
+                const actionsDiv = document.createElement('div');
+                actionsDiv.setAttribute('style', 'display: flex; gap: 0.5rem;');
+
+                const editBtn = document.createElement('button');
+                editBtn.className = 'secondary-btn';
+                editBtn.title = 'Edit Group';
+                editBtn.setAttribute('style', 'padding: 0.5rem 0.8rem; font-size: 0.8rem; margin: 0; width: auto; border-color: var(--accent-color); color: var(--accent-color);');
+                editBtn.textContent = 'Edit';
+                editBtn.onclick = () => editGroup(index);
+                actionsDiv.appendChild(editBtn);
+
+                const delBtn = document.createElement('button');
+                delBtn.className = 'delete-btn';
+                delBtn.title = 'Remove Group';
+                delBtn.innerHTML = '<svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 4px;"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>';
+                delBtn.appendChild(document.createTextNode(' Remove'));
+                delBtn.onclick = () => deleteGroup(index);
+                actionsDiv.appendChild(delBtn);
+
+                card.appendChild(actionsDiv);
                 groupsList.appendChild(card);
             });
         }
@@ -1651,8 +1692,12 @@
             };
 
             if (source_type === 'complex') {
-                groupData.rules = window._complexRules;
-                groupData.source_value = "Custom Multi-Rule Filter";
+                if (typeof window._complexRules !== 'undefined' && Array.isArray(window._complexRules)) {
+                    groupData.rules = window._complexRules;
+                    groupData.source_value = "Custom Multi-Rule Filter";
+                } else {
+                    groupData.rules = [];
+                }
             }
 
             if (!currentConfig.groups) currentConfig.groups = [];
@@ -1738,13 +1783,26 @@
                 currentConfig.groups.forEach((g, i) => {
                     const item = document.createElement('div');
                     item.className = 'modal-item';
-                    item.innerHTML = `
-                        <input type="checkbox" checked class="export-check" data-index="${i}" style="width:18px; height:18px; accent-color: var(--accent-color);">
-                        <div>
-                            <div style="font-weight:600; font-size:0.95rem;">${g.name}</div>
-                            <div style="font-size:0.8rem; color:var(--text-secondary);">${g.source_type}</div>
-                        </div>
-                    `;
+
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.checked = true;
+                    cb.className = 'export-check';
+                    cb.dataset.index = i;
+                    cb.setAttribute('style', 'width:18px; height:18px; accent-color: var(--accent-color);');
+                    item.appendChild(cb);
+
+                    const labelDiv = document.createElement('div');
+                    const nameDiv = document.createElement('div');
+                    nameDiv.setAttribute('style', 'font-weight:600; font-size:0.95rem;');
+                    nameDiv.textContent = g.name || 'Unnamed Group';
+                    const typeDiv = document.createElement('div');
+                    typeDiv.setAttribute('style', 'font-size:0.8rem; color:var(--text-secondary);');
+                    typeDiv.textContent = g.source_type || '';
+                    labelDiv.appendChild(nameDiv);
+                    labelDiv.appendChild(typeDiv);
+                    item.appendChild(labelDiv);
+
                     container.appendChild(item);
                 });
             }
@@ -1837,13 +1895,26 @@
                 groups.forEach((g, i) => {
                     const item = document.createElement('div');
                     item.className = 'modal-item';
-                    item.innerHTML = `
-                        <input type="checkbox" checked class="import-check" data-index="${i}" style="width:18px; height:18px; accent-color: var(--accent-color);">
-                        <div>
-                            <div style="font-weight:600; font-size:0.95rem;">${g.name}</div>
-                            <div style="font-size:0.8rem; color:var(--text-secondary);">${g.source_type}: ${g.source_value}</div>
-                        </div>
-                    `;
+
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.checked = true;
+                    cb.className = 'import-check';
+                    cb.dataset.index = i;
+                    cb.setAttribute('style', 'width:18px; height:18px; accent-color: var(--accent-color);');
+                    item.appendChild(cb);
+
+                    const labelDiv = document.createElement('div');
+                    const nameDiv = document.createElement('div');
+                    nameDiv.setAttribute('style', 'font-weight:600; font-size:0.95rem;');
+                    nameDiv.textContent = g.name || 'Unnamed Group';
+                    const typeDiv = document.createElement('div');
+                    typeDiv.setAttribute('style', 'font-size:0.8rem; color:var(--text-secondary);');
+                    typeDiv.textContent = `${g.source_type || ''}: ${g.source_value || ''}`;
+                    labelDiv.appendChild(nameDiv);
+                    labelDiv.appendChild(typeDiv);
+                    item.appendChild(labelDiv);
+
                     container.appendChild(item);
                 });
                 confirmBtn.onclick = () => performImport('groups', groups);
@@ -1960,13 +2031,17 @@
                 const resp = await fetch('/api/browse?path=' + encodeURIComponent(path));
                 result = await resp.json();
             } catch (e) {
-                document.getElementById('picker-body').innerHTML =
-                    `<p class="picker-empty">Could not load directory: ${e.message}</p>`;
+                const errP = document.createElement('p');
+                errP.className = 'picker-empty';
+                errP.textContent = `Could not load directory: ${e.message}`;
+                document.getElementById('picker-body').appendChild(errP);
                 return;
             }
             if (result.status !== 'success') {
-                document.getElementById('picker-body').innerHTML =
-                    `<p class="picker-empty">${result.message}</p>`;
+                const errP = document.createElement('p');
+                errP.className = 'picker-empty';
+                errP.textContent = result.message;
+                document.getElementById('picker-body').appendChild(errP);
                 return;
             }
             _pickerCurrentPath = result.current;

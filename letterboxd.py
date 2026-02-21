@@ -115,7 +115,19 @@ def fetch_letterboxd_list(list_url: str) -> list[str]:
 
 
 def _fetch_id_for_slug(session: requests.Session, slug: str) -> str | None:
-    """Fetch the IMDb or TMDb ID for a specific film slug."""
+    """Fetch the IMDb or TMDb ID for a specific film slug.
+
+    Performs a GET request to the film's Letterboxd page and extracts either
+    the IMDb ID (tt...) or TMDb ID from the HTML content.
+
+    Args:
+        session: The active requests.Session to use for the request.
+        slug: The Letterboxd film slug (e.g., "the-godfather").
+
+    Returns:
+        The extracted ID as a string, or None if no ID could be found or an
+        error occurred.
+    """
     film_url = f"https://letterboxd.com/film/{slug}/"
     try:
         resp = session.get(film_url, timeout=10)

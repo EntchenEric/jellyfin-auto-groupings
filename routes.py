@@ -249,7 +249,16 @@ def sync_groupings() -> ResponseReturnValue:
 
 @bp.route("/api/grouping/preview", methods=["POST"])
 def preview_grouping() -> ResponseReturnValue:
-    """Preview what items a grouping rule would include."""
+    """Preview what items a grouping rule would include.
+
+    Accepts a JSON body with 'type' and 'value'. If the 'value' contains
+    logical operators (AND, OR, etc.), it is parsed as a complex query.
+    Otherwise, it is treated as a simple metadata filter.
+
+    Returns:
+        JSON with 'status', 'count' of matched items, and 'preview_items'
+        (a list of the first 15 matched titles).
+    """
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return jsonify({"status": "error", "message": "Request body must be JSON"}), 400
@@ -261,34 +270,59 @@ def preview_grouping() -> ResponseReturnValue:
     if not url or not api_key:
         return jsonify({"status": "error", "message": "Server settings not configured"}), 400
 
-    from sync import _fetch_items_for_complex_group, parse_complex_query, _fetch_items_for_metadata_group
+    # Validate and normalize "type"
+    type_raw = data.get("type")
+    if not isinstance(type_raw, str):
+        return jsonify({"status": "error", "message": "Missing or invalid 'type'"}), 400
+    
+    type_name = type_raw.lower().strip()
+    allowed_types = {"genre", "studio", "tag", "year", "actor", "general"}
+    if not type_name or type_name not in allowed_types:
+        return (
+            jsonify({"status": "error", "message": f"Invalid metadata type: {type_raw}"}),
+            400,
+        )
 
-    type_ = str(data.get("type", ""))
-    val = str(data.get("value", ""))
+    # Validate value
+    val_raw = data.get("value")
+    if not isinstance(val_raw, str):
+        return jsonify({"status": "error", "message": "Value must be a string"}), 400
+    
+    val = val_raw.strip()
     if not val:
         return jsonify({"status": "error", "message": "Value cannot be empty"}), 400
 
+    from sync import (
+        _fetch_items_for_complex_group,
+        _fetch_items_for_metadata_group,
+        parse_complex_query,
+    )
+
     try:
         import re
-        if re.search(r'\s+(AND NOT|OR NOT|AND|OR)\s+', val, re.IGNORECASE):
-            rules = parse_complex_query(val, type_ or "genre")
+
+        # If the value contains logical operators, parse as complex query
+        if re.search(r"\s+(AND NOT|OR NOT|AND|OR)\s+", val, re.IGNORECASE):
+            rules = parse_complex_query(val, type_name)
             items, error = _fetch_items_for_complex_group("preview", rules, "", url, api_key)
         else:
-            items, error = _fetch_items_for_metadata_group("preview", type_, val, "", url, api_key)
-        
+            items, error = _fetch_items_for_metadata_group(
+                "preview", type_name, val, "", url, api_key
+            )
+
         if error is not None:
             return jsonify({"status": "error", "message": error}), 400
-        
+
         # Return summary count and first few items
-        results = [{"Name": i.get("Name", "Unknown"), "Year": i.get("ProductionYear", "")} for i in items[:15]]
-        
-        return jsonify({
-            "status": "success",
-            "count": len(items),
-            "preview_items": results
-        })
-    except Exception as exc:
-        return jsonify({"status": "error", "message": str(exc)}), 500
+        results = [
+            {"Name": i.get("Name", "Unknown"), "Year": i.get("ProductionYear", "")}
+            for i in items[:15]
+        ]
+
+        return jsonify({"status": "success", "count": len(items), "preview_items": results})
+    except Exception:
+        logging.exception("Failed to generate grouping preview")
+        return jsonify({"status": "error", "message": "Internal server error"}), 500
 
 
 # ---------------------------------------------------------------------------

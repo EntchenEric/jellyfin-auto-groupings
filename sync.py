@@ -531,34 +531,82 @@ def _fetch_items_for_complex_group(
     if not rules:
         return [], None
 
+    valid_rules: list[dict[str, str]] = []
+    for r in rules:
+        if not isinstance(r, dict):
+            continue
+        try:
+            r_t = str(r.get("type", "")).strip().lower()
+            r_v = str(r.get("value", "")).strip().lower()
+            r_o = str(r.get("operator", "AND")).strip().upper()
+            if r_t and r_v:
+                valid_rules.append({"operator": r_o, "type": r_t, "value": r_v})
+        except Exception:
+            continue
+
+    if not valid_rules:
+        return [], None
+
     def _match_condition(item: dict[str, Any], r_type: str, r_val: str) -> bool:
-        if not r_val:
+        """Check if a Jellyfin item matches a single rule condition.
+
+        Args:
+            item: The Jellyfin item dictionary.
+            r_type: The rule type (genre, actor, studio, tag, year).
+            r_val: The normalized rule value to match against.
+
+        Returns:
+            True if the item matches the condition, False otherwise.
+        """
+        if not r_type or not r_val:
             return False
-        val_lower = r_val.lower()
-        if r_type == "genre":
-            return any(val_lower == str(g).lower() for g in item.get("Genres", []))
-        elif r_type == "actor":
-            return any(val_lower == str(p.get("Name", "")).lower() for p in item.get("People", []) if p.get("Type") == "Actor")
-        elif r_type == "studio":
-            return any(val_lower == str(s.get("Name", "")).lower() for s in item.get("Studios", []))
-        elif r_type == "tag":
-            return any(val_lower == str(t).lower() for t in item.get("Tags", []))
-        elif r_type == "year":
-            return str(item.get("ProductionYear")) == r_val
+            
+        try:
+            if r_type == "genre":
+                return any(r_val == str(g).strip().lower() for g in (item.get("Genres") or []))
+            elif r_type == "actor":
+                return any(
+                    r_val == str(p.get("Name", "")).strip().lower() 
+                    for p in (item.get("People") or []) 
+                    if isinstance(p, dict) and p.get("Type") == "Actor"
+                )
+            elif r_type == "studio":
+                return any(
+                    r_val == str(s.get("Name", "")).strip().lower() 
+                    for s in (item.get("Studios") or []) 
+                    if isinstance(s, dict)
+                )
+            elif r_type == "tag":
+                return any(r_val == str(t).strip().lower() for t in (item.get("Tags") or []))
+            elif r_type == "year":
+                val = item.get("ProductionYear")
+                if val is not None:
+                    return str(val).strip().lower() == r_val
+        except (AttributeError, TypeError, ValueError):
+            pass
+            
         return False
 
     def _eval_item(item: dict[str, Any]) -> bool:
-        first_rule = rules[0]
+        """Evaluate a stacked list of rules against a single Jellyfin item.
+
+        Args:
+            item: The Jellyfin item dictionary.
+
+        Returns:
+            True if the item passes the entire rule set, False otherwise.
+        """
+        first_rule = valid_rules[0]
         # Treat the first rule as initializing the boolean state
-        result = _match_condition(item, first_rule.get("type", ""), first_rule.get("value", ""))
+        result = _match_condition(item, first_rule["type"], first_rule["value"])
         
         # If the very first rule is NOT, we invert it (so we start with everything else)
-        if first_rule.get("operator") in ("AND NOT", "NOT"):
+        if first_rule["operator"] in ("AND NOT", "NOT"):
             result = not result
 
-        for rule in rules[1:]:
-            op = rule.get("operator", "AND").upper()
-            matched = _match_condition(item, rule.get("type", ""), rule.get("value", ""))
+        for rule in valid_rules[1:]:
+            op = rule["operator"]
+            matched = _match_condition(item, rule["type"], rule["value"])
             
             if op == "AND":
                 result = result and matched
@@ -616,6 +664,7 @@ def _fetch_items_for_metadata_group(
         "actor": "Person",
         "studio": "Studios",
         "tag": "Tags",
+        "year": "Years",
     }
     if source_type in filter_map and source_value:
         params[filter_map[source_type]] = source_value
@@ -635,6 +684,18 @@ def _fetch_items_for_metadata_group(
         return [], str(exc)
 
 def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
+    """Parse a complex textual rule query into a list of structured rules.
+
+    The query can contain logical operators like AND, OR, AND NOT, OR NOT.
+    Each part of the query is assigned the *default_type*.
+
+    Args:
+        query: The textual query string (e.g., "Action AND NOT Comedy").
+        default_type: The metadata type to apply to each value (e.g., "genre").
+
+    Returns:
+        A list of rule dictionaries suitable for _fetch_items_for_complex_group.
+    """
     import re
     # Simple regex to split the logical logic
     pattern = re.compile(r'\s+(AND NOT|OR NOT|AND|OR)\s+', re.IGNORECASE)
@@ -745,7 +806,7 @@ def _process_group(
         val_str = str(source_value or "")
         
         # Determine if it's a complex textual rule that needs local parsing
-        if source_type in ["genre", "actor", "studio", "tag"] and re.search(r'\s+(AND NOT|OR NOT|AND|OR)\s+', val_str, re.IGNORECASE):
+        if source_type in ["genre", "actor", "studio", "tag", "year"] and re.search(r'\s+(AND NOT|OR NOT|AND|OR)\s+', val_str, re.IGNORECASE):
             rules = parse_complex_query(val_str, str(source_type))
             items, error = _fetch_items_for_complex_group(
                 group_name, rules, sort_order, url, api_key
