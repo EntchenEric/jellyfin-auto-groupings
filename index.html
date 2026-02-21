@@ -1656,9 +1656,9 @@
                 const result = await fetchAutoDetect();
                 if (result.status !== 'success') return;
                 const d = result.detected;
-                if (!targetEl.value && d.target_path) targetEl.value = d.target_path;
-                if (!jfEl.value && d.media_path_in_jellyfin) jfEl.value = d.media_path_in_jellyfin;
-                if (!hostEl.value && d.media_path_on_host) hostEl.value = d.media_path_on_host;
+                if (!targetEl.value && d.target_path) { targetEl.value = d.target_path; currentConfig.target_path = d.target_path; }
+                if (!jfEl.value && d.media_path_in_jellyfin) { jfEl.value = d.media_path_in_jellyfin; currentConfig.media_path_in_jellyfin = d.media_path_in_jellyfin; }
+                if (!hostEl.value && d.media_path_on_host) { hostEl.value = d.media_path_on_host; currentConfig.media_path_on_host = d.media_path_on_host; }
                 showStatus('Paths auto-filled — review and save.', 'success');
             } catch (_) { /* silently ignore */ }
         }
@@ -1722,7 +1722,11 @@
                     const btn = document.createElement('button');
                     btn.className = 'picker-item';
                     const fullPath = result.current.replace(/\/$/, '') + '/' + name;
-                    btn.innerHTML = `<span class="picker-item-icon">📁</span> ${name}`;
+                    const icon = document.createElement('span');
+                    icon.className = 'picker-item-icon';
+                    icon.textContent = '📁';
+                    btn.appendChild(icon);
+                    btn.appendChild(document.createTextNode(' ' + name));
                     btn.title = fullPath;
                     btn.onclick = () => browseDir(fullPath);
                     body.appendChild(btn);

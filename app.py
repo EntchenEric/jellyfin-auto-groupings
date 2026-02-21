@@ -39,10 +39,17 @@ def load_config() -> dict[str, Any]:
             for k, v in defaults.items():
                 cfg.setdefault(k, v)
             # Migrate old key names to new ones
+            migrated = False
             if cfg.get("jellyfin_root") and not cfg.get("media_path_in_jellyfin"):
                 cfg["media_path_in_jellyfin"] = cfg["jellyfin_root"]
+                migrated = True
             if cfg.get("host_root") and not cfg.get("media_path_on_host"):
                 cfg["media_path_on_host"] = cfg["host_root"]
+                migrated = True
+            if migrated:
+                cfg.pop("jellyfin_root", None)
+                cfg.pop("host_root", None)
+                save_config(cfg)
             return cfg
     except Exception:
         return defaults
@@ -588,7 +595,7 @@ def sync_groupings() -> ResponseReturnValue:
                     os.symlink(item_j_path, dest_path)
                     print(f"Created symlink: {dest_path} -> {item_j_path}")
                     links_created += 1
-                except Exception as e:
+                except OSError as e:
                     print(f"Error creating symlink {dest_path}: {e}")
 
             print(f"Created {links_created} symlinks for {group_name}")
@@ -663,7 +670,7 @@ def auto_detect_paths() -> ResponseReturnValue:
                         match_found = os.path.join(dirpath, filename)
                         break
                     if len(dirpath.split(os.sep)) > 6:
-                        continue
+                        dirnames.clear()
                 if match_found:
                     break
 
@@ -702,6 +709,22 @@ def auto_detect_paths() -> ResponseReturnValue:
         return jsonify({"status": "error", "message": str(e)}), 400
 
 
+# Roots that the folder browser is allowed to expose.
+_BROWSE_ROOTS: tuple[str, ...] = tuple(
+    os.path.realpath(r)
+    for r in (os.path.expanduser("~"), "/media", "/mnt")
+)
+
+
+def _path_is_allowed(p: str) -> bool:
+    """Return True only if *p* is at or below one of the whitelisted roots."""
+    real = os.path.realpath(p)
+    return any(
+        real == root or real.startswith(root + os.sep)
+        for root in _BROWSE_ROOTS
+    )
+
+
 @app.route("/api/browse", methods=["GET"])
 def browse_directory() -> ResponseReturnValue:
     """Return the subdirectories of a given path for the folder picker."""
@@ -711,6 +734,12 @@ def browse_directory() -> ResponseReturnValue:
     # Fall back to parent if the supplied path is a file, not a directory
     if not os.path.isdir(path):
         path = os.path.dirname(path)
+
+    if not _path_is_allowed(path):
+        return (
+            jsonify({"status": "error", "message": "Access to this path is not permitted"}),
+            403,
+        )
 
     try:
         entries: list[str] = sorted(
