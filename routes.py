@@ -247,6 +247,50 @@ def sync_groupings() -> ResponseReturnValue:
         return jsonify({"status": "error", "message": f"Sync failed: {str(exc)}"}), 500
 
 
+@bp.route("/api/grouping/preview", methods=["POST"])
+def preview_grouping() -> ResponseReturnValue:
+    """Preview what items a grouping rule would include."""
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"status": "error", "message": "Request body must be JSON"}), 400
+
+    config: dict[str, Any] = load_config()
+    url: str = str(config.get("jellyfin_url", "")).rstrip("/")
+    api_key: str = str(config.get("api_key", ""))
+
+    if not url or not api_key:
+        return jsonify({"status": "error", "message": "Server settings not configured"}), 400
+
+    from sync import _fetch_items_for_complex_group, parse_complex_query, _fetch_items_for_metadata_group
+
+    type_ = str(data.get("type", ""))
+    val = str(data.get("value", ""))
+    if not val:
+        return jsonify({"status": "error", "message": "Value cannot be empty"}), 400
+
+    try:
+        import re
+        if re.search(r'\s+(AND NOT|OR NOT|AND|OR)\s+', val, re.IGNORECASE):
+            rules = parse_complex_query(val, type_ or "genre")
+            items, error = _fetch_items_for_complex_group("preview", rules, "", url, api_key)
+        else:
+            items, error = _fetch_items_for_metadata_group("preview", type_, val, "", url, api_key)
+        
+        if error is not None:
+            return jsonify({"status": "error", "message": error}), 400
+        
+        # Return summary count and first few items
+        results = [{"Name": i.get("Name", "Unknown"), "Year": i.get("ProductionYear", "")} for i in items[:15]]
+        
+        return jsonify({
+            "status": "success",
+            "count": len(items),
+            "preview_items": results
+        })
+    except Exception as exc:
+        return jsonify({"status": "error", "message": str(exc)}), 500
+
+
 # ---------------------------------------------------------------------------
 # Auto-detect paths
 # ---------------------------------------------------------------------------

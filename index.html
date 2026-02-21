@@ -814,18 +814,38 @@
                         </div>
                         <div class="form-group">
                             <label for="source_value">Filter Value</label>
-                            <div id="source_value_container">
-                                <input type="text" id="source_value" placeholder="e.g. Action  or  ls000024390" required
+
+                            <div id="metadata_rules_container"
+                                style="display: none; flex-direction: column; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                <!-- Filled by JS -->
+                            </div>
+                            <button type="button" onclick="addMetadataRule()" class="secondary-btn" id="add-rule-btn"
+                                style="display: none; margin-bottom: 0.5rem; padding: 0.4rem 0.8rem; font-size: 0.85rem; width: fit-content;">+
+                                Add Condition</button>
+
+                            <div id="source_value_container"
+                                style="display: flex; gap: 0.5rem; flex-direction: column;">
+                                <input type="text" id="source_value" list="source_value_datalist"
+                                    placeholder="e.g. Action  or  ls000024390" required
                                     style="width: 100%; padding: 0.8rem 1rem; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-family: inherit; font-size: 1rem;">
-                                <select id="source_value_select"
-                                    style="display: none; width: 100%; padding: 0.8rem 1rem; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-family: inherit; font-size: 1rem; appearance: none;">
+                                <datalist id="source_value_datalist">
                                     <!-- Populated via JS -->
-                                </select>
+                                </datalist>
+                                <button type="button" onclick="previewGrouping()" class="secondary-btn" id="preview-btn"
+                                    style="padding: 0.6rem 1rem; font-size: 0.9rem; align-self: flex-start; margin-bottom: 0.25rem;">Preview
+                                    Filter</button>
                             </div>
                             <small id="source_value_help"
                                 style="color: var(--text-secondary); display: block; margin-top: 0.25rem; font-size: 0.75rem;">
                                 The specific genre, actor name, tag, or list ID to include in this grouping.
+                                <br><span style="color: var(--accent-color);">Tip: You can chain logic operators for
+                                    complex filters: e.g. <code>Horror AND Action AND NOT Comedy</code></span>
                             </small>
+
+                            <!-- Removed complex rules container, using free-text logical parsing -->
+                            <div id="preview_result"
+                                style="display: none; margin-top: 0.8rem; font-size: 0.8rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: var(--radius-sm); border: 1px dashed var(--glass-border);">
+                            </div>
                         </div>
                         <div class="form-group">
                             <label
@@ -1082,6 +1102,155 @@
         let editingIndex = -1;
         let isServerValidated = false;
         let cachedMetadata = {};
+        let lastRenderedType = null;
+        window._currentMetadataRules = [{ operator: '', value: '' }];
+
+        function getFilterValue() {
+            const type = document.getElementById('source_type').value;
+            const isMetadataType = metadataTypes.includes(type);
+            if (isMetadataType && isServerValidated) {
+                const validRules = window._currentMetadataRules.filter(r => r.value && r.value.trim() !== '');
+                if (validRules.length === 0) return '';
+                const parts = validRules.map((r, i) => (i === 0 ? r.value.trim() : `${r.operator} ${r.value.trim()}`));
+                return parts.join(' ');
+            }
+            return document.getElementById('source_value').value.trim();
+        }
+
+        function parseMetadataValue(valStr) {
+            if (!valStr || valStr.trim() === '') return [{ operator: '', value: '' }];
+            const pattern = /\s+(AND NOT|OR NOT|AND|OR)\s+/i;
+            const parts = valStr.split(pattern);
+            const rules = [];
+            rules.push({ operator: '', value: parts[0].trim() });
+            for (let i = 1; i < parts.length; i += 2) {
+                rules.push({ operator: parts[i].trim().toUpperCase().replace(/\s+/g, ' '), value: parts[i + 1].trim() });
+            }
+            return rules;
+        }
+
+        function renderMetadataRules() {
+            const container = document.getElementById('metadata_rules_container');
+            container.innerHTML = '';
+            const type = document.getElementById('source_type').value;
+            const options = cachedMetadata[type] || [];
+
+            window._currentMetadataRules.forEach((rule, index) => {
+                const row = document.createElement('div');
+                row.setAttribute('style', 'display: flex; gap: 0.5rem; align-items: center; width: 100%;');
+
+                if (index > 0) {
+                    const opSelect = document.createElement('select');
+                    opSelect.setAttribute('style', 'flex: 0 0 auto; padding: 0.8rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 0.9rem; font-weight: 600;');
+                    const ops = ['AND', 'OR', 'AND NOT', 'OR NOT'];
+                    ops.forEach(op => {
+                        const o = document.createElement('option');
+                        o.value = op;
+                        o.textContent = op;
+                        if (rule.operator === op) o.selected = true;
+                        opSelect.appendChild(o);
+                    });
+                    opSelect.onchange = (e) => { rule.operator = e.target.value; };
+                    row.appendChild(opSelect);
+                }
+
+                const valSelect = document.createElement('select');
+                valSelect.setAttribute('style', 'flex: 1; padding: 0.8rem 1rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 1rem;');
+
+                const defaultOpt = document.createElement('option');
+                defaultOpt.value = '';
+                defaultOpt.textContent = 'Select ' + type + '...';
+                defaultOpt.disabled = true;
+                defaultOpt.selected = !rule.value;
+                valSelect.appendChild(defaultOpt);
+
+                let foundMatch = false;
+                options.forEach(opt => {
+                    const o = document.createElement('option');
+                    o.value = opt;
+                    o.textContent = opt;
+                    if (rule.value === opt) { o.selected = true; foundMatch = true; }
+                    valSelect.appendChild(o);
+                });
+
+                if (rule.value && !foundMatch) {
+                    const o = document.createElement('option');
+                    o.value = rule.value;
+                    o.textContent = rule.value + " (Unavailable/Custom)";
+                    o.selected = true;
+                    valSelect.appendChild(o);
+                }
+
+                valSelect.onchange = (e) => { rule.value = e.target.value; };
+                row.appendChild(valSelect);
+
+                if (index > 0) {
+                    const rmBtn = document.createElement('button');
+                    rmBtn.type = 'button';
+                    rmBtn.innerHTML = '<svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>';
+                    rmBtn.className = 'delete-btn';
+                    rmBtn.title = 'Remove condition';
+                    rmBtn.setAttribute('style', 'padding: 0; width: 38px; height: 38px; display:flex; align-items:center; justify-content:center; margin: 0; flex-shrink: 0;');
+                    rmBtn.onclick = () => {
+                        window._currentMetadataRules.splice(index, 1);
+                        renderMetadataRules();
+                    };
+                    row.appendChild(rmBtn);
+                }
+
+                container.appendChild(row);
+            });
+        }
+
+        function addMetadataRule() {
+            window._currentMetadataRules.push({ operator: 'AND', value: '' });
+            renderMetadataRules();
+        }
+
+        async function previewGrouping() {
+            const type = document.getElementById('source_type').value;
+            const val = getFilterValue();
+            const resultDiv = document.getElementById('preview_result');
+
+            if (!metadataTypes.includes(type) && type !== 'general') {
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = '<span style="color:var(--text-secondary);">Preview mostly supports Jellyfin library metadata types (Genre, Actor, etc). Try connecting server or checking other logs.</span>';
+                return;
+            }
+
+            if (!val) {
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = '<span style="color:var(--error-color);">Please enter a filter value to preview.</span>';
+                return;
+            }
+
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<span class="loading-spinner" style="display:inline-block; margin-right: 0.5rem; border-color: rgba(255,255,255,0.2); border-left-color: var(--accent-color);"></span> <span style="color: var(--text-secondary);">Loading preview...</span>';
+
+            try {
+                const response = await fetch('/api/grouping/preview', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: type, value: val })
+                });
+                const res = await response.json();
+                if (res.status === 'success') {
+                    let html = `<strong style="color:var(--text-primary);">Estimated Items:</strong> <span style="color:var(--accent-color); font-weight: 600;">${res.count}</span><br><br>`;
+                    if (res.count > 0) {
+                        html += `<strong>First matches:</strong><ul style="margin-top:0.4rem; padding-left:1.5rem; color:var(--text-secondary);">`;
+                        res.preview_items.forEach(item => {
+                            html += `<li>${item.Name} ${item.Year ? '(' + item.Year + ')' : ''}</li>`;
+                        });
+                        html += `</ul>`;
+                    }
+                    resultDiv.innerHTML = html;
+                } else {
+                    resultDiv.innerHTML = `<span style="color:var(--error-color);">Error: ${res.message}</span>`;
+                }
+            } catch (e) {
+                resultDiv.innerHTML = `<span style="color:var(--error-color);">Network error during preview.</span>`;
+            }
+        }
 
         async function loadConfig() {
             try {
@@ -1186,23 +1355,17 @@
 
         async function refreshMetadata() {
             try {
-                // Show loading state
-                sourceValueSelect.innerHTML = '<option value="" disabled selected>Loading metadata...</option>';
-                sourceValueSelect.disabled = true;
-
+                // We've deleted the old `<select>`, no loading state required. Data populates into the dropdown silently
                 const response = await fetch('/api/jellyfin/metadata');
                 const result = await response.json();
                 if (result.status === 'success') {
                     cachedMetadata = result.metadata;
                     updateSourceValueUI();
                 } else {
-                    sourceValueSelect.innerHTML = '<option value="" disabled selected>Failed to load metadata</option>';
+                    console.error('Failed to load metadata from Jellyfin server');
                 }
             } catch (err) {
                 console.error('Failed to fetch metadata:', err);
-                sourceValueSelect.innerHTML = '<option value="" disabled selected>Error loading metadata</option>';
-            } finally {
-                sourceValueSelect.disabled = false;
             }
         }
 
@@ -1248,46 +1411,48 @@
             const type = document.getElementById('source_type').value;
             const isMetadataType = metadataTypes.includes(type);
 
-            if (isMetadataType) {
-                // Metadata types ALWAYS use select, even if disconnected (but disabled)
-                sourceValueInput.style.display = 'none';
-                sourceValueInput.required = false;
-                sourceValueInput.disabled = true;
+            const container = document.getElementById('metadata_rules_container');
+            const addBtn = document.getElementById('add-rule-btn');
 
-                sourceValueSelect.style.display = 'block';
-                sourceValueSelect.required = true;
+            // Hide old select logic, always use text input
+            sourceValueInput.style.display = 'block';
+            sourceValueInput.required = true;
+            sourceValueInput.disabled = false;
+
+            const datalist = document.getElementById('source_value_datalist');
+
+            if (isMetadataType) {
+                sourceValueHelp.style.display = 'block';
 
                 if (isServerValidated) {
-                    sourceValueSelect.disabled = false;
-                    sourceValueSelect.innerHTML = '<option value="" disabled selected>Select from libraries...</option>';
-                    const options = cachedMetadata[type] || [];
-                    if (options.length === 0) {
-                        sourceValueSelect.innerHTML = `<option value="" disabled selected>No ${type}s found on server</option>`;
-                    } else {
-                        options.forEach(opt => {
-                            const o = document.createElement('option');
-                            o.value = opt;
-                            o.textContent = opt;
-                            sourceValueSelect.appendChild(o);
-                        });
+                    datalist.innerHTML = '';
+                    sourceValueInput.style.display = 'none';
+                    sourceValueInput.required = false;
+                    container.style.display = 'flex';
+                    addBtn.style.display = 'inline-block';
+
+                    if (type !== lastRenderedType || preValue) {
+                        if (preValue) {
+                            window._currentMetadataRules = parseMetadataValue(preValue);
+                        } else {
+                            window._currentMetadataRules = [{ operator: '', value: '' }];
+                        }
+                        lastRenderedType = type;
                     }
-                    if (preValue) sourceValueSelect.value = preValue;
-                    sourceValueHelp.textContent = `Select an available ${type} from your Jellyfin server.`;
+                    renderMetadataRules();
+
+                    sourceValueHelp.innerHTML = `Select one or more ${type}s from your Jellyfin server. Use + to combine logic operators.`;
                 } else {
-                    sourceValueSelect.disabled = true;
-                    sourceValueSelect.innerHTML = '<option value="" disabled selected>Connect server to see options</option>';
-                    sourceValueHelp.textContent = `You must connect your Jellyfin server to select a ${type}.`;
+                    datalist.innerHTML = '';
+                    container.style.display = 'none';
+                    addBtn.style.display = 'none';
+                    sourceValueHelp.innerHTML = `You must connect your Jellyfin server to see autocompletion. You can manually type a complex filter (e.g. <code>Horror AND Action AND NOT Comedy</code>).`;
+                    if (preValue) sourceValueInput.value = preValue;
                 }
             } else {
-                // Non-metadata types (External or General) use text input
-                sourceValueInput.style.display = 'block';
-                sourceValueInput.required = true;
-                sourceValueInput.disabled = false;
-
-                sourceValueSelect.style.display = 'none';
-                sourceValueSelect.required = false;
-                sourceValueSelect.disabled = true;
-
+                datalist.innerHTML = '';
+                container.style.display = 'none';
+                addBtn.style.display = 'none';
                 if (preValue) sourceValueInput.value = preValue;
                 if (type === 'imdb_list') {
                     sourceValueInput.placeholder = 'e.g. ls000024390 or full IMDb list URL';
@@ -1470,8 +1635,12 @@
         groupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const source_type = document.getElementById('source_type').value;
-            const isMetadataType = metadataTypes.includes(source_type);
-            const val = (isMetadataType && isServerValidated) ? sourceValueSelect.value : sourceValueInput.value;
+            const val = getFilterValue();
+
+            if (!val) {
+                showStatus('Please enter or select a filter value', 'error');
+                return;
+            }
 
             const groupData = {
                 name: document.getElementById('group_name').value,
@@ -1480,6 +1649,11 @@
                 source_value: val,
                 sort_order: document.getElementById('sort_order_enabled').checked ? (document.getElementById('sort_order').value || '') : ''
             };
+
+            if (source_type === 'complex') {
+                groupData.rules = window._complexRules;
+                groupData.source_value = "Custom Multi-Rule Filter";
+            }
 
             if (!currentConfig.groups) currentConfig.groups = [];
 

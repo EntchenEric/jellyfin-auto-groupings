@@ -97,7 +97,7 @@ def _fetch_full_library(
             api_key,
             {
                 "Recursive": "true",
-                "Fields": "Path,ProviderIds",
+                "Fields": "Path,ProviderIds,Genres,Studios,Tags,People,ProductionYear,CommunityRating",
                 "IncludeItemTypes": "Movie,Series",
                 "Limit": "10000",
             },
@@ -505,6 +505,80 @@ def _fetch_items_for_letterboxd_group(
     return items, None
 
 
+def _fetch_items_for_complex_group(
+    group_name: str,
+    rules: list[dict[str, Any]],
+    sort_order: str,
+    url: str,
+    api_key: str,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """Resolve Jellyfin items by evaluating a stacked list of rules.
+
+    Args:
+        group_name: Human-readable group name.
+        rules: List of rule dicts (operator, type, value).
+        sort_order: Requested sort order key.
+        url: Jellyfin base URL.
+        api_key: Jellyfin API key.
+
+    Returns:
+        A ``(items, error)`` tuple.
+    """
+    raw_items, error = _fetch_full_library(url, api_key, group_name)
+    if error is not None:
+        return [], error
+
+    if not rules:
+        return [], None
+
+    def _match_condition(item: dict[str, Any], r_type: str, r_val: str) -> bool:
+        if not r_val:
+            return False
+        val_lower = r_val.lower()
+        if r_type == "genre":
+            return any(val_lower == str(g).lower() for g in item.get("Genres", []))
+        elif r_type == "actor":
+            return any(val_lower == str(p.get("Name", "")).lower() for p in item.get("People", []) if p.get("Type") == "Actor")
+        elif r_type == "studio":
+            return any(val_lower == str(s.get("Name", "")).lower() for s in item.get("Studios", []))
+        elif r_type == "tag":
+            return any(val_lower == str(t).lower() for t in item.get("Tags", []))
+        elif r_type == "year":
+            return str(item.get("ProductionYear")) == r_val
+        return False
+
+    def _eval_item(item: dict[str, Any]) -> bool:
+        first_rule = rules[0]
+        # Treat the first rule as initializing the boolean state
+        result = _match_condition(item, first_rule.get("type", ""), first_rule.get("value", ""))
+        
+        # If the very first rule is NOT, we invert it (so we start with everything else)
+        if first_rule.get("operator") in ("AND NOT", "NOT"):
+            result = not result
+
+        for rule in rules[1:]:
+            op = rule.get("operator", "AND").upper()
+            matched = _match_condition(item, rule.get("type", ""), rule.get("value", ""))
+            
+            if op == "AND":
+                result = result and matched
+            elif op == "OR":
+                result = result or matched
+            elif op in ("AND NOT", "NOT"):
+                result = result and not matched
+            elif op == "OR NOT":
+                result = result or not matched
+
+        return result
+
+    filtered = [item for item in raw_items if _eval_item(item)]
+    
+    # In-memory sorting because this is local filtering
+    sorted_items = _sort_items_in_memory(filtered, sort_order)
+    
+    return sorted_items, None
+
+
 def _fetch_items_for_metadata_group(
     group_name: str,
     source_type: str | None,
@@ -559,6 +633,31 @@ def _fetch_items_for_metadata_group(
     except Exception as exc:
         print(f"Error fetching items for group {group_name!r}: {exc}")
         return [], str(exc)
+
+def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
+    import re
+    # Simple regex to split the logical logic
+    pattern = re.compile(r'\s+(AND NOT|OR NOT|AND|OR)\s+', re.IGNORECASE)
+    parts = pattern.split(query.strip())
+    
+    rules = []
+    
+    rules.append({
+        "operator": "AND",
+        "type": default_type,
+        "value": parts[0].strip()
+    })
+    
+    for i in range(1, len(parts), 2):
+        op = parts[i].upper().replace('  ', ' ')
+        val = parts[i+1].strip()
+        rules.append({
+            "operator": op,
+            "type": default_type,
+            "value": val
+        })
+        
+    return rules
 
 
 def _process_group(
@@ -636,10 +735,25 @@ def _process_group(
         items, error = _fetch_items_for_letterboxd_group(
             group_name, source_value or "", sort_order, url, api_key
         )
-    else:
-        items, error = _fetch_items_for_metadata_group(
-            group_name, source_type, source_value, sort_order, url, api_key
+    elif source_type == "complex" or (group.get("rules") and isinstance(group["rules"], list)):
+        rules_list = group.get("rules", [])
+        items, error = _fetch_items_for_complex_group(
+            group_name, rules_list, sort_order, url, api_key
         )
+    else:
+        import re
+        val_str = str(source_value or "")
+        
+        # Determine if it's a complex textual rule that needs local parsing
+        if source_type in ["genre", "actor", "studio", "tag"] and re.search(r'\s+(AND NOT|OR NOT|AND|OR)\s+', val_str, re.IGNORECASE):
+            rules = parse_complex_query(val_str, str(source_type))
+            items, error = _fetch_items_for_complex_group(
+                group_name, rules, sort_order, url, api_key
+            )
+        else:
+            items, error = _fetch_items_for_metadata_group(
+                group_name, source_type, source_value, sort_order, url, api_key
+            )
 
     if error is not None:
         return {"group": group_name, "links": 0, "error": error}
