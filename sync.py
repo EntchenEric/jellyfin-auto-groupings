@@ -59,6 +59,75 @@ def _translate_path(
     return jellyfin_path
 
 
+def _match_jellyfin_items_by_provider(
+    external_ids: list[Any],
+    provider_key: str,
+    list_order_key: str,
+    sort_order: str,
+    url: str,
+    api_key: str,
+    group_name: str,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """Fetch all Jellyfin items and match them against a list of external IDs.
+
+    Args:
+        external_ids: List of IDs from the external provider (IMDb, TMDb, etc.).
+        provider_key: The Jellyfin ProviderId key (e.g. "Imdb", "Tmdb").
+        list_order_key: The sort_order value that triggers list-order sorting.
+        sort_order: The group's requested sort_order.
+        url: Jellyfin base URL.
+        api_key: Jellyfin API key.
+        group_name: Group name for logging.
+
+    Returns:
+        A (items, error) tuple.
+    """
+    try:
+        raw_items = fetch_jellyfin_items(
+            url,
+            api_key,
+            {
+                "Recursive": "true",
+                "Fields": "Path,ProviderIds",
+                "IncludeItemTypes": "Movie,Series",
+                "Limit": "10000",
+            },
+            timeout=60,
+        )
+        if provider_key == "Imdb":
+            print(f"Jellyfin library: {len(raw_items)} items with IMDb IDs")
+        else:
+            print(f"Jellyfin library: {len(raw_items)} items fetched for matching")
+    except Exception as exc:
+        print(f"Error fetching Jellyfin library for group {group_name!r}: {exc}")
+        return [], str(exc)
+
+    case_insensitive = provider_key == "Imdb"
+
+    # Index by provider ID for O(1) lookup
+    jf_by_provider: dict[str, dict[str, Any]] = {}
+    for item in raw_items:
+        val = item.get("ProviderIds", {}).get(provider_key)
+        if val:
+            key = str(val).lower() if case_insensitive else str(val)
+            jf_by_provider[key] = item
+
+    if sort_order == list_order_key:
+        # Preserve the external list's ordering
+        items = []
+        for eid in external_ids:
+            key = str(eid).lower() if case_insensitive else str(eid)
+            if key in jf_by_provider:
+                items.append(jf_by_provider[key])
+    else:
+        matched_ids = {str(eid).lower() if case_insensitive else str(eid) for eid in external_ids}
+        items = [v for k, v in jf_by_provider.items() if k in matched_ids]
+
+    return items, None
+
+
+
+
 def _sort_items_in_memory(
     items: list[dict[str, Any]],
     sort_order: str,
@@ -132,38 +201,9 @@ def _fetch_items_for_imdb_group(
         print(f"No IMDb IDs found for group {group_name!r}")
         return [], None
 
-    try:
-        raw_items = fetch_jellyfin_items(
-            url,
-            api_key,
-            {
-                "Recursive": "true",
-                "Fields": "Path,ProviderIds",
-                "IncludeItemTypes": "Movie,Series",
-                "Limit": "10000",
-            },
-            timeout=60,
-        )
-        print(f"Jellyfin library: {len(raw_items)} items with IMDb IDs")
-    except Exception as exc:
-        print(f"Error fetching Jellyfin library for group {group_name!r}: {exc}")
-        return [], str(exc)
-
-    # Index by lower-case IMDb ID for O(1) lookup
-    jf_by_imdb: dict[str, dict[str, Any]] = {
-        item.get("ProviderIds", {}).get("Imdb", "").lower(): item
-        for item in raw_items
-        if item.get("ProviderIds", {}).get("Imdb")
-    }
-
-    if sort_order == "imdb_list_order":
-        # Preserve the external list's ordering
-        items = [jf_by_imdb[tt.lower()] for tt in imdb_ids if tt.lower() in jf_by_imdb]
-    else:
-        matched = set(imdb_ids)
-        items = [v for k, v in jf_by_imdb.items() if k in matched]
-
-    return items, None
+    return _match_jellyfin_items_by_provider(
+        imdb_ids, "Imdb", "imdb_list_order", sort_order, url, api_key, group_name
+    )
 
 
 def _fetch_items_for_trakt_group(
@@ -204,36 +244,9 @@ def _fetch_items_for_trakt_group(
         print(f"No items found in Trakt list for group {group_name!r}")
         return [], None
 
-    try:
-        raw_items = fetch_jellyfin_items(
-            url,
-            api_key,
-            {
-                "Recursive": "true",
-                "Fields": "Path,ProviderIds",
-                "IncludeItemTypes": "Movie,Series",
-                "Limit": "10000",
-            },
-            timeout=60,
-        )
-        print(f"Jellyfin library: {len(raw_items)} items with IMDb IDs")
-    except Exception as exc:
-        print(f"Error fetching Jellyfin library for group {group_name!r}: {exc}")
-        return [], str(exc)
-
-    jf_by_imdb: dict[str, dict[str, Any]] = {
-        item.get("ProviderIds", {}).get("Imdb", "").lower(): item
-        for item in raw_items
-        if item.get("ProviderIds", {}).get("Imdb")
-    }
-
-    if sort_order == "trakt_list_order":
-        items = [jf_by_imdb[tt.lower()] for tt in trakt_ids if tt.lower() in jf_by_imdb]
-    else:
-        matched = set(trakt_ids)
-        items = [v for k, v in jf_by_imdb.items() if k in matched]
-
-    return items, None
+    return _match_jellyfin_items_by_provider(
+        trakt_ids, "Imdb", "trakt_list_order", sort_order, url, api_key, group_name
+    )
 
 
 def _fetch_items_for_tmdb_group(
@@ -274,37 +287,9 @@ def _fetch_items_for_tmdb_group(
         print(f"No items found in TMDb list for group {group_name!r}")
         return [], None
 
-    try:
-        raw_items = fetch_jellyfin_items(
-            url,
-            api_key,
-            {
-                "Recursive": "true",
-                "Fields": "Path,ProviderIds",
-                "IncludeItemTypes": "Movie,Series",
-                "Limit": "10000",
-            },
-            timeout=60,
-        )
-        print(f"Jellyfin library: {len(raw_items)} items fetched for matching")
-    except Exception as exc:
-        print(f"Error fetching Jellyfin library for group {group_name!r}: {exc}")
-        return [], str(exc)
-
-    # Index by TMDb ID for O(1) lookup
-    jf_by_tmdb: dict[str, dict[str, Any]] = {
-        item.get("ProviderIds", {}).get("Tmdb", ""): item
-        for item in raw_items
-        if item.get("ProviderIds", {}).get("Tmdb")
-    }
-
-    if sort_order == "tmdb_list_order":
-        items = [jf_by_tmdb[tid] for tid in tmdb_ids if tid in jf_by_tmdb]
-    else:
-        matched = set(tmdb_ids)
-        items = [v for k, v in jf_by_tmdb.items() if k in matched]
-
-    return items, None
+    return _match_jellyfin_items_by_provider(
+        tmdb_ids, "Tmdb", "tmdb_list_order", sort_order, url, api_key, group_name
+    )
 
 
 def _fetch_items_for_anilist_group(
@@ -345,37 +330,9 @@ def _fetch_items_for_anilist_group(
         print(f"No items found for AniList user {username!r}")
         return [], None
 
-    try:
-        raw_items = fetch_jellyfin_items(
-            url,
-            api_key,
-            {
-                "Recursive": "true",
-                "Fields": "Path,ProviderIds",
-                "IncludeItemTypes": "Movie,Series",
-                "Limit": "10000",
-            },
-            timeout=60,
-        )
-        print(f"Jellyfin library: {len(raw_items)} items fetched for matching")
-    except Exception as exc:
-        print(f"Error fetching Jellyfin library for group {group_name!r}: {exc}")
-        return [], str(exc)
-
-    # Index by AniList ID for O(1) lookup
-    jf_by_anilist: dict[str, dict[str, Any]] = {
-        item.get("ProviderIds", {}).get("Anilist", ""): item
-        for item in raw_items
-        if item.get("ProviderIds", {}).get("Anilist")
-    }
-
-    if sort_order == "anilist_list_order":
-        items = [jf_by_anilist[str(aid)] for aid in anilist_ids if str(aid) in jf_by_anilist]
-    else:
-        matched = {str(aid) for aid in anilist_ids}
-        items = [v for k, v in jf_by_anilist.items() if k in matched]
-
-    return items, None
+    return _match_jellyfin_items_by_provider(
+        anilist_ids, "AniList", "anilist_list_order", sort_order, url, api_key, group_name
+    )
 
 
 def _fetch_items_for_mal_group(
@@ -423,37 +380,9 @@ def _fetch_items_for_mal_group(
         print(f"No items found for MyAnimeList user {username!r}")
         return [], None
 
-    try:
-        raw_items = fetch_jellyfin_items(
-            url,
-            api_key,
-            {
-                "Recursive": "true",
-                "Fields": "Path,ProviderIds",
-                "IncludeItemTypes": "Movie,Series",
-                "Limit": "10000",
-            },
-            timeout=60,
-        )
-        print(f"Jellyfin library: {len(raw_items)} items fetched for matching")
-    except Exception as exc:
-        print(f"Error fetching Jellyfin library for group {group_name!r}: {exc}")
-        return [], str(exc)
-
-    # Index by MAL ID for O(1) lookup
-    jf_by_mal: dict[str, dict[str, Any]] = {
-        item.get("ProviderIds", {}).get("Mal", ""): item
-        for item in raw_items
-        if item.get("ProviderIds", {}).get("Mal")
-    }
-
-    if sort_order == "mal_list_order":
-        items = [jf_by_mal[str(mid)] for mid in mal_ids if str(mid) in jf_by_mal]
-    else:
-        matched = {str(mid) for mid in mal_ids}
-        items = [v for k, v in jf_by_mal.items() if k in matched]
-
-    return items, None
+    return _match_jellyfin_items_by_provider(
+        mal_ids, "Mal", "mal_list_order", sort_order, url, api_key, group_name
+    )
 
 
 def _fetch_items_for_metadata_group(

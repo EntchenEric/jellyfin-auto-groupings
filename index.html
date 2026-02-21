@@ -718,6 +718,24 @@
                             style="margin-top: 0.8rem; padding: 1rem; background: rgba(0,0,0,0.1); border-radius: var(--radius-md); border: 1px dashed var(--glass-border);">
                             <h3
                                 style="font-size: 0.9rem; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <span>🎬</span> TMDb API <span
+                                    style="font-weight: 400; color: var(--text-secondary);">(Optional)</span>
+                            </h3>
+                            <p style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.8rem;">Only
+                                needed if you want to use TMDb lists. Create a free API app at
+                                <a href="https://www.themoviedb.org/settings/api" target="_blank"
+                                    style="color: var(--accent-color);">themoviedb.org/settings/api</a> to get your
+                                API Key (v3).
+                            </p>
+                            <label for="tmdb_api_key" style="font-size: 0.75rem; opacity: 0.8;">TMDb API Key</label>
+                            <input type="text" id="tmdb_api_key" placeholder="Your TMDb API Key"
+                                style="padding: 0.5rem; font-size: 0.85rem;">
+                        </div>
+
+                        <div class="form-group"
+                            style="margin-top: 0.8rem; padding: 1rem; background: rgba(0,0,0,0.1); border-radius: var(--radius-md); border: 1px dashed var(--glass-border);">
+                            <h3
+                                style="font-size: 0.9rem; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.5rem;">
                                 <span>📺</span> MyAnimeList API <span
                                     style="font-weight: 400; color: var(--text-secondary);">(Optional)</span>
                             </h3>
@@ -878,8 +896,8 @@
                                     <option value="">None (filesystem order)</option>
                                     <option value="imdb_list_order">📋 IMDb List Order</option>
                                     <option value="trakt_list_order">📋 Trakt List Order</option>
-                                    <option value="tmdb_list_order">📋 TMDb List Order</option>
-                                    <option value="anilist_list_order">📋 AniList List Order</option>
+                                    <option value="tmdb_list_order">🎞️ TMDb List Order</option>
+                                    <option value="anilist_list_order">🎨 AniList List Order</option>
                                     <option value="mal_list_order">📋 MyAnimeList List Order</option>
                                     <option value="CommunityRating">⭐ Community Rating (highest first)</option>
                                     <option value="ProductionYear">📅 Production Year (newest first)</option>
@@ -891,8 +909,8 @@
                                     style="color: var(--text-secondary); display: block; margin-top: 0.25rem; font-size: 0.75rem;">
                                     Symlinks are named <code style="font-size:0.7rem;">0001 - Title</code>, <code
                                         style="font-size:0.7rem;">0002 - Title</code>… so Jellyfin's "Sort by Name"
-                                    reflects this order. <em>IMDb List Order</em> only works with the IMDb List source
-                                    type.
+                                    reflects this order. List Order options only work with their corresponding list
+                                    source type.
                                 </small>
                             </div>
                         </div>
@@ -1079,6 +1097,7 @@
                 document.getElementById('media_path_in_jellyfin').value = currentConfig.media_path_in_jellyfin || currentConfig.jellyfin_root || '';
                 document.getElementById('media_path_on_host').value = currentConfig.media_path_on_host || currentConfig.host_root || '';
                 document.getElementById('trakt_client_id').value = currentConfig.trakt_client_id || '';
+                document.getElementById('tmdb_api_key').value = currentConfig.tmdb_api_key || '';
                 document.getElementById('mal_client_id').value = currentConfig.mal_client_id || '';
 
                 updateSourceTypeOptions();
@@ -1326,8 +1345,8 @@
                 const sortLabels = {
                     'imdb_list_order': '📋 IMDb List Order',
                     'trakt_list_order': '📋 Trakt List Order',
-                    'tmdb_list_order': '📋 TMDb List Order',
-                    'anilist_list_order': '📋 AniList List Order',
+                    'tmdb_list_order': '🎞️ TMDb List Order',
+                    'anilist_list_order': '🎨 AniList List Order',
                     'mal_list_order': '📋 MAL List Order',
                     'CommunityRating': '⭐ Community Rating',
                     'ProductionYear': '📅 Production Year',
@@ -1398,6 +1417,7 @@
             currentConfig.media_path_in_jellyfin = document.getElementById('media_path_in_jellyfin').value;
             currentConfig.media_path_on_host = document.getElementById('media_path_on_host').value;
             currentConfig.trakt_client_id = document.getElementById('trakt_client_id').value;
+            currentConfig.tmdb_api_key = document.getElementById('tmdb_api_key').value;
             currentConfig.mal_client_id = document.getElementById('mal_client_id').value;
 
             await saveAllConfig();

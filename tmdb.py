@@ -37,7 +37,8 @@ def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
     
     # Handle full URL if provided (extracting ID from https://www.themoviedb.org/list/123)
     if "themoviedb.org/list/" in list_id:
-        list_id = list_id.split("/list/")[1].split("?")[0].split("#")[0].strip("/")
+        list_id = list_id.split("/list/")[1].split("?")[0].split("#")[0].strip("/").split("/")[0]
+
 
     ids: list[str] = []
     page: int = 1

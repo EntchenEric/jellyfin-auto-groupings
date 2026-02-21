@@ -61,7 +61,10 @@ def fetch_anilist_list(username: str, status: str | None = None) -> list[int]:
     response.raise_for_status()
     
     data = response.json()
-    collection = data.get("data", {}).get("MediaListCollection", {})
+    root = data.get("data")
+    if not isinstance(root, dict):
+        return []
+    collection = root.get("MediaListCollection") or {}
     if not collection:
         return []
         
