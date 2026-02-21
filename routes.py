@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from collections import Counter
 from typing import Any
  
@@ -20,7 +21,7 @@ from flask.typing import ResponseReturnValue
 
 from config import load_config, save_config
 from jellyfin import fetch_jellyfin_items
-from sync import run_sync
+from sync import parse_complex_query, preview_group, run_sync
 
 bp = Blueprint("main", __name__)
 
@@ -245,6 +246,70 @@ def sync_groupings() -> ResponseReturnValue:
         return jsonify({"status": "error", "message": str(exc)}), 400
     except Exception as exc:
         return jsonify({"status": "error", "message": f"Sync failed: {str(exc)}"}), 500
+
+
+@bp.route("/api/grouping/preview", methods=["POST"])
+def preview_grouping() -> ResponseReturnValue:
+    """Preview what items a grouping rule would include.
+
+    Accepts a JSON body with 'type' and 'value'. If the 'value' contains
+    logical operators (AND, OR, etc.), it is parsed as a complex query.
+    Otherwise, it is treated as a simple metadata filter.
+
+    Returns:
+        JSON with 'status', 'count' of matched items, and 'preview_items'
+        (a list of the first 15 matched titles).
+    """
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"status": "error", "message": "Request body must be JSON"}), 400
+
+    config: dict[str, Any] = load_config()
+    url: str = str(config.get("jellyfin_url", "")).rstrip("/")
+    api_key: str = str(config.get("api_key", ""))
+
+    if not url or not api_key:
+        return jsonify({"status": "error", "message": "Server settings not configured"}), 400
+
+    # Validate and normalize "type"
+    type_raw = data.get("type")
+    if not isinstance(type_raw, str):
+        return jsonify({"status": "error", "message": "Missing or invalid 'type'"}), 400
+    
+    type_name = type_raw.lower().strip()
+    allowed_types = {"genre", "studio", "tag", "year", "actor", "general", "complex"}
+    if not type_name or type_name not in allowed_types:
+        return (
+            jsonify({"status": "error", "message": f"Invalid metadata type: {type_raw}"}),
+            400,
+        )
+
+    # Validate value
+    val_raw = data.get("value")
+    if not isinstance(val_raw, str):
+        return jsonify({"status": "error", "message": "Value must be a string"}), 400
+    
+    val = val_raw.strip()
+    if not val:
+        return jsonify({"status": "error", "message": "Value cannot be empty"}), 400
+
+    try:
+        # Resolve items using the public sync API
+        items, error, status_code = preview_group(type_name, val, url, api_key)
+
+        if error is not None:
+            return jsonify({"status": "error", "message": error}), status_code
+
+        # Return summary count and first few items
+        results = [
+            {"Name": i.get("Name", "Unknown"), "Year": i.get("ProductionYear", "")}
+            for i in items[:15]
+        ]
+
+        return jsonify({"status": "success", "count": len(items), "preview_items": results})
+    except Exception:
+        logging.exception("Failed to generate grouping preview")
+        return jsonify({"status": "error", "message": "Internal server error"}), 500
 
 
 # ---------------------------------------------------------------------------

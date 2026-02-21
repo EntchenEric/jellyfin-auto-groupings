@@ -13,7 +13,9 @@ responsible for:
 from __future__ import annotations
 
 import os
+import re
 import shutil
+import requests
 from typing import Any
 
 from anilist import fetch_anilist_list
@@ -76,7 +78,7 @@ def _fetch_full_library(
     url: str,
     api_key: str,
     group_name: str,
-) -> tuple[list[dict[str, Any]], str | None]:
+) -> tuple[list[dict[str, Any]], str | None, int]:
     """Fetch the full Jellyfin library once per run for matching.
 
     Args:
@@ -85,11 +87,11 @@ def _fetch_full_library(
         group_name: Human-readable group name (used for logging).
 
     Returns:
-        A (raw_items, error) tuple.
+        A (raw_items, error, status_code) tuple.
     """
     cache_key = (url, api_key)
     if cache_key in _LIBRARY_CACHE:
-        return _LIBRARY_CACHE[cache_key], None
+        return _LIBRARY_CACHE[cache_key], None, 200
 
     try:
         raw_items = fetch_jellyfin_items(
@@ -97,7 +99,7 @@ def _fetch_full_library(
             api_key,
             {
                 "Recursive": "true",
-                "Fields": "Path,ProviderIds",
+                "Fields": "Path,ProviderIds,Genres,Studios,Tags,People,ProductionYear,CommunityRating",
                 "IncludeItemTypes": "Movie,Series",
                 "Limit": "10000",
             },
@@ -105,10 +107,13 @@ def _fetch_full_library(
         )
         print(f"Jellyfin library: {len(raw_items)} items fetched for matching")
         _LIBRARY_CACHE[cache_key] = raw_items
-        return raw_items, None
+        return raw_items, None, 200
+    except requests.exceptions.RequestException as exc:
+        print(f"Infrastructure error fetching Jellyfin library for group {group_name!r}: {exc}")
+        return [], f"Jellyfin connection error: {exc}", 500
     except Exception as exc:
         print(f"Error fetching Jellyfin library for group {group_name!r}: {exc}")
-        return [], str(exc)
+        return [], str(exc), 400
 
 
 def _match_jellyfin_items_by_provider(
@@ -119,7 +124,7 @@ def _match_jellyfin_items_by_provider(
     url: str,
     api_key: str,
     group_name: str,
-) -> tuple[list[dict[str, Any]], str | None]:
+) -> tuple[list[dict[str, Any]], str | None, int]:
     """Fetch all Jellyfin items and match them against a list of external IDs.
 
     Args:
@@ -132,11 +137,11 @@ def _match_jellyfin_items_by_provider(
         group_name: Group name for logging.
 
     Returns:
-        A (items, error) tuple.
+        A (items, error, status_code) tuple.
     """
-    raw_items, error = _fetch_full_library(url, api_key, group_name)
+    raw_items, error, status_code = _fetch_full_library(url, api_key, group_name)
     if error is not None:
-        return [], error
+        return [], error, status_code
 
     case_insensitive = provider_key == "Imdb"
 
@@ -159,7 +164,7 @@ def _match_jellyfin_items_by_provider(
         matched_ids = {str(eid).lower() if case_insensitive else str(eid) for eid in external_ids}
         items = [v for k, v in jf_by_provider.items() if k in matched_ids]
 
-    return items, None
+    return items, None, 200
 
 
 
@@ -211,7 +216,7 @@ def _fetch_items_for_imdb_group(
     sort_order: str,
     url: str,
     api_key: str,
-) -> tuple[list[dict[str, Any]], str | None]:
+) -> tuple[list[dict[str, Any]], str | None, int]:
     """Resolve Jellyfin items for an IMDb-list–backed group.
 
     Args:
@@ -222,7 +227,7 @@ def _fetch_items_for_imdb_group(
         api_key: Jellyfin API key.
 
     Returns:
-        A ``(items, error)`` tuple.  On success *items* is the resolved list
+        A ``(items, error, status_code)`` tuple.  On success *items* is the resolved list
         and *error* is ``None``; on failure *items* is ``[]`` and *error* is
         a descriptive string.
     """
@@ -231,11 +236,11 @@ def _fetch_items_for_imdb_group(
         print(f"IMDb list {source_value!r}: {len(imdb_ids)} IDs found")
     except Exception as exc:
         print(f"Error fetching IMDb list for group {group_name!r}: {exc}")
-        return [], str(exc)
+        return [], str(exc), 400
 
     if not imdb_ids:
         print(f"No IMDb IDs found for group {group_name!r}")
-        return [], None
+        return [], None, 200
 
     return _match_jellyfin_items_by_provider(
         imdb_ids, "Imdb", "imdb_list_order", sort_order, url, api_key, group_name
@@ -249,7 +254,7 @@ def _fetch_items_for_trakt_group(
     url: str,
     api_key: str,
     trakt_client_id: str,
-) -> tuple[list[dict[str, Any]], str | None]:
+) -> tuple[list[dict[str, Any]], str | None, int]:
     """Resolve Jellyfin items for a Trakt-list–backed group.
 
     Args:
@@ -261,24 +266,24 @@ def _fetch_items_for_trakt_group(
         trakt_client_id: Trakt API Client ID.
 
     Returns:
-        A ``(items, error)`` tuple (same semantics as
+        A ``(items, error, status_code)`` tuple (same semantics as
         :func:`_fetch_items_for_imdb_group`).
     """
     if not trakt_client_id:
         msg = "Trakt Client ID not set — add trakt_client_id in Server Settings"
         print(f"No Trakt Client ID configured for group {group_name!r}")
-        return [], msg
+        return [], msg, 400
 
     try:
         trakt_ids = fetch_trakt_list(source_value, trakt_client_id)
         print(f"Trakt list {source_value!r}: {len(trakt_ids)} IMDb IDs found")
     except Exception as exc:
         print(f"Error fetching Trakt list for group {group_name!r}: {exc}")
-        return [], str(exc)
+        return [], str(exc), 400
 
     if not trakt_ids:
         print(f"No items found in Trakt list for group {group_name!r}")
-        return [], None
+        return [], None, 200
 
     return _match_jellyfin_items_by_provider(
         trakt_ids, "Imdb", "trakt_list_order", sort_order, url, api_key, group_name
@@ -292,7 +297,7 @@ def _fetch_items_for_tmdb_group(
     url: str,
     api_key: str,
     tmdb_api_key: str,
-) -> tuple[list[dict[str, Any]], str | None]:
+) -> tuple[list[dict[str, Any]], str | None, int]:
     """Resolve Jellyfin items for a TMDb-list–backed group.
 
     Args:
@@ -304,24 +309,24 @@ def _fetch_items_for_tmdb_group(
         tmdb_api_key: TMDb API Key.
 
     Returns:
-        A ``(items, error)`` tuple (same semantics as
+        A ``(items, error, status_code)`` tuple (same semantics as
         :func:`_fetch_items_for_imdb_group`).
     """
     if not tmdb_api_key:
         msg = "TMDb API Key not set — add tmdb_api_key in Server Settings"
         print(f"No TMDb API Key configured for group {group_name!r}")
-        return [], msg
+        return [], msg, 400
 
     try:
         tmdb_ids = fetch_tmdb_list(source_value, tmdb_api_key)
         print(f"TMDb list {source_value!r}: {len(tmdb_ids)} items found")
     except Exception as exc:
         print(f"Error fetching TMDb list for group {group_name!r}: {exc}")
-        return [], str(exc)
+        return [], str(exc), 400
 
     if not tmdb_ids:
         print(f"No items found in TMDb list for group {group_name!r}")
-        return [], None
+        return [], None, 200
 
     return _match_jellyfin_items_by_provider(
         tmdb_ids, "Tmdb", "tmdb_list_order", sort_order, url, api_key, group_name
@@ -334,7 +339,7 @@ def _fetch_items_for_anilist_group(
     sort_order: str,
     url: str,
     api_key: str,
-) -> tuple[list[dict[str, Any]], str | None]:
+) -> tuple[list[dict[str, Any]], str | None, int]:
     """Resolve Jellyfin items for an AniList-list–backed group.
 
     Args:
@@ -345,7 +350,7 @@ def _fetch_items_for_anilist_group(
         api_key: Jellyfin API key.
 
     Returns:
-        A ``(items, error)`` tuple (same semantics as
+        A ``(items, error, status_code)`` tuple (same semantics as
         :func:`_fetch_items_for_imdb_group`).
     """
     username = source_value
@@ -360,11 +365,11 @@ def _fetch_items_for_anilist_group(
         print(f"AniList user {username!r} (status={status!r}): {len(anilist_ids)} items found")
     except Exception as exc:
         print(f"Error fetching AniList items for group {group_name!r}: {exc}")
-        return [], str(exc)
+        return [], str(exc), 400
 
     if not anilist_ids:
         print(f"No items found for AniList user {username!r}")
-        return [], None
+        return [], None, 200
 
     return _match_jellyfin_items_by_provider(
         anilist_ids, "AniList", "anilist_list_order", sort_order, url, api_key, group_name
@@ -378,7 +383,7 @@ def _fetch_items_for_mal_group(
     url: str,
     api_key: str,
     mal_client_id: str,
-) -> tuple[list[dict[str, Any]], str | None]:
+) -> tuple[list[dict[str, Any]], str | None, int]:
     """Resolve Jellyfin items for a MyAnimeList-list–backed group.
 
     Args:
@@ -390,13 +395,13 @@ def _fetch_items_for_mal_group(
         mal_client_id: MyAnimeList Client ID.
 
     Returns:
-        A ``(items, error)`` tuple (same semantics as
+        A ``(items, error, status_code)`` tuple (same semantics as
         :func:`_fetch_items_for_imdb_group`).
     """
     if not mal_client_id:
         msg = "MyAnimeList Client ID not set — add mal_client_id in Server Settings"
         print(f"No MAL Client ID configured for group {group_name!r}")
-        return [], msg
+        return [], msg, 400
 
     username = source_value
     status = None
@@ -410,11 +415,11 @@ def _fetch_items_for_mal_group(
         print(f"MyAnimeList user {username!r} (status={status!r}): {len(mal_ids)} items found")
     except Exception as exc:
         print(f"Error fetching MyAnimeList items for group {group_name!r}: {exc}")
-        return [], str(exc)
+        return [], str(exc), 400
 
     if not mal_ids:
         print(f"No items found for MyAnimeList user {username!r}")
-        return [], None
+        return [], None, 200
 
     return _match_jellyfin_items_by_provider(
         mal_ids, "Mal", "mal_list_order", sort_order, url, api_key, group_name
@@ -427,7 +432,7 @@ def _fetch_items_for_letterboxd_group(
     sort_order: str,
     url: str,
     api_key: str,
-) -> tuple[list[dict[str, Any]], str | None]:
+) -> tuple[list[dict[str, Any]], str | None, int]:
     """Resolve Jellyfin items for a Letterboxd-list–backed group.
 
     Args:
@@ -438,7 +443,7 @@ def _fetch_items_for_letterboxd_group(
         api_key: Jellyfin API key.
 
     Returns:
-        A ``(items, error)`` tuple (same semantics as
+        A ``(items, error, status_code)`` tuple (same semantics as
         :func:`_fetch_items_for_imdb_group`).
     """
     try:
@@ -446,11 +451,11 @@ def _fetch_items_for_letterboxd_group(
         print(f"Letterboxd list {source_value!r}: {len(external_ids)} IDs found")
     except Exception as exc:
         print(f"Error fetching Letterboxd list for group {group_name!r}: {exc}")
-        return [], str(exc)
+        return [], str(exc), 400
 
     if not external_ids:
         print(f"No items found in Letterboxd list for group {group_name!r}")
-        return [], None
+        return [], None, 200
 
     # Letterboxd IDs can be IMDb (tt...) or TMDb (numeric)
     imdb_ids = [eid for eid in external_ids if str(eid).startswith("tt")]
@@ -460,9 +465,9 @@ def _fetch_items_for_letterboxd_group(
     all_matched_items: list[dict[str, Any]] = []
     
     # We'll use a simplified version of matching here since we have two types of IDs
-    raw_items, error = _fetch_full_library(url, api_key, group_name)
+    raw_items, error, status_code = _fetch_full_library(url, api_key, group_name)
     if error is not None:
-        return [], error
+        return [], error, status_code
 
     # Index by both Imdb and Tmdb
     items_by_imdb: dict[str, dict[str, Any]] = {}
@@ -502,7 +507,131 @@ def _fetch_items_for_letterboxd_group(
                 items.append(match)
                 seen_jf_ids.add(match["Id"])
 
-    return items, None
+    return items, None, 200
+
+
+def _fetch_items_for_complex_group(
+    group_name: str,
+    rules: list[dict[str, Any]],
+    sort_order: str,
+    url: str,
+    api_key: str,
+) -> tuple[list[dict[str, Any]], str | None, int]:
+    """Resolve Jellyfin items by evaluating a stacked list of rules.
+
+    Args:
+        group_name: Human-readable group name.
+        rules: List of rule dicts (operator, type, value).
+        sort_order: Requested sort order key.
+        url: Jellyfin base URL.
+        api_key: Jellyfin API key.
+
+    Returns:
+        A ``(items, error, status_code)`` tuple.
+    """
+    raw_items, error, status_code = _fetch_full_library(url, api_key, group_name)
+    if error is not None:
+        return [], error, status_code
+
+    if not rules:
+        return [], None, 200
+
+    valid_rules: list[dict[str, str]] = []
+    for r in rules:
+        if not isinstance(r, dict):
+            continue
+        try:
+            r_t = str(r.get("type", "")).strip().lower()
+            r_v = str(r.get("value", "")).strip().lower()
+            r_o = str(r.get("operator", "AND")).strip().upper()
+            if r_t and r_v:
+                valid_rules.append({"operator": r_o, "type": r_t, "value": r_v})
+        except (TypeError, ValueError, AttributeError) as exc:
+            print(f"DEBUG: Skipping malformed rule {r}: {exc}")
+            continue
+
+    if not valid_rules:
+        return [], None, 200
+
+    def _match_condition(item: dict[str, Any], r_type: str, r_val: str) -> bool:
+        """Check if a Jellyfin item matches a single rule condition.
+
+        Args:
+            item: The Jellyfin item dictionary.
+            r_type: The rule type (genre, actor, studio, tag, year).
+            r_val: The normalized rule value to match against.
+
+        Returns:
+            True if the item matches the condition, False otherwise.
+        """
+        if not r_type or not r_val:
+            return False
+            
+        try:
+            if r_type == "genre":
+                return any(r_val == str(g).strip().lower() for g in (item.get("Genres") or []))
+            elif r_type == "actor":
+                return any(
+                    r_val == str(p.get("Name", "")).strip().lower() 
+                    for p in (item.get("People") or []) 
+                    if isinstance(p, dict) and p.get("Type") == "Actor"
+                )
+            elif r_type == "studio":
+                return any(
+                    r_val == str(s.get("Name", "")).strip().lower() 
+                    for s in (item.get("Studios") or []) 
+                    if isinstance(s, dict)
+                )
+            elif r_type == "tag":
+                return any(r_val == str(t).strip().lower() for t in (item.get("Tags") or []))
+            elif r_type == "year":
+                val = item.get("ProductionYear")
+                if val is not None:
+                    return str(val).strip().lower() == r_val
+        except (AttributeError, TypeError, ValueError):
+            pass
+            
+        return False
+
+    def _eval_item(item: dict[str, Any]) -> bool:
+        """Evaluate a stacked list of rules against a single Jellyfin item.
+
+        Args:
+            item: The Jellyfin item dictionary.
+
+        Returns:
+            True if the item passes the entire rule set, False otherwise.
+        """
+        first_rule = valid_rules[0]
+        # Treat the first rule as initializing the boolean state
+        result = _match_condition(item, first_rule["type"], first_rule["value"])
+        
+        # If the very first rule is NOT, we invert it (so we start with everything else)
+        if first_rule["operator"].endswith("NOT"):
+            result = not result
+
+        for rule in valid_rules[1:]:
+            op = rule["operator"]
+            matched = _match_condition(item, rule["type"], rule["value"])
+
+            
+            if op == "AND":
+                result = result and matched
+            elif op == "OR":
+                result = result or matched
+            elif op in ("AND NOT", "NOT"):
+                result = result and not matched
+            elif op == "OR NOT":
+                result = result or not matched
+
+        return result
+
+    filtered = [item for item in raw_items if _eval_item(item)]
+    
+    # In-memory sorting because this is local filtering
+    sorted_items = _sort_items_in_memory(filtered, sort_order)
+    
+    return sorted_items, None, 200
 
 
 def _fetch_items_for_metadata_group(
@@ -512,7 +641,7 @@ def _fetch_items_for_metadata_group(
     sort_order: str,
     url: str,
     api_key: str,
-) -> tuple[list[dict[str, Any]], str | None]:
+) -> tuple[list[dict[str, Any]], str | None, int]:
     """Resolve Jellyfin items for a metadata-filter–backed group.
 
     Handles ``genre``, ``actor``, ``studio``, ``tag``, and unfiltered
@@ -529,7 +658,7 @@ def _fetch_items_for_metadata_group(
         api_key: Jellyfin API key.
 
     Returns:
-        A ``(items, error)`` tuple.
+        A ``(items, error, status_code)`` tuple.
     """
     params: dict[str, str] = {
         "Recursive": "true",
@@ -542,6 +671,7 @@ def _fetch_items_for_metadata_group(
         "actor": "Person",
         "studio": "Studios",
         "tag": "Tags",
+        "year": "years",
     }
     if source_type in filter_map and source_value:
         params[filter_map[source_type]] = source_value
@@ -555,10 +685,86 @@ def _fetch_items_for_metadata_group(
     try:
         items = fetch_jellyfin_items(url, api_key, params, timeout=30)
         print(f"Found {len(items)} potential items for group {group_name!r}")
-        return items, None
+        return items, None, 200
+    except requests.exceptions.RequestException as exc:
+        print(f"Infrastructure error fetching items for group {group_name!r}: {exc}")
+        return [], f"Jellyfin connection error: {exc}", 500
     except Exception as exc:
         print(f"Error fetching items for group {group_name!r}: {exc}")
-        return [], str(exc)
+        return [], str(exc), 400
+
+def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
+    """Parse a complex textual rule query into a list of structured rules.
+
+    The query can contain logical operators like AND, OR, AND NOT, OR NOT.
+    Each part of the query is assigned the *default_type* unless a specific
+    type prefix (e.g., "actor:Tom Hanks") is provided.
+
+    Args:
+        query: The textual query string (e.g., "Action AND NOT Comedy").
+        default_type: The metadata type to apply to each value (e.g., "genre").
+
+    Returns:
+        A list of rule dictionaries suitable for _fetch_items_for_complex_group.
+    """
+    # Simple regex to split the logical logic
+    pattern = re.compile(r'\s+(AND NOT|OR NOT|AND|OR)\s+', re.IGNORECASE)
+    parts = pattern.split(query.strip())
+    
+    rules = []
+    
+    def _parse_item(item_str: str) -> tuple[str, str]:
+        if ":" in item_str:
+            t, v = item_str.split(":", 1)
+            t = t.strip().lower()
+            if t in {"genre", "actor", "studio", "tag", "year"}:
+                return t, v.strip()
+        return default_type, item_str.strip()
+
+    t0, v0 = _parse_item(parts[0])
+    rules.append({
+        "operator": "AND",
+        "type": t0,
+        "value": v0
+    })
+    
+    for i in range(1, len(parts), 2):
+        op = parts[i].upper().replace('  ', ' ')
+        ti, vi = _parse_item(parts[i+1])
+        rules.append({
+            "operator": op,
+            "type": ti,
+            "value": vi
+        })
+        
+    return rules
+
+
+def preview_group(
+    type_name: str, 
+    val: str, 
+    url: str, 
+    api_key: str
+) -> tuple[list[dict[str, Any]], str | None, int]:
+    """Resolve items for a grouping preview.
+
+    If the *val* contains logical operators (AND, OR, etc.), it is parsed as a 
+    complex query. Otherwise, it is treated as a simple metadata filter.
+
+    Args:
+        type_name: The metadata type (genre, actor, studio, tag, year).
+        val: The filter value or complex query string.
+        url: Jellyfin base URL.
+        api_key: Jellyfin API key.
+
+    Returns:
+        A ``(items, error, status_code)`` tuple.
+    """
+    if re.search(r"\s+(AND NOT|OR NOT|AND|OR)\s+", val, re.IGNORECASE):
+        rules = parse_complex_query(val, type_name)
+        return _fetch_items_for_complex_group("preview", rules, "", url, api_key)
+    else:
+        return _fetch_items_for_metadata_group("preview", type_name, val, "", url, api_key)
 
 
 def _process_group(
@@ -611,35 +817,50 @@ def _process_group(
 
     # --- Resolve items ---
     error: str | None = None
+    status_code: int = 200
 
     if source_type == "imdb_list":
-        items, error = _fetch_items_for_imdb_group(
+        items, error, status_code = _fetch_items_for_imdb_group(
             group_name, source_value or "", sort_order, url, api_key
         )
     elif source_type == "trakt_list":
-        items, error = _fetch_items_for_trakt_group(
+        items, error, status_code = _fetch_items_for_trakt_group(
             group_name, source_value or "", sort_order, url, api_key, trakt_client_id
         )
     elif source_type == "tmdb_list":
-        items, error = _fetch_items_for_tmdb_group(
+        items, error, status_code = _fetch_items_for_tmdb_group(
             group_name, source_value or "", sort_order, url, api_key, tmdb_api_key
         )
     elif source_type == "anilist_list":
-        items, error = _fetch_items_for_anilist_group(
+        items, error, status_code = _fetch_items_for_anilist_group(
             group_name, source_value or "", sort_order, url, api_key
         )
     elif source_type == "mal_list":
-        items, error = _fetch_items_for_mal_group(
+        items, error, status_code = _fetch_items_for_mal_group(
             group_name, source_value or "", sort_order, url, api_key, mal_client_id
         )
     elif source_type == "letterboxd_list":
-        items, error = _fetch_items_for_letterboxd_group(
+        items, error, status_code = _fetch_items_for_letterboxd_group(
             group_name, source_value or "", sort_order, url, api_key
         )
-    else:
-        items, error = _fetch_items_for_metadata_group(
-            group_name, source_type, source_value, sort_order, url, api_key
+    elif isinstance(group.get("rules"), list) and group["rules"]:
+        rules_list = group["rules"]
+        items, error, status_code = _fetch_items_for_complex_group(
+            group_name, rules_list, sort_order, url, api_key
         )
+    else:
+        val_str = str(source_value or "")
+        
+        # Determine if it's a complex textual rule that needs local parsing
+        if source_type in ["genre", "actor", "studio", "tag", "year"] and re.search(r'\s+(AND NOT|OR NOT|AND|OR)\s+', val_str, re.IGNORECASE):
+            rules = parse_complex_query(val_str, str(source_type))
+            items, error, status_code = _fetch_items_for_complex_group(
+                group_name, rules, sort_order, url, api_key
+            )
+        else:
+            items, error, status_code = _fetch_items_for_metadata_group(
+                group_name, source_type, source_value, sort_order, url, api_key
+            )
 
     if error is not None:
         return {"group": group_name, "links": 0, "error": error}

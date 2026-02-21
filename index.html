@@ -814,18 +814,38 @@
                         </div>
                         <div class="form-group">
                             <label for="source_value">Filter Value</label>
-                            <div id="source_value_container">
-                                <input type="text" id="source_value" placeholder="e.g. Action  or  ls000024390" required
+
+                            <div id="metadata_rules_container"
+                                style="display: none; flex-direction: column; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                <!-- Filled by JS -->
+                            </div>
+                            <button type="button" onclick="addMetadataRule()" class="secondary-btn" id="add-rule-btn"
+                                style="display: none; margin-bottom: 0.5rem; padding: 0.4rem 0.8rem; font-size: 0.85rem; width: fit-content;">+
+                                Add Condition</button>
+
+                            <div id="source_value_container"
+                                style="display: flex; gap: 0.5rem; flex-direction: column;">
+                                <input type="text" id="source_value" list="source_value_datalist"
+                                    placeholder="e.g. Action  or  ls000024390" required
                                     style="width: 100%; padding: 0.8rem 1rem; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-family: inherit; font-size: 1rem;">
-                                <select id="source_value_select"
-                                    style="display: none; width: 100%; padding: 0.8rem 1rem; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-family: inherit; font-size: 1rem; appearance: none;">
+                                <datalist id="source_value_datalist">
                                     <!-- Populated via JS -->
-                                </select>
+                                </datalist>
+                                <button type="button" onclick="previewGrouping()" class="secondary-btn" id="preview-btn"
+                                    style="padding: 0.6rem 1rem; font-size: 0.9rem; align-self: flex-start; margin-bottom: 0.25rem;">Preview
+                                    Filter</button>
                             </div>
                             <small id="source_value_help"
                                 style="color: var(--text-secondary); display: block; margin-top: 0.25rem; font-size: 0.75rem;">
                                 The specific genre, actor name, tag, or list ID to include in this grouping.
+                                <br><span style="color: var(--accent-color);">Tip: You can chain logic operators for
+                                    complex filters: e.g. <code>Horror AND Action AND NOT Comedy</code></span>
                             </small>
+
+                            <!-- Removed complex rules container, using free-text logical parsing -->
+                            <div id="preview_result"
+                                style="display: none; margin-top: 0.8rem; font-size: 0.8rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: var(--radius-md); border: 1px dashed var(--glass-border);">
+                            </div>
                         </div>
                         <div class="form-group">
                             <label
@@ -1063,7 +1083,8 @@
                 { value: 'genre', label: 'Genre' },
                 { value: 'actor', label: 'Actor' },
                 { value: 'studio', label: 'Studio' },
-                { value: 'tag', label: 'Jellyfin Tag' }
+                { value: 'tag', label: 'Jellyfin Tag' },
+                { value: 'complex', label: 'Complex Rule-set (Mixed)' }
             ],
             external: [
                 { value: 'imdb_list', label: 'IMDb List' },
@@ -1075,13 +1096,217 @@
             ]
         };
 
-        const metadataTypes = ['genre', 'actor', 'studio', 'tag'];
+        const metadataTypes = ['genre', 'actor', 'studio', 'tag', 'complex'];
 
         let currentConfig = { groups: [] };
         let pendingImportData = null;
         let editingIndex = -1;
         let isServerValidated = false;
         let cachedMetadata = {};
+        let lastRenderedType = null;
+        window._currentMetadataRules = [{ operator: '', value: '' }];
+
+        function getFilterValue() {
+            const type = document.getElementById('source_type').value;
+            const isMetadataType = metadataTypes.includes(type);
+            if (isMetadataType && isServerValidated) {
+                const validRules = window._currentMetadataRules.filter(r => r.value && r.value.trim() !== '');
+                if (validRules.length === 0) return '';
+                const parts = validRules.map((r, i) => {
+                    const prefix = type === 'complex' ? `${r.type || 'genre'}:` : '';
+                    return i === 0 ? `${prefix}${r.value.trim()}` : `${r.operator} ${prefix}${r.value.trim()}`;
+                });
+                return parts.join(' ');
+            }
+            return document.getElementById('source_value').value.trim();
+        }
+
+        function parseMetadataValue(valStr) {
+            if (!valStr || valStr.trim() === '') return [{ operator: '', value: '' }];
+            const pattern = /\s+(AND NOT|OR NOT|AND|OR)\s+/i;
+            const parts = valStr.split(pattern);
+            const rules = [];
+
+            const parseRule = (s) => {
+                const match = s.trim().match(/^(\w+):(.+)$/);
+                if (match) return { type: match[1], value: match[2].trim() };
+                return { value: s.trim() };
+            };
+
+            const first = parseRule(parts[0]);
+            rules.push({ operator: '', ...first });
+
+            for (let i = 1; i < parts.length; i += 2) {
+                const rest = parseRule(parts[i + 1]);
+                rules.push({ operator: parts[i].trim().toUpperCase().replace(/\s+/g, ' '), ...rest });
+            }
+            return rules;
+        }
+
+        function renderMetadataRules() {
+            const container = document.getElementById('metadata_rules_container');
+            container.innerHTML = '';
+            const type = document.getElementById('source_type').value;
+
+            window._currentMetadataRules.forEach((rule, index) => {
+                const row = document.createElement('div');
+                row.setAttribute('style', 'display: flex; gap: 0.5rem; align-items: center; width: 100%;');
+
+                if (index > 0) {
+                    const opSelect = document.createElement('select');
+                    opSelect.setAttribute('style', 'flex: 0 0 auto; padding: 0.8rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 0.9rem; font-weight: 600;');
+                    const ops = ['AND', 'OR', 'AND NOT', 'OR NOT'];
+                    ops.forEach(op => {
+                        const o = document.createElement('option');
+                        o.value = op;
+                        o.textContent = op;
+                        if (rule.operator === op) o.selected = true;
+                        opSelect.appendChild(o);
+                    });
+                    opSelect.onchange = (e) => { rule.operator = e.target.value; };
+                    row.appendChild(opSelect);
+                }
+
+                if (type === 'complex') {
+                    const rowTypeSelect = document.createElement('select');
+                    rowTypeSelect.setAttribute('style', 'flex: 0 0 auto; width: 110px; padding: 0.8rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 0.9rem;');
+                    const types = ['genre', 'actor', 'studio', 'tag'];
+                    types.forEach(t => {
+                        const o = document.createElement('option');
+                        o.value = t;
+                        o.textContent = t.charAt(0).toUpperCase() + t.slice(1);
+                        if (rule.type === t || (!rule.type && t === 'genre')) o.selected = true;
+                        if (!rule.type) rule.type = 'genre';
+                        rowTypeSelect.appendChild(o);
+                    });
+                    rowTypeSelect.onchange = (e) => {
+                        rule.type = e.target.value;
+                        renderMetadataRules();
+                    };
+                    row.appendChild(rowTypeSelect);
+                }
+
+                const rowType = type === 'complex' ? (rule.type || 'genre') : type;
+                const options = cachedMetadata[rowType] || [];
+
+                const valSelect = document.createElement('select');
+                valSelect.setAttribute('style', 'flex: 1; padding: 0.8rem 1rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 1rem;');
+
+                const defaultOpt = document.createElement('option');
+                defaultOpt.value = '';
+                defaultOpt.textContent = 'Select ' + rowType + '...';
+                defaultOpt.disabled = true;
+                defaultOpt.selected = !rule.value;
+                valSelect.appendChild(defaultOpt);
+
+                let foundMatch = false;
+                options.forEach(opt => {
+                    const o = document.createElement('option');
+                    o.value = opt;
+                    o.textContent = opt;
+                    if (rule.value === opt) { o.selected = true; foundMatch = true; }
+                    valSelect.appendChild(o);
+                });
+
+                if (rule.value && !foundMatch) {
+                    const o = document.createElement('option');
+                    o.value = rule.value;
+                    o.textContent = rule.value + " (Unavailable/Custom)";
+                    o.selected = true;
+                    valSelect.appendChild(o);
+                }
+
+                valSelect.onchange = (e) => { rule.value = e.target.value; };
+                row.appendChild(valSelect);
+
+                if (index > 0) {
+                    const rmBtn = document.createElement('button');
+                    rmBtn.type = 'button';
+                    rmBtn.innerHTML = '<svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>';
+                    rmBtn.className = 'delete-btn';
+                    rmBtn.title = 'Remove condition';
+                    rmBtn.setAttribute('style', 'padding: 0; width: 38px; height: 38px; display:flex; align-items:center; justify-content:center; margin: 0; flex-shrink: 0;');
+                    rmBtn.onclick = () => {
+                        window._currentMetadataRules.splice(index, 1);
+                        renderMetadataRules();
+                    };
+                    row.appendChild(rmBtn);
+                }
+
+                container.appendChild(row);
+            });
+        }
+
+        function addMetadataRule() {
+            window._currentMetadataRules.push({ operator: 'AND', value: '' });
+            renderMetadataRules();
+        }
+
+        async function previewGrouping() {
+            const type = document.getElementById('source_type').value;
+            const val = getFilterValue();
+            const resultDiv = document.getElementById('preview_result');
+
+            if (!metadataTypes.includes(type) && type !== 'general') {
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = '<span style="color:var(--text-secondary);">Preview mostly supports Jellyfin library metadata types (Genre, Actor, etc). Try connecting server or checking other logs.</span>';
+                return;
+            }
+
+            if (!val) {
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = '<span style="color:var(--error-color);">Please enter a filter value to preview.</span>';
+                return;
+            }
+
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<span class="loading-spinner" style="display:inline-block; margin-right: 0.5rem; border-color: rgba(255,255,255,0.2); border-left-color: var(--accent-color);"></span> <span style="color: var(--text-secondary);">Loading preview...</span>';
+
+            try {
+                const response = await fetch('/api/grouping/preview', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: type, value: val })
+                });
+                const res = await response.json();
+                resultDiv.innerHTML = '';
+                if (res.status === 'success') {
+                    const summaryLine = document.createElement('div');
+                    const labelStrong = document.createElement('strong');
+                    labelStrong.setAttribute('style', 'color:var(--text-primary);');
+                    labelStrong.textContent = 'Estimated Items: ';
+                    const countSpan = document.createElement('span');
+                    countSpan.setAttribute('style', 'color:var(--accent-color); font-weight:600;');
+                    countSpan.textContent = String(res.count);
+                    summaryLine.appendChild(labelStrong);
+                    summaryLine.appendChild(countSpan);
+                    resultDiv.appendChild(summaryLine);
+
+                    if (res.count > 0) {
+                        const matchesLabel = document.createElement('strong');
+                        matchesLabel.textContent = 'First matches:';
+                        matchesLabel.setAttribute('style', 'display:block; margin-top:0.6rem;');
+                        resultDiv.appendChild(matchesLabel);
+
+                        const ul = document.createElement('ul');
+                        ul.setAttribute('style', 'margin-top:0.4rem; padding-left:1.5rem; color:var(--text-secondary);');
+                        res.preview_items.forEach(item => {
+                            const li = document.createElement('li');
+                            li.textContent = item.Year ? `${item.Name} (${item.Year})` : item.Name;
+                            ul.appendChild(li);
+                        });
+                        resultDiv.appendChild(ul);
+                    }
+                } else {
+                    const errSpan = document.createElement('span');
+                    errSpan.setAttribute('style', 'color:var(--error-color);');
+                    errSpan.textContent = `Error: ${res.message}`;
+                    resultDiv.appendChild(errSpan);
+                }
+            } catch (e) {
+                resultDiv.innerHTML = '<span style="color:var(--error-color);">Network error during preview.</span>';
+            }
+        }
 
         async function loadConfig() {
             try {
@@ -1186,23 +1411,17 @@
 
         async function refreshMetadata() {
             try {
-                // Show loading state
-                sourceValueSelect.innerHTML = '<option value="" disabled selected>Loading metadata...</option>';
-                sourceValueSelect.disabled = true;
-
+                // We've deleted the old `<select>`, no loading state required. Data populates into the dropdown silently
                 const response = await fetch('/api/jellyfin/metadata');
                 const result = await response.json();
                 if (result.status === 'success') {
                     cachedMetadata = result.metadata;
                     updateSourceValueUI();
                 } else {
-                    sourceValueSelect.innerHTML = '<option value="" disabled selected>Failed to load metadata</option>';
+                    console.error('Failed to load metadata from Jellyfin server');
                 }
             } catch (err) {
                 console.error('Failed to fetch metadata:', err);
-                sourceValueSelect.innerHTML = '<option value="" disabled selected>Error loading metadata</option>';
-            } finally {
-                sourceValueSelect.disabled = false;
             }
         }
 
@@ -1248,46 +1467,48 @@
             const type = document.getElementById('source_type').value;
             const isMetadataType = metadataTypes.includes(type);
 
-            if (isMetadataType) {
-                // Metadata types ALWAYS use select, even if disconnected (but disabled)
-                sourceValueInput.style.display = 'none';
-                sourceValueInput.required = false;
-                sourceValueInput.disabled = true;
+            const container = document.getElementById('metadata_rules_container');
+            const addBtn = document.getElementById('add-rule-btn');
 
-                sourceValueSelect.style.display = 'block';
-                sourceValueSelect.required = true;
+            // Hide old select logic, always use text input
+            sourceValueInput.style.display = 'block';
+            sourceValueInput.required = true;
+            sourceValueInput.disabled = false;
+
+            const datalist = document.getElementById('source_value_datalist');
+
+            if (isMetadataType) {
+                sourceValueHelp.style.display = 'block';
 
                 if (isServerValidated) {
-                    sourceValueSelect.disabled = false;
-                    sourceValueSelect.innerHTML = '<option value="" disabled selected>Select from libraries...</option>';
-                    const options = cachedMetadata[type] || [];
-                    if (options.length === 0) {
-                        sourceValueSelect.innerHTML = `<option value="" disabled selected>No ${type}s found on server</option>`;
-                    } else {
-                        options.forEach(opt => {
-                            const o = document.createElement('option');
-                            o.value = opt;
-                            o.textContent = opt;
-                            sourceValueSelect.appendChild(o);
-                        });
+                    datalist.innerHTML = '';
+                    sourceValueInput.style.display = 'none';
+                    sourceValueInput.required = false;
+                    container.style.display = 'flex';
+                    addBtn.style.display = 'inline-block';
+
+                    if (type !== lastRenderedType || preValue) {
+                        if (preValue) {
+                            window._currentMetadataRules = parseMetadataValue(preValue);
+                        } else {
+                            window._currentMetadataRules = [{ operator: '', value: '' }];
+                        }
+                        lastRenderedType = type;
                     }
-                    if (preValue) sourceValueSelect.value = preValue;
-                    sourceValueHelp.textContent = `Select an available ${type} from your Jellyfin server.`;
+                    renderMetadataRules();
+
+                    sourceValueHelp.textContent = `Select one or more ${type}s from your Jellyfin server. Use + to combine logic operators.`;
                 } else {
-                    sourceValueSelect.disabled = true;
-                    sourceValueSelect.innerHTML = '<option value="" disabled selected>Connect server to see options</option>';
-                    sourceValueHelp.textContent = `You must connect your Jellyfin server to select a ${type}.`;
+                    datalist.innerHTML = '';
+                    container.style.display = 'none';
+                    addBtn.style.display = 'none';
+                    sourceValueHelp.innerHTML = `You must connect your Jellyfin server to see autocompletion. You can manually type a complex filter (e.g. <code>Horror AND Action AND NOT Comedy</code>).`;
+                    if (preValue) sourceValueInput.value = preValue;
                 }
             } else {
-                // Non-metadata types (External or General) use text input
-                sourceValueInput.style.display = 'block';
-                sourceValueInput.required = true;
-                sourceValueInput.disabled = false;
-
-                sourceValueSelect.style.display = 'none';
-                sourceValueSelect.required = false;
-                sourceValueSelect.disabled = true;
-
+                datalist.innerHTML = '';
+                container.style.display = 'none';
+                addBtn.style.display = 'none';
                 if (preValue) sourceValueInput.value = preValue;
                 if (type === 'imdb_list') {
                     sourceValueInput.placeholder = 'e.g. ls000024390 or full IMDb list URL';
@@ -1384,30 +1605,50 @@
                     'DateCreated': '🕐 Date Added',
                     'Random': '🎲 Random',
                 };
-                const sortBadge = group.sort_order
-                    ? `<span style="display:inline-block; margin-left:0.5rem; font-size:0.72rem; background:rgba(99,102,241,0.15); color:var(--accent-color); border:1px solid rgba(99,102,241,0.3); border-radius:4px; padding:0.1rem 0.4rem;">${sortLabels[group.sort_order] || group.sort_order}</span>`
-                    : '';
 
-                card.innerHTML = `
-                    <div class="group-info">
-                        <h4>${group.name || 'Unnamed Group'}${sortBadge}</h4>
-                        <div class="group-meta">
-                            <span style="color: var(--accent-color); font-weight: 600;">${catLabel}</span> • ${typeLabel}: ${group.source_value}
-                        </div>
-                    </div>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <button class="secondary-btn" onclick="editGroup(${index})" title="Edit Group" style="padding: 0.5rem 0.8rem; font-size: 0.8rem; margin: 0; width: auto; border-color: var(--accent-color); color: var(--accent-color);">
-                            Edit
-                        </button>
-                        <button class="delete-btn" onclick="deleteGroup(${index})" title="Remove Group">
-                            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 4px;">
-                                <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
-                                <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
-                            </svg>
-                            Remove
-                        </button>
-                    </div>
-                `;
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'group-info';
+
+                const h4 = document.createElement('h4');
+                h4.textContent = group.name || 'Unnamed Group';
+                if (group.sort_order) {
+                    const badge = document.createElement('span');
+                    badge.setAttribute('style', 'display:inline-block; margin-left:0.5rem; font-size:0.72rem; background:rgba(99,102,241,0.15); color:var(--accent-color); border:1px solid rgba(99,102,241,0.3); border-radius:4px; padding:0.1rem 0.4rem;');
+                    badge.textContent = sortLabels[group.sort_order] || group.sort_order;
+                    h4.appendChild(badge);
+                }
+                infoDiv.appendChild(h4);
+
+                const metaDiv = document.createElement('div');
+                metaDiv.className = 'group-meta';
+                const catSpan = document.createElement('span');
+                catSpan.setAttribute('style', 'color: var(--accent-color); font-weight: 600;');
+                catSpan.textContent = catLabel;
+                metaDiv.appendChild(catSpan);
+                metaDiv.appendChild(document.createTextNode(` \u2022 ${typeLabel}: ${group.source_value || ''}`));
+                infoDiv.appendChild(metaDiv);
+                card.appendChild(infoDiv);
+
+                const actionsDiv = document.createElement('div');
+                actionsDiv.setAttribute('style', 'display: flex; gap: 0.5rem;');
+
+                const editBtn = document.createElement('button');
+                editBtn.className = 'secondary-btn';
+                editBtn.title = 'Edit Group';
+                editBtn.setAttribute('style', 'padding: 0.5rem 0.8rem; font-size: 0.8rem; margin: 0; width: auto; border-color: var(--accent-color); color: var(--accent-color);');
+                editBtn.textContent = 'Edit';
+                editBtn.onclick = () => editGroup(index);
+                actionsDiv.appendChild(editBtn);
+
+                const delBtn = document.createElement('button');
+                delBtn.className = 'delete-btn';
+                delBtn.title = 'Remove Group';
+                delBtn.innerHTML = '<svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 4px;"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>';
+                delBtn.appendChild(document.createTextNode(' Remove'));
+                delBtn.onclick = () => deleteGroup(index);
+                actionsDiv.appendChild(delBtn);
+
+                card.appendChild(actionsDiv);
                 groupsList.appendChild(card);
             });
         }
@@ -1470,8 +1711,12 @@
         groupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const source_type = document.getElementById('source_type').value;
-            const isMetadataType = metadataTypes.includes(source_type);
-            const val = (isMetadataType && isServerValidated) ? sourceValueSelect.value : sourceValueInput.value;
+            const val = getFilterValue();
+
+            if (!val) {
+                showStatus('Please enter or select a filter value', 'error');
+                return;
+            }
 
             const groupData = {
                 name: document.getElementById('group_name').value,
@@ -1480,6 +1725,19 @@
                 source_value: val,
                 sort_order: document.getElementById('sort_order_enabled').checked ? (document.getElementById('sort_order').value || '') : ''
             };
+
+            if (metadataTypes.includes(source_type)) {
+                if (typeof window._currentMetadataRules !== 'undefined' && Array.isArray(window._currentMetadataRules)) {
+                    const validRules = window._currentMetadataRules.filter(r => r.value && r.value.trim() !== '');
+                    if (validRules.length > 0) {
+                        groupData.rules = validRules.map(r => ({
+                            operator: r.operator || 'AND',
+                            type: r.type || (source_type === 'complex' ? 'genre' : source_type),
+                            value: r.value
+                        }));
+                    }
+                }
+            }
 
             if (!currentConfig.groups) currentConfig.groups = [];
 
@@ -1564,13 +1822,26 @@
                 currentConfig.groups.forEach((g, i) => {
                     const item = document.createElement('div');
                     item.className = 'modal-item';
-                    item.innerHTML = `
-                        <input type="checkbox" checked class="export-check" data-index="${i}" style="width:18px; height:18px; accent-color: var(--accent-color);">
-                        <div>
-                            <div style="font-weight:600; font-size:0.95rem;">${g.name}</div>
-                            <div style="font-size:0.8rem; color:var(--text-secondary);">${g.source_type}</div>
-                        </div>
-                    `;
+
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.checked = true;
+                    cb.className = 'export-check';
+                    cb.dataset.index = i;
+                    cb.setAttribute('style', 'width:18px; height:18px; accent-color: var(--accent-color);');
+                    item.appendChild(cb);
+
+                    const labelDiv = document.createElement('div');
+                    const nameDiv = document.createElement('div');
+                    nameDiv.setAttribute('style', 'font-weight:600; font-size:0.95rem;');
+                    nameDiv.textContent = g.name || 'Unnamed Group';
+                    const typeDiv = document.createElement('div');
+                    typeDiv.setAttribute('style', 'font-size:0.8rem; color:var(--text-secondary);');
+                    typeDiv.textContent = g.source_type || '';
+                    labelDiv.appendChild(nameDiv);
+                    labelDiv.appendChild(typeDiv);
+                    item.appendChild(labelDiv);
+
                     container.appendChild(item);
                 });
             }
@@ -1663,13 +1934,26 @@
                 groups.forEach((g, i) => {
                     const item = document.createElement('div');
                     item.className = 'modal-item';
-                    item.innerHTML = `
-                        <input type="checkbox" checked class="import-check" data-index="${i}" style="width:18px; height:18px; accent-color: var(--accent-color);">
-                        <div>
-                            <div style="font-weight:600; font-size:0.95rem;">${g.name}</div>
-                            <div style="font-size:0.8rem; color:var(--text-secondary);">${g.source_type}: ${g.source_value}</div>
-                        </div>
-                    `;
+
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.checked = true;
+                    cb.className = 'import-check';
+                    cb.dataset.index = i;
+                    cb.setAttribute('style', 'width:18px; height:18px; accent-color: var(--accent-color);');
+                    item.appendChild(cb);
+
+                    const labelDiv = document.createElement('div');
+                    const nameDiv = document.createElement('div');
+                    nameDiv.setAttribute('style', 'font-weight:600; font-size:0.95rem;');
+                    nameDiv.textContent = g.name || 'Unnamed Group';
+                    const typeDiv = document.createElement('div');
+                    typeDiv.setAttribute('style', 'font-size:0.8rem; color:var(--text-secondary);');
+                    typeDiv.textContent = `${g.source_type || ''}: ${g.source_value || ''}`;
+                    labelDiv.appendChild(nameDiv);
+                    labelDiv.appendChild(typeDiv);
+                    item.appendChild(labelDiv);
+
                     container.appendChild(item);
                 });
                 confirmBtn.onclick = () => performImport('groups', groups);
@@ -1786,13 +2070,17 @@
                 const resp = await fetch('/api/browse?path=' + encodeURIComponent(path));
                 result = await resp.json();
             } catch (e) {
-                document.getElementById('picker-body').innerHTML =
-                    `<p class="picker-empty">Could not load directory: ${e.message}</p>`;
+                const errP = document.createElement('p');
+                errP.className = 'picker-empty';
+                errP.textContent = `Could not load directory: ${e.message}`;
+                document.getElementById('picker-body').appendChild(errP);
                 return;
             }
             if (result.status !== 'success') {
-                document.getElementById('picker-body').innerHTML =
-                    `<p class="picker-empty">${result.message}</p>`;
+                const errP = document.createElement('p');
+                errP.className = 'picker-empty';
+                errP.textContent = result.message;
+                document.getElementById('picker-body').appendChild(errP);
                 return;
             }
             _pickerCurrentPath = result.current;
