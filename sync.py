@@ -18,15 +18,18 @@ from typing import Any
 
 from imdb import fetch_imdb_list
 from jellyfin import SORT_MAP, fetch_jellyfin_items
+from tmdb import fetch_tmdb_list
 from trakt import fetch_trakt_list
 
-# Source types that come from external lists (IMDb / Trakt) rather than from
-# a Jellyfin metadata filter.
-_LIST_SOURCES: frozenset[str] = frozenset({"imdb_list", "trakt_list"})
+# Source types that come from external lists (IMDb / Trakt / TMDb) rather than
+# from a Jellyfin metadata filter.
+_LIST_SOURCES: frozenset[str] = frozenset({"imdb_list", "trakt_list", "tmdb_list"})
 
 # ``sort_order`` values that mean "keep the order from the external list"
 # rather than applying a Jellyfin / in-memory sort.
-_LIST_ORDER_VALUES: frozenset[str] = frozenset({"imdb_list_order", "trakt_list_order"})
+_LIST_ORDER_VALUES: frozenset[str] = frozenset(
+    {"imdb_list_order", "trakt_list_order", "tmdb_list_order"}
+)
 
 
 def _translate_path(
@@ -231,6 +234,77 @@ def _fetch_items_for_trakt_group(
     return items, None
 
 
+def _fetch_items_for_tmdb_group(
+    group_name: str,
+    source_value: str,
+    sort_order: str,
+    url: str,
+    api_key: str,
+    tmdb_api_key: str,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """Resolve Jellyfin items for a TMDb-list–backed group.
+
+    Args:
+        group_name: Human-readable group name (used for logging).
+        source_value: TMDb list ID or URL.
+        sort_order: Requested sort order key.
+        url: Jellyfin base URL.
+        api_key: Jellyfin API key.
+        tmdb_api_key: TMDb API Key.
+
+    Returns:
+        A ``(items, error)`` tuple (same semantics as
+        :func:`_fetch_items_for_imdb_group`).
+    """
+    if not tmdb_api_key:
+        msg = "TMDb API Key not set — add tmdb_api_key in Server Settings"
+        print(f"No TMDb API Key configured for group {group_name!r}")
+        return [], msg
+
+    try:
+        tmdb_ids = fetch_tmdb_list(source_value, tmdb_api_key)
+        print(f"TMDb list {source_value!r}: {len(tmdb_ids)} items found")
+    except Exception as exc:
+        print(f"Error fetching TMDb list for group {group_name!r}: {exc}")
+        return [], str(exc)
+
+    if not tmdb_ids:
+        print(f"No items found in TMDb list for group {group_name!r}")
+        return [], None
+
+    try:
+        raw_items = fetch_jellyfin_items(
+            url,
+            api_key,
+            {
+                "Recursive": "true",
+                "Fields": "Path,ProviderIds",
+                "IncludeItemTypes": "Movie,Series",
+                "Limit": "10000",
+            },
+            timeout=60,
+        )
+        print(f"Jellyfin library: {len(raw_items)} items fetched for matching")
+    except Exception as exc:
+        print(f"Error fetching Jellyfin library for group {group_name!r}: {exc}")
+        return [], str(exc)
+
+    # Index by TMDb ID for O(1) lookup
+    jf_by_tmdb: dict[str, dict[str, Any]] = {
+        item.get("ProviderIds", {}).get("Tmdb", ""): item
+        for item in raw_items
+        if item.get("ProviderIds", {}).get("Tmdb")
+    }
+
+    if sort_order == "tmdb_list_order":
+        items = [jf_by_tmdb[tid] for tid in tmdb_ids if tid in jf_by_tmdb]
+    else:
+        matched = set(tmdb_ids)
+        items = [v for k, v in jf_by_tmdb.items() if k in matched]
+
+    return items, None
+
+
 def _fetch_items_for_metadata_group(
     group_name: str,
     source_type: str | None,
@@ -295,6 +369,7 @@ def _process_group(
     jellyfin_root: str,
     host_root: str,
     trakt_client_id: str,
+    tmdb_api_key: str,
 ) -> dict[str, Any]:
     """Process a single grouping: fetch items, then create symlinks.
 
@@ -309,6 +384,7 @@ def _process_group(
         jellyfin_root: Jellyfin-side media path prefix (for path translation).
         host_root: Host-side media path prefix (for path translation).
         trakt_client_id: Trakt API Client ID (may be empty).
+        tmdb_api_key: TMDb API Key (may be empty).
 
     Returns:
         A result dict with keys ``"group"``, ``"links"`` and optionally
@@ -341,6 +417,10 @@ def _process_group(
     elif source_type == "trakt_list":
         items, error = _fetch_items_for_trakt_group(
             group_name, source_value or "", sort_order, url, api_key, trakt_client_id
+        )
+    elif source_type == "tmdb_list":
+        items, error = _fetch_items_for_tmdb_group(
+            group_name, source_value or "", sort_order, url, api_key, tmdb_api_key
         )
     else:
         items, error = _fetch_items_for_metadata_group(
@@ -432,6 +512,7 @@ def run_sync(config: dict[str, Any]) -> list[dict[str, Any]]:
         config.get("media_path_on_host") or config.get("host_root", "")
     ).strip()
     trakt_client_id: str = str(config.get("trakt_client_id", "")).strip()
+    tmdb_api_key: str = str(config.get("tmdb_api_key", "")).strip()
 
     if not url or not api_key or not target_base:
         raise ValueError("Server settings or target path not configured")
@@ -456,6 +537,7 @@ def run_sync(config: dict[str, Any]) -> list[dict[str, Any]]:
             jellyfin_root,
             host_root,
             trakt_client_id,
+            tmdb_api_key,
         )
         results.append(result)
 

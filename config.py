@@ -29,6 +29,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "media_path_in_jellyfin": "",
     "media_path_on_host": "",
     "trakt_client_id": "",
+    "tmdb_api_key": "",
     "groups": [],
 }
 
