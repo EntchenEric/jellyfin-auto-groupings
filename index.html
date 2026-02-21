@@ -1083,7 +1083,8 @@
                 { value: 'genre', label: 'Genre' },
                 { value: 'actor', label: 'Actor' },
                 { value: 'studio', label: 'Studio' },
-                { value: 'tag', label: 'Jellyfin Tag' }
+                { value: 'tag', label: 'Jellyfin Tag' },
+                { value: 'complex', label: 'Complex Rule-set (Mixed)' }
             ],
             external: [
                 { value: 'imdb_list', label: 'IMDb List' },
@@ -1095,7 +1096,7 @@
             ]
         };
 
-        const metadataTypes = ['genre', 'actor', 'studio', 'tag'];
+        const metadataTypes = ['genre', 'actor', 'studio', 'tag', 'complex'];
 
         let currentConfig = { groups: [] };
         let pendingImportData = null;
@@ -1111,7 +1112,10 @@
             if (isMetadataType && isServerValidated) {
                 const validRules = window._currentMetadataRules.filter(r => r.value && r.value.trim() !== '');
                 if (validRules.length === 0) return '';
-                const parts = validRules.map((r, i) => (i === 0 ? r.value.trim() : `${r.operator} ${r.value.trim()}`));
+                const parts = validRules.map((r, i) => {
+                    const prefix = type === 'complex' ? `${r.type || 'genre'}:` : '';
+                    return i === 0 ? `${prefix}${r.value.trim()}` : `${r.operator} ${prefix}${r.value.trim()}`;
+                });
                 return parts.join(' ');
             }
             return document.getElementById('source_value').value.trim();
@@ -1122,9 +1126,19 @@
             const pattern = /\s+(AND NOT|OR NOT|AND|OR)\s+/i;
             const parts = valStr.split(pattern);
             const rules = [];
-            rules.push({ operator: '', value: parts[0].trim() });
+
+            const parseRule = (s) => {
+                const match = s.trim().match(/^(\w+):(.+)$/);
+                if (match) return { type: match[1], value: match[2].trim() };
+                return { value: s.trim() };
+            };
+
+            const first = parseRule(parts[0]);
+            rules.push({ operator: '', ...first });
+
             for (let i = 1; i < parts.length; i += 2) {
-                rules.push({ operator: parts[i].trim().toUpperCase().replace(/\s+/g, ' '), value: parts[i + 1].trim() });
+                const rest = parseRule(parts[i + 1]);
+                rules.push({ operator: parts[i].trim().toUpperCase().replace(/\s+/g, ' '), ...rest });
             }
             return rules;
         }
@@ -1133,7 +1147,6 @@
             const container = document.getElementById('metadata_rules_container');
             container.innerHTML = '';
             const type = document.getElementById('source_type').value;
-            const options = cachedMetadata[type] || [];
 
             window._currentMetadataRules.forEach((rule, index) => {
                 const row = document.createElement('div');
@@ -1154,12 +1167,34 @@
                     row.appendChild(opSelect);
                 }
 
+                if (type === 'complex') {
+                    const rowTypeSelect = document.createElement('select');
+                    rowTypeSelect.setAttribute('style', 'flex: 0 0 auto; width: 110px; padding: 0.8rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 0.9rem;');
+                    const types = ['genre', 'actor', 'studio', 'tag'];
+                    types.forEach(t => {
+                        const o = document.createElement('option');
+                        o.value = t;
+                        o.textContent = t.charAt(0).toUpperCase() + t.slice(1);
+                        if (rule.type === t || (!rule.type && t === 'genre')) o.selected = true;
+                        if (!rule.type) rule.type = 'genre';
+                        rowTypeSelect.appendChild(o);
+                    });
+                    rowTypeSelect.onchange = (e) => {
+                        rule.type = e.target.value;
+                        renderMetadataRules();
+                    };
+                    row.appendChild(rowTypeSelect);
+                }
+
+                const rowType = type === 'complex' ? (rule.type || 'genre') : type;
+                const options = cachedMetadata[rowType] || [];
+
                 const valSelect = document.createElement('select');
                 valSelect.setAttribute('style', 'flex: 1; padding: 0.8rem 1rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 1rem;');
 
                 const defaultOpt = document.createElement('option');
                 defaultOpt.value = '';
-                defaultOpt.textContent = 'Select ' + type + '...';
+                defaultOpt.textContent = 'Select ' + rowType + '...';
                 defaultOpt.disabled = true;
                 defaultOpt.selected = !rule.value;
                 valSelect.appendChild(defaultOpt);
@@ -1691,12 +1726,16 @@
                 sort_order: document.getElementById('sort_order_enabled').checked ? (document.getElementById('sort_order').value || '') : ''
             };
 
-            if (source_type === 'complex') {
-                if (typeof window._complexRules !== 'undefined' && Array.isArray(window._complexRules)) {
-                    groupData.rules = window._complexRules;
-                    groupData.source_value = "Custom Multi-Rule Filter";
-                } else {
-                    groupData.rules = [];
+            if (metadataTypes.includes(source_type)) {
+                if (typeof window._currentMetadataRules !== 'undefined' && Array.isArray(window._currentMetadataRules)) {
+                    const validRules = window._currentMetadataRules.filter(r => r.value && r.value.trim() !== '');
+                    if (validRules.length > 0) {
+                        groupData.rules = validRules.map(r => ({
+                            operator: r.operator || 'AND',
+                            type: r.type || (source_type === 'complex' ? 'genre' : source_type),
+                            value: r.value
+                        }));
+                    }
                 }
             }
 

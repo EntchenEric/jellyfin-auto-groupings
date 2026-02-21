@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from collections import Counter
 from typing import Any
  
@@ -20,7 +21,7 @@ from flask.typing import ResponseReturnValue
 
 from config import load_config, save_config
 from jellyfin import fetch_jellyfin_items
-from sync import run_sync
+from sync import parse_complex_query, preview_group, run_sync
 
 bp = Blueprint("main", __name__)
 
@@ -276,7 +277,7 @@ def preview_grouping() -> ResponseReturnValue:
         return jsonify({"status": "error", "message": "Missing or invalid 'type'"}), 400
     
     type_name = type_raw.lower().strip()
-    allowed_types = {"genre", "studio", "tag", "year", "actor", "general"}
+    allowed_types = {"genre", "studio", "tag", "year", "actor", "general", "complex"}
     if not type_name or type_name not in allowed_types:
         return (
             jsonify({"status": "error", "message": f"Invalid metadata type: {type_raw}"}),
@@ -292,26 +293,12 @@ def preview_grouping() -> ResponseReturnValue:
     if not val:
         return jsonify({"status": "error", "message": "Value cannot be empty"}), 400
 
-    from sync import (
-        _fetch_items_for_complex_group,
-        _fetch_items_for_metadata_group,
-        parse_complex_query,
-    )
-
     try:
-        import re
-
-        # If the value contains logical operators, parse as complex query
-        if re.search(r"\s+(AND NOT|OR NOT|AND|OR)\s+", val, re.IGNORECASE):
-            rules = parse_complex_query(val, type_name)
-            items, error = _fetch_items_for_complex_group("preview", rules, "", url, api_key)
-        else:
-            items, error = _fetch_items_for_metadata_group(
-                "preview", type_name, val, "", url, api_key
-            )
+        # Resolve items using the public sync API
+        items, error, status_code = preview_group(type_name, val, url, api_key)
 
         if error is not None:
-            return jsonify({"status": "error", "message": error}), 400
+            return jsonify({"status": "error", "message": error}), status_code
 
         # Return summary count and first few items
         results = [
