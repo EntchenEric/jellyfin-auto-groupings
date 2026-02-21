@@ -714,6 +714,24 @@
                                 style="padding: 0.5rem; font-size: 0.85rem;">
                         </div>
 
+                        <div class="form-group"
+                            style="margin-top: 0.8rem; padding: 1rem; background: rgba(0,0,0,0.1); border-radius: var(--radius-md); border: 1px dashed var(--glass-border);">
+                            <h3
+                                style="font-size: 0.9rem; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <span>📺</span> MyAnimeList API <span
+                                    style="font-weight: 400; color: var(--text-secondary);">(Optional)</span>
+                            </h3>
+                            <p style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.8rem;">Only
+                                needed if you want to use MyAnimeList lists. Create a free API app at
+                                <a href="https://myanimelist.net/apiconfig" target="_blank"
+                                    style="color: var(--accent-color);">myanimelist.net/apiconfig</a> to get your
+                                Client ID.
+                            </p>
+                            <label for="mal_client_id" style="font-size: 0.75rem; opacity: 0.8;">MAL Client ID</label>
+                            <input type="text" id="mal_client_id" placeholder="Your MyAnimeList API Client ID"
+                                style="padding: 0.5rem; font-size: 0.85rem;">
+                        </div>
+
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
                             <button type="button" id="auto-detect-btn" onclick="autoDetectPaths()" class="secondary-btn"
                                 style="border-color: var(--accent-color); color: var(--accent-color);">
@@ -862,6 +880,7 @@
                                     <option value="trakt_list_order">📋 Trakt List Order</option>
                                     <option value="tmdb_list_order">📋 TMDb List Order</option>
                                     <option value="anilist_list_order">📋 AniList List Order</option>
+                                    <option value="mal_list_order">📋 MyAnimeList List Order</option>
                                     <option value="CommunityRating">⭐ Community Rating (highest first)</option>
                                     <option value="ProductionYear">📅 Production Year (newest first)</option>
                                     <option value="SortName">🔤 Name (A → Z)</option>
@@ -1019,7 +1038,8 @@
                 { value: 'imdb_list', label: 'IMDb List' },
                 { value: 'trakt_list', label: 'Trakt List' },
                 { value: 'tmdb_list', label: 'TMDb List' },
-                { value: 'anilist_list', label: 'AniList List' }
+                { value: 'anilist_list', label: 'AniList List' },
+                { value: 'mal_list', label: 'MyAnimeList List' }
             ]
         };
 
@@ -1059,6 +1079,7 @@
                 document.getElementById('media_path_in_jellyfin').value = currentConfig.media_path_in_jellyfin || currentConfig.jellyfin_root || '';
                 document.getElementById('media_path_on_host').value = currentConfig.media_path_on_host || currentConfig.host_root || '';
                 document.getElementById('trakt_client_id').value = currentConfig.trakt_client_id || '';
+                document.getElementById('mal_client_id').value = currentConfig.mal_client_id || '';
 
                 updateSourceTypeOptions();
                 renderGroups();
@@ -1231,6 +1252,9 @@
                 } else if (type === 'anilist_list') {
                     sourceValueInput.placeholder = 'e.g. username  or  username/PLANNING';
                     sourceValueHelp.innerHTML = 'Enter your AniList username (e.g. <code>username</code>) or username and status (e.g. <code>username/PLANNING</code>). Matches by AniList ID against your Jellyfin library.';
+                } else if (type === 'mal_list') {
+                    sourceValueInput.placeholder = 'e.g. username  or  username/PLANNING';
+                    sourceValueHelp.innerHTML = 'Enter your MAL username (e.g. <code>username</code>) or username and status (e.g. <code>username/plan_to_watch</code>). Matches by MAL ID against your Jellyfin library.';
                 } else if (type === 'general') {
                     sourceValueInput.placeholder = 'e.g. Action  or  tt1234567';
                     sourceValueHelp.textContent = 'Enter item name or date range.';
@@ -1302,6 +1326,9 @@
                 const sortLabels = {
                     'imdb_list_order': '📋 IMDb List Order',
                     'trakt_list_order': '📋 Trakt List Order',
+                    'tmdb_list_order': '📋 TMDb List Order',
+                    'anilist_list_order': '📋 AniList List Order',
+                    'mal_list_order': '📋 MAL List Order',
                     'CommunityRating': '⭐ Community Rating',
                     'ProductionYear': '📅 Production Year',
                     'SortName': '🔤 Name (A→Z)',
@@ -1371,6 +1398,7 @@
             currentConfig.media_path_in_jellyfin = document.getElementById('media_path_in_jellyfin').value;
             currentConfig.media_path_on_host = document.getElementById('media_path_on_host').value;
             currentConfig.trakt_client_id = document.getElementById('trakt_client_id').value;
+            currentConfig.mal_client_id = document.getElementById('mal_client_id').value;
 
             await saveAllConfig();
             saveBtn.classList.remove('btn-loading');

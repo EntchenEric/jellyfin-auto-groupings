@@ -19,17 +19,18 @@ from typing import Any
 from anilist import fetch_anilist_list
 from imdb import fetch_imdb_list
 from jellyfin import SORT_MAP, fetch_jellyfin_items
+from mal import fetch_mal_list
 from tmdb import fetch_tmdb_list
 from trakt import fetch_trakt_list
 
-# Source types that come from external lists (IMDb / Trakt / TMDb / AniList) rather than
+# Source types that come from external lists (IMDb / Trakt / TMDb / AniList / MyAnimeList) rather than
 # from a Jellyfin metadata filter.
-_LIST_SOURCES: frozenset[str] = frozenset({"imdb_list", "trakt_list", "tmdb_list", "anilist_list"})
+_LIST_SOURCES: frozenset[str] = frozenset({"imdb_list", "trakt_list", "tmdb_list", "anilist_list", "mal_list"})
 
 # ``sort_order`` values that mean "keep the order from the external list"
 # rather than applying a Jellyfin / in-memory sort.
 _LIST_ORDER_VALUES: frozenset[str] = frozenset(
-    {"imdb_list_order", "trakt_list_order", "tmdb_list_order", "anilist_list_order"}
+    {"imdb_list_order", "trakt_list_order", "tmdb_list_order", "anilist_list_order", "mal_list_order"}
 )
 
 
@@ -377,6 +378,84 @@ def _fetch_items_for_anilist_group(
     return items, None
 
 
+def _fetch_items_for_mal_group(
+    group_name: str,
+    source_value: str,
+    sort_order: str,
+    url: str,
+    api_key: str,
+    mal_client_id: str,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """Resolve Jellyfin items for a MyAnimeList-list–backed group.
+
+    Args:
+        group_name: Human-readable group name (used for logging).
+        source_value: MAL username or ``"username/status"`` shorthand.
+        sort_order: Requested sort order key.
+        url: Jellyfin base URL.
+        api_key: Jellyfin API key.
+        mal_client_id: MyAnimeList Client ID.
+
+    Returns:
+        A ``(items, error)`` tuple (same semantics as
+        :func:`_fetch_items_for_imdb_group`).
+    """
+    if not mal_client_id:
+        msg = "MyAnimeList Client ID not set — add mal_client_id in Server Settings"
+        print(f"No MAL Client ID configured for group {group_name!r}")
+        return [], msg
+
+    username = source_value
+    status = None
+    if "/" in source_value:
+        split_val = source_value.split("/", 1)
+        username = split_val[0]
+        status = split_val[1]
+
+    try:
+        mal_ids = fetch_mal_list(username, mal_client_id, status)
+        print(f"MyAnimeList user {username!r} (status={status!r}): {len(mal_ids)} items found")
+    except Exception as exc:
+        print(f"Error fetching MyAnimeList items for group {group_name!r}: {exc}")
+        return [], str(exc)
+
+    if not mal_ids:
+        print(f"No items found for MyAnimeList user {username!r}")
+        return [], None
+
+    try:
+        raw_items = fetch_jellyfin_items(
+            url,
+            api_key,
+            {
+                "Recursive": "true",
+                "Fields": "Path,ProviderIds",
+                "IncludeItemTypes": "Movie,Series",
+                "Limit": "10000",
+            },
+            timeout=60,
+        )
+        print(f"Jellyfin library: {len(raw_items)} items fetched for matching")
+    except Exception as exc:
+        print(f"Error fetching Jellyfin library for group {group_name!r}: {exc}")
+        return [], str(exc)
+
+    # Index by MAL ID for O(1) lookup
+    jf_by_mal: dict[str, dict[str, Any]] = {
+        item.get("ProviderIds", {}).get("Mal", ""): item
+        for item in raw_items
+        if item.get("ProviderIds", {}).get("Mal")
+    }
+
+    if sort_order == "mal_list_order":
+        items = [jf_by_mal[str(mid)] for mid in mal_ids if str(mid) in jf_by_mal]
+    else:
+        matched = {str(mid) for mid in mal_ids}
+        items = [v for k, v in jf_by_mal.items() if k in matched]
+
+    return items, None
+
+
 def _fetch_items_for_metadata_group(
     group_name: str,
     source_type: str | None,
@@ -442,6 +521,7 @@ def _process_group(
     host_root: str,
     trakt_client_id: str,
     tmdb_api_key: str,
+    mal_client_id: str,
 ) -> dict[str, Any]:
     """Process a single grouping: fetch items, then create symlinks.
 
@@ -457,6 +537,7 @@ def _process_group(
         host_root: Host-side media path prefix (for path translation).
         trakt_client_id: Trakt API Client ID (may be empty).
         tmdb_api_key: TMDb API Key (may be empty).
+        mal_client_id: MyAnimeList Client ID (may be empty).
 
     Returns:
         A result dict with keys ``"group"``, ``"links"`` and optionally
@@ -497,6 +578,10 @@ def _process_group(
     elif source_type == "anilist_list":
         items, error = _fetch_items_for_anilist_group(
             group_name, source_value or "", sort_order, url, api_key
+        )
+    elif source_type == "mal_list":
+        items, error = _fetch_items_for_mal_group(
+            group_name, source_value or "", sort_order, url, api_key, mal_client_id
         )
     else:
         items, error = _fetch_items_for_metadata_group(
@@ -589,6 +674,7 @@ def run_sync(config: dict[str, Any]) -> list[dict[str, Any]]:
     ).strip()
     trakt_client_id: str = str(config.get("trakt_client_id", "")).strip()
     tmdb_api_key: str = str(config.get("tmdb_api_key", "")).strip()
+    mal_client_id: str = str(config.get("mal_client_id", "")).strip()
 
     if not url or not api_key or not target_base:
         raise ValueError("Server settings or target path not configured")
@@ -614,6 +700,7 @@ def run_sync(config: dict[str, Any]) -> list[dict[str, Any]]:
             host_root,
             trakt_client_id,
             tmdb_api_key,
+            mal_client_id,
         )
         results.append(result)
 
