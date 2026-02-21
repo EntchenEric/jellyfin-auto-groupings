@@ -860,6 +860,8 @@
                                     <option value="">None (filesystem order)</option>
                                     <option value="imdb_list_order">📋 IMDb List Order</option>
                                     <option value="trakt_list_order">📋 Trakt List Order</option>
+                                    <option value="tmdb_list_order">📋 TMDb List Order</option>
+                                    <option value="anilist_list_order">📋 AniList List Order</option>
                                     <option value="CommunityRating">⭐ Community Rating (highest first)</option>
                                     <option value="ProductionYear">📅 Production Year (newest first)</option>
                                     <option value="SortName">🔤 Name (A → Z)</option>
@@ -1015,7 +1017,9 @@
             ],
             external: [
                 { value: 'imdb_list', label: 'IMDb List' },
-                { value: 'trakt_list', label: 'Trakt List' }
+                { value: 'trakt_list', label: 'Trakt List' },
+                { value: 'tmdb_list', label: 'TMDb List' },
+                { value: 'anilist_list', label: 'AniList List' }
             ]
         };
 
@@ -1221,6 +1225,12 @@
                 } else if (type === 'trakt_list') {
                     sourceValueInput.placeholder = 'https://trakt.tv/users/username/lists/list-slug';
                     sourceValueHelp.innerHTML = 'Paste the full Trakt list URL. Requires a <strong>Trakt Client ID</strong> in Server Settings. Matches by IMDb ID against your Jellyfin library.';
+                } else if (type === 'tmdb_list') {
+                    sourceValueInput.placeholder = 'e.g. 12345 or full TMDb list URL';
+                    sourceValueHelp.innerHTML = 'Enter the TMDb list ID or paste the full URL. Matches by TMDb ID against your Jellyfin library.';
+                } else if (type === 'anilist_list') {
+                    sourceValueInput.placeholder = 'e.g. username  or  username/PLANNING';
+                    sourceValueHelp.innerHTML = 'Enter your AniList username (e.g. <code>username</code>) or username and status (e.g. <code>username/PLANNING</code>). Matches by AniList ID against your Jellyfin library.';
                 } else if (type === 'general') {
                     sourceValueInput.placeholder = 'e.g. Action  or  tt1234567';
                     sourceValueHelp.textContent = 'Enter item name or date range.';

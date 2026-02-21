@@ -16,19 +16,20 @@ import os
 import shutil
 from typing import Any
 
+from anilist import fetch_anilist_list
 from imdb import fetch_imdb_list
 from jellyfin import SORT_MAP, fetch_jellyfin_items
 from tmdb import fetch_tmdb_list
 from trakt import fetch_trakt_list
 
-# Source types that come from external lists (IMDb / Trakt / TMDb) rather than
+# Source types that come from external lists (IMDb / Trakt / TMDb / AniList) rather than
 # from a Jellyfin metadata filter.
-_LIST_SOURCES: frozenset[str] = frozenset({"imdb_list", "trakt_list", "tmdb_list"})
+_LIST_SOURCES: frozenset[str] = frozenset({"imdb_list", "trakt_list", "tmdb_list", "anilist_list"})
 
 # ``sort_order`` values that mean "keep the order from the external list"
 # rather than applying a Jellyfin / in-memory sort.
 _LIST_ORDER_VALUES: frozenset[str] = frozenset(
-    {"imdb_list_order", "trakt_list_order", "tmdb_list_order"}
+    {"imdb_list_order", "trakt_list_order", "tmdb_list_order", "anilist_list_order"}
 )
 
 
@@ -305,6 +306,77 @@ def _fetch_items_for_tmdb_group(
     return items, None
 
 
+def _fetch_items_for_anilist_group(
+    group_name: str,
+    source_value: str,
+    sort_order: str,
+    url: str,
+    api_key: str,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """Resolve Jellyfin items for an AniList-list–backed group.
+
+    Args:
+        group_name: Human-readable group name (used for logging).
+        source_value: AniList username or ``"username/status"`` shorthand.
+        sort_order: Requested sort order key.
+        url: Jellyfin base URL.
+        api_key: Jellyfin API key.
+
+    Returns:
+        A ``(items, error)`` tuple (same semantics as
+        :func:`_fetch_items_for_imdb_group`).
+    """
+    username = source_value
+    status = None
+    if "/" in source_value:
+        split_val = source_value.split("/", 1)
+        username = split_val[0]
+        status = split_val[1]
+
+    try:
+        anilist_ids = fetch_anilist_list(username, status)
+        print(f"AniList user {username!r} (status={status!r}): {len(anilist_ids)} items found")
+    except Exception as exc:
+        print(f"Error fetching AniList items for group {group_name!r}: {exc}")
+        return [], str(exc)
+
+    if not anilist_ids:
+        print(f"No items found for AniList user {username!r}")
+        return [], None
+
+    try:
+        raw_items = fetch_jellyfin_items(
+            url,
+            api_key,
+            {
+                "Recursive": "true",
+                "Fields": "Path,ProviderIds",
+                "IncludeItemTypes": "Movie,Series",
+                "Limit": "10000",
+            },
+            timeout=60,
+        )
+        print(f"Jellyfin library: {len(raw_items)} items fetched for matching")
+    except Exception as exc:
+        print(f"Error fetching Jellyfin library for group {group_name!r}: {exc}")
+        return [], str(exc)
+
+    # Index by AniList ID for O(1) lookup
+    jf_by_anilist: dict[str, dict[str, Any]] = {
+        item.get("ProviderIds", {}).get("Anilist", ""): item
+        for item in raw_items
+        if item.get("ProviderIds", {}).get("Anilist")
+    }
+
+    if sort_order == "anilist_list_order":
+        items = [jf_by_anilist[str(aid)] for aid in anilist_ids if str(aid) in jf_by_anilist]
+    else:
+        matched = {str(aid) for aid in anilist_ids}
+        items = [v for k, v in jf_by_anilist.items() if k in matched]
+
+    return items, None
+
+
 def _fetch_items_for_metadata_group(
     group_name: str,
     source_type: str | None,
@@ -421,6 +493,10 @@ def _process_group(
     elif source_type == "tmdb_list":
         items, error = _fetch_items_for_tmdb_group(
             group_name, source_value or "", sort_order, url, api_key, tmdb_api_key
+        )
+    elif source_type == "anilist_list":
+        items, error = _fetch_items_for_anilist_group(
+            group_name, source_value or "", sort_order, url, api_key
         )
     else:
         items, error = _fetch_items_for_metadata_group(
