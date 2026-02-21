@@ -78,13 +78,21 @@ def _sort_items_in_memory(
     reverse = sort_dir_str.split(",")[0] == "Descending"
 
     def _key(item: dict[str, Any]) -> tuple[int, Any]:
-        """Sorting key – pushes items missing the field to the end."""
-        value = item.get(primary_key)
-        if value is None:
-            return (1, "")
-        return (0, value)
+        """Sorting key – pushes items missing the field to the end.
 
-    return sorted(items, key=_key, reverse=reverse)
+        The *missing* component is set so that tuples for absent values are
+        always larger than tuples for present values, regardless of whether
+        the overall sort is ascending or descending.
+        """
+        value = item.get(primary_key)
+        # For ascending (reverse=False): missing=1 > present=0  → end
+        # For descending (reverse=True):  missing=0 < present=1 → end (smallest after reversal)
+        missing = 0 if value is None else 1
+        if not reverse:
+            missing = 1 if value is None else 0
+        return (missing, value or "")
+
+    return sorted(items, key=_key)
 
 
 def _fetch_items_for_imdb_group(
@@ -383,8 +391,8 @@ def _process_group(
 
         dest_path: str = os.path.join(group_dir, file_name)
         try:
-            os.symlink(source_path, dest_path)
-            print(f"Created symlink: {dest_path} -> {source_path}")
+            os.symlink(host_path, dest_path)
+            print(f"Created symlink: {dest_path} -> {host_path}")
             links_created += 1
         except OSError as exc:
             print(f"Error creating symlink {dest_path}: {exc}")

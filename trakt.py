@@ -95,7 +95,10 @@ def fetch_trakt_list(list_url: str, client_id: str) -> list[str]:
             if imdb_id and imdb_id not in ids:
                 ids.append(imdb_id)
 
-        total_pages: int = int(resp.headers.get("X-Pagination-Page-Count", 1))
+        try:
+            total_pages: int = int(resp.headers.get("X-Pagination-Page-Count", 1))
+        except ValueError:
+            total_pages = 1
         if page >= total_pages or page >= _MAX_PAGES:
             break
         page += 1

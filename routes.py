@@ -9,6 +9,7 @@ other modules, and serialise results back to JSON.
 
 from __future__ import annotations
 
+import logging
 import os
 from collections import Counter
 from typing import Any
@@ -72,11 +73,24 @@ def update_config() -> ResponseReturnValue:
     The entire configuration object is replaced with the POSTed JSON.
 
     Returns:
-        JSON with ``status`` and the saved ``config``.
+        JSON with ``status`` and the saved ``config``, or a 500 error if the
+        config file could not be written.
     """
-    new_config: dict[str, Any] = request.json  # type: ignore[assignment]
-    save_config(new_config)
-    return jsonify({"status": "success", "config": new_config})
+    new_config = request.get_json(silent=True)
+    if not isinstance(new_config, dict):
+        return (
+            jsonify({"status": "error", "message": "Request body must be a JSON object"}),
+            400,
+        )
+    try:
+        save_config(new_config)
+        return jsonify({"status": "success", "config": new_config})
+    except OSError as exc:
+        logging.exception("Failed to write config file")
+        return (
+            jsonify({"status": "error", "message": f"Config file write failed: {exc}"}),
+            500,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -93,7 +107,12 @@ def test_server() -> ResponseReturnValue:
     Returns:
         JSON with ``status`` and a human-readable ``message``.
     """
-    data: dict[str, Any] = request.json  # type: ignore[assignment]
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return (
+            jsonify({"status": "error", "message": "Request body must be a JSON object"}),
+            400,
+        )
     url: str = str(data.get("jellyfin_url", "")).rstrip("/")
     api_key: str = str(data.get("api_key", ""))
 
