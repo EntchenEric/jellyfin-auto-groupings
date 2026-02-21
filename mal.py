@@ -40,7 +40,7 @@ def fetch_mal_list(username: str, client_id: str, status: str | None = None) -> 
             normalized_status = "on_hold"
         elif s in valid_statuses:
             normalized_status = s
-        elif status.upper() == "ALL":
+        elif s == "all":
             normalized_status = None
         else:
             normalized_status = s # Fallback to whatever user typed

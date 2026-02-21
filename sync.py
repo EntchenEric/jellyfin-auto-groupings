@@ -19,18 +19,28 @@ from typing import Any
 from anilist import fetch_anilist_list
 from imdb import fetch_imdb_list
 from jellyfin import SORT_MAP, fetch_jellyfin_items
+from letterboxd import fetch_letterboxd_list
 from mal import fetch_mal_list
 from tmdb import fetch_tmdb_list
 from trakt import fetch_trakt_list
 
-# Source types that come from external lists (IMDb / Trakt / TMDb / AniList / MyAnimeList) rather than
+# Source types that come from external lists (IMDb / Trakt / TMDb / AniList / MyAnimeList / Letterboxd) rather than
 # from a Jellyfin metadata filter.
-_LIST_SOURCES: frozenset[str] = frozenset({"imdb_list", "trakt_list", "tmdb_list", "anilist_list", "mal_list"})
+_LIST_SOURCES: frozenset[str] = frozenset(
+    {"imdb_list", "trakt_list", "tmdb_list", "anilist_list", "mal_list", "letterboxd_list"}
+)
 
 # ``sort_order`` values that mean "keep the order from the external list"
 # rather than applying a Jellyfin / in-memory sort.
 _LIST_ORDER_VALUES: frozenset[str] = frozenset(
-    {"imdb_list_order", "trakt_list_order", "tmdb_list_order", "anilist_list_order", "mal_list_order"}
+    {
+        "imdb_list_order",
+        "trakt_list_order",
+        "tmdb_list_order",
+        "anilist_list_order",
+        "mal_list_order",
+        "letterboxd_list_order",
+    }
 )
 
 
@@ -385,6 +395,102 @@ def _fetch_items_for_mal_group(
     )
 
 
+def _fetch_items_for_letterboxd_group(
+    group_name: str,
+    source_value: str,
+    sort_order: str,
+    url: str,
+    api_key: str,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """Resolve Jellyfin items for a Letterboxd-list–backed group.
+
+    Args:
+        group_name: Human-readable group name (used for logging).
+        source_value: Letterboxd list URL.
+        sort_order: Requested sort order key.
+        url: Jellyfin base URL.
+        api_key: Jellyfin API key.
+
+    Returns:
+        A ``(items, error)`` tuple (same semantics as
+        :func:`_fetch_items_for_imdb_group`).
+    """
+    try:
+        external_ids = fetch_letterboxd_list(source_value)
+        print(f"Letterboxd list {source_value!r}: {len(external_ids)} IDs found")
+    except Exception as exc:
+        print(f"Error fetching Letterboxd list for group {group_name!r}: {exc}")
+        return [], str(exc)
+
+    if not external_ids:
+        print(f"No items found in Letterboxd list for group {group_name!r}")
+        return [], None
+
+    # Letterboxd IDs can be IMDb (tt...) or TMDb (numeric)
+    imdb_ids = [eid for eid in external_ids if str(eid).startswith("tt")]
+    tmdb_ids = [eid for eid in external_ids if not str(eid).startswith("tt")]
+
+    # We need to fetch both and merge them if the list contains both
+    all_matched_items: list[dict[str, Any]] = []
+    
+    # We'll use a simplified version of matching here since we have two types of IDs
+    try:
+        raw_items = fetch_jellyfin_items(
+            url,
+            api_key,
+            {
+                "Recursive": "true",
+                "Fields": "Path,ProviderIds",
+                "IncludeItemTypes": "Movie,Series",
+                "Limit": "10000",
+            },
+            timeout=60,
+        )
+    except Exception as exc:
+        print(f"Error fetching Jellyfin library for group {group_name!r}: {exc}")
+        return [], str(exc)
+
+    # Index by both Imdb and Tmdb
+    items_by_imdb: dict[str, dict[str, Any]] = {}
+    items_by_tmdb: dict[str, dict[str, Any]] = {}
+    for item in raw_items:
+        pids = item.get("ProviderIds", {})
+        imdb_v = pids.get("Imdb")
+        if imdb_v:
+            items_by_imdb[str(imdb_v).lower()] = item
+        tmdb_v = pids.get("Tmdb")
+        if tmdb_v:
+            items_by_tmdb[str(tmdb_v)] = item
+
+    if sort_order == "letterboxd_list_order":
+        items = []
+        for eid in external_ids:
+            if str(eid).startswith("tt"):
+                key = str(eid).lower()
+                if key in items_by_imdb:
+                    items.append(items_by_imdb[key])
+            else:
+                key = str(eid)
+                if key in items_by_tmdb:
+                    items.append(items_by_tmdb[key])
+    else:
+        # Just gather all that match
+        seen_jf_ids = set()
+        items = []
+        for eid in external_ids:
+            match = None
+            if str(eid).startswith("tt"):
+                match = items_by_imdb.get(str(eid).lower())
+            else:
+                match = items_by_tmdb.get(str(eid))
+            
+            if match and match["Id"] not in seen_jf_ids:
+                items.append(match)
+                seen_jf_ids.add(match["Id"])
+
+    return items, None
+
+
 def _fetch_items_for_metadata_group(
     group_name: str,
     source_type: str | None,
@@ -511,6 +617,10 @@ def _process_group(
     elif source_type == "mal_list":
         items, error = _fetch_items_for_mal_group(
             group_name, source_value or "", sort_order, url, api_key, mal_client_id
+        )
+    elif source_type == "letterboxd_list":
+        items, error = _fetch_items_for_letterboxd_group(
+            group_name, source_value or "", sort_order, url, api_key
         )
     else:
         items, error = _fetch_items_for_metadata_group(
