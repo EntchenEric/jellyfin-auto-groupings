@@ -69,6 +69,48 @@ def _translate_path(
     return jellyfin_path
 
 
+_LIBRARY_CACHE: dict[tuple[str, str], list[dict[str, Any]]] = {}
+
+
+def _fetch_full_library(
+    url: str,
+    api_key: str,
+    group_name: str,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """Fetch the full Jellyfin library once per run for matching.
+
+    Args:
+        url: Jellyfin base URL.
+        api_key: Jellyfin API key.
+        group_name: Human-readable group name (used for logging).
+
+    Returns:
+        A (raw_items, error) tuple.
+    """
+    cache_key = (url, api_key)
+    if cache_key in _LIBRARY_CACHE:
+        return _LIBRARY_CACHE[cache_key], None
+
+    try:
+        raw_items = fetch_jellyfin_items(
+            url,
+            api_key,
+            {
+                "Recursive": "true",
+                "Fields": "Path,ProviderIds",
+                "IncludeItemTypes": "Movie,Series",
+                "Limit": "10000",
+            },
+            timeout=60,
+        )
+        print(f"Jellyfin library: {len(raw_items)} items fetched for matching")
+        _LIBRARY_CACHE[cache_key] = raw_items
+        return raw_items, None
+    except Exception as exc:
+        print(f"Error fetching Jellyfin library for group {group_name!r}: {exc}")
+        return [], str(exc)
+
+
 def _match_jellyfin_items_by_provider(
     external_ids: list[Any],
     provider_key: str,
@@ -92,25 +134,9 @@ def _match_jellyfin_items_by_provider(
     Returns:
         A (items, error) tuple.
     """
-    try:
-        raw_items = fetch_jellyfin_items(
-            url,
-            api_key,
-            {
-                "Recursive": "true",
-                "Fields": "Path,ProviderIds",
-                "IncludeItemTypes": "Movie,Series",
-                "Limit": "10000",
-            },
-            timeout=60,
-        )
-        if provider_key == "Imdb":
-            print(f"Jellyfin library: {len(raw_items)} items with IMDb IDs")
-        else:
-            print(f"Jellyfin library: {len(raw_items)} items fetched for matching")
-    except Exception as exc:
-        print(f"Error fetching Jellyfin library for group {group_name!r}: {exc}")
-        return [], str(exc)
+    raw_items, error = _fetch_full_library(url, api_key, group_name)
+    if error is not None:
+        return [], error
 
     case_insensitive = provider_key == "Imdb"
 
@@ -434,21 +460,9 @@ def _fetch_items_for_letterboxd_group(
     all_matched_items: list[dict[str, Any]] = []
     
     # We'll use a simplified version of matching here since we have two types of IDs
-    try:
-        raw_items = fetch_jellyfin_items(
-            url,
-            api_key,
-            {
-                "Recursive": "true",
-                "Fields": "Path,ProviderIds",
-                "IncludeItemTypes": "Movie,Series",
-                "Limit": "10000",
-            },
-            timeout=60,
-        )
-    except Exception as exc:
-        print(f"Error fetching Jellyfin library for group {group_name!r}: {exc}")
-        return [], str(exc)
+    raw_items, error = _fetch_full_library(url, api_key, group_name)
+    if error is not None:
+        return [], error
 
     # Index by both Imdb and Tmdb
     items_by_imdb: dict[str, dict[str, Any]] = {}
@@ -725,6 +739,8 @@ def run_sync(config: dict[str, Any]) -> list[dict[str, Any]]:
     if jellyfin_root and host_root:
         print(f"Path translation active: {jellyfin_root} -> {host_root}")
 
+    _LIBRARY_CACHE.clear()
+
     results: list[dict[str, Any]] = []
     for group in groups:
         if not isinstance(group, dict):
@@ -743,4 +759,5 @@ def run_sync(config: dict[str, Any]) -> list[dict[str, Any]]:
         )
         results.append(result)
 
+    _LIBRARY_CACHE.clear()
     return results
