@@ -1,0 +1,412 @@
+"""
+routes.py – Flask Blueprint containing all HTTP route handlers.
+
+Every route is registered on the ``bp`` Blueprint which is imported and
+registered with the Flask application in ``app.py``.  Route handlers are
+intentionally thin: they validate inputs, delegate to service functions in
+other modules, and serialise results back to JSON.
+"""
+
+from __future__ import annotations
+
+import os
+from collections import Counter
+from typing import Any
+
+import requests
+from flask import Blueprint, jsonify, request, send_from_directory
+from flask.typing import ResponseReturnValue
+
+from config import load_config, save_config
+from jellyfin import fetch_jellyfin_items
+from sync import run_sync
+
+bp = Blueprint("main", __name__)
+
+# ---------------------------------------------------------------------------
+# Security helpers for the filesystem browser
+# ---------------------------------------------------------------------------
+
+# Roots that the folder browser is allowed to expose.
+_BROWSE_ROOTS: tuple[str, ...] = tuple(
+    os.path.realpath(r)
+    for r in (os.path.expanduser("~"), "/media", "/mnt")
+)
+
+
+def _path_is_allowed(path: str) -> bool:
+    """Return ``True`` only if *path* is at or below one of the whitelisted roots.
+
+    Args:
+        path: Absolute filesystem path to check.
+
+    Returns:
+        ``True`` if access should be permitted, ``False`` otherwise.
+    """
+    real = os.path.realpath(path)
+    return any(
+        real == root or real.startswith(root + os.sep)
+        for root in _BROWSE_ROOTS
+    )
+
+
+# ---------------------------------------------------------------------------
+# Config routes
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/api/config", methods=["GET"])
+def get_config() -> ResponseReturnValue:
+    """Return the current application configuration as JSON.
+
+    Returns:
+        JSON-serialised configuration dictionary.
+    """
+    return jsonify(load_config())
+
+
+@bp.route("/api/config", methods=["POST"])
+def update_config() -> ResponseReturnValue:
+    """Persist a new application configuration supplied in the request body.
+
+    The entire configuration object is replaced with the POSTed JSON.
+
+    Returns:
+        JSON with ``status`` and the saved ``config``.
+    """
+    new_config: dict[str, Any] = request.json  # type: ignore[assignment]
+    save_config(new_config)
+    return jsonify({"status": "success", "config": new_config})
+
+
+# ---------------------------------------------------------------------------
+# Connection test
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/api/test-server", methods=["POST"])
+def test_server() -> ResponseReturnValue:
+    """Verify connectivity to a Jellyfin server.
+
+    Expects a JSON body with ``jellyfin_url`` and ``api_key`` fields.
+
+    Returns:
+        JSON with ``status`` and a human-readable ``message``.
+    """
+    data: dict[str, Any] = request.json  # type: ignore[assignment]
+    url: str = str(data.get("jellyfin_url", "")).rstrip("/")
+    api_key: str = str(data.get("api_key", ""))
+
+    if not url or not api_key:
+        return jsonify({"status": "error", "message": "URL and API Key are required"}), 400
+
+    try:
+        response = requests.get(
+            f"{url}/System/Info",
+            params={"api_key": api_key},
+            timeout=5,
+        )
+        if response.status_code == 200:
+            return jsonify({"status": "success", "message": "Connected to Jellyfin successfully!"})
+        return (
+            jsonify(
+                {
+                    "status": "error",
+                    "message": f"Server returned status {response.status_code}",
+                }
+            ),
+            400,
+        )
+    except requests.exceptions.RequestException as exc:
+        return jsonify({"status": "error", "message": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"status": "error", "message": str(exc)}), 400
+
+
+# ---------------------------------------------------------------------------
+# Jellyfin metadata
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/api/jellyfin/metadata", methods=["GET"])
+def get_jellyfin_metadata() -> ResponseReturnValue:
+    """Return aggregated metadata (genres, studios, tags, actors) from Jellyfin.
+
+    Fetches all Movies and Series from the configured Jellyfin instance and
+    counts occurrences of each metadata field, returning sorted lists.
+
+    Returns:
+        JSON with ``status`` and a ``metadata`` object containing ``genre``,
+        ``studio``, ``tag``, and ``actor`` lists (sorted by frequency).
+    """
+    config: dict[str, Any] = load_config()
+    if not isinstance(config, dict):
+        return jsonify({"status": "error", "message": "Invalid configuration format"}), 500
+
+    url: str = str(config.get("jellyfin_url", "")).rstrip("/")
+    api_key: str = str(config.get("api_key", ""))
+
+    if not url or not api_key:
+        return jsonify({"status": "error", "message": "Server settings not configured"}), 400
+
+    try:
+        items = fetch_jellyfin_items(
+            url,
+            api_key,
+            {
+                "Recursive": "true",
+                "IncludeItemTypes": "Movie,Series",
+                "Fields": "Genres,Studios,Tags,People",
+            },
+            timeout=30,
+        )
+
+        genres_counts: Counter[str] = Counter()
+        studios_counts: Counter[str] = Counter()
+        tags_counts: Counter[str] = Counter()
+        people_counts: Counter[str] = Counter()
+
+        for item in items:
+            for g in item.get("Genres", []):
+                genres_counts[g] += 1
+            for s in item.get("Studios", []):
+                s_name: str | None = s.get("Name")
+                if s_name:
+                    studios_counts[s_name] += 1
+            for t in item.get("Tags", []):
+                tags_counts[t] += 1
+            for p in item.get("People", []):
+                if p.get("Type") == "Actor":
+                    p_name: str | None = p.get("Name")
+                    if p_name:
+                        people_counts[p_name] += 1
+
+        return jsonify(
+            {
+                "status": "success",
+                "metadata": {
+                    "genre": [x[0] for x in genres_counts.most_common()],
+                    "studio": [x[0] for x in studios_counts.most_common()],
+                    "tag": [x[0] for x in tags_counts.most_common()],
+                    "actor": [x[0] for x in people_counts.most_common()],
+                },
+            }
+        )
+    except Exception as exc:
+        return jsonify({"status": "error", "message": str(exc)}), 400
+
+
+# ---------------------------------------------------------------------------
+# Sync
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/api/sync", methods=["POST"])
+def sync_groupings() -> ResponseReturnValue:
+    """Trigger a full synchronisation of all configured groupings.
+
+    Reads the current configuration, delegates to :func:`sync.run_sync`, and
+    returns per-group results.
+
+    Returns:
+        JSON with ``status``, a human-readable ``message``, and a ``results``
+        list (one entry per group).
+    """
+    try:
+        config: dict[str, Any] = load_config()
+        sync_results = run_sync(config)
+        return jsonify(
+            {
+                "status": "success",
+                "message": "Synchronization complete",
+                "results": sync_results,
+            }
+        )
+    except ValueError as exc:
+        return jsonify({"status": "error", "message": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"status": "error", "message": f"Sync failed: {str(exc)}"}), 500
+
+
+# ---------------------------------------------------------------------------
+# Auto-detect paths
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/api/jellyfin/auto-detect-paths", methods=["POST"])
+def auto_detect_paths() -> ResponseReturnValue:
+    """Attempt to automatically detect Jellyfin and host media root paths.
+
+    Fetches a sample of movie paths from Jellyfin and then searches the local
+    filesystem (home directory, ``/media``, ``/mnt``) for the matching files.
+    The common path prefix between the Jellyfin path and the local path is
+    returned as the suggested ``media_path_in_jellyfin`` /
+    ``media_path_on_host`` pair.
+
+    Returns:
+        JSON with ``status`` and a ``detected`` object containing
+        ``media_path_in_jellyfin``, ``media_path_on_host``, and
+        ``target_path``.
+    """
+    config: dict[str, Any] = load_config()
+    url: str = str(config.get("jellyfin_url", "")).rstrip("/")
+    api_key: str = str(config.get("api_key", ""))
+
+    if not url or not api_key:
+        return (
+            jsonify({"status": "error", "message": "Server settings required for detection"}),
+            400,
+        )
+
+    try:
+        items = fetch_jellyfin_items(
+            url,
+            api_key,
+            {
+                "Recursive": "true",
+                "IncludeItemTypes": "Movie",
+                "Limit": "10",
+                "Fields": "Path",
+            },
+            timeout=10,
+        )
+    except Exception as exc:
+        return jsonify({"status": "error", "message": str(exc)}), 400
+
+    if not items:
+        return (
+            jsonify(
+                {
+                    "status": "error",
+                    "message": "No media found in Jellyfin to detect paths",
+                }
+            ),
+            400,
+        )
+
+    home_dir: str = os.path.expanduser("~")
+    detected_j_root: str | None = None
+    detected_h_root: str | None = None
+
+    for item in items:
+        j_path: str | None = item.get("Path")
+        if not j_path:
+            continue
+
+        filename: str = os.path.basename(j_path)
+        search_roots: list[str] = [home_dir, "/media", "/mnt"]
+
+        match_found: str | None = None
+        for root in search_roots:
+            for dirpath, dirnames, filenames in os.walk(root):
+                if filename in filenames:
+                    match_found = os.path.join(dirpath, filename)
+                    break
+                # Prune traversal deeper than 6 path components
+                if len(dirpath.split(os.sep)) > 6:
+                    dirnames.clear()
+            if match_found:
+                break
+
+        if match_found:
+            j_parts: list[str] = j_path.split(os.sep)
+            h_parts: list[str] = match_found.split(os.sep)
+
+            # Count how many trailing path components are identical
+            common_count: int = 0
+            while (
+                common_count < len(j_parts)
+                and common_count < len(h_parts)
+                and j_parts[-(common_count + 1)] == h_parts[-(common_count + 1)]
+            ):
+                common_count += 1
+
+            if common_count > 0:
+                detected_j_root = os.sep.join(j_parts[:-common_count]) or os.sep
+                detected_h_root = os.sep.join(h_parts[:-common_count]) or os.sep
+                break
+
+    suggested_target: str = os.path.join(home_dir, "jellyfin-groupings-virtual")
+
+    return jsonify(
+        {
+            "status": "success",
+            "detected": {
+                "media_path_in_jellyfin": detected_j_root,
+                "media_path_on_host": detected_h_root,
+                "target_path": suggested_target,
+            },
+        }
+    )
+
+
+# ---------------------------------------------------------------------------
+# Filesystem browser
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/api/browse", methods=["GET"])
+def browse_directory() -> ResponseReturnValue:
+    """Return the immediate (non-hidden) subdirectories of a given path.
+
+    Used by the frontend folder picker to navigate the host filesystem.
+    Access is restricted to paths under the whitelisted roots (home directory,
+    ``/media``, ``/mnt``).
+
+    Query Parameters:
+        path (str): Absolute path to list.  Defaults to the user's home
+            directory.
+
+    Returns:
+        JSON with ``status``, ``current`` path, nullable ``parent`` path, and
+        ``dirs`` (sorted list of subdirectory names).
+    """
+    raw: str = request.args.get("path", "")
+    path: str = os.path.abspath(raw) if raw else os.path.expanduser("~")
+
+    # Fall back to parent if the supplied path resolves to a file
+    if not os.path.isdir(path):
+        path = os.path.dirname(path)
+
+    if not _path_is_allowed(path):
+        return (
+            jsonify({"status": "error", "message": "Access to this path is not permitted"}),
+            403,
+        )
+
+    try:
+        entries: list[str] = sorted(
+            name
+            for name in os.listdir(path)
+            if os.path.isdir(os.path.join(path, name)) and not name.startswith(".")
+        )
+    except PermissionError:
+        entries = []
+    except OSError as exc:
+        return jsonify({"status": "error", "message": str(exc)}), 400
+
+    parent: str | None = os.path.dirname(path) if path != os.sep else None
+
+    return jsonify(
+        {
+            "status": "success",
+            "current": path,
+            "parent": parent,
+            "dirs": entries,
+        }
+    )
+
+
+# ---------------------------------------------------------------------------
+# Static files
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/")
+def index() -> ResponseReturnValue:
+    """Serve the single-page frontend.
+
+    Returns:
+        The ``index.html`` file located next to ``app.py``.
+    """
+    return send_from_directory(".", "index.html")
