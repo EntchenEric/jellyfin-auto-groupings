@@ -12,17 +12,20 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      # Persist config.json across restarts – no need to create the file manually.
+      # Config persistence – no need to create config.json manually.
       # The app auto-creates it on first start.
       - app_config:/app/config
 
-      # Output directory where virtual grouping folders are created.
-      # Set "Target Path" in the app to /groupings.
+      # Output directory where virtual grouping folders (symlinks) are created.
+      # → In the app, set "Target Path" to: /groupings
       - /path/to/your/groupings-virtual:/groupings
 
-      # Mount your media root so symlinks can resolve to real files.
-      # Set "Host Root" in the app to /media (adjust to your layout).
-      # - /mnt/media:/media:ro
+      # Your media root – so the app can verify symlink targets exist on disk.
+      # → In the app, set "Media path as Jellyfin sees it" to the path Jellyfin
+      #   reports (e.g. /media), and "Same path on this machine" to /media below.
+      # → Adjust the host path to wherever your media actually lives.
+      # - /mnt/user/media:/media:ro
+
     restart: unless-stopped
 
 volumes:

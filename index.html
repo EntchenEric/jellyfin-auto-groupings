@@ -397,6 +397,165 @@
             background: var(--error-color);
             box-shadow: 0 0 8px var(--error-color);
         }
+
+        /* ── Folder Picker ─────────────────────────────────────────── */
+        .picker-row {
+            display: flex;
+            gap: 0.5rem;
+            align-items: stretch;
+        }
+
+        .picker-row input {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .browse-btn {
+            flex-shrink: 0;
+            width: auto;
+            padding: 0 1rem;
+            margin: 0;
+            font-size: 0.85rem;
+            border-radius: var(--radius-md);
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--glass-border);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+
+        .browse-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: var(--accent-color);
+            color: var(--text-primary);
+            transform: none;
+            box-shadow: none;
+        }
+
+        .browse-btn:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
+        /* Picker modal */
+        #path-picker-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(8px);
+        }
+
+        .picker-box {
+            background: var(--surface-color);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            width: min(600px, 95vw);
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+            overflow: hidden;
+        }
+
+        .picker-header {
+            padding: 1.2rem 1.5rem 0.8rem;
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+
+        .picker-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .picker-breadcrumb {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            word-break: break-all;
+            font-family: monospace;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 0.35rem 0.7rem;
+            border-radius: 6px;
+            border: 1px solid var(--glass-border);
+        }
+
+        .picker-body {
+            overflow-y: auto;
+            flex: 1;
+            padding: 0.5rem 0;
+        }
+
+        .picker-item {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            padding: 0.55rem 1.5rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            transition: background 0.15s;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+        }
+
+        .picker-item:hover {
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .picker-item.picker-up {
+            color: var(--text-secondary);
+            font-style: italic;
+            border-bottom: 1px solid var(--glass-border);
+            margin-bottom: 0.25rem;
+        }
+
+        .picker-item-icon {
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .picker-empty {
+            padding: 2rem 1.5rem;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            font-style: italic;
+        }
+
+        .picker-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--glass-border);
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .picker-footer-path {
+            flex: 1;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-family: monospace;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Locked path fields */
+        .path-field-locked {
+            opacity: 0.45;
+            pointer-events: none;
+        }
     </style>
 </head>
 
@@ -487,7 +646,12 @@
                         </div>
                         <div class="form-group">
                             <label for="target_path">Base Target Path</label>
-                            <input type="text" id="target_path" placeholder="/path/to/virtual/libraries" required>
+                            <div id="target_path_group" class="picker-row path-field-locked">
+                                <input type="text" id="target_path" placeholder="/path/to/virtual/libraries" required
+                                    disabled>
+                                <button type="button" class="browse-btn" onclick="openPathPicker('target_path')"
+                                    disabled title="Browse">📂 Browse</button>
+                            </div>
                             <small style="color: var(--text-secondary); font-size: 0.75rem;">A folder on <em>this
                                     machine</em> where symlink folders will be created for each grouping. Jellyfin must
                                 be able to see this path.</small>
@@ -498,24 +662,35 @@
                             style="margin-top: 1rem; padding: 1rem; background: rgba(0,0,0,0.1); border-radius: var(--radius-md); border: 1px dashed var(--glass-border);">
                             <h3
                                 style="font-size: 0.9rem; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.5rem;">
-                                <span>🐳</span> Docker Path Mapping <span
+                                <span>🗂️</span> Media Path Translation <span
                                     style="font-weight: 400; color: var(--text-secondary);">(Optional)</span>
                             </h3>
                             <p style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.8rem;">Only
-                                needed when Jellyfin runs inside Docker and its media paths differ from your host paths.
-                                Leave blank if Jellyfin is installed natively.</p>
+                                needed when Jellyfin's media paths (from Docker or a remote server) differ from where
+                                those files actually live on <em>this</em> machine. Leave blank if the paths match.
+                            </p>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                                 <div>
-                                    <label for="jellyfin_root" style="font-size: 0.75rem; opacity: 0.8;">Jellyfin Root —
-                                        path <em>inside</em> the container</label>
-                                    <input type="text" id="jellyfin_root" placeholder="e.g. /media"
-                                        style="padding: 0.5rem; font-size: 0.85rem;">
+                                    <label for="media_path_in_jellyfin" style="font-size: 0.75rem; opacity: 0.8;">Media
+                                        path as Jellyfin sees it</label>
+                                    <div id="media_path_in_jellyfin_group" class="picker-row path-field-locked">
+                                        <input type="text" id="media_path_in_jellyfin" placeholder="e.g. /media"
+                                            style="padding: 0.5rem; font-size: 0.85rem;" disabled>
+                                        <button type="button" class="browse-btn"
+                                            onclick="openPathPicker('media_path_in_jellyfin')" disabled
+                                            title="Browse">📂</button>
+                                    </div>
                                 </div>
                                 <div>
-                                    <label for="host_root" style="font-size: 0.75rem; opacity: 0.8;">Host Root — same
-                                        path on <em>this</em> machine</label>
-                                    <input type="text" id="host_root" placeholder="e.g. /home/user/media"
-                                        style="padding: 0.5rem; font-size: 0.85rem;">
+                                    <label for="media_path_on_host" style="font-size: 0.75rem; opacity: 0.8;">Same path
+                                        on this machine</label>
+                                    <div id="media_path_on_host_group" class="picker-row path-field-locked">
+                                        <input type="text" id="media_path_on_host" placeholder="e.g. /home/user/media"
+                                            style="padding: 0.5rem; font-size: 0.85rem;" disabled>
+                                        <button type="button" class="browse-btn"
+                                            onclick="openPathPicker('media_path_on_host')" disabled
+                                            title="Browse">📂</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -788,6 +963,23 @@
 
         <div id="status-msg" class="status-msg"></div>
 
+        <!-- Folder Picker Modal -->
+        <div id="path-picker-modal" onclick="pickerOutsideClick(event)">
+            <div class="picker-box">
+                <div class="picker-header">
+                    <div class="picker-title" id="picker-title">Select Folder</div>
+                    <div class="picker-breadcrumb" id="picker-breadcrumb">/</div>
+                </div>
+                <div class="picker-body" id="picker-body"></div>
+                <div class="picker-footer">
+                    <span class="picker-footer-path" id="picker-footer-path">No folder selected</span>
+                    <button onclick="closePicker()" class="secondary-btn"
+                        style="width:auto;padding:0.6rem 1.1rem;margin:0;">Cancel</button>
+                    <button onclick="confirmPicker()" style="width:auto;padding:0.6rem 1.2rem;margin:0;">Select</button>
+                </div>
+            </div>
+        </div>
+
         <div class="footer">
             <p>Run <code>python app.py</code> to start the backend &nbsp;·&nbsp; Jellyfin Groupings</p>
         </div>
@@ -860,8 +1052,8 @@
                 document.getElementById('jellyfin_url').value = currentConfig.jellyfin_url || '';
                 document.getElementById('api_key').value = currentConfig.api_key || '';
                 document.getElementById('target_path').value = currentConfig.target_path || '';
-                document.getElementById('jellyfin_root').value = currentConfig.jellyfin_root || '';
-                document.getElementById('host_root').value = currentConfig.host_root || '';
+                document.getElementById('media_path_in_jellyfin').value = currentConfig.media_path_in_jellyfin || currentConfig.jellyfin_root || '';
+                document.getElementById('media_path_on_host').value = currentConfig.media_path_on_host || currentConfig.host_root || '';
                 document.getElementById('trakt_client_id').value = currentConfig.trakt_client_id || '';
 
                 updateSourceTypeOptions();
@@ -920,6 +1112,8 @@
                     currentConfig.target_path = document.getElementById('target_path').value;
                     await saveAllConfig();
                     await refreshMetadata();
+                    // Auto-detect paths only if fields are currently empty
+                    await autoDetectIfEmpty();
                 } else {
                     showStatus(result.message || 'Connection failed', 'error');
                     updateValidationUI(false);
@@ -1039,16 +1233,44 @@
 
         function updateValidationUI(isValid) {
             isServerValidated = isValid;
+
+            const pathFieldIds = ['target_path', 'media_path_in_jellyfin', 'media_path_on_host'];
+            const pathGroupIds = ['target_path_group', 'media_path_in_jellyfin_group', 'media_path_on_host_group'];
+
             if (isValid) {
                 statusDot.className = 'connection-dot online';
                 statusText.textContent = 'Connected';
                 maintenanceCard.classList.remove('locked-section');
                 groupingsSection.classList.remove('locked-section');
+                // Unlock path fields
+                pathFieldIds.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.disabled = false;
+                });
+                pathGroupIds.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.classList.remove('path-field-locked');
+                        el.querySelectorAll('button').forEach(b => b.disabled = false);
+                    }
+                });
             } else {
                 statusDot.className = 'connection-dot offline';
                 statusText.textContent = 'Disconnected';
                 maintenanceCard.classList.add('locked-section');
                 groupingsSection.classList.add('locked-section');
+                // Lock path fields
+                pathFieldIds.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.disabled = true;
+                });
+                pathGroupIds.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.classList.add('path-field-locked');
+                        el.querySelectorAll('button').forEach(b => b.disabled = true);
+                    }
+                });
             }
             updateSourceTypeOptions();
         }
@@ -1136,8 +1358,8 @@
             currentConfig.jellyfin_url = document.getElementById('jellyfin_url').value;
             currentConfig.api_key = document.getElementById('api_key').value;
             currentConfig.target_path = document.getElementById('target_path').value;
-            currentConfig.jellyfin_root = document.getElementById('jellyfin_root').value;
-            currentConfig.host_root = document.getElementById('host_root').value;
+            currentConfig.media_path_in_jellyfin = document.getElementById('media_path_in_jellyfin').value;
+            currentConfig.media_path_on_host = document.getElementById('media_path_on_host').value;
             currentConfig.trakt_client_id = document.getElementById('trakt_client_id').value;
 
             await saveAllConfig();
@@ -1394,24 +1616,15 @@
         async function autoDetectPaths() {
             const detectBtn = document.getElementById('auto-detect-btn');
             detectBtn.classList.add('btn-loading');
-
             try {
-                const response = await fetch('/api/jellyfin/auto-detect-paths', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                const result = await response.json();
-
-                if (result.status === 'success' && result.detected.host_root) {
-                    document.getElementById('jellyfin_root').value = result.detected.jellyfin_root;
-                    document.getElementById('host_root').value = result.detected.host_root;
+                const result = await fetchAutoDetect();
+                if (result.status === 'success' && result.detected.media_path_on_host) {
+                    document.getElementById('media_path_in_jellyfin').value = result.detected.media_path_in_jellyfin;
+                    document.getElementById('media_path_on_host').value = result.detected.media_path_on_host;
                     document.getElementById('target_path').value = result.detected.target_path;
-
-                    // Update currentConfig in memory too
-                    currentConfig.jellyfin_root = result.detected.jellyfin_root;
-                    currentConfig.host_root = result.detected.host_root;
+                    currentConfig.media_path_in_jellyfin = result.detected.media_path_in_jellyfin;
+                    currentConfig.media_path_on_host = result.detected.media_path_on_host;
                     currentConfig.target_path = result.detected.target_path;
-
                     showStatus('Paths auto-detected! Remember to Save.', 'success');
                 } else if (result.status === 'success') {
                     showStatus('Auto-detection finished but could not find matching host paths. You may need to set them manually.', 'error');
@@ -1425,17 +1638,127 @@
             }
         }
 
+        async function fetchAutoDetect() {
+            const resp = await fetch('/api/jellyfin/auto-detect-paths', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            return resp.json();
+        }
+
+        /** Called silently after a successful test; fills only empty path fields. */
+        async function autoDetectIfEmpty() {
+            const targetEl = document.getElementById('target_path');
+            const jfEl = document.getElementById('media_path_in_jellyfin');
+            const hostEl = document.getElementById('media_path_on_host');
+            if (targetEl.value && jfEl.value && hostEl.value) return;
+            try {
+                const result = await fetchAutoDetect();
+                if (result.status !== 'success') return;
+                const d = result.detected;
+                if (!targetEl.value && d.target_path) { targetEl.value = d.target_path; currentConfig.target_path = d.target_path; }
+                if (!jfEl.value && d.media_path_in_jellyfin) { jfEl.value = d.media_path_in_jellyfin; currentConfig.media_path_in_jellyfin = d.media_path_in_jellyfin; }
+                if (!hostEl.value && d.media_path_on_host) { hostEl.value = d.media_path_on_host; currentConfig.media_path_on_host = d.media_path_on_host; }
+                showStatus('Paths auto-filled — review and save.', 'success');
+            } catch (_) { /* silently ignore */ }
+        }
+
+        // ──────────────────────────────────────────────────────────────
+        // Folder Picker
+        // ──────────────────────────────────────────────────────────────
+        let _pickerTargetId = null;
+        let _pickerCurrentPath = null;
+
+        async function openPathPicker(fieldId) {
+            _pickerTargetId = fieldId;
+            const currentVal = document.getElementById(fieldId).value;
+            document.getElementById('picker-title').textContent =
+                fieldId === 'target_path' ? 'Select Target Path' :
+                    fieldId === 'media_path_in_jellyfin' ? 'Select Media Path (Jellyfin side)' :
+                        'Select Media Path (this machine)';
+            document.getElementById('path-picker-modal').style.display = 'flex';
+            await browseDir(currentVal || '');
+        }
+
+        async function browseDir(path) {
+            document.getElementById('picker-body').innerHTML =
+                '<p style="padding:1.5rem; text-align:center; color:var(--text-secondary);">Loading…</p>';
+            let result;
+            try {
+                const resp = await fetch('/api/browse?path=' + encodeURIComponent(path));
+                result = await resp.json();
+            } catch (e) {
+                document.getElementById('picker-body').innerHTML =
+                    `<p class="picker-empty">Could not load directory: ${e.message}</p>`;
+                return;
+            }
+            if (result.status !== 'success') {
+                document.getElementById('picker-body').innerHTML =
+                    `<p class="picker-empty">${result.message}</p>`;
+                return;
+            }
+            _pickerCurrentPath = result.current;
+            document.getElementById('picker-breadcrumb').textContent = result.current;
+            document.getElementById('picker-footer-path').textContent = result.current;
+
+            const body = document.getElementById('picker-body');
+            body.innerHTML = '';
+
+            if (result.parent) {
+                const up = document.createElement('button');
+                up.className = 'picker-item picker-up';
+                up.innerHTML = '<span class="picker-item-icon">⬆️</span> .. (go up)';
+                up.onclick = () => browseDir(result.parent);
+                body.appendChild(up);
+            }
+
+            if (result.dirs.length === 0) {
+                const empty = document.createElement('p');
+                empty.className = 'picker-empty';
+                empty.textContent = 'No subdirectories here.';
+                body.appendChild(empty);
+            } else {
+                result.dirs.forEach(name => {
+                    const btn = document.createElement('button');
+                    btn.className = 'picker-item';
+                    const fullPath = result.current.replace(/\/$/, '') + '/' + name;
+                    const icon = document.createElement('span');
+                    icon.className = 'picker-item-icon';
+                    icon.textContent = '📁';
+                    btn.appendChild(icon);
+                    btn.appendChild(document.createTextNode(' ' + name));
+                    btn.title = fullPath;
+                    btn.onclick = () => browseDir(fullPath);
+                    body.appendChild(btn);
+                });
+            }
+        }
+
+        function confirmPicker() {
+            if (_pickerTargetId && _pickerCurrentPath) {
+                document.getElementById(_pickerTargetId).value = _pickerCurrentPath;
+            }
+            closePicker();
+        }
+
+        function closePicker() {
+            document.getElementById('path-picker-modal').style.display = 'none';
+            _pickerTargetId = null;
+        }
+
+        function pickerOutsideClick(e) {
+            if (e.target === document.getElementById('path-picker-modal')) closePicker();
+        }
+
         async function syncAll() {
             const syncBtn = document.getElementById('sync-btn');
             syncBtn.classList.add('btn-loading');
-
             try {
                 const response = await fetch('/api/sync', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                 });
                 const result = await response.json();
-
                 if (result.status === 'success') {
                     let totalLinks = result.results.reduce((acc, r) => acc + r.links, 0);
                     showStatus(`Sync complete! Created ${totalLinks} symbolic links.`, 'success');
@@ -1448,7 +1771,6 @@
                 syncBtn.classList.remove('btn-loading');
             }
         }
-
 
         // Initialize
         if (window.location.protocol === 'file:') {

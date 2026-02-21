@@ -24,8 +24,10 @@ def load_config() -> dict[str, Any]:
         "jellyfin_url": "",
         "api_key": "",
         "target_path": "",
-        "groups": [],
+        "media_path_in_jellyfin": "",
+        "media_path_on_host": "",
         "trakt_client_id": "",
+        "groups": [],
     }
     if not os.path.exists(CONFIG_FILE):
         save_config(defaults)
@@ -36,6 +38,18 @@ def load_config() -> dict[str, Any]:
             # Ensure new keys are present for backwards compatibility
             for k, v in defaults.items():
                 cfg.setdefault(k, v)
+            # Migrate old key names to new ones
+            migrated = False
+            if cfg.get("jellyfin_root") and not cfg.get("media_path_in_jellyfin"):
+                cfg["media_path_in_jellyfin"] = cfg["jellyfin_root"]
+                migrated = True
+            if cfg.get("host_root") and not cfg.get("media_path_on_host"):
+                cfg["media_path_on_host"] = cfg["host_root"]
+                migrated = True
+            if migrated:
+                cfg.pop("jellyfin_root", None)
+                cfg.pop("host_root", None)
+                save_config(cfg)
             return cfg
     except Exception:
         return defaults
@@ -323,9 +337,9 @@ def sync_groupings() -> ResponseReturnValue:
     target_base: str = str(config.get("target_path", ""))
     groups: list[dict[str, Any]] = config.get("groups", [])
 
-    # Path mapping for Docker support
-    j_root: str = str(config.get("jellyfin_root", "")).strip()
-    h_root: str = str(config.get("host_root", "")).strip()
+    # Path translation: map media paths as Jellyfin sees them to host paths
+    j_root: str = str(config.get("media_path_in_jellyfin") or config.get("jellyfin_root", "")).strip()
+    h_root: str = str(config.get("media_path_on_host") or config.get("host_root", "")).strip()
 
     if not url or not api_key or not target_base:
         return (
@@ -354,7 +368,7 @@ def sync_groupings() -> ResponseReturnValue:
     try:
         print(f"Starting sync to: {target_base}")
         if j_root and h_root:
-            print(f"Path mapping active: {j_root} -> {h_root}")
+            print(f"Path translation active: {j_root} -> {h_root}")
 
         for group in groups:
             if not isinstance(group, dict):
@@ -564,10 +578,10 @@ def sync_groupings() -> ResponseReturnValue:
                 if j_root and h_root and item_j_path.startswith(j_root):
                     rel: str = os.path.relpath(item_j_path, j_root)
                     item_h_path = os.path.normpath(os.path.join(h_root, rel))
-                    print(f"DEBUG: Mapping {item_j_path} -> {item_h_path}")
+                    print(f"Translated path: {item_j_path} -> {item_h_path}")
 
                 if not os.path.exists(item_h_path):
-                    print(f"DEBUG FAIL: Source path does not exist on host: {item_h_path}")
+                    print(f"Skipping (path not found on host): {item_h_path}")
                     continue
 
                 file_name: str = os.path.basename(item_h_path)
@@ -578,21 +592,11 @@ def sync_groupings() -> ResponseReturnValue:
                 dest_path: str = os.path.join(group_dir, file_name)
 
                 try:
-                    target_for_link: str = item_j_path
-                    j_virtual_root: str = str(config.get("jellyfin_target_root", "")).strip()
-
-                    if j_virtual_root:
-                        j_group_dir: str = os.path.join(j_virtual_root, group_name).replace(
-                            os.sep, "/"
-                        )
-                        target_for_link = os.path.relpath(item_j_path, start=j_group_dir)
-                        print(f"DEBUG: Using relative internal target: {target_for_link}")
-
-                    os.symlink(target_for_link, dest_path)
-                    print(f"DEBUG SUCCESS: Created symlink {dest_path} -> {target_for_link}")
+                    os.symlink(item_j_path, dest_path)
+                    print(f"Created symlink: {dest_path} -> {item_j_path}")
                     links_created += 1
-                except Exception as e:
-                    print(f"DEBUG ERROR: Creating symlink from {item_j_path} to {dest_path}: {e}")
+                except OSError as e:
+                    print(f"Error creating symlink {dest_path}: {e}")
 
             print(f"Created {links_created} symlinks for {group_name}")
             sync_results.append({"group": group_name, "links": links_created})
@@ -666,7 +670,7 @@ def auto_detect_paths() -> ResponseReturnValue:
                         match_found = os.path.join(dirpath, filename)
                         break
                     if len(dirpath.split(os.sep)) > 6:
-                        continue
+                        dirnames.clear()
                 if match_found:
                     break
 
@@ -695,14 +699,69 @@ def auto_detect_paths() -> ResponseReturnValue:
             {
                 "status": "success",
                 "detected": {
-                    "jellyfin_root": detected_j_root,
-                    "host_root": detected_h_root,
+                    "media_path_in_jellyfin": detected_j_root,
+                    "media_path_on_host": detected_h_root,
                     "target_path": suggested_target,
                 },
             }
         )
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
+
+
+# Roots that the folder browser is allowed to expose.
+_BROWSE_ROOTS: tuple[str, ...] = tuple(
+    os.path.realpath(r)
+    for r in (os.path.expanduser("~"), "/media", "/mnt")
+)
+
+
+def _path_is_allowed(p: str) -> bool:
+    """Return True only if *p* is at or below one of the whitelisted roots."""
+    real = os.path.realpath(p)
+    return any(
+        real == root or real.startswith(root + os.sep)
+        for root in _BROWSE_ROOTS
+    )
+
+
+@app.route("/api/browse", methods=["GET"])
+def browse_directory() -> ResponseReturnValue:
+    """Return the subdirectories of a given path for the folder picker."""
+    raw: str = request.args.get("path", "")
+    path: str = os.path.abspath(raw) if raw else os.path.expanduser("~")
+
+    # Fall back to parent if the supplied path is a file, not a directory
+    if not os.path.isdir(path):
+        path = os.path.dirname(path)
+
+    if not _path_is_allowed(path):
+        return (
+            jsonify({"status": "error", "message": "Access to this path is not permitted"}),
+            403,
+        )
+
+    try:
+        entries: list[str] = sorted(
+            name
+            for name in os.listdir(path)
+            if os.path.isdir(os.path.join(path, name)) and not name.startswith(".")
+        )
+    except PermissionError:
+        entries = []
+    except OSError as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+    parent: str | None = os.path.dirname(path) if path != os.sep else None
+
+    return jsonify(
+        {
+            "status": "success",
+            "current": path,
+            "parent": parent,
+            "dirs": entries,
+        }
+    )
 
 
 @app.route("/")
@@ -717,6 +776,8 @@ if __name__ == "__main__":
                 "jellyfin_url": "",
                 "api_key": "",
                 "target_path": "",
+                "media_path_in_jellyfin": "",
+                "media_path_on_host": "",
                 "trakt_client_id": "",
                 "groups": [],
             }
