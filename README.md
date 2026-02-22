@@ -1,147 +1,128 @@
-# jellyfin-groupings
+# Jellyfin Groupings
 
-> **Note:** This project was largely AI-generated. I'm a CS student who could have written this myself — I just didn't want to. I reviewed the code, understand how it works, and actively maintain it. The AI was basically just a faster keyboard.
+<p align="center">
+  <img src="jellyfin_groupings_banner.png" alt="Jellyfin Groupings Banner" width="800">
+</p>
 
-A small Flask web app that lets you create **virtual libraries** in [Jellyfin](https://jellyfin.org/) by grouping media into symlinked directories on disk. Instead of duplicating files or messing with Jellyfin's built-in collections, it creates folders of symlinks (e.g. `~/jellyfin-groupings-virtual/action/`) that Jellyfin can scan as independent libraries.
+> **Virtual Libraries Simplified.** Create dynamic Jellyfin libraries using symlinks without duplicating your media.
 
-> [!IMPORTANT]
-> **Jellyfin libraries are NOT created automatically.** After syncing, you must add each group as a library in Jellyfin manually:
-> **Dashboard → Libraries → Add Media Library → Content Type: Mixed Movies and Shows**
-> Automatic library creation is a planned future feature.
-
----
-
-## Features
-
-- **Metadata-based groups** — filter by genre, actor, studio, or tag directly from your Jellyfin library
-- **IMDb list support** — paste an IMDb list URL and the app resolves matching items in your library
-- **Docker path mapping** — translate Jellyfin container paths to host paths via `jellyfin_root` / `host_root` config
-- **Sorting** — optionally prefix filenames with a numeric index based on community rating, year, name, date added, random, or IMDb list order
-- **Auto-detect paths** — the app can scan your filesystem to suggest the correct `jellyfin_root` and `host_root` values
-- **One-click sync** — rebuilds all symlink directories on demand via the web UI
+[![Docker](https://img.shields.io/badge/Docker-ready-blue.svg?logo=docker&logoColor=white)](https://github.com/entcheneric/jellyfin-groupings)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ---
 
-## Stack
+> [!NOTE]
+> **This project was largely AI-generated.** I'm a CS student who could have written this myself — I just didn't want to. I reviewed the code, understand how it works, and actively maintain it. The AI was basically just a faster keyboard.
 
-- **Backend:** Python 3, Flask, Requests
-- **Frontend:** Single-file vanilla HTML/CSS/JS (`index.html`)
-- **Config:** `config.json` (created automatically on first run)
+**Jellyfin Groupings** is a Flask-powered web utility that allows you to create **virtual libraries** in [Jellyfin](https://jellyfin.org/) by grouping existing media into symlinked directories. 
+
+Instead of messing with Jellyfin's internal collections or duplicating multi-gigabyte files, this app creates a folder structure (e.g., `/virtual/Action/`) filled with symlinks to your real files. You then add these folders to Jellyfin as independent libraries.
+
+## ✨ Features
+
+- 📂 **Metadata-based Groups**: Filter by genre, actor, studio, tag, or year directly from your library.
+- 📜 **External List Support**: Sync with **IMDb**, **Trakt**, **TMDb**, **Letterboxd**, **AniList**, or **MyAnimeList** lists.
+- ⚡ **Complex Logic**: Combine filters with `AND`, `OR`, and `NOT` (e.g., `Genre: Action AND NOT Genre: Sci-Fi`).
+- 🔢 **Smart Sorting**: Prefix filenames with a numeric index based on Rating, Year, Name, or List Order.
+- 🐳 **Docker-First**: Designed to run alongside your Jellyfin container with easy path mapping.
+- 🛠️ **Auto-Detect**: Scans your filesystem to help you configure path translations automatically.
 
 ---
 
-## Setup
+## 🚀 Quick Start with Docker
 
-### 1. Install dependencies
+The easiest way to run Jellyfin Groupings is via Docker Compose.
 
-```bash
-pip install flask requests
+### 1. Create `docker-compose.yml`
+
+```yaml
+services:
+  jellyfin-groupings:
+    image: ghcr.io/entcheneric/jellyfin-groupings:latest
+    container_name: jellyfin-groupings
+    ports:
+      - "5000:5000"
+    volumes:
+      # Persistent config (API keys, group definitions)
+      - ./config:/app/config
+      
+      # The output directory where virtual folders (symlinks) are created.
+      # This MUST be shared with your Jellyfin container.
+      - /mnt/user/jellyfin-groupings-virtual:/groupings
+      
+      # Your media root. Needed so the app can verify files and follow symlinks.
+      # Use the same path Jellyfin uses if possible to simplify mapping.
+      - /mnt/user/media:/media:ro
+    restart: unless-stopped
 ```
 
-### 2. Run the app
+### 2. Launch the app
 
 ```bash
-python app.py
+docker-compose up -d
 ```
 
-The web UI is available at [http://localhost:5000](http://localhost:5000).
+Access the UI at `http://your-server-ip:5000`.
 
-### 3. Configure
+---
 
-Open the UI and fill in:
+## ⚙️ Configuration Guide
+
+When running in Docker, you need to tell the app how to translate paths between what **Jellyfin sees** and what **this container sees**.
+
+### Server Settings
 
 | Field | Description |
 |---|---|
-| Jellyfin URL | e.g. `http://localhost:8096` |
-| API Key | Generate one in Jellyfin → Dashboard → API Keys |
-| Target Path | Where symlink folders will be created on the **host** (e.g. `~/jellyfin-groupings-virtual`) |
-| Jellyfin Root | The media root path **as seen by Jellyfin** (only needed if running in Docker) |
-| Host Root | The same path **as seen by the host** (only needed if running in Docker) |
-| Jellyfin Virtual Root | The target path **as seen by Jellyfin** (so it can find the symlinks) |
+| **Jellyfin Server URL** | The address of your Jellyfin server (e.g., `http://192.168.1.50:8096`). |
+| **API Key** | Generate one in Jellyfin: `Dashboard -> API Keys`. |
+| **Base Target Path** | Set this to `/groupings` (the internal path we mapped in Docker). |
+| **Media path as Jellyfin sees it** | The path where Jellyfin sees your media (e.g., `/data/movies`). |
+| **Same path on this machine** | The path where *this* container sees the same media (e.g., `/media`). |
 
-Use the **Auto-Detect** button to have the app guess the path mapping for you.
-
-### 4. Add groups and sync
-
-Create groupings in the UI (by genre, actor, studio, tag, or IMDb list), then hit **Sync All Groupings**. The app will create/recreate the symlink directories and print a per-group summary.
-
-### 5. Add the libraries to Jellyfin manually
-
-> [!IMPORTANT]
-> **Automatic library creation is not implemented yet** — this is a planned future feature. You have to add each library by hand.
-
-For each group you created, add a new library in Jellyfin:
-
-1. Go to **Dashboard → Libraries → Add Media Library**
-2. Set **Content Type** to **`Mixed Movies and Shows`**
-3. Set the folder to the matching subdirectory inside your target path
-   - e.g. if your target path is `~/jellyfin-groupings-virtual` and your group is `action`, add `~/jellyfin-groupings-virtual/action`
-4. Save and let Jellyfin scan
+> [!TIP]
+> Use the **"Auto-Detect Settings"** button in the UI! It will scan your media folders and try to match them with what Jellyfin reports to find the correct path translations for you.
 
 ---
 
-## Configuration reference (`config.json`)
+## 📂 Setting up Jellyfin Libraries
 
-```json
-{
-    "jellyfin_url": "http://localhost:8096",
-    "api_key": "your_api_key_here",
-    "target_path": "/home/user/jellyfin-groupings-virtual",
-    "jellyfin_root": "/media",
-    "host_root": "/mnt/media",
-    "jellyfin_target_root": "/virtual",
-    "groups": [
-        {
-            "name": "action",
-            "source_category": "jellyfin",
-            "source_type": "genre",
-            "source_value": "Action"
-        },
-        {
-            "name": "mcu",
-            "source_category": "external",
-            "source_type": "imdb_list",
-            "source_value": "https://www.imdb.com/list/ls029032797/",
-            "sort_order": "imdb_list_order"
-        }
-    ]
-}
-```
+**Jellyfin libraries are not created automatically.** After you sync your groups, follow these steps:
 
-**`source_type` values:**
-
-| Value | Description |
-|---|---|
-| `genre` | Match by Jellyfin genre tag |
-| `actor` | Match by actor name |
-| `studio` | Match by studio name |
-| `tag` | Match by Jellyfin tag |
-| `imdb_list` | Pull from a public IMDb list URL |
-
-**`sort_order` values:** `CommunityRating`, `ProductionYear`, `SortName`, `DateCreated`, `Random`, `imdb_list_order` (or leave empty for no sorting/prefix)
+1. In Jellyfin, go to **Dashboard -> Libraries -> Add Media Library**.
+2. Set **Content Type** to **`Mixed Movies and Shows`**.
+3. Point the library to a **subdirectory** of your virtual root.
+   - *Example:* If your Target Path is mapped to `/mnt/user/jellyfin-groupings-virtual` on the host, and you created a group named `Action`, add `/mnt/user/jellyfin-groupings-virtual/Action` to Jellyfin.
+   - **Note:** Ensure your Jellyfin container also has this virtual root mounted!
 
 ---
 
-## Project structure
+## 🛠️ Advanced: Complex Queries
 
-```
-jellyfin-groupings/
-├── app.py          # Flask backend + sync logic
-├── index.html      # Frontend (single-file, no build step)
-├── config.json     # Auto-created on first run
-└── tests/          # Test suite
-```
+You can use the **Complex** source type to build highly specific libraries. The query syntax supports:
+- **Operators**: `AND`, `OR`, `AND NOT`, `OR NOT`
+- **Prefixes**: `genre:`, `actor:`, `studio:`, `tag:`, `year:`
 
----
-
-## Running tests
-
-```bash
-python -m pytest tests/
-```
+**Example:**
+`actor:Tom Cruise AND genre:Action AND NOT genre:Sci-Fi`
 
 ---
 
-## License
+## 👨‍💻 Development
 
-Do whatever you want with it.
+If you'd like to build the project from source or contribute:
+
+1. Clone the repo.
+2. Install dependencies: `pip install -r requirements.txt`.
+3. Run: `python app.py`.
+4. Tests: `python -m pytest`.
+
+### Unraid Support
+An Unraid Community Applications template is available in the `unraid/` directory.
+
+---
+
+## 📜 License
+
+Created and maintained by [entcheneric](https://github.com/entcheneric). 
+This project is licensed under the MIT License - feel free to use it however you want!
