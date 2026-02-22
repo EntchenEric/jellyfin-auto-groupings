@@ -777,6 +777,7 @@ def _process_group(
     trakt_client_id: str,
     tmdb_api_key: str,
     mal_client_id: str,
+    dry_run: bool = False,
 ) -> dict[str, Any]:
     """Process a single grouping: fetch items, then create symlinks.
 
@@ -810,10 +811,11 @@ def _process_group(
     print(f"Processing group: {group_name!r} -> {group_dir}  (sort_order={sort_order!r})")
 
     # Clean up and recreate the group directory
-    if os.path.exists(group_dir):
-        print(f"Cleaning existing directory: {group_dir}")
-        shutil.rmtree(group_dir)
-    os.makedirs(group_dir, exist_ok=True)
+    if not dry_run:
+        if os.path.exists(group_dir):
+            print(f"Cleaning existing directory: {group_dir}")
+            shutil.rmtree(group_dir)
+        os.makedirs(group_dir, exist_ok=True)
 
     # --- Resolve items ---
     error: str | None = None
@@ -882,6 +884,7 @@ def _process_group(
     use_prefix: bool = bool(sort_order)  # numbered prefix ↔ any sort order
     width: int = max(len(str(len(items))) if items else 4, 4)
     links_created: int = 0
+    preview_items = []
 
     for idx, item in enumerate(items, start=1):
         if not isinstance(item, dict):
@@ -905,18 +908,25 @@ def _process_group(
             file_name = f"{str(idx).zfill(width)} - {file_name}"
 
         dest_path: str = os.path.join(group_dir, file_name)
-        try:
-            os.symlink(host_path, dest_path)
-            print(f"Created symlink: {dest_path} -> {host_path}")
+        if dry_run:
+            preview_items.append({"Name": item.get("Name", "Unknown"), "Year": item.get("ProductionYear", ""), "FileName": file_name})
             links_created += 1
-        except OSError as exc:
-            print(f"Error creating symlink {dest_path}: {exc}")
+        else:
+            try:
+                os.symlink(host_path, dest_path)
+                print(f"Created symlink: {dest_path} -> {host_path}")
+                links_created += 1
+            except OSError as exc:
+                print(f"Error creating symlink {dest_path}: {exc}")
 
     print(f"Created {links_created} symlinks for {group_name!r}")
-    return {"group": group_name, "links": links_created}
+    result: dict[str, Any] = {"group": group_name, "links": links_created}
+    if dry_run:
+        result["items"] = preview_items
+    return result
 
 
-def run_sync(config: dict[str, Any]) -> list[dict[str, Any]]:
+def run_sync(config: dict[str, Any], dry_run: bool = False) -> list[dict[str, Any]]:
     """Run the full synchronisation process for all configured groups.
 
     Iterates over every group in *config* and delegates to
@@ -977,6 +987,7 @@ def run_sync(config: dict[str, Any]) -> list[dict[str, Any]]:
             trakt_client_id,
             tmdb_api_key,
             mal_client_id,
+            dry_run=dry_run,
         )
         results.append(result)
 

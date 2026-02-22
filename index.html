@@ -740,6 +740,16 @@
                                 style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.4rem; text-align: center;">
                                 Creates symlinks inside the Base Target Path for every defined grouping.</p>
                         </div>
+                        <div>
+                            <button id="preview-sync-btn" onclick="previewSyncAll()" class="secondary-btn"
+                                style="width: 100%; padding: 1rem; font-weight: 600;">
+                                <span class="loading-spinner"></span>
+                                <span class="btn-text">👁️ Preview Sync</span>
+                            </button>
+                            <p
+                                style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.4rem; text-align: center;">
+                                See exactly what will be created without modifying the disk.</p>
+                        </div>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                             <div>
                                 <button onclick="openExportModal()" class="secondary-btn"
@@ -1028,6 +1038,27 @@
 
                 <button id="cancel-import-top" onclick="closeModal('import-modal')" class="secondary-btn"
                     style="margin-top: 1.5rem; width: 100%;">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Preview Sync Modal -->
+        <div id="preview-sync-modal" class="modal"
+            style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(8px);">
+            <div class="card"
+                style="max-width: 700px; width: 90%; max-height: 85vh; display: flex; flex-direction: column;">
+                <h2>Preview Sync</h2>
+                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">This is a dry-run. No
+                    files or folders will be created on disk.</p>
+
+                <div id="preview-sync-results"
+                    style="flex: 1; overflow-y: auto; padding-right: 0.5rem; margin-bottom: 1rem; display: flex; flex-direction: column; gap: 1rem;">
+                    <!-- Results populated by JS -->
+                </div>
+
+                <div style="display: flex; gap: 1rem; margin-top: auto;">
+                    <button onclick="closeModal('preview-sync-modal')" class="secondary-btn"
+                        style="flex: 1; width: 100%;">Close</button>
+                </div>
             </div>
         </div>
 
@@ -2134,6 +2165,80 @@
 
         function pickerOutsideClick(e) {
             if (e.target === document.getElementById('path-picker-modal')) closePicker();
+        }
+
+        async function previewSyncAll() {
+            const btn = document.getElementById('preview-sync-btn');
+            btn.classList.add('btn-loading');
+            try {
+                const response = await fetch('/api/sync/preview_all', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    const container = document.getElementById('preview-sync-results');
+                    container.innerHTML = '';
+
+                    if (result.results && result.results.length > 0) {
+                        result.results.forEach(groupResult => {
+                            const groupCard = document.createElement('div');
+                            groupCard.style.cssText = 'background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 1rem;';
+
+                            const header = document.createElement('div');
+                            header.style.cssText = 'display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 0.5rem;';
+
+                            const name = document.createElement('strong');
+                            name.textContent = groupResult.group;
+                            name.style.fontSize = '1.1rem';
+
+                            const badge = document.createElement('span');
+                            badge.textContent = `${groupResult.links} items`;
+                            badge.style.cssText = 'background: var(--accent-color); color: #fff; padding: 0.3rem 0.6rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; white-space: nowrap;';
+
+                            header.appendChild(name);
+                            header.appendChild(badge);
+                            groupCard.appendChild(header);
+
+                            if (groupResult.error) {
+                                const err = document.createElement('div');
+                                err.style.cssText = 'color: var(--error-color); font-size: 0.85rem; margin-top: 0.5rem;';
+                                err.textContent = `Error: ${groupResult.error}`;
+                                groupCard.appendChild(err);
+                            } else if (groupResult.items && groupResult.items.length > 0) {
+                                const list = document.createElement('ul');
+                                list.style.cssText = 'margin: 0; padding-left: 1.2rem; font-size: 0.85rem; color: var(--text-secondary); max-height: 150px; overflow-y: auto;';
+
+                                groupResult.items.forEach((item, index) => {
+                                    const li = document.createElement('li');
+                                    li.textContent = item.Year ? `${item.Name} (${item.Year})` : item.Name;
+                                    list.appendChild(li);
+                                });
+
+                                groupCard.appendChild(list);
+                            } else {
+                                const empty = document.createElement('div');
+                                empty.style.cssText = 'color: var(--text-secondary); font-size: 0.85rem; font-style: italic;';
+                                empty.textContent = 'No items found for this group.';
+                                groupCard.appendChild(empty);
+                            }
+
+                            container.appendChild(groupCard);
+                        });
+                    } else {
+                        container.innerHTML = '<div style="color: var(--text-secondary); font-style: italic; padding: 1rem;">No groupings configured.</div>';
+                    }
+
+                    document.getElementById('preview-sync-modal').style.display = 'flex';
+                } else {
+                    showStatus(result.message || 'Preview failed', 'error');
+                }
+            } catch (err) {
+                showStatus('Preview failed - API unreachable', 'error');
+            } finally {
+                btn.classList.remove('btn-loading');
+            }
         }
 
         async function syncAll() {

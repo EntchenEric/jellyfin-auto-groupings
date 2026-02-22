@@ -248,6 +248,33 @@ def sync_groupings() -> ResponseReturnValue:
         return jsonify({"status": "error", "message": f"Sync failed: {str(exc)}"}), 500
 
 
+@bp.route("/api/sync/preview_all", methods=["POST"])
+def preview_all_sync() -> ResponseReturnValue:
+    """Preview a full synchronisation of all configured groupings without creating symlinks.
+
+    Reads the current configuration, delegates to :func:`sync.run_sync` with dry_run=True,
+    and returns per-group preview results.
+
+    Returns:
+        JSON with ``status``, a human-readable ``message``, and a ``results``
+        list containing preview items.
+    """
+    try:
+        config: dict[str, Any] = load_config()
+        sync_results = run_sync(config, dry_run=True)
+        return jsonify(
+            {
+                "status": "success",
+                "message": "Preview generated successfully",
+                "results": sync_results,
+            }
+        )
+    except ValueError as exc:
+        return jsonify({"status": "error", "message": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"status": "error", "message": f"Sync preview failed: {str(exc)}"}), 500
+
+
 @bp.route("/api/grouping/preview", methods=["POST"])
 def preview_grouping() -> ResponseReturnValue:
     """Preview what items a grouping rule would include.
