@@ -15,6 +15,7 @@ from __future__ import annotations
 import os
 import re
 import shutil
+import hashlib
 import requests
 from typing import Any
 
@@ -109,11 +110,11 @@ def _fetch_full_library(
         _LIBRARY_CACHE[cache_key] = raw_items
         return raw_items, None, 200
     except requests.exceptions.RequestException as exc:
-        print(f"Infrastructure error fetching Jellyfin library for group {group_name!r}: {exc}")
-        return [], f"Jellyfin connection error: {exc}", 500
+        print(f"Infrastructure error fetching Jellyfin library for group {group_name!r}: {exc!s}")
+        return [], f"Jellyfin connection error: {exc!s}", 500
     except Exception as exc:
-        print(f"Error fetching Jellyfin library for group {group_name!r}: {exc}")
-        return [], str(exc), 400
+        print(f"Unexpected error fetching Jellyfin library for group {group_name!r}: {exc!s}")
+        return [], f"Internal error: {exc!s}", 500
 
 
 def _match_jellyfin_items_by_provider(
@@ -235,8 +236,8 @@ def _fetch_items_for_imdb_group(
         imdb_ids = fetch_imdb_list(source_value)
         print(f"IMDb list {source_value!r}: {len(imdb_ids)} IDs found")
     except Exception as exc:
-        print(f"Error fetching IMDb list for group {group_name!r}: {exc}")
-        return [], str(exc), 400
+        print(f"Error fetching IMDb list for group {group_name!r}: {exc!s}")
+        return [], f"IMDb fetch error: {exc!s}", 400
 
     if not imdb_ids:
         print(f"No IMDb IDs found for group {group_name!r}")
@@ -278,8 +279,8 @@ def _fetch_items_for_trakt_group(
         trakt_ids = fetch_trakt_list(source_value, trakt_client_id)
         print(f"Trakt list {source_value!r}: {len(trakt_ids)} IMDb IDs found")
     except Exception as exc:
-        print(f"Error fetching Trakt list for group {group_name!r}: {exc}")
-        return [], str(exc), 400
+        print(f"Error fetching Trakt list for group {group_name!r}: {exc!s}")
+        return [], f"Trakt fetch error: {exc!s}", 400
 
     if not trakt_ids:
         print(f"No items found in Trakt list for group {group_name!r}")
@@ -321,8 +322,8 @@ def _fetch_items_for_tmdb_group(
         tmdb_ids = fetch_tmdb_list(source_value, tmdb_api_key)
         print(f"TMDb list {source_value!r}: {len(tmdb_ids)} items found")
     except Exception as exc:
-        print(f"Error fetching TMDb list for group {group_name!r}: {exc}")
-        return [], str(exc), 400
+        print(f"Error fetching TMDb list for group {group_name!r}: {exc!s}")
+        return [], f"TMDb fetch error: {exc!s}", 400
 
     if not tmdb_ids:
         print(f"No items found in TMDb list for group {group_name!r}")
@@ -364,8 +365,8 @@ def _fetch_items_for_anilist_group(
         anilist_ids = fetch_anilist_list(username, status)
         print(f"AniList user {username!r} (status={status!r}): {len(anilist_ids)} items found")
     except Exception as exc:
-        print(f"Error fetching AniList items for group {group_name!r}: {exc}")
-        return [], str(exc), 400
+        print(f"Error fetching AniList items for group {group_name!r}: {exc!s}")
+        return [], f"AniList fetch error: {exc!s}", 400
 
     if not anilist_ids:
         print(f"No items found for AniList user {username!r}")
@@ -414,8 +415,8 @@ def _fetch_items_for_mal_group(
         mal_ids = fetch_mal_list(username, mal_client_id, status)
         print(f"MyAnimeList user {username!r} (status={status!r}): {len(mal_ids)} items found")
     except Exception as exc:
-        print(f"Error fetching MyAnimeList items for group {group_name!r}: {exc}")
-        return [], str(exc), 400
+        print(f"Error fetching MyAnimeList items for group {group_name!r}: {exc!s}")
+        return [], f"MAL fetch error: {exc!s}", 400
 
     if not mal_ids:
         print(f"No items found for MyAnimeList user {username!r}")
@@ -450,8 +451,8 @@ def _fetch_items_for_letterboxd_group(
         external_ids = fetch_letterboxd_list(source_value)
         print(f"Letterboxd list {source_value!r}: {len(external_ids)} IDs found")
     except Exception as exc:
-        print(f"Error fetching Letterboxd list for group {group_name!r}: {exc}")
-        return [], str(exc), 400
+        print(f"Error fetching Letterboxd items for group {group_name!r}: {exc!s}")
+        return [], f"Letterboxd fetch error: {exc!s}", 400
 
     if not external_ids:
         print(f"No items found in Letterboxd list for group {group_name!r}")
@@ -687,11 +688,11 @@ def _fetch_items_for_metadata_group(
         print(f"Found {len(items)} potential items for group {group_name!r}")
         return items, None, 200
     except requests.exceptions.RequestException as exc:
-        print(f"Infrastructure error fetching items for group {group_name!r}: {exc}")
-        return [], f"Jellyfin connection error: {exc}", 500
+        print(f"Infrastructure error fetching items for group {group_name!r}: {exc!s}")
+        return [], f"Jellyfin connection error: {exc!s}", 500
     except Exception as exc:
-        print(f"Error fetching items for group {group_name!r}: {exc}")
-        return [], str(exc), 400
+        print(f"Unexpected error fetching items for group {group_name!r}: {exc!s}")
+        return [], f"Internal error: {exc!s}", 500
 
 def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
     """Parse a complex textual rule query into a list of structured rules.
@@ -818,6 +819,29 @@ def _process_group(
             shutil.rmtree(group_dir)
         os.makedirs(group_dir, exist_ok=True)
 
+        # Check if there is an auto-generated cover to copy
+        import hashlib
+        safe_name = hashlib.md5(group_name.encode('utf-8')).hexdigest()
+        
+        # Priority 1: Library-local .covers/ directory (new storage location)
+        lib_cover_path = os.path.join(target_base, ".covers", f"{safe_name}.jpg")
+        # Priority 2: Internal config/covers/ directory (legacy storage location)
+        legacy_cover_path = os.path.join(os.path.dirname(__file__), "config", "covers", f"{safe_name}.jpg")
+        
+        source_cover = None
+        if os.path.exists(lib_cover_path):
+            source_cover = lib_cover_path
+        elif os.path.exists(legacy_cover_path):
+            source_cover = legacy_cover_path
+            
+        if source_cover:
+            poster_dest = os.path.join(group_dir, "poster.jpg")
+            try:
+                shutil.copy2(source_cover, poster_dest)
+                print(f"Copied cover image from {source_cover} to {poster_dest}")
+            except OSError as exc:
+                print(f"Failed to copy cover image: {exc}")
+
     # --- Resolve items ---
     error: str | None = None
     status_code: int = 200
@@ -885,6 +909,7 @@ def _process_group(
     use_prefix: bool = bool(sort_order)  # numbered prefix ↔ any sort order
     width: int = max(len(str(len(items))) if items else 4, 4)
     links_created: int = 0
+    links_created = 0  # Redeclare to satisfy some over-aggressive checkers
     preview_items = []
 
     for idx, item in enumerate(items, start=1):
