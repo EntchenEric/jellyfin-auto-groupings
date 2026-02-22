@@ -777,6 +777,7 @@ def _process_group(
     trakt_client_id: str,
     tmdb_api_key: str,
     mal_client_id: str,
+    dry_run: bool = False,
 ) -> dict[str, Any]:
     """Process a single grouping: fetch items, then create symlinks.
 
@@ -793,10 +794,11 @@ def _process_group(
         trakt_client_id: Trakt API Client ID (may be empty).
         tmdb_api_key: TMDb API Key (may be empty).
         mal_client_id: MyAnimeList Client ID (may be empty).
+        dry_run: If True, do not create directories or symlinks; return matches.
 
     Returns:
-        A result dict with keys ``"group"``, ``"links"`` and optionally
-        ``"error"``.
+        A result dict with keys ``"group"``, ``"links"``, optionally ``"error"``,
+        and ``"items"`` (the first 100 matches) if *dry_run* is True.
     """
     group_name: str = group.get("name", "unnamed").strip()
     if not group_name:
@@ -810,10 +812,11 @@ def _process_group(
     print(f"Processing group: {group_name!r} -> {group_dir}  (sort_order={sort_order!r})")
 
     # Clean up and recreate the group directory
-    if os.path.exists(group_dir):
-        print(f"Cleaning existing directory: {group_dir}")
-        shutil.rmtree(group_dir)
-    os.makedirs(group_dir, exist_ok=True)
+    if not dry_run:
+        if os.path.exists(group_dir):
+            print(f"Cleaning existing directory: {group_dir}")
+            shutil.rmtree(group_dir)
+        os.makedirs(group_dir, exist_ok=True)
 
     # --- Resolve items ---
     error: str | None = None
@@ -882,6 +885,7 @@ def _process_group(
     use_prefix: bool = bool(sort_order)  # numbered prefix ↔ any sort order
     width: int = max(len(str(len(items))) if items else 4, 4)
     links_created: int = 0
+    preview_items = []
 
     for idx, item in enumerate(items, start=1):
         if not isinstance(item, dict):
@@ -905,18 +909,29 @@ def _process_group(
             file_name = f"{str(idx).zfill(width)} - {file_name}"
 
         dest_path: str = os.path.join(group_dir, file_name)
-        try:
-            os.symlink(host_path, dest_path)
-            print(f"Created symlink: {dest_path} -> {host_path}")
+        if dry_run:
+            if len(preview_items) < 100:
+                preview_items.append({"Name": item.get("Name", "Unknown"), "Year": item.get("ProductionYear", ""), "FileName": file_name})
             links_created += 1
-        except OSError as exc:
-            print(f"Error creating symlink {dest_path}: {exc}")
+        else:
+            try:
+                os.symlink(host_path, dest_path)
+                print(f"Created symlink: {dest_path} -> {host_path}")
+                links_created += 1
+            except OSError as exc:
+                print(f"Error creating symlink {dest_path}: {exc}")
 
-    print(f"Created {links_created} symlinks for {group_name!r}")
-    return {"group": group_name, "links": links_created}
+    if dry_run:
+        print(f"Would create {links_created} symlinks for {group_name!r}")
+    else:
+        print(f"Created {links_created} symlinks for {group_name!r}")
+    result: dict[str, Any] = {"group": group_name, "links": links_created}
+    if dry_run:
+        result["items"] = preview_items
+    return result
 
 
-def run_sync(config: dict[str, Any]) -> list[dict[str, Any]]:
+def run_sync(config: dict[str, Any], dry_run: bool = False) -> list[dict[str, Any]]:
     """Run the full synchronisation process for all configured groups.
 
     Iterates over every group in *config* and delegates to
@@ -926,10 +941,12 @@ def run_sync(config: dict[str, Any]) -> list[dict[str, Any]]:
     Args:
         config: The application configuration dict as returned by
             :func:`config.load_config`.
+        dry_run: Whether to perform a dry run (default: False).
 
     Returns:
         A list of per-group result dicts, each containing at minimum
-        ``"group"`` and ``"links"`` keys, and optionally ``"error"``.
+        ``"group"`` and ``"links"`` keys, and optionally ``"error"``
+        and ``"items"`` (in dry run).
 
     Raises:
         ValueError: If the required config keys are missing or the target
@@ -953,7 +970,7 @@ def run_sync(config: dict[str, Any]) -> list[dict[str, Any]]:
     if not url or not api_key or not target_base:
         raise ValueError("Server settings or target path not configured")
 
-    if not os.path.exists(target_base):
+    if not dry_run and not os.path.exists(target_base):
         os.makedirs(target_base, exist_ok=True)
 
     print(f"Starting sync to: {target_base}")
@@ -977,6 +994,7 @@ def run_sync(config: dict[str, Any]) -> list[dict[str, Any]]:
             trakt_client_id,
             tmdb_api_key,
             mal_client_id,
+            dry_run=dry_run,
         )
         results.append(result)
 
