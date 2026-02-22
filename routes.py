@@ -23,9 +23,12 @@ from flask.typing import ResponseReturnValue
 
 from config import load_config, save_config
 from jellyfin import fetch_jellyfin_items
-from sync import parse_complex_query, preview_group, run_sync
+from sync import get_cover_path, parse_complex_query, preview_group, run_sync
 
 bp = Blueprint("main", __name__)
+
+# Max size for base64 encoded cover image (approx 4MB)
+MAX_B64_SIZE = 4 * 1024 * 1024
 
 # ---------------------------------------------------------------------------
 # Security helpers for the filesystem browser
@@ -184,10 +187,10 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
             timeout=30,
         )
 
-        genres_counts: Counter = Counter()
-        studios_counts: Counter = Counter()
-        tags_counts: Counter = Counter()
-        people_counts: Counter = Counter()
+        genres_counts: Counter[str] = Counter()
+        studios_counts: Counter[str] = Counter()
+        tags_counts: Counter[str] = Counter()
+        people_counts: Counter[str] = Counter()
 
         for item in items:
             for g in item.get("Genres", []):
@@ -243,32 +246,29 @@ def upload_cover() -> ResponseReturnValue:
     if not isinstance(group_name, str) or not isinstance(image_data, str):
         return jsonify({"status": "error", "message": "group_name and image must be strings"}), 400
     
-    # Explicitly satisfy type checker
-    g_name: str = group_name
-    img_data: str = image_data
-    
-    if not img_data.startswith("data:image/"):
+    if not image_data.startswith("data:image/"):
         return jsonify({"status": "error", "message": "Invalid image format"}), 400
     
     try:
-        header, encoded = img_data.split(",", 1)
+        _header, encoded = image_data.split(",", 1)
+        
+        if len(encoded) > MAX_B64_SIZE:
+            return (
+                jsonify({"status": "error", "message": "Payload too large"}),
+                413,
+            )
+
         decoded = base64.b64decode(encoded)
         
-        safe_name = hashlib.md5(g_name.encode("utf-8")).hexdigest()
-        
-        # Determine cover storage directory
+        # Determine cover storage path using the shared helper
         cfg = load_config()
-        target_path = cfg.get("target_path")
+        target_path = str(cfg.get("target_path", ""))
         
-        if target_path and os.path.exists(target_path):
-            # Prioritize library-local hidden directory
-            cover_dir = os.path.join(target_path, ".covers")
-        else:
-            # Fallback to internal app config directory
-            cover_dir = os.path.join(os.path.dirname(__file__), "config", "covers")
+        cover_path = get_cover_path(group_name, target_path, check_exists=False)
+        if not cover_path:
+            return jsonify({"status": "error", "message": "Could not determine cover storage path"}), 500
             
-        os.makedirs(cover_dir, exist_ok=True)
-        cover_path = os.path.join(cover_dir, f"{safe_name}.jpg")
+        os.makedirs(os.path.dirname(cover_path), exist_ok=True)
         with open(cover_path, "wb") as f:
             f.write(decoded)
 

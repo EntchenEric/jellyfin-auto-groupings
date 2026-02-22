@@ -72,6 +72,46 @@ def _translate_path(
     return jellyfin_path
 
 
+def get_cover_path(group_name: str, target_base: str, check_exists: bool = True) -> str | None:
+    """Compute the expected cover image path for a group, resolving storage priority.
+
+    Priority:
+    1. Library-local .covers/ directory (new storage location).
+    2. Internal config/covers/ directory (legacy storage location).
+
+    Args:
+        group_name: The human-readable name of the group.
+        target_base: The root library directory where .covers/ resides.
+        check_exists: If True, return None if the file doesn't exist on disk.
+            If False, return the prioritized path regardless of existence (useful for saving).
+
+    Returns:
+        The absolute path to the cover image, or None if not found/possible.
+    """
+    safe_name = hashlib.md5(group_name.encode("utf-8"), usedforsecurity=False).hexdigest()
+
+    # Priority 1: Library-local .covers/ directory (new storage location)
+    lib_cover_path = os.path.join(target_base, ".covers", f"{safe_name}.jpg")
+
+    # Priority 2: Internal config/covers/ directory (legacy storage location)
+    legacy_cover_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "config", "covers", f"{safe_name}.jpg"
+    )
+
+    if not check_exists:
+        # If we are just resolving where to SAVE, we prefer the library-local path if target_base exists
+        if target_base and os.path.isdir(target_base):
+            return lib_cover_path
+        return legacy_cover_path
+
+    if os.path.exists(lib_cover_path):
+        return lib_cover_path
+    if os.path.exists(legacy_cover_path):
+        return legacy_cover_path
+
+    return None
+
+
 _LIBRARY_CACHE: dict[tuple[str, str], list[dict[str, Any]]] = {}
 
 
@@ -768,6 +808,8 @@ def preview_group(
         return _fetch_items_for_metadata_group("preview", type_name, val, "", url, api_key)
 
 
+
+
 def _process_group(
     group: dict[str, Any],
     target_base: str,
@@ -820,20 +862,8 @@ def _process_group(
         os.makedirs(group_dir, exist_ok=True)
 
         # Check if there is an auto-generated cover to copy
-        import hashlib
-        safe_name = hashlib.md5(group_name.encode('utf-8')).hexdigest()
-        
-        # Priority 1: Library-local .covers/ directory (new storage location)
-        lib_cover_path = os.path.join(target_base, ".covers", f"{safe_name}.jpg")
-        # Priority 2: Internal config/covers/ directory (legacy storage location)
-        legacy_cover_path = os.path.join(os.path.dirname(__file__), "config", "covers", f"{safe_name}.jpg")
-        
-        source_cover = None
-        if os.path.exists(lib_cover_path):
-            source_cover = lib_cover_path
-        elif os.path.exists(legacy_cover_path):
-            source_cover = legacy_cover_path
-            
+        source_cover = get_cover_path(group_name, target_base)
+
         if source_cover:
             poster_dest = os.path.join(group_dir, "poster.jpg")
             try:
@@ -909,7 +939,6 @@ def _process_group(
     use_prefix: bool = bool(sort_order)  # numbered prefix ↔ any sort order
     width: int = max(len(str(len(items))) if items else 4, 4)
     links_created: int = 0
-    links_created = 0  # Redeclare to satisfy some over-aggressive checkers
     preview_items = []
 
     for idx, item in enumerate(items, start=1):
