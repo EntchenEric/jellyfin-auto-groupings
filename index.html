@@ -1955,7 +1955,7 @@
             if (isFullConfig) {
                 warning.style.display = 'block';
                 selectionList.style.display = 'none';
-                confirmBtn.textContent = 'Overwrite Over All';
+                confirmBtn.textContent = 'Overwrite All';
                 confirmBtn.onclick = () => performImport('full');
             } else if (groups) {
                 warning.style.display = 'none';
@@ -2210,7 +2210,7 @@
                                 const list = document.createElement('ul');
                                 list.style.cssText = 'margin: 0; padding-left: 1.2rem; font-size: 0.85rem; color: var(--text-secondary); max-height: 150px; overflow-y: auto;';
 
-                                groupResult.items.forEach((item, index) => {
+                                groupResult.items.forEach((item) => {
                                     const li = document.createElement('li');
                                     li.textContent = item.Year ? `${item.Name} (${item.Year})` : item.Name;
                                     list.appendChild(li);

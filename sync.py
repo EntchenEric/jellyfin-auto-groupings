@@ -794,10 +794,11 @@ def _process_group(
         trakt_client_id: Trakt API Client ID (may be empty).
         tmdb_api_key: TMDb API Key (may be empty).
         mal_client_id: MyAnimeList Client ID (may be empty).
+        dry_run: If True, do not create directories or symlinks; return matches.
 
     Returns:
-        A result dict with keys ``"group"``, ``"links"`` and optionally
-        ``"error"``.
+        A result dict with keys ``"group"``, ``"links"``, optionally ``"error"``,
+        and ``"items"`` (the first 100 matches) if *dry_run* is True.
     """
     group_name: str = group.get("name", "unnamed").strip()
     if not group_name:
@@ -909,7 +910,8 @@ def _process_group(
 
         dest_path: str = os.path.join(group_dir, file_name)
         if dry_run:
-            preview_items.append({"Name": item.get("Name", "Unknown"), "Year": item.get("ProductionYear", ""), "FileName": file_name})
+            if len(preview_items) < 100:
+                preview_items.append({"Name": item.get("Name", "Unknown"), "Year": item.get("ProductionYear", ""), "FileName": file_name})
             links_created += 1
         else:
             try:
@@ -919,7 +921,10 @@ def _process_group(
             except OSError as exc:
                 print(f"Error creating symlink {dest_path}: {exc}")
 
-    print(f"Created {links_created} symlinks for {group_name!r}")
+    if dry_run:
+        print(f"Would create {links_created} symlinks for {group_name!r}")
+    else:
+        print(f"Created {links_created} symlinks for {group_name!r}")
     result: dict[str, Any] = {"group": group_name, "links": links_created}
     if dry_run:
         result["items"] = preview_items
@@ -936,10 +941,12 @@ def run_sync(config: dict[str, Any], dry_run: bool = False) -> list[dict[str, An
     Args:
         config: The application configuration dict as returned by
             :func:`config.load_config`.
+        dry_run: Whether to perform a dry run (default: False).
 
     Returns:
         A list of per-group result dicts, each containing at minimum
-        ``"group"`` and ``"links"`` keys, and optionally ``"error"``.
+        ``"group"`` and ``"links"`` keys, and optionally ``"error"``
+        and ``"items"`` (in dry run).
 
     Raises:
         ValueError: If the required config keys are missing or the target
@@ -963,7 +970,7 @@ def run_sync(config: dict[str, Any], dry_run: bool = False) -> list[dict[str, An
     if not url or not api_key or not target_base:
         raise ValueError("Server settings or target path not configured")
 
-    if not os.path.exists(target_base):
+    if not dry_run and not os.path.exists(target_base):
         os.makedirs(target_base, exist_ok=True)
 
     print(f"Starting sync to: {target_base}")

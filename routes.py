@@ -243,9 +243,9 @@ def sync_groupings() -> ResponseReturnValue:
             }
         )
     except ValueError as exc:
-        return jsonify({"status": "error", "message": str(exc)}), 400
-    except Exception as exc:
-        return jsonify({"status": "error", "message": f"Sync failed: {str(exc)}"}), 500
+        return jsonify({"status": "error", "message": f"{exc!s}"}), 400
+    except (RuntimeError, OSError) as exc:
+        return jsonify({"status": "error", "message": f"Sync failed: {exc!s}"}), 500
 
 
 @bp.route("/api/sync/preview_all", methods=["POST"])
@@ -270,9 +270,9 @@ def preview_all_sync() -> ResponseReturnValue:
             }
         )
     except ValueError as exc:
-        return jsonify({"status": "error", "message": str(exc)}), 400
-    except Exception as exc:
-        return jsonify({"status": "error", "message": f"Sync preview failed: {str(exc)}"}), 500
+        return jsonify({"status": "error", "message": f"{exc!s}"}), 400
+    except (RuntimeError, OSError) as exc:
+        return jsonify({"status": "error", "message": f"Sync preview failed: {exc!s}"}), 500
 
 
 @bp.route("/api/grouping/preview", methods=["POST"])
