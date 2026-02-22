@@ -2364,11 +2364,32 @@
             let line = '';
             let lines = [];
             for (let n = 0; n < words.length; n++) {
-                let testLine = line + words[n] + ' ';
+                let word = words[n];
+                let testLine = line + word + ' ';
                 let metrics = ctx.measureText(testLine);
-                if (metrics.width > maxWidth && n > 0) {
-                    lines.push(line);
-                    line = words[n] + ' ';
+                if (metrics.width > maxWidth) {
+                    if (line !== '') {
+                        lines.push(line);
+                        line = '';
+                        testLine = word + ' ';
+                        metrics = ctx.measureText(testLine);
+                    }
+                    if (metrics.width > maxWidth) {
+                        let chars = word.split('');
+                        let segment = '';
+                        for (let c = 0; c < chars.length; c++) {
+                            let testSegment = segment + chars[c];
+                            if (ctx.measureText(testSegment).width > maxWidth && segment !== '') {
+                                lines.push(segment);
+                                segment = chars[c];
+                            } else {
+                                segment = testSegment;
+                            }
+                        }
+                        line = segment + ' ';
+                    } else {
+                        line = word + ' ';
+                    }
                 } else {
                     line = testLine;
                 }
@@ -2407,14 +2428,13 @@
                     group.cover_color2 = document.getElementById('cover-color-2').value;
 
                     await saveAllConfig();
+                    closeModal('cover-generator-modal');
                 } else {
                     showStatus('Failed to upload cover image.', 'error');
                 }
             } catch (err) {
                 showStatus('Network error while saving cover.', 'error');
             }
-
-            closeModal('cover-generator-modal');
         }
 
         async function deleteGroup(index) {

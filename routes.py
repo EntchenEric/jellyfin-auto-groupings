@@ -232,7 +232,12 @@ def upload_cover() -> ResponseReturnValue:
     """Save a base64-encoded cover image for a group.
 
     Expects a JSON body with ``group_name`` and ``image`` (data URL).
-    Saves the decoded image to ``config/covers/[md5(group_name)].jpg``.
+    Decodes and saves the image to a location determined by 
+    :func:`sync.get_cover_path`: it saves to 
+    ``target_base/.covers/[md5(group_name)].jpg`` when the target directory 
+    exists, otherwise it falls back to ``config/covers/[md5(group_name)].jpg``.
+    The file name used is md5(group_name) + .jpg. Reference 
+    :func:`sync.get_cover_path` for the detailed storage precedence.
 
     Returns:
         JSON with ``status`` and ``message``.
@@ -265,8 +270,7 @@ def upload_cover() -> ResponseReturnValue:
         target_path = str(cfg.get("target_path", ""))
         
         cover_path = get_cover_path(group_name, target_path, check_exists=False)
-        if not cover_path:
-            return jsonify({"status": "error", "message": "Could not determine cover storage path"}), 500
+        # get_cover_path with check_exists=False never returns None
             
         os.makedirs(os.path.dirname(cover_path), exist_ok=True)
         with open(cover_path, "wb") as f:

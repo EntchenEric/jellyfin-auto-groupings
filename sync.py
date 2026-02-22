@@ -16,6 +16,7 @@ import os
 import re
 import shutil
 import hashlib
+import logging
 import requests
 from typing import Any
 
@@ -153,8 +154,8 @@ def _fetch_full_library(
         print(f"Infrastructure error fetching Jellyfin library for group {group_name!r}: {exc!s}")
         return [], f"Jellyfin connection error: {exc!s}", 500
     except Exception as exc:
-        print(f"Unexpected error fetching Jellyfin library for group {group_name!r}: {exc!s}")
-        return [], f"Internal error: {exc!s}", 500
+        logging.exception("Unexpected error fetching Jellyfin library for group %r", group_name)
+        return [], f"Internal error: {exc!s}", 500  # noqa: BLE001
 
 
 def _match_jellyfin_items_by_provider(
@@ -731,8 +732,8 @@ def _fetch_items_for_metadata_group(
         print(f"Infrastructure error fetching items for group {group_name!r}: {exc!s}")
         return [], f"Jellyfin connection error: {exc!s}", 500
     except Exception as exc:
-        print(f"Unexpected error fetching items for group {group_name!r}: {exc!s}")
-        return [], f"Internal error: {exc!s}", 500
+        logging.exception("Unexpected error fetching items for group %r", group_name)
+        return [], f"Internal error: {exc!s}", 500  # noqa: BLE001
 
 def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
     """Parse a complex textual rule query into a list of structured rules.
