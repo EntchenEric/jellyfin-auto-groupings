@@ -1,32 +1,35 @@
 # ─────────────────────────────────────────────────────────────
-# docker-compose.yml  –  for local / non-Unraid deployments
-#
-# Unraid users: use the Community Applications template instead.
-# Template path: unraid/jellyfin-groupings.xml
+# docker-compose.yml  –  Deployment for Jellyfin Groupings
 # ─────────────────────────────────────────────────────────────
+
 services:
   jellyfin-groupings:
-    build: .
-    # Or pull from the registry once published:
-    # image: ghcr.io/entcheneric/jellyfin-groupings:latest
+    image: ghcr.io/entcheneric/jellyfin-groupings:latest
+    # build: . # Uncomment this if you want to build from source locally
+    container_name: jellyfin-groupings
+    restart: unless-stopped
     ports:
       - "5000:5000"
     volumes:
-      # Config persistence – no need to create config.json manually.
-      # The app auto-creates it on first start.
-      - app_config:/app/config
+      # 1. Config persistence
+      # Stores your API keys and group definitions. 
+      # The app auto-creates config.json on first start.
+      - ./config:/app/config
 
-      # Output directory where virtual grouping folders (symlinks) are created.
-      # → In the app, set "Target Path" to: /groupings
+      # 2. Output directory (Virtual Root)
+      # This is where the symlink folders will be created.
+      # IMPORTANT: This same host path MUST be mounted in your Jellyfin container.
+      # In the Web UI, set "Base Target Path" to: /groupings
       - /path/to/your/groupings-virtual:/groupings
 
-      # Your media root – so the app can verify symlink targets exist on disk.
-      # → In the app, set "Media path as Jellyfin sees it" to the path Jellyfin
-      #   reports (e.g. /media), and "Same path on this machine" to /media below.
-      # → Adjust the host path to wherever your media actually lives.
-      # - /mnt/user/media:/media:ro
+      # 3. Media root
+      # Mount your real media folder here so the container can verify symlink targets.
+      # In the Web UI, set "Same path on this machine" to: /media
+      # - /path/to/your/media:/media:ro
 
-    restart: unless-stopped
-
-volumes:
-  app_config:
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
