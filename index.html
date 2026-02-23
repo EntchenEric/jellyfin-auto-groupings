@@ -768,6 +768,45 @@
                         </div>
                     </div>
                 </main>
+                <main class="card locked-section" id="scheduler-card" style="margin-top: 2rem;">
+                    <div class="locked-overlay-text">Server Required</div>
+                    <h2>④ Automatic Sync Scheduling</h2>
+                    <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 1.2rem;">Configure a
+                        global
+                        sync schedule to keep your libraries up to date automatically.</p>
+
+                    <div class="form-group"
+                        style="padding: 1rem; background: rgba(0,0,0,0.1); border-radius: var(--radius-md); border: 1px dashed var(--glass-border);">
+                        <label
+                            style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; text-transform: none; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.05em; margin-bottom: 1rem;">
+                            <input type="checkbox" id="global_scheduler_enabled" onchange="toggleGlobalScheduler(this)"
+                                style="width: 16px; height: 16px; accent-color: var(--accent-color); cursor: pointer; flex-shrink: 0;">
+                            <span style="text-transform: uppercase; letter-spacing: 0.05em;">Enable Global
+                                Scheduler</span>
+                        </label>
+
+                        <div id="global_scheduler_panel" style="display: none;">
+                            <label for="global_sync_schedule">Global Sync Schedule (Cron)</label>
+                            <input type="text" id="global_sync_schedule" placeholder="0 0 * * * (Every midnight)"
+                                style="margin-bottom: 0.5rem; width: 100%; padding: 0.8rem 1rem; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary);">
+                            <small
+                                style="color: var(--text-secondary); display: block; margin-top: 0.25rem; font-size: 0.75rem; margin-bottom: 1rem;">
+                                Standard crontab expression: <code>minute hour day month day_of_week</code>.
+                            </small>
+
+                            <label style="margin-top: 1rem; display: block; margin-bottom: 0.5rem;">Excluded
+                                Groupings</label>
+                            <div id="global_sync_exclusions"
+                                style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; max-height: 150px; overflow-y: auto; padding-right: 0.5rem; background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: var(--radius-md);">
+                                <!-- Checkboxes for each group to exclude -->
+                            </div>
+                            <small
+                                style="color: var(--text-secondary); display: block; margin-top: 0.5rem; font-size: 0.75rem;">
+                                These groupings will be skipped during the global scheduled sync.
+                            </small>
+                        </div>
+                    </div>
+                </main>
             </section>
 
             <section class="groupings-column locked-section" id="groupings-section">
@@ -887,6 +926,24 @@
                                         style="font-size:0.7rem;">0002 - Title</code>… so Jellyfin's "Sort by Name"
                                     reflects this order. List Order options only work with their corresponding list
                                     source type.
+                                </small>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label
+                                style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; text-transform: none; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.05em;">
+                                <input type="checkbox" id="schedule_enabled" onchange="toggleGroupScheduler(this)"
+                                    style="width: 16px; height: 16px; accent-color: var(--accent-color); cursor: pointer; flex-shrink: 0;">
+                                <span style="text-transform: uppercase; letter-spacing: 0.05em;">Individual Sync
+                                    Schedule <span
+                                        style="font-weight:400; text-transform: none;">(optional)</span></span>
+                            </label>
+                            <div id="group_scheduler_panel" style="display: none; margin-top: 0.75rem;">
+                                <input type="text" id="group_schedule" placeholder="e.g. 0 12 * * * (Every day at noon)"
+                                    style="width: 100%; padding: 0.8rem 1rem; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-family: inherit; font-size: 1rem;">
+                                <small
+                                    style="color: var(--text-secondary); display: block; margin-top: 0.25rem; font-size: 0.75rem;">
+                                    Standard crontab expression. Leave empty to use only the global schedule.
                                 </small>
                             </div>
                         </div>
@@ -1354,6 +1411,62 @@
             });
         }
 
+        function toggleGlobalScheduler(cb) {
+            const panel = document.getElementById('global_scheduler_panel');
+            if (panel) panel.style.display = cb.checked ? 'block' : 'none';
+        }
+
+        function toggleGroupScheduler(cb) {
+            const panel = document.getElementById('group_scheduler_panel');
+            if (panel) panel.style.display = cb.checked ? 'block' : 'none';
+        }
+
+        function updateGlobalSyncExclusionsUI() {
+            const container = document.getElementById('global_sync_exclusions');
+            if (!container) return;
+            container.innerHTML = '';
+
+            if (!currentConfig.scheduler) {
+                currentConfig.scheduler = { global_enabled: false, global_schedule: '', global_exclude_ids: [] };
+            }
+            if (!currentConfig.scheduler.global_exclude_ids) {
+                currentConfig.scheduler.global_exclude_ids = [];
+            }
+
+            // Prune stale group names from global_exclude_ids
+            const validGroupNames = currentConfig.groups.map(g => g.name).filter(Boolean);
+            currentConfig.scheduler.global_exclude_ids = currentConfig.scheduler.global_exclude_ids.filter(id => validGroupNames.includes(id));
+
+            const excludedIds = currentConfig.scheduler.global_exclude_ids;
+
+            currentConfig.groups.forEach((group) => {
+                if (!group.name) return;
+                const label = document.createElement('label');
+                label.setAttribute('style', 'display: flex; align-items: center; gap: 0.6rem; cursor: pointer; font-size: 0.85rem; padding: 0.2rem 0;');
+
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.checked = excludedIds.includes(group.name);
+                cb.setAttribute('style', 'width:16px; height:16px; accent-color: var(--accent-color);');
+                cb.onchange = (e) => {
+                    const idx = excludedIds.indexOf(group.name);
+                    if (e.target.checked) {
+                        if (idx === -1) excludedIds.push(group.name);
+                    } else {
+                        if (idx !== -1) excludedIds.splice(idx, 1);
+                    }
+                };
+
+                label.appendChild(cb);
+                label.appendChild(document.createTextNode(group.name));
+                container.appendChild(label);
+            });
+
+            if (currentConfig.groups.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.8rem; font-style: italic;">No groups defined yet.</p>';
+            }
+        }
+
         function addMetadataRule() {
             window._currentMetadataRules.push({ operator: 'AND', value: '' });
             renderMetadataRules();
@@ -1455,6 +1568,12 @@
                 document.getElementById('trakt_client_id').value = currentConfig.trakt_client_id || '';
                 document.getElementById('tmdb_api_key').value = currentConfig.tmdb_api_key || '';
                 document.getElementById('mal_client_id').value = currentConfig.mal_client_id || '';
+
+                // Scheduler settings
+                const sched = currentConfig.scheduler || { global_enabled: false, global_schedule: '', global_exclude_ids: [] };
+                document.getElementById('global_scheduler_enabled').checked = sched.global_enabled;
+                document.getElementById('global_sync_schedule').value = sched.global_schedule || '';
+                toggleGlobalScheduler(document.getElementById('global_scheduler_enabled'));
 
                 updateSourceTypeOptions();
                 renderGroups();
@@ -1658,11 +1777,14 @@
             const pathFieldIds = ['target_path', 'media_path_in_jellyfin', 'media_path_on_host'];
             const pathGroupIds = ['target_path_group', 'media_path_in_jellyfin_group', 'media_path_on_host_group'];
 
+            const schedulerCard = document.getElementById('scheduler-card');
+
             if (isValid) {
                 statusDot.className = 'connection-dot online';
                 statusText.textContent = 'Connected';
                 maintenanceCard.classList.remove('locked-section');
                 groupingsSection.classList.remove('locked-section');
+                if (schedulerCard) schedulerCard.classList.remove('locked-section');
                 // Unlock path fields
                 pathFieldIds.forEach(id => {
                     const el = document.getElementById(id);
@@ -1680,6 +1802,7 @@
                 statusText.textContent = 'Disconnected';
                 maintenanceCard.classList.add('locked-section');
                 groupingsSection.classList.add('locked-section');
+                if (schedulerCard) schedulerCard.classList.add('locked-section');
                 // Lock path fields
                 pathFieldIds.forEach(id => {
                     const el = document.getElementById(id);
@@ -1700,8 +1823,11 @@
             groupsList.innerHTML = '';
             if (!currentConfig.groups || currentConfig.groups.length === 0) {
                 groupsList.innerHTML = '<p style="color: var(--text-secondary); text-align: center; font-style: italic; margin-top: 2rem;">No groupings defined yet.</p>';
+                updateGlobalSyncExclusionsUI();
                 return;
             }
+
+            updateGlobalSyncExclusionsUI();
 
             currentConfig.groups.forEach((group, index) => {
                 const card = document.createElement('div');
@@ -1779,6 +1905,12 @@
         }
 
         async function saveAllConfig() {
+            // Update global scheduler settings from UI before saving
+            if (!currentConfig.scheduler) currentConfig.scheduler = {};
+            currentConfig.scheduler.global_enabled = document.getElementById('global_scheduler_enabled').checked;
+            currentConfig.scheduler.global_schedule = document.getElementById('global_sync_schedule').value.trim();
+            // global_exclude_ids is updated in real-time by checkbox event listeners in updateGlobalSyncExclusionsUI
+
             try {
                 const response = await fetch('/api/config', {
                     method: 'POST',
@@ -1848,7 +1980,9 @@
                 source_category: document.getElementById('source_category').value,
                 source_type: source_type,
                 source_value: val,
-                sort_order: document.getElementById('sort_order_enabled').checked ? (document.getElementById('sort_order').value || '') : ''
+                sort_order: document.getElementById('sort_order_enabled').checked ? (document.getElementById('sort_order').value || '') : '',
+                schedule_enabled: document.getElementById('schedule_enabled').checked,
+                schedule: document.getElementById('group_schedule').value.trim()
             };
 
             if (metadataTypes.includes(source_type)) {
@@ -1891,6 +2025,11 @@
             document.getElementById('sort_order_panel').style.display = hasSortOrder ? 'block' : 'none';
             document.getElementById('sort_order').value = group.sort_order || '';
 
+            const hasSchedule = !!(group.schedule_enabled);
+            document.getElementById('schedule_enabled').checked = hasSchedule;
+            document.getElementById('group_scheduler_panel').style.display = hasSchedule ? 'block' : 'none';
+            document.getElementById('group_schedule').value = group.schedule || '';
+
             updateSourceValueUI(group.source_value);
 
             groupFormTitle.textContent = 'Edit Grouping';
@@ -1913,6 +2052,8 @@
             cancelEditBtn.style.display = 'none';
             document.getElementById('sort_order_enabled').checked = false;
             document.getElementById('sort_order_panel').style.display = 'none';
+            document.getElementById('schedule_enabled').checked = false;
+            document.getElementById('group_scheduler_panel').style.display = 'none';
             updateSourceTypeOptions();
         }
 

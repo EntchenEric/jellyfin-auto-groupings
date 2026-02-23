@@ -986,17 +986,22 @@ def _process_group(
     return result
 
 
-def run_sync(config: dict[str, Any], dry_run: bool = False) -> list[dict[str, Any]]:
-    """Run the full synchronisation process for all configured groups.
+def run_sync(
+    config: dict[str, Any], dry_run: bool = False, group_names: list[str] | None = None
+) -> list[dict[str, Any]]:
+    """Run the synchronisation process for configured groups.
 
-    Iterates over every group in *config* and delegates to
-    :func:`_process_group`.  Results are collected and returned for the
-    caller (typically a Flask route handler) to serialise.
+    Iterates over groups in *config* and delegates to :func:`_process_group`.
+    If *group_names* is provided, only groups with matching names are synced.
+    Results are collected and returned for the caller (typically a Flask route
+    handler) to serialise.
 
     Args:
         config: The application configuration dict as returned by
             :func:`config.load_config`.
         dry_run: Whether to perform a dry run (default: False).
+        group_names: Optional list of group names to include. If None, all
+            groups are included.
 
     Returns:
         A list of per-group result dicts, each containing at minimum
@@ -1039,6 +1044,12 @@ def run_sync(config: dict[str, Any], dry_run: bool = False) -> list[dict[str, An
         if not isinstance(group, dict):
             print(f"Skipping invalid group entry: {group}")
             continue
+        
+        name = group.get("name")
+        if group_names is not None:
+            if not name or name not in group_names:
+                continue
+
         result = _process_group(
             group,
             target_base,
