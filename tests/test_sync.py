@@ -191,18 +191,18 @@ def test_fetch_items_for_metadata_group_with_watch_state(mock_jf):
     
     # Test 'unwatched' calls fetch with Filters=IsUnplayed
     _fetch_items_for_metadata_group("Group", "genre", "Action", "SortName", "http://jf", "key", "unwatched")
-    _, kwargs = mock_jf.call_args
-    assert kwargs["params"]["Filters"] == "IsUnplayed"
+    args, _ = mock_jf.call_args
+    assert args[2]["Filters"] == "IsUnplayed"
     
     # Test 'watched' calls fetch with Filters=IsPlayed
     _fetch_items_for_metadata_group("Group", "genre", "Action", "SortName", "http://jf", "key", "watched")
-    _, kwargs = mock_jf.call_args
-    assert kwargs["params"]["Filters"] == "IsPlayed"
+    args, _ = mock_jf.call_args
+    assert args[2]["Filters"] == "IsPlayed"
     
     # Test default doesn't have Filters
     _fetch_items_for_metadata_group("Group", "genre", "Action", "SortName", "http://jf", "key", "")
-    _, kwargs = mock_jf.call_args
-    assert "Filters" not in kwargs["params"]
+    args, _ = mock_jf.call_args
+    assert "Filters" not in args[2]
 
 @patch('sync.fetch_jellyfin_items')
 def test_preview_group_fetch_error(mock_jf):

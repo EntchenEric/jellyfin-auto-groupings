@@ -432,7 +432,7 @@ def _fetch_items_for_anilist_group(
         return [], None, 200
 
     return _match_jellyfin_items_by_provider(
-        anilist_ids, "Anilist", "anilist_list_order", sort_order, url, api_key, group_name, watch_state
+        anilist_ids, "AniList", "anilist_list_order", sort_order, url, api_key, group_name, watch_state
     )
 
 
