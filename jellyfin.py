@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import mimetypes
 import requests
 
 # ---------------------------------------------------------------------------
@@ -231,7 +232,9 @@ def get_library_id(base_url: str, api_key: str, name: str, timeout: int = 30) ->
         
         for folder in response.json():
             if folder.get("Name") == name:
-                return str(folder.get("ItemId"))
+                item_id = folder.get("ItemId")
+                if item_id is not None:
+                    return str(item_id)
     except requests.exceptions.RequestException as exc:
         print(f"Failed to get library ID for {name!r}: {exc}")
     
@@ -259,17 +262,19 @@ def set_virtual_folder_image(
         print(f"Cannot set image: Library {name!r} not found or ID unknown.")
         return
 
-    import builtins
     try:
-        with builtins.open(image_path, "rb") as f:
+        with open(image_path, "rb") as f:
             image_bytes = f.read()
     except OSError as exc:
         print(f"Cannot set image: Failed to read image file {image_path!r}: {exc}")
         return
 
+    mime_type, _ = mimetypes.guess_type(image_path)
+    mime_type = mime_type or "application/octet-stream"
+
     headers = {
         "X-Emby-Token": api_key,
-        "Content-Type": "image/jpeg",
+        "Content-Type": mime_type,
     }
     
     url = f"{base_url}/Items/{library_id}/Images/Primary"

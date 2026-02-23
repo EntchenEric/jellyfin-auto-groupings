@@ -1047,15 +1047,11 @@ def _process_group(
                 print(f"Failed to create Jellyfin library {group_name!r}: {exc}")
                 result["library_error"] = str(exc)
 
-        # --- Automatic Library Cover ---
-        source_cover = get_cover_path(group_name, target_base)
-        if auto_set_library_covers and source_cover and os.path.exists(source_cover):
+    # --- Automatic Library Cover ---
+    if not dry_run and auto_set_library_covers:
+        if source_cover and os.path.exists(source_cover):
             print(f"Setting cover image for library {group_name!r} via API")
-            try:
-                set_virtual_folder_image(url, api_key, group_name, source_cover)
-            except Exception as exc:
-                print(f"Failed to set cover image for library {group_name!r}: {exc}")
-                result["cover_error"] = str(exc)
+            set_virtual_folder_image(url, api_key, group_name, source_cover)
 
     return result
 

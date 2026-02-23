@@ -123,7 +123,11 @@ def test_add_virtual_folder_mixed(mock_post):
 @patch('requests.get')
 def test_get_library_id(mock_get):
     mock_response = MagicMock()
-    mock_response.json.return_value = [{"Name": "Movies", "ItemId": "12345"}, {"Name": "TV Shows", "ItemId": "67890"}]
+    mock_response.json.return_value = [
+        {"Name": "Movies", "ItemId": "12345"},
+        {"Name": "TV Shows", "ItemId": "67890"},
+        {"Name": "Orphans"}
+    ]
     mock_response.raise_for_status.return_value = None
     mock_get.return_value = mock_response
 
@@ -131,11 +135,15 @@ def test_get_library_id(mock_get):
     assert item_id == "12345"
     item_id_none = get_library_id("http://localhost:8096", "test_key", "NonExistent")
     assert item_id_none is None
+    item_id_orphans = get_library_id("http://localhost:8096", "test_key", "Orphans")
+    assert item_id_orphans is None
 
+@patch('mimetypes.guess_type')
 @patch('builtins.open')
 @patch('requests.post')
 @patch('jellyfin.get_library_id')
-def test_set_virtual_folder_image(mock_get_library_id, mock_post, mock_open):
+def test_set_virtual_folder_image(mock_get_library_id, mock_post, mock_open, mock_guess):
+    mock_guess.return_value = ("image/jpeg", None)
     mock_get_library_id.return_value = "12345"
     mock_open.return_value.__enter__.return_value.read.return_value = b"image_data"
     
