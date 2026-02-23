@@ -980,6 +980,74 @@
                                 </small>
                             </div>
                         </div>
+
+                        <!-- Seasonal Grouping -->
+                        <div class="form-group">
+                            <label
+                                style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; text-transform: none; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.05em;">
+                                <input type="checkbox" id="seasonal_enabled" onchange="toggleSeasonal(this)"
+                                    style="width: 16px; height: 16px; accent-color: var(--accent-color); cursor: pointer; flex-shrink: 0;">
+                                <span style="text-transform: uppercase; letter-spacing: 0.05em;">Seasonal Grouping <span
+                                        style="font-weight:400; text-transform: none;">(optional)</span></span>
+                            </label>
+                            <div id="seasonal_panel" style="display: none; margin-top: 0.75rem;">
+                                <div style="display: flex; gap: 1rem; align-items: center;">
+                                    <div style="flex: 1;">
+                                        <label style="font-size: 0.7rem; margin-bottom: 0.3rem;">Show From</label>
+                                        <div style="display: flex; gap: 0.3rem;">
+                                            <select id="seasonal_start_month"
+                                                style="flex: 2; padding: 0.5rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 4px; color: white; font-size: 0.85rem;">
+                                                <option value="01">Jan</option>
+                                                <option value="02">Feb</option>
+                                                <option value="03">Mar</option>
+                                                <option value="04">Apr</option>
+                                                <option value="05">May</option>
+                                                <option value="06">Jun</option>
+                                                <option value="07">Jul</option>
+                                                <option value="08">Aug</option>
+                                                <option value="09">Sep</option>
+                                                <option value="10">Oct</option>
+                                                <option value="11">Nov</option>
+                                                <option value="12">Dec</option>
+                                            </select>
+                                            <select id="seasonal_start_day"
+                                                style="flex: 1; padding: 0.5rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 4px; color: white; font-size: 0.85rem;">
+                                                <!-- JS populated -->
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div style="color: var(--text-secondary); padding-top: 1rem;">to</div>
+                                    <div style="flex: 1;">
+                                        <label style="font-size: 0.7rem; margin-bottom: 0.3rem;">Delete On</label>
+                                        <div style="display: flex; gap: 0.3rem;">
+                                            <select id="seasonal_end_month"
+                                                style="flex: 2; padding: 0.5rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 4px; color: white; font-size: 0.85rem;">
+                                                <option value="01">Jan</option>
+                                                <option value="02">Feb</option>
+                                                <option value="03">Mar</option>
+                                                <option value="04">Apr</option>
+                                                <option value="05">May</option>
+                                                <option value="06">Jun</option>
+                                                <option value="07">Jul</option>
+                                                <option value="08">Aug</option>
+                                                <option value="09">Sep</option>
+                                                <option value="10">Oct</option>
+                                                <option value="11">Nov</option>
+                                                <option value="12">Dec</option>
+                                            </select>
+                                            <select id="seasonal_end_day"
+                                                style="flex: 1; padding: 0.5rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 4px; color: white; font-size: 0.85rem;">
+                                                <!-- JS populated -->
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <small
+                                    style="color: var(--text-secondary); display: block; margin-top: 0.5rem; font-size: 0.75rem;">
+                                    The grouping will only exist between these dates. E.g. Dec 1st to Jan 1st.
+                                </small>
+                            </div>
+                        </div>
                         <div style="display: flex; gap: 1rem;">
                             <button type="submit" id="add-group-btn"
                                 style="flex: 2; background: var(--surface-color); border: 1px solid var(--accent-color); color: var(--accent-color);">
@@ -1934,6 +2002,12 @@
                     badge.textContent = sortLabels[group.sort_order] || group.sort_order;
                     h4.appendChild(badge);
                 }
+                if (group.seasonal_enabled) {
+                    const badge = document.createElement('span');
+                    badge.setAttribute('style', 'display:inline-block; margin-left:0.5rem; font-size:0.72rem; background:rgba(245,158,11,0.15); color:var(--warning-color); border:1px solid rgba(245,158,11,0.3); border-radius:4px; padding:0.1rem 0.4rem;');
+                    badge.textContent = `📅 ${group.seasonal_start} to ${group.seasonal_end}`;
+                    h4.appendChild(badge);
+                }
                 infoDiv.appendChild(h4);
 
                 const metaDiv = document.createElement('div');
@@ -2059,7 +2133,10 @@
                 source_value: val,
                 sort_order: document.getElementById('sort_order_enabled').checked ? (document.getElementById('sort_order').value || '') : '',
                 schedule_enabled: document.getElementById('schedule_enabled').checked,
-                schedule: document.getElementById('group_schedule').value.trim()
+                schedule: document.getElementById('group_schedule').value.trim(),
+                seasonal_enabled: document.getElementById('seasonal_enabled').checked,
+                seasonal_start: `${document.getElementById('seasonal_start_month').value}-${document.getElementById('seasonal_start_day').value}`,
+                seasonal_end: `${document.getElementById('seasonal_end_month').value}-${document.getElementById('seasonal_end_day').value}`
             };
 
             if (metadataTypes.includes(source_type)) {
@@ -2107,6 +2184,20 @@
             document.getElementById('group_scheduler_panel').style.display = hasSchedule ? 'block' : 'none';
             document.getElementById('group_schedule').value = group.schedule || '';
 
+            const isSeasonal = !!(group.seasonal_enabled);
+            document.getElementById('seasonal_enabled').checked = isSeasonal;
+            document.getElementById('seasonal_panel').style.display = isSeasonal ? 'block' : 'none';
+            if (group.seasonal_start) {
+                const [sm, sd] = group.seasonal_start.split('-');
+                document.getElementById('seasonal_start_month').value = sm;
+                document.getElementById('seasonal_start_day').value = sd;
+            }
+            if (group.seasonal_end) {
+                const [em, ed] = group.seasonal_end.split('-');
+                document.getElementById('seasonal_end_month').value = em;
+                document.getElementById('seasonal_end_day').value = ed;
+            }
+
             updateSourceValueUI(group.source_value);
 
             groupFormTitle.textContent = 'Edit Grouping';
@@ -2131,12 +2222,37 @@
             document.getElementById('sort_order_panel').style.display = 'none';
             document.getElementById('schedule_enabled').checked = false;
             document.getElementById('group_scheduler_panel').style.display = 'none';
+            document.getElementById('seasonal_enabled').checked = false;
+            document.getElementById('seasonal_panel').style.display = 'none';
             updateSourceTypeOptions();
         }
 
         function toggleSortOrder(checkbox) {
             document.getElementById('sort_order_panel').style.display = checkbox.checked ? 'block' : 'none';
         }
+
+        function toggleSeasonal(checkbox) {
+            document.getElementById('seasonal_panel').style.display = checkbox.checked ? 'block' : 'none';
+        }
+
+        function populateSeasonalDays() {
+            const startDaySelect = document.getElementById('seasonal_start_day');
+            const endDaySelect = document.getElementById('seasonal_end_day');
+
+            [startDaySelect, endDaySelect].forEach(select => {
+                select.innerHTML = '';
+                for (let i = 1; i <= 31; i++) {
+                    const opt = document.createElement('option');
+                    const val = i.toString().padStart(2, '0');
+                    opt.value = val;
+                    opt.textContent = i;
+                    select.appendChild(opt);
+                }
+            });
+        }
+
+        // Call this on load
+        populateSeasonalDays();
 
         // --- Cover Generator Logic ---
         let activeCoverIndex = -1;

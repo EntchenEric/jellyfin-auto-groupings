@@ -11,7 +11,8 @@ from sync import (
     _sort_items_in_memory,
     _match_jellyfin_items_by_provider,
     preview_group,
-    _LIBRARY_CACHE
+    _LIBRARY_CACHE,
+    _is_in_season
 )
 
 def test_translate_path():
@@ -260,3 +261,29 @@ def test_sort_items_missing_values_logic():
     res_desc = _sort_items_in_memory(items_year, "ProductionYear")
     assert res_desc[0]["ProductionYear"] == 2020
     assert res_desc[1]["ProductionYear"] is None
+
+def test_is_in_season():
+    from unittest.mock import MagicMock
+    with patch('sync.datetime') as mock_datetime:
+        mock_now = MagicMock()
+        mock_datetime.now.return_value = mock_now
+        
+        # Case 1: Within year window
+        mock_now.strftime.return_value = "07-15"
+        assert _is_in_season("06-01", "09-01") is True
+        
+        mock_now.strftime.return_value = "05-15"
+        assert _is_in_season("06-01", "09-01") is False
+        
+        # Case 2: Crossing year window
+        mock_now.strftime.return_value = "12-15"
+        assert _is_in_season("12-01", "01-01") is True
+        
+        mock_now.strftime.return_value = "01-15"
+        assert _is_in_season("12-01", "01-01") is False
+        
+        mock_now.strftime.return_value = "01-01"
+        assert _is_in_season("12-01", "01-01") is False # Exclusive end
+        
+        # Case 3: Invalid types
+        assert _is_in_season(None, "01-01") is True # Defaults to True

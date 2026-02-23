@@ -18,6 +18,7 @@ import shutil
 import hashlib
 import logging
 import requests
+from datetime import datetime
 from typing import Any
 
 from anilist import fetch_anilist_list
@@ -995,6 +996,31 @@ def _process_group(
     return result
 
 
+
+def _is_in_season(start_str: Any, end_str: Any) -> bool:
+    """Check if the current date is within the seasonal window [start, end).
+    Dates are in 'MM-DD' format.
+    """
+    if not isinstance(start_str, str) or not isinstance(end_str, str):
+        return True
+    
+    try:
+        now = datetime.now()
+        current_md = now.strftime("%m-%d")
+        
+        # We know they are strings now
+        s: str = start_str
+        e: str = end_str
+        
+        if s <= e:
+            # Simple case: window stays within one calendar year (e.g., 06-01 to 08-31)
+            return s <= current_md < e
+        else:
+            # Over-year case: window spans across Jan 1st (e.g., 12-01 to 01-01)
+            return current_md >= s or current_md < e
+    except (ValueError, TypeError):
+        return True
+
 def run_sync(
     config: dict[str, Any], dry_run: bool = False, group_names: list[str] | None = None
 ) -> list[dict[str, Any]]:
@@ -1054,9 +1080,22 @@ def run_sync(
             print(f"Skipping invalid group entry: {group}")
             continue
         
-        name = group.get("name")
+        name = group.get("name", "").strip()
         if group_names is not None:
             if not name or name not in group_names:
+                continue
+
+        # --- Seasonal Check ---
+        if group.get("seasonal_enabled"):
+            start = group.get("seasonal_start")
+            end = group.get("seasonal_end")
+            if not _is_in_season(start, end):
+                if not dry_run and name:
+                    group_dir = os.path.join(target_base, name)
+                    if os.path.isdir(group_dir):
+                        print(f"Seasonal group {name!r} is out of season. Deleting directory: {group_dir}")
+                        shutil.rmtree(group_dir)
+                results.append({"group": name or "(unnamed)", "links": 0, "status": "out_of_season"})
                 continue
 
         result = _process_group(
