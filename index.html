@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@400;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap"
         rel="stylesheet">
     <style>
         :root {
@@ -1062,6 +1062,92 @@
             </div>
         </div>
 
+        <!-- Cover Generator Modal -->
+        <div id="cover-generator-modal" class="modal"
+            style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center; backdrop-filter: blur(8px);">
+            <div class="card"
+                style="max-width: 800px; width: 90%; max-height: 90vh; display: flex; flex-direction: column;">
+                <h2>🎨 Generate Cover (16:9)</h2>
+                <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 1.5rem; margin-bottom: 1.5rem;">
+                    <!-- Row 1: Primary Content (Text) -->
+                    <div style="grid-column: span 3;">
+                        <label for="cover-text"
+                            style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; display: block;">Cover
+                            Text</label>
+                        <input type="text" id="cover-text"
+                            style="width: 100%; padding: 0.75rem 1rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 1.1rem; outline: none; transition: var(--transition);"
+                            oninput="renderCover()" placeholder="Enter group name...">
+                    </div>
+
+                    <!-- Row 2: Aesthetics & Style -->
+                    <div style="min-width: 0;">
+                        <label for="cover-theme"
+                            style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; display: block;">Theme</label>
+                        <select id="cover-theme" onchange="renderCover()"
+                            style="width: 100%; padding: 0.7rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); cursor: pointer;">
+                            <option value="modern-dark">Dark Gradient (Modern)</option>
+                            <option value="vibrant-glow">Vibrant Glow</option>
+                            <option value="minimal-glass">Minimal Glassmorphism</option>
+                            <option value="cyberpunk">Cyberpunk Night</option>
+                            <option value="aurora">Aurora Borealis</option>
+                            <option value="monochrome">Monochrome Peak</option>
+                            <option value="vintage">Golden Age</option>
+                        </select>
+                    </div>
+                    <div style="min-width: 0;">
+                        <label for="cover-border-style"
+                            style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; display: block;">Border
+                            Style</label>
+                        <select id="cover-border-style" onchange="renderCover()"
+                            style="width: 100%; padding: 0.7rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); cursor: pointer;">
+                            <option value="none">None</option>
+                            <option value="elegant">Elegant Thin</option>
+                            <option value="bold-frame">Bold Frame</option>
+                            <option value="neon-glow">Neon Glow</option>
+                            <option value="tech-corners">Sci-Fi Corners</option>
+                            <option value="double-inset">Double Inset</option>
+                            <option value="corner-brackets">Corner Brackets</option>
+                            <option value="industrial-dash">Dashed Industrial</option>
+                            <option value="ornate">Ornate Frame</option>
+                        </select>
+                    </div>
+                    <div
+                        style="display: flex; gap: 0.75rem; align-items: flex-end; background: rgba(255,255,255,0.03); padding: 0.5rem 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border);">
+                        <div>
+                            <label for="cover-border-color"
+                                style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 0.3rem; display: block;">Border</label>
+                            <input type="color" id="cover-border-color" value="#ffffff" onchange="renderCover()"
+                                style="width: 44px; height: 32px; padding: 0; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; cursor: pointer; background: transparent;">
+                        </div>
+                        <div>
+                            <label for="cover-color-1"
+                                style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 0.3rem; display: block;">Color
+                                1</label>
+                            <input type="color" id="cover-color-1" value="#4f46e5" onchange="renderCover()"
+                                style="width: 44px; height: 32px; padding: 0; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; cursor: pointer; background: transparent;">
+                        </div>
+                        <div>
+                            <label for="cover-color-2"
+                                style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 0.3rem; display: block;">Color
+                                2</label>
+                            <input type="color" id="cover-color-2" value="#9333ea" onchange="renderCover()"
+                                style="width: 44px; height: 32px; padding: 0; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; cursor: pointer; background: transparent;">
+                        </div>
+                    </div>
+                </div>
+                <div
+                    style="flex: 1; display: flex; justify-content: center; align-items: center; background: rgba(0,0,0,0.3); border-radius: var(--radius-md); padding: 1rem; overflow: hidden; border: 1px dashed var(--glass-border); min-height: 350px;">
+                    <canvas id="cover-canvas" width="1920" height="1080"
+                        style="max-width: 100%; max-height: 50vh; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);"></canvas>
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                    <button type="button" onclick="applyCover()" style="flex: 2; font-weight: 600;">Apply Cover</button>
+                    <button type="button" onclick="closeModal('cover-generator-modal')" class="secondary-btn"
+                        style="flex: 1;">Cancel</button>
+                </div>
+            </div>
+        </div>
+
         <div id="status-msg" class="status-msg"></div>
 
         <!-- Folder Picker Modal -->
@@ -1663,6 +1749,14 @@
                 const actionsDiv = document.createElement('div');
                 actionsDiv.setAttribute('style', 'display: flex; gap: 0.5rem;');
 
+                const coverBtn = document.createElement('button');
+                coverBtn.className = 'secondary-btn';
+                coverBtn.title = 'Group Cover';
+                coverBtn.setAttribute('style', 'padding: 0.5rem 0.8rem; font-size: 0.8rem; margin: 0; width: auto; border: 1px dashed var(--accent-color); color: var(--accent-color);');
+                coverBtn.textContent = '🎨 Cover';
+                coverBtn.onclick = () => openCoverGenerator(index);
+                actionsDiv.appendChild(coverBtn);
+
                 const editBtn = document.createElement('button');
                 editBtn.className = 'secondary-btn';
                 editBtn.title = 'Edit Group';
@@ -1824,6 +1918,523 @@
 
         function toggleSortOrder(checkbox) {
             document.getElementById('sort_order_panel').style.display = checkbox.checked ? 'block' : 'none';
+        }
+
+        // --- Cover Generator Logic ---
+        let activeCoverIndex = -1;
+
+        function openCoverGenerator(index) {
+            activeCoverIndex = index;
+            const group = currentConfig.groups[index];
+
+            document.getElementById('cover-text').value = group.cover_text || group.name || 'Custom Group';
+            document.getElementById('cover-theme').value = group.cover_theme || 'modern-dark';
+            document.getElementById('cover-border-style').value = group.cover_border_style || 'none';
+            document.getElementById('cover-border-color').value = group.cover_border_color || '#ffffff';
+            document.getElementById('cover-color-1').value = group.cover_color1 || '#4f46e5';
+            document.getElementById('cover-color-2').value = group.cover_color2 || '#9333ea';
+
+            document.getElementById('cover-generator-modal').style.display = 'flex';
+
+            // Ensure fonts are ready before first render
+            if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(() => renderCover());
+            } else {
+                setTimeout(() => renderCover(), 100);
+            }
+        }
+
+        // --- Deterministic PRNG helpers ---
+        function mulberry32(a) {
+            return function () {
+                let t = a += 0x6D2B79F5;
+                t = Math.imul(t ^ t >>> 15, t | 1);
+                t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+                return ((t ^ t >>> 14) >>> 0) / 4294967296;
+            }
+        }
+
+        function getSeed(str) {
+            let hash = 2166136261;
+            for (let i = 0; i < str.length; i++) {
+                hash ^= str.charCodeAt(i);
+                hash = Math.imul(hash, 16777619);
+            }
+            return hash >>> 0;
+        }
+
+        function renderCover() {
+            const canvas = document.getElementById('cover-canvas');
+            const ctx = canvas.getContext('2d');
+            const text = document.getElementById('cover-text').value.trim() || 'Group Name';
+            const theme = document.getElementById('cover-theme').value;
+            const color1 = document.getElementById('cover-color-1').value;
+            const color2 = document.getElementById('cover-color-2').value;
+
+            // Seeded random for deterministic renders
+            const seed = getSeed(text + theme + color1 + color2);
+            const seededRand = mulberry32(seed);
+
+            // High-DPI Anti-Aliasing Fix
+            const dpr = window.devicePixelRatio || 1;
+            const logicalW = 1920;
+            const logicalH = 1080;
+
+            if (canvas.width !== logicalW * dpr) {
+                canvas.width = logicalW * dpr;
+                canvas.height = logicalH * dpr;
+                canvas.style.width = logicalW + 'px';
+                canvas.style.height = logicalH + 'px';
+            }
+
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            const w = logicalW;
+            const h = logicalH;
+
+            ctx.clearRect(0, 0, w, h);
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+
+            const helpers = {
+                hexToRgb: (hex) => {
+                    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                    return result ? {
+                        r: parseInt(result[1], 16),
+                        g: parseInt(result[2], 16),
+                        b: parseInt(result[3], 16)
+                    } : { r: 0, g: 0, b: 0 };
+                },
+                roundRect: roundRect,
+                wrapText: wrapText,
+                seededRand: seededRand
+            };
+
+            const themeFunctions = {
+                'modern-dark': (ctx, w, h, { color1, color2 }, hlp) => {
+                    const grad = ctx.createLinearGradient(0, 0, w, h);
+                    grad.addColorStop(0, '#1a1a24');
+                    grad.addColorStop(1, '#0b0b10');
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(0, 0, w, h);
+
+                    const rgb1 = hlp.hexToRgb(color1);
+                    const rgb2 = hlp.hexToRgb(color2);
+
+                    const blob1 = ctx.createRadialGradient(w / 4, h / 2, 0, w / 4, h / 2, 800);
+                    blob1.addColorStop(0, `rgba(${rgb1.r}, ${rgb1.g}, ${rgb1.b}, 0.2)`);
+                    blob1.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    ctx.fillStyle = blob1;
+                    ctx.fillRect(0, 0, w, h);
+
+                    const blob2 = ctx.createRadialGradient(w * 0.75, h / 2, 0, w * 0.75, h / 2, 800);
+                    blob2.addColorStop(0, `rgba(${rgb2.r}, ${rgb2.g}, ${rgb2.b}, 0.2)`);
+                    blob2.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    ctx.fillStyle = blob2;
+                    ctx.fillRect(0, 0, w, h);
+                },
+                'vibrant-glow': (ctx, w, h, { color1, color2 }, hlp) => {
+                    const grad = ctx.createLinearGradient(0, 0, w, h);
+                    grad.addColorStop(0, color1);
+                    grad.addColorStop(1, color2);
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(0, 0, w, h);
+
+                    const rgb1 = hlp.hexToRgb(color1);
+                    const rgb2 = hlp.hexToRgb(color2);
+
+                    ctx.globalAlpha = 0.6;
+                    const glow1 = ctx.createRadialGradient(w * 0.3, h * 0.3, 0, w * 0.3, h * 0.3, w * 0.8);
+                    glow1.addColorStop(0, `rgba(${rgb1.r}, ${rgb1.g}, ${rgb1.b}, 1)`);
+                    glow1.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = glow1;
+                    ctx.fillRect(0, 0, w, h);
+
+                    const glow2 = ctx.createRadialGradient(w * 0.7, h * 0.7, 0, w * 0.7, h * 0.7, w * 0.8);
+                    glow2.addColorStop(0, `rgba(${rgb2.r}, ${rgb2.g}, ${rgb2.b}, 1)`);
+                    glow2.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = glow2;
+                    ctx.fillRect(0, 0, w, h);
+
+                    // Seeded noise/grain
+                    ctx.globalAlpha = 0.04;
+                    for (let i = 0; i < 4000; i++) {
+                        ctx.fillStyle = i % 2 === 0 ? '#ffffff' : '#000000';
+                        ctx.fillRect(hlp.seededRand() * w, hlp.seededRand() * h, 2, 2);
+                    }
+                    ctx.globalAlpha = 1.0;
+                    ctx.filter = 'none';
+                },
+                'minimal-glass': (ctx, w, h, { color1, color2 }, hlp) => {
+                    ctx.fillStyle = '#f8fafc';
+                    ctx.fillRect(0, 0, w, h);
+
+                    ctx.fillStyle = color1;
+                    ctx.beginPath(); ctx.arc(w - 200, 250, 400, 0, Math.PI * 2); ctx.fill();
+
+                    ctx.fillStyle = color2;
+                    ctx.beginPath(); ctx.arc(300, h - 300, 500, 0, Math.PI * 2); ctx.fill();
+
+                    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                    ctx.fillRect(100, 100, w - 200, h - 200);
+                    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+                    ctx.lineWidth = 4;
+                    ctx.strokeRect(100, 100, w - 200, h - 200);
+                },
+                'cyberpunk': (ctx, w, h, { color1, color2 }, hlp) => {
+                    ctx.fillStyle = '#050505';
+                    ctx.fillRect(0, 0, w, h);
+
+                    const rgb1 = hlp.hexToRgb(color1);
+                    const rgb2 = hlp.hexToRgb(color2);
+
+                    const g1 = ctx.createRadialGradient(w * 0.2, h * 0.3, 0, w * 0.2, h * 0.3, 600);
+                    g1.addColorStop(0, `rgba(${rgb1.r}, ${rgb1.g}, ${rgb1.b}, 0.3)`);
+                    g1.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = g1;
+                    ctx.fillRect(0, 0, w, h);
+
+                    const g2 = ctx.createRadialGradient(w * 0.8, h * 0.7, 0, w * 0.8, h * 0.7, 800);
+                    g2.addColorStop(0, `rgba(${rgb2.r}, ${rgb2.g}, ${rgb2.b}, 0.25)`);
+                    g2.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = g2;
+                    ctx.fillRect(0, 0, w, h);
+
+                    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+                    ctx.lineWidth = 1;
+                    for (let i = 0; i < h; i += 4) {
+                        ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(w, i); ctx.stroke();
+                    }
+
+                    ctx.fillStyle = color1;
+                    ctx.globalAlpha = 0.2;
+                    for (let i = 0; i < 5; i++) {
+                        const gx = hlp.seededRand() * w;
+                        const gy = hlp.seededRand() * h;
+                        ctx.fillRect(gx, gy, hlp.seededRand() * 200, 2);
+                    }
+                    ctx.fillStyle = color2;
+                    for (let i = 0; i < 5; i++) {
+                        const gx = hlp.seededRand() * w;
+                        const gy = hlp.seededRand() * h;
+                        ctx.fillRect(gx, gy, hlp.seededRand() * 150, 1);
+                    }
+                    ctx.globalAlpha = 1.0;
+                },
+                'aurora': (ctx, w, h, { color1, color2 }, hlp) => {
+                    ctx.fillStyle = '#0a0a1a';
+                    ctx.fillRect(0, 0, w, h);
+
+                    ctx.filter = 'blur(120px)';
+                    ctx.globalAlpha = 0.4;
+
+                    ctx.fillStyle = color1;
+                    ctx.beginPath();
+                    ctx.moveTo(-100, h * 0.5);
+                    ctx.bezierCurveTo(w * 0.25, h * 0.2, w * 0.75, h * 0.8, w + 100, h * 0.4);
+                    ctx.lineTo(w + 100, h * 0.6);
+                    ctx.bezierCurveTo(w * 0.75, h * 0.9, w * 0.25, h * 0.3, -100, h * 0.7);
+                    ctx.fill();
+
+                    ctx.fillStyle = color2;
+                    ctx.beginPath();
+                    ctx.moveTo(-100, h * 0.2);
+                    ctx.bezierCurveTo(w * 0.3, h * 0.5, w * 0.7, h * 0.1, w + 100, h * 0.3);
+                    ctx.lineTo(w + 100, h * 0.4);
+                    ctx.bezierCurveTo(w * 0.7, h * 0.2, w * 0.3, h * 0.6, -100, h * 0.3);
+                    ctx.fill();
+
+                    ctx.filter = 'none';
+                    ctx.globalAlpha = 1.0;
+                },
+                'monochrome': (ctx, w, h, { color1, color2 }, hlp) => {
+                    ctx.fillStyle = '#111827';
+                    ctx.fillRect(0, 0, w, h);
+
+                    ctx.fillStyle = color1;
+                    ctx.globalAlpha = 0.1;
+                    for (let i = 0; i < 8; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(hlp.seededRand() * w, hlp.seededRand() * h);
+                        ctx.lineTo(hlp.seededRand() * w, hlp.seededRand() * h);
+                        ctx.lineTo(hlp.seededRand() * w, hlp.seededRand() * h);
+                        ctx.fill();
+                    }
+
+                    ctx.fillStyle = color2;
+                    ctx.globalAlpha = 0.05;
+                    for (let i = 0; i < 12; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(hlp.seededRand() * w, hlp.seededRand() * h);
+                        ctx.lineTo(hlp.seededRand() * w, hlp.seededRand() * h);
+                        ctx.lineTo(hlp.seededRand() * w, hlp.seededRand() * h);
+                        ctx.fill();
+                    }
+                    ctx.globalAlpha = 1.0;
+                },
+                'vintage': (ctx, w, h, { color1 }, hlp) => {
+                    ctx.fillStyle = '#fdf4ff';
+                    ctx.fillRect(0, 0, w, h);
+
+                    ctx.fillStyle = color1;
+                    ctx.globalAlpha = 0.15;
+                    ctx.fillRect(0, 0, w, h);
+
+                    const vig = ctx.createRadialGradient(w / 2, h / 2, w / 4, w / 2, h / 2, w);
+                    vig.addColorStop(0, 'rgba(0,0,0,0)');
+                    vig.addColorStop(1, 'rgba(0,0,0,0.6)');
+                    ctx.fillStyle = vig;
+                    ctx.globalAlpha = 1.0;
+                    ctx.fillRect(0, 0, w, h);
+
+                    ctx.fillStyle = '#000000';
+                    ctx.globalAlpha = 0.05;
+                    for (let i = 0; i < 2000; i++) {
+                        ctx.fillRect(hlp.seededRand() * w, hlp.seededRand() * h, 1, 1);
+                    }
+                    ctx.globalAlpha = 1.0;
+                }
+            };
+
+            if (themeFunctions[theme]) {
+                themeFunctions[theme](ctx, w, h, { color1, color2 }, helpers);
+            }
+
+            // Reset state after theme drawing
+            ctx.filter = 'none';
+            ctx.globalAlpha = 1.0;
+            ctx.shadowBlur = 0;
+            ctx.shadowColor = 'transparent';
+
+            // --- Independent Border Drawing ---
+            const borderStyle = document.getElementById('cover-border-style').value;
+            const borderColor = document.getElementById('cover-border-color').value;
+
+            if (borderStyle !== 'none') {
+                if (borderStyle === 'elegant') {
+                    const m = 40;
+                    ctx.strokeStyle = borderColor;
+                    ctx.lineWidth = 12; ctx.globalAlpha = 0.15;
+                    roundRect(ctx, m, m, w - m * 2, h - m * 2, 20); ctx.stroke();
+                    ctx.lineWidth = 2; ctx.globalAlpha = 0.9;
+                    roundRect(ctx, m + 4, m + 4, w - (m + 4) * 2, h - (m + 4) * 2, 16); ctx.stroke();
+                    ctx.globalAlpha = 1.0;
+                }
+                else if (borderStyle === 'bold-frame') {
+                    const m = 45;
+                    ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 30; ctx.shadowOffsetY = 15;
+                    ctx.strokeStyle = borderColor; ctx.lineWidth = 30;
+                    roundRect(ctx, m, m, w - m * 2, h - m * 2, 35); ctx.stroke();
+                    ctx.shadowColor = 'transparent';
+                    ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 4;
+                    const im = m + 13; roundRect(ctx, im, im, w - im * 2, h - im * 2, 22); ctx.stroke();
+                    ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 4;
+                    const om = m - 13; roundRect(ctx, om, om, w - om * 2, h - om * 2, 48); ctx.stroke();
+                }
+                else if (borderStyle === 'neon-glow') {
+                    const m = 55;
+                    ctx.shadowColor = borderColor; ctx.shadowBlur = 80;
+                    ctx.strokeStyle = borderColor; ctx.lineWidth = 15; ctx.globalAlpha = 0.4;
+                    roundRect(ctx, m, m, w - m * 2, h - m * 2, 30); ctx.stroke();
+                    ctx.shadowBlur = 20; ctx.lineWidth = 8; ctx.globalAlpha = 0.8;
+                    roundRect(ctx, m, m, w - m * 2, h - m * 2, 30); ctx.stroke();
+                    ctx.shadowColor = 'transparent'; ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 4; ctx.globalAlpha = 1.0;
+                    roundRect(ctx, m, m, w - m * 2, h - m * 2, 30); ctx.stroke();
+                }
+                else if (borderStyle === 'tech-corners') {
+                    const m = 50; const len = 140; const chamfer = 25;
+                    ctx.strokeStyle = borderColor; ctx.lineWidth = 8; ctx.lineJoin = 'miter';
+                    ctx.beginPath();
+                    ctx.moveTo(m, m + len); ctx.lineTo(m, m + chamfer); ctx.lineTo(m + chamfer, m); ctx.lineTo(m + len, m);
+                    ctx.moveTo(w - m - len, m); ctx.lineTo(w - m - chamfer, m); ctx.lineTo(w - m, m + chamfer); ctx.lineTo(w - m, m + len);
+                    ctx.moveTo(w - m, h - m - len); ctx.lineTo(w - m, h - m - chamfer); ctx.lineTo(w - m - chamfer, h - m); ctx.lineTo(w - m - len, h - m);
+                    ctx.moveTo(m + len, h - m); ctx.lineTo(m + chamfer, h - m); ctx.lineTo(m, h - m - chamfer); ctx.lineTo(m, h - m - len);
+                    ctx.stroke();
+                    ctx.lineWidth = 2; ctx.globalAlpha = 0.5; const im = m + 18;
+                    ctx.beginPath();
+                    ctx.moveTo(im, im + len - 20); ctx.lineTo(im, im); ctx.lineTo(im + len - 20, im);
+                    ctx.moveTo(w - im - len + 20, im); ctx.lineTo(w - im, im); ctx.lineTo(w - im, im + len - 20);
+                    ctx.moveTo(w - im, h - im - len + 20); ctx.lineTo(w - im, h - im); ctx.lineTo(w - im - len + 20, h - im);
+                    ctx.moveTo(im + len - 20, h - im); ctx.lineTo(im, h - im); ctx.lineTo(im, h - im - len + 20);
+                    ctx.stroke(); ctx.globalAlpha = 1.0;
+                    ctx.fillStyle = borderColor; const blockOffset = m + len + 15;
+                    ctx.fillRect(blockOffset, m - 4, 30, 8); ctx.fillRect(blockOffset + 40, m - 4, 10, 8);
+                    ctx.fillRect(w - blockOffset - 30, m - 4, 30, 8);
+                    ctx.fillRect(blockOffset, h - m - 4, 40, 8); ctx.fillRect(w - blockOffset - 20, h - m - 4, 20, 8);
+                    ctx.fillRect(w - blockOffset - 40, h - m - 4, 10, 8);
+                }
+                else if (borderStyle === 'double-inset') {
+                    const m1 = 40; const m2 = 55; ctx.strokeStyle = borderColor; ctx.lineWidth = 2;
+                    roundRect(ctx, m1, m1, w - m1 * 2, h - m1 * 2, 20); ctx.stroke();
+                    roundRect(ctx, m2, m2, w - m2 * 2, h - m2 * 2, 10); ctx.stroke();
+                }
+                else if (borderStyle === 'corner-brackets') {
+                    const m = 40; const len = 100; ctx.strokeStyle = borderColor; ctx.lineWidth = 12; ctx.lineCap = 'square';
+                    ctx.beginPath(); ctx.moveTo(m, m + len); ctx.lineTo(m, m); ctx.lineTo(m + len, m); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(w - m - len, m); ctx.lineTo(w - m, m); ctx.lineTo(w - m, m + len); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(w - m, h - m - len); ctx.lineTo(w - m, h - m); ctx.lineTo(w - m - len, h - m); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(m + len, h - m); ctx.lineTo(m, h - m); ctx.lineTo(m, h - m - len); ctx.stroke();
+                }
+                else if (borderStyle === 'industrial-dash') {
+                    const m = 50; ctx.strokeStyle = borderColor; ctx.lineWidth = 8; ctx.setLineDash([40, 20]);
+                    roundRect(ctx, m, m, w - m * 2, h - m * 2, 20); ctx.stroke(); ctx.setLineDash([]);
+                }
+                else if (borderStyle === 'ornate') {
+                    const m = 60; ctx.strokeStyle = borderColor; ctx.lineWidth = 4;
+                    roundRect(ctx, m, m, w - m * 2, h - m * 2, 30); ctx.stroke();
+                    const r = 15; ctx.fillStyle = borderColor;
+                    ctx.beginPath(); ctx.arc(w / 2, m, r, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(w / 2, h - m, r, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(m, h / 2, r, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(w - m, h / 2, r, 0, Math.PI * 2); ctx.fill();
+                }
+            }
+
+            // Reset state before text drawing
+            ctx.shadowBlur = 0;
+            ctx.shadowColor = 'transparent';
+            ctx.globalAlpha = 1.0;
+            ctx.filter = 'none';
+
+            // --- Draw Text ---
+            if (theme === 'modern-dark') {
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 120px "Outfit", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                wrapText(ctx, text, w / 2, h / 2 + 50, w - 200, 140);
+            }
+            else if (theme === 'vibrant-glow') {
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '800 140px "Outfit", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 30;
+                wrapText(ctx, text, w / 2, h / 2, w - 200, 160);
+            }
+            else if (theme === 'minimal-glass') {
+                ctx.fillStyle = '#0f172a';
+                ctx.font = '600 130px "Outfit", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                wrapText(ctx, text, w / 2, h / 2, w - 300, 150);
+            }
+            else if (theme === 'cyberpunk') {
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '900 150px "Outfit", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.shadowColor = color1; ctx.shadowBlur = 20;
+                wrapText(ctx, text, w / 2, h / 2, w - 200, 170);
+            }
+            else if (theme === 'aurora') {
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '300 140px "Outfit", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.filter = 'blur(1px)';
+                wrapText(ctx, text, w / 2, h / 2, w - 300, 160);
+            }
+            else if (theme === 'monochrome') {
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 160px "Outfit", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                wrapText(ctx, text, w / 2, h / 2, w - 200, 180);
+            }
+            else if (theme === 'vintage') {
+                ctx.fillStyle = '#422006';
+                ctx.font = 'italic 500 120px "Outfit", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.globalAlpha = 0.8;
+                wrapText(ctx, text, w / 2, h / 2, w - 300, 140);
+            }
+
+            // Final state reset
+            ctx.shadowBlur = 0;
+            ctx.shadowColor = 'transparent';
+            ctx.globalAlpha = 1.0;
+            ctx.filter = 'none';
+        }
+
+        // Helper to draw rounded rectangles on canvas natively
+        function roundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+
+        function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+            const words = text.split(' ');
+            let line = '';
+            let lines = [];
+            for (let n = 0; n < words.length; n++) {
+                let word = words[n];
+                let testLine = line + word + ' ';
+                let metrics = ctx.measureText(testLine);
+                if (metrics.width > maxWidth) {
+                    if (line !== '') {
+                        lines.push(line);
+                        line = '';
+                        testLine = word + ' ';
+                        metrics = ctx.measureText(testLine);
+                    }
+                    if (metrics.width > maxWidth) {
+                        let chars = word.split('');
+                        let segment = '';
+                        for (let c = 0; c < chars.length; c++) {
+                            let testSegment = segment + chars[c];
+                            if (ctx.measureText(testSegment).width > maxWidth && segment !== '') {
+                                lines.push(segment);
+                                segment = chars[c];
+                            } else {
+                                segment = testSegment;
+                            }
+                        }
+                        line = segment + ' ';
+                    } else {
+                        line = word + ' ';
+                    }
+                } else {
+                    line = testLine;
+                }
+            }
+            lines.push(line);
+
+            let startY = y - ((lines.length - 1) * lineHeight) / 2;
+            for (let i = 0; i < lines.length; i++) {
+                ctx.fillText(lines[i].trim(), x, startY + (i * lineHeight));
+            }
+        }
+
+        async function applyCover() {
+            if (activeCoverIndex < 0) return;
+            const group = currentConfig.groups[activeCoverIndex];
+
+            const canvas = document.getElementById('cover-canvas');
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+
+            try {
+                const response = await fetch('/api/upload_cover', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ group_name: group.name, image: dataUrl })
+                });
+
+                if (response.ok) {
+                    showStatus('Cover generated and saved!', 'success');
+
+                    // Save explicit aesthetic config directly back to the group
+                    group.cover_text = document.getElementById('cover-text').value;
+                    group.cover_theme = document.getElementById('cover-theme').value;
+                    group.cover_border_style = document.getElementById('cover-border-style').value;
+                    group.cover_border_color = document.getElementById('cover-border-color').value;
+                    group.cover_color1 = document.getElementById('cover-color-1').value;
+                    group.cover_color2 = document.getElementById('cover-color-2').value;
+
+                    await saveAllConfig();
+                    closeModal('cover-generator-modal');
+                } else {
+                    showStatus('Failed to upload cover image.', 'error');
+                }
+            } catch (err) {
+                showStatus('Network error while saving cover.', 'error');
+            }
         }
 
         async function deleteGroup(index) {

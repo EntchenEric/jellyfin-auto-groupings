@@ -9,6 +9,8 @@ other modules, and serialise results back to JSON.
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import logging
 import os
 import re
@@ -21,9 +23,12 @@ from flask.typing import ResponseReturnValue
 
 from config import load_config, save_config
 from jellyfin import fetch_jellyfin_items
-from sync import parse_complex_query, preview_group, run_sync
+from sync import get_cover_path, parse_complex_query, preview_group, run_sync
 
 bp = Blueprint("main", __name__)
+
+# Max size for base64 encoded cover image (approx 4MB)
+MAX_B64_SIZE = 4 * 1024 * 1024
 
 # ---------------------------------------------------------------------------
 # Security helpers for the filesystem browser
@@ -138,9 +143,10 @@ def test_server() -> ResponseReturnValue:
             400,
         )
     except requests.exceptions.RequestException as exc:
-        return jsonify({"status": "error", "message": str(exc)}), 400
+        return jsonify({"status": "error", "message": f"Connection error: {exc!s}"}), 400
     except Exception as exc:
-        return jsonify({"status": "error", "message": str(exc)}), 400
+        logging.exception("Unexpected error during connection test")
+        return jsonify({"status": "error", "message": f"Server error: {exc!s}"}), 500
 
 
 # ---------------------------------------------------------------------------
@@ -219,6 +225,61 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
 # ---------------------------------------------------------------------------
 # Sync
 # ---------------------------------------------------------------------------
+
+
+@bp.route("/api/upload_cover", methods=["POST"])
+def upload_cover() -> ResponseReturnValue:
+    """Save a base64-encoded cover image for a group.
+
+    Expects a JSON body with ``group_name`` and ``image`` (data URL).
+    Decodes and saves the image to a location determined by 
+    :func:`sync.get_cover_path`: it saves to 
+    ``target_base/.covers/[md5(group_name)].jpg`` when the target directory 
+    exists, otherwise it falls back to ``config/covers/[md5(group_name)].jpg``.
+    The file name used is md5(group_name) + .jpg. Reference 
+    :func:`sync.get_cover_path` for the detailed storage precedence.
+
+    Returns:
+        JSON with ``status`` and ``message``.
+    """
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"status": "error", "message": "Request body must be JSON"}), 400
+
+    group_name = data.get("group_name")
+    image_data = data.get("image")
+    if not isinstance(group_name, str) or not isinstance(image_data, str):
+        return jsonify({"status": "error", "message": "group_name and image must be strings"}), 400
+    
+    if not image_data.startswith("data:image/"):
+        return jsonify({"status": "error", "message": "Invalid image format"}), 400
+    
+    try:
+        _header, encoded = image_data.split(",", 1)
+        
+        if len(encoded) > MAX_B64_SIZE:
+            return (
+                jsonify({"status": "error", "message": "Payload too large"}),
+                413,
+            )
+
+        decoded = base64.b64decode(encoded)
+        
+        # Determine cover storage path using the shared helper
+        cfg = load_config()
+        target_path = str(cfg.get("target_path", ""))
+        
+        cover_path = get_cover_path(group_name, target_path, check_exists=False)
+        # get_cover_path with check_exists=False never returns None
+            
+        os.makedirs(os.path.dirname(cover_path), exist_ok=True)
+        with open(cover_path, "wb") as f:
+            f.write(decoded)
+
+        return jsonify({"status": "success", "message": "Cover saved successfully"})
+    except Exception as exc:
+        logging.exception("Failed to save cover image")
+        return jsonify({"status": "error", "message": f"Server error: {exc!s}"}), 500
 
 
 @bp.route("/api/sync", methods=["POST"])
@@ -334,9 +395,12 @@ def preview_grouping() -> ResponseReturnValue:
         ]
 
         return jsonify({"status": "success", "count": len(items), "preview_items": results})
-    except Exception:
+    except (ValueError, RuntimeError, requests.exceptions.RequestException) as exc:
         logging.exception("Failed to generate grouping preview")
-        return jsonify({"status": "error", "message": "Internal server error"}), 500
+        return jsonify({"status": "error", "message": f"Preview failed: {exc!s}"}), 500
+    except Exception as exc:
+        logging.exception("Unexpected error in grouping preview")
+        return jsonify({"status": "error", "message": f"Internal server error: {exc!s}"}), 500
 
 
 # ---------------------------------------------------------------------------

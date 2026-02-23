@@ -15,6 +15,8 @@ from __future__ import annotations
 import os
 import re
 import shutil
+import hashlib
+import logging
 import requests
 from typing import Any
 
@@ -71,6 +73,46 @@ def _translate_path(
     return jellyfin_path
 
 
+def get_cover_path(group_name: str, target_base: str, check_exists: bool = True) -> str | None:
+    """Compute the expected cover image path for a group, resolving storage priority.
+
+    Priority:
+    1. Library-local .covers/ directory (new storage location).
+    2. Internal config/covers/ directory (legacy storage location).
+
+    Args:
+        group_name: The human-readable name of the group.
+        target_base: The root library directory where .covers/ resides.
+        check_exists: If True, return None if the file doesn't exist on disk.
+            If False, return the prioritized path regardless of existence (useful for saving).
+
+    Returns:
+        The absolute path to the cover image, or None if not found/possible.
+    """
+    safe_name = hashlib.md5(group_name.encode("utf-8"), usedforsecurity=False).hexdigest()
+
+    # Priority 1: Library-local .covers/ directory (new storage location)
+    lib_cover_path = os.path.join(target_base, ".covers", f"{safe_name}.jpg")
+
+    # Priority 2: Internal config/covers/ directory (legacy storage location)
+    legacy_cover_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "config", "covers", f"{safe_name}.jpg"
+    )
+
+    if not check_exists:
+        # If we are just resolving where to SAVE, we prefer the library-local path if target_base exists
+        if target_base and os.path.isdir(target_base):
+            return lib_cover_path
+        return legacy_cover_path
+
+    if os.path.exists(lib_cover_path):
+        return lib_cover_path
+    if os.path.exists(legacy_cover_path):
+        return legacy_cover_path
+
+    return None
+
+
 _LIBRARY_CACHE: dict[tuple[str, str], list[dict[str, Any]]] = {}
 
 
@@ -109,11 +151,11 @@ def _fetch_full_library(
         _LIBRARY_CACHE[cache_key] = raw_items
         return raw_items, None, 200
     except requests.exceptions.RequestException as exc:
-        print(f"Infrastructure error fetching Jellyfin library for group {group_name!r}: {exc}")
-        return [], f"Jellyfin connection error: {exc}", 500
+        print(f"Infrastructure error fetching Jellyfin library for group {group_name!r}: {exc!s}")
+        return [], f"Jellyfin connection error: {exc!s}", 500
     except Exception as exc:
-        print(f"Error fetching Jellyfin library for group {group_name!r}: {exc}")
-        return [], str(exc), 400
+        logging.exception("Unexpected error fetching Jellyfin library for group %r", group_name)
+        return [], f"Internal error: {exc!s}", 500  # noqa: BLE001
 
 
 def _match_jellyfin_items_by_provider(
@@ -235,8 +277,8 @@ def _fetch_items_for_imdb_group(
         imdb_ids = fetch_imdb_list(source_value)
         print(f"IMDb list {source_value!r}: {len(imdb_ids)} IDs found")
     except Exception as exc:
-        print(f"Error fetching IMDb list for group {group_name!r}: {exc}")
-        return [], str(exc), 400
+        print(f"Error fetching IMDb list for group {group_name!r}: {exc!s}")
+        return [], f"IMDb fetch error: {exc!s}", 400
 
     if not imdb_ids:
         print(f"No IMDb IDs found for group {group_name!r}")
@@ -278,8 +320,8 @@ def _fetch_items_for_trakt_group(
         trakt_ids = fetch_trakt_list(source_value, trakt_client_id)
         print(f"Trakt list {source_value!r}: {len(trakt_ids)} IMDb IDs found")
     except Exception as exc:
-        print(f"Error fetching Trakt list for group {group_name!r}: {exc}")
-        return [], str(exc), 400
+        print(f"Error fetching Trakt list for group {group_name!r}: {exc!s}")
+        return [], f"Trakt fetch error: {exc!s}", 400
 
     if not trakt_ids:
         print(f"No items found in Trakt list for group {group_name!r}")
@@ -321,8 +363,8 @@ def _fetch_items_for_tmdb_group(
         tmdb_ids = fetch_tmdb_list(source_value, tmdb_api_key)
         print(f"TMDb list {source_value!r}: {len(tmdb_ids)} items found")
     except Exception as exc:
-        print(f"Error fetching TMDb list for group {group_name!r}: {exc}")
-        return [], str(exc), 400
+        print(f"Error fetching TMDb list for group {group_name!r}: {exc!s}")
+        return [], f"TMDb fetch error: {exc!s}", 400
 
     if not tmdb_ids:
         print(f"No items found in TMDb list for group {group_name!r}")
@@ -364,8 +406,8 @@ def _fetch_items_for_anilist_group(
         anilist_ids = fetch_anilist_list(username, status)
         print(f"AniList user {username!r} (status={status!r}): {len(anilist_ids)} items found")
     except Exception as exc:
-        print(f"Error fetching AniList items for group {group_name!r}: {exc}")
-        return [], str(exc), 400
+        print(f"Error fetching AniList items for group {group_name!r}: {exc!s}")
+        return [], f"AniList fetch error: {exc!s}", 400
 
     if not anilist_ids:
         print(f"No items found for AniList user {username!r}")
@@ -414,8 +456,8 @@ def _fetch_items_for_mal_group(
         mal_ids = fetch_mal_list(username, mal_client_id, status)
         print(f"MyAnimeList user {username!r} (status={status!r}): {len(mal_ids)} items found")
     except Exception as exc:
-        print(f"Error fetching MyAnimeList items for group {group_name!r}: {exc}")
-        return [], str(exc), 400
+        print(f"Error fetching MyAnimeList items for group {group_name!r}: {exc!s}")
+        return [], f"MAL fetch error: {exc!s}", 400
 
     if not mal_ids:
         print(f"No items found for MyAnimeList user {username!r}")
@@ -450,8 +492,8 @@ def _fetch_items_for_letterboxd_group(
         external_ids = fetch_letterboxd_list(source_value)
         print(f"Letterboxd list {source_value!r}: {len(external_ids)} IDs found")
     except Exception as exc:
-        print(f"Error fetching Letterboxd list for group {group_name!r}: {exc}")
-        return [], str(exc), 400
+        print(f"Error fetching Letterboxd items for group {group_name!r}: {exc!s}")
+        return [], f"Letterboxd fetch error: {exc!s}", 400
 
     if not external_ids:
         print(f"No items found in Letterboxd list for group {group_name!r}")
@@ -687,11 +729,11 @@ def _fetch_items_for_metadata_group(
         print(f"Found {len(items)} potential items for group {group_name!r}")
         return items, None, 200
     except requests.exceptions.RequestException as exc:
-        print(f"Infrastructure error fetching items for group {group_name!r}: {exc}")
-        return [], f"Jellyfin connection error: {exc}", 500
+        print(f"Infrastructure error fetching items for group {group_name!r}: {exc!s}")
+        return [], f"Jellyfin connection error: {exc!s}", 500
     except Exception as exc:
-        print(f"Error fetching items for group {group_name!r}: {exc}")
-        return [], str(exc), 400
+        logging.exception("Unexpected error fetching items for group %r", group_name)
+        return [], f"Internal error: {exc!s}", 500  # noqa: BLE001
 
 def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
     """Parse a complex textual rule query into a list of structured rules.
@@ -767,6 +809,8 @@ def preview_group(
         return _fetch_items_for_metadata_group("preview", type_name, val, "", url, api_key)
 
 
+
+
 def _process_group(
     group: dict[str, Any],
     target_base: str,
@@ -817,6 +861,17 @@ def _process_group(
             print(f"Cleaning existing directory: {group_dir}")
             shutil.rmtree(group_dir)
         os.makedirs(group_dir, exist_ok=True)
+
+        # Check if there is an auto-generated cover to copy
+        source_cover = get_cover_path(group_name, target_base)
+
+        if source_cover:
+            poster_dest = os.path.join(group_dir, "poster.jpg")
+            try:
+                shutil.copy2(source_cover, poster_dest)
+                print(f"Copied cover image from {source_cover} to {poster_dest}")
+            except OSError as exc:
+                print(f"Failed to copy cover image: {exc}")
 
     # --- Resolve items ---
     error: str | None = None
