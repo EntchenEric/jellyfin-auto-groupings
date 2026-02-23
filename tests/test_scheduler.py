@@ -22,7 +22,8 @@ def test_update_scheduler_jobs_global(mock_load, mock_sched):
         "scheduler": {
             "global_enabled": True,
             "global_schedule": "0 0 * * *",
-            "global_exclude_ids": ["Excluded"]
+            "global_exclude_ids": ["Excluded"],
+            "cleanup_enabled": False
         },
         "groups": []
     }
@@ -37,7 +38,7 @@ def test_update_scheduler_jobs_global(mock_load, mock_sched):
 @patch('scheduler.load_config')
 def test_update_scheduler_jobs_groups(mock_load, mock_sched):
     mock_load.return_value = {
-        "scheduler": {"global_enabled": False},
+        "scheduler": {"global_enabled": False, "cleanup_enabled": False},
         "groups": [
             {
                 "name": "MyGroup",
@@ -97,3 +98,19 @@ def test_update_scheduler_jobs_error(mock_load, mock_sched, mock_cron):
     # Should log and continue, not raise
     update_scheduler_jobs()
     mock_sched.add_job.assert_not_called()
+
+@patch('scheduler._scheduler')
+@patch('scheduler.load_config')
+def test_update_scheduler_jobs_cleanup(mock_load, mock_sched):
+    mock_load.return_value = {
+        "scheduler": {
+            "cleanup_enabled": True,
+            "cleanup_schedule": "0 * * * *"
+        },
+        "groups": []
+    }
+    update_scheduler_jobs()
+    mock_sched.add_job.assert_called_once()
+    _args, kwargs = mock_sched.add_job.call_args
+    assert kwargs["id"] == "cleanup_sync"
+
