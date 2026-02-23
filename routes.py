@@ -23,6 +23,7 @@ from flask.typing import ResponseReturnValue
 
 from config import load_config, save_config
 from jellyfin import fetch_jellyfin_items
+from scheduler import update_scheduler_jobs
 from sync import get_cover_path, parse_complex_query, preview_group, run_sync
 
 bp = Blueprint("main", __name__)
@@ -90,6 +91,7 @@ def update_config() -> ResponseReturnValue:
         )
     try:
         save_config(new_config)
+        update_scheduler_jobs()
         return jsonify({"status": "success", "config": new_config})
     except OSError as exc:
         logging.exception("Failed to write config file")

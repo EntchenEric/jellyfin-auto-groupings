@@ -32,6 +32,11 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "tmdb_api_key": "",
     "mal_client_id": "",
     "groups": [],
+    "scheduler": {
+        "global_enabled": False,
+        "global_schedule": "0 0 * * *",
+        "global_exclude_ids": []
+    }
 }
 
 # ---------------------------------------------------------------------------

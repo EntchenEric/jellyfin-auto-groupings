@@ -20,6 +20,7 @@ from flask import Flask
 
 from config import DEFAULT_CONFIG, CONFIG_FILE, save_config
 from routes import bp
+from scheduler import start_scheduler
 
 import os
 
@@ -29,6 +30,9 @@ import os
 
 app = Flask(__name__)
 app.register_blueprint(bp)
+
+# Start the background sync scheduler
+start_scheduler()
 
 # ---------------------------------------------------------------------------
 # Entry-point
