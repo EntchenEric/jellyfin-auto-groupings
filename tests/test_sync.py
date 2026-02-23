@@ -141,6 +141,34 @@ def test_match_jellyfin_items_by_provider(mock_jf):
     assert items[0]["Name"] == "M1"
 
 @patch('sync.fetch_jellyfin_items')
+def test_match_jellyfin_items_with_watch_state(mock_jf):
+    _LIBRARY_CACHE.clear()
+    mock_jf.return_value = [
+        {"Id": "1", "Name": "Played", "ProviderIds": {"Tmdb": "101"}, "UserData": {"Played": True}},
+        {"Id": "2", "Name": "Unplayed", "ProviderIds": {"Tmdb": "102"}, "UserData": {"Played": False}}
+    ]
+    
+    # All
+    items, _, _ = _match_jellyfin_items_by_provider(
+        ["101", "102"], "Tmdb", "SortName", "SortName", "http://jf", "key", "Group", ""
+    )
+    assert len(items) == 2
+    
+    # Unwatched
+    items, _, _ = _match_jellyfin_items_by_provider(
+        ["101", "102"], "Tmdb", "SortName", "SortName", "http://jf", "key", "Group", "unwatched"
+    )
+    assert len(items) == 1
+    assert items[0]["Name"] == "Unplayed"
+    
+    # Watched
+    items, _, _ = _match_jellyfin_items_by_provider(
+        ["101", "102"], "Tmdb", "SortName", "SortName", "http://jf", "key", "Group", "watched"
+    )
+    assert len(items) == 1
+    assert items[0]["Name"] == "Played"
+
+@patch('sync.fetch_jellyfin_items')
 def test_preview_group(mock_jf):
     _LIBRARY_CACHE.clear()
     mock_jf.return_value = [{"Name": "M1", "Genres": ["Action"]}]
@@ -155,6 +183,26 @@ def test_preview_group(mock_jf):
     items, _err, code = preview_group("genre", "Action AND NOT Comedy", "http://jf", "key")
     assert code == 200
     assert len(items) == 1
+
+@patch('sync.fetch_jellyfin_items')
+def test_fetch_items_for_metadata_group_with_watch_state(mock_jf):
+    from sync import _fetch_items_for_metadata_group
+    mock_jf.return_value = [{"Name": "M1"}]
+    
+    # Test 'unwatched' calls fetch with Filters=IsUnplayed
+    _fetch_items_for_metadata_group("Group", "genre", "Action", "SortName", "http://jf", "key", "unwatched")
+    _, kwargs = mock_jf.call_args
+    assert kwargs["params"]["Filters"] == "IsUnplayed"
+    
+    # Test 'watched' calls fetch with Filters=IsPlayed
+    _fetch_items_for_metadata_group("Group", "genre", "Action", "SortName", "http://jf", "key", "watched")
+    _, kwargs = mock_jf.call_args
+    assert kwargs["params"]["Filters"] == "IsPlayed"
+    
+    # Test default doesn't have Filters
+    _fetch_items_for_metadata_group("Group", "genre", "Action", "SortName", "http://jf", "key", "")
+    _, kwargs = mock_jf.call_args
+    assert "Filters" not in kwargs["params"]
 
 @patch('sync.fetch_jellyfin_items')
 def test_preview_group_fetch_error(mock_jf):

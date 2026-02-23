@@ -961,6 +961,17 @@
                             </div>
                         </div>
                         <div class="form-group">
+                            <label for="watch_state">Watch State Filter</label>
+                            <select id="watch_state"
+                                style="width: 100%; padding: 0.8rem 1rem; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-family: inherit; font-size: 1rem; appearance: none;">
+                                <option value="">All Items (Default)</option>
+                                <option value="unwatched">Unwatched Only</option>
+                                <option value="watched">Watched Only</option>
+                            </select>
+                            <small style="color: var(--text-secondary); font-size: 0.75rem;">Limit results based on
+                                their played status in Jellyfin.</small>
+                        </div>
+                        <div class="form-group">
                             <label
                                 style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; text-transform: none; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.05em;">
                                 <input type="checkbox" id="sort_order_enabled" onchange="toggleSortOrder(this)"
@@ -1665,7 +1676,7 @@
                 const response = await fetch('/api/grouping/preview', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ type: type, value: val })
+                    body: JSON.stringify({ type: type, value: val, watch_state: document.getElementById('watch_state').value })
                 });
                 const res = await response.json();
                 resultDiv.innerHTML = '';
@@ -2172,7 +2183,8 @@
                 schedule: document.getElementById('group_schedule').value.trim(),
                 seasonal_enabled: document.getElementById('seasonal_enabled').checked,
                 seasonal_start: `${document.getElementById('seasonal_start_month').value}-${document.getElementById('seasonal_start_day').value}`,
-                seasonal_end: `${document.getElementById('seasonal_end_month').value}-${document.getElementById('seasonal_end_day').value}`
+                seasonal_end: `${document.getElementById('seasonal_end_month').value}-${document.getElementById('seasonal_end_day').value}`,
+                watch_state: document.getElementById('watch_state').value
             };
 
             if (metadataTypes.includes(source_type)) {
@@ -2233,6 +2245,7 @@
                 document.getElementById('seasonal_end_month').value = em;
                 document.getElementById('seasonal_end_day').value = ed;
             }
+            document.getElementById('watch_state').value = group.watch_state || '';
 
             updateSourceValueUI(group.source_value);
 
@@ -2260,6 +2273,7 @@
             document.getElementById('group_scheduler_panel').style.display = 'none';
             document.getElementById('seasonal_enabled').checked = false;
             document.getElementById('seasonal_panel').style.display = 'none';
+            document.getElementById('watch_state').value = '';
             updateSourceTypeOptions();
         }
 

@@ -148,7 +148,7 @@ def _fetch_full_library(
             api_key,
             {
                 "Recursive": "true",
-                "Fields": "Path,ProviderIds,Genres,Studios,Tags,People,ProductionYear,CommunityRating",
+                "Fields": "Path,ProviderIds,Genres,Studios,Tags,People,ProductionYear,CommunityRating,UserData",
                 "IncludeItemTypes": "Movie,Series",
                 "Limit": "10000",
             },
@@ -173,6 +173,7 @@ def _match_jellyfin_items_by_provider(
     url: str,
     api_key: str,
     group_name: str,
+    watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
     """Fetch all Jellyfin items and match them against a list of external IDs.
 
@@ -184,6 +185,7 @@ def _match_jellyfin_items_by_provider(
         url: Jellyfin base URL.
         api_key: Jellyfin API key.
         group_name: Group name for logging.
+        watch_state: Optional filter for watch state ("unwatched", "watched").
 
     Returns:
         A (items, error, status_code) tuple.
@@ -212,6 +214,11 @@ def _match_jellyfin_items_by_provider(
     else:
         matched_ids = {str(eid).lower() if case_insensitive else str(eid) for eid in external_ids}
         items = [v for k, v in jf_by_provider.items() if k in matched_ids]
+
+    if watch_state == "unwatched":
+        items = [i for i in items if not i.get("UserData", {}).get("Played")]
+    elif watch_state == "watched":
+        items = [i for i in items if i.get("UserData", {}).get("Played")]
 
     return items, None, 200
 
@@ -263,6 +270,7 @@ def _fetch_items_for_imdb_group(
     sort_order: str,
     url: str,
     api_key: str,
+    watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
     """Resolve Jellyfin items for an IMDb-list–backed group.
 
@@ -272,6 +280,7 @@ def _fetch_items_for_imdb_group(
         sort_order: Requested sort order key.
         url: Jellyfin base URL.
         api_key: Jellyfin API key.
+        watch_state: Optional filter for watch state ("unwatched", "watched").
 
     Returns:
         A ``(items, error, status_code)`` tuple.  On success *items* is the resolved list
@@ -290,7 +299,7 @@ def _fetch_items_for_imdb_group(
         return [], None, 200
 
     return _match_jellyfin_items_by_provider(
-        imdb_ids, "Imdb", "imdb_list_order", sort_order, url, api_key, group_name
+        imdb_ids, "Imdb", "imdb_list_order", sort_order, url, api_key, group_name, watch_state
     )
 
 
@@ -301,6 +310,7 @@ def _fetch_items_for_trakt_group(
     url: str,
     api_key: str,
     trakt_client_id: str,
+    watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
     """Resolve Jellyfin items for a Trakt-list–backed group.
 
@@ -333,7 +343,7 @@ def _fetch_items_for_trakt_group(
         return [], None, 200
 
     return _match_jellyfin_items_by_provider(
-        trakt_ids, "Imdb", "trakt_list_order", sort_order, url, api_key, group_name
+        trakt_ids, "Imdb", "trakt_list_order", sort_order, url, api_key, group_name, watch_state
     )
 
 
@@ -344,6 +354,7 @@ def _fetch_items_for_tmdb_group(
     url: str,
     api_key: str,
     tmdb_api_key: str,
+    watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
     """Resolve Jellyfin items for a TMDb-list–backed group.
 
@@ -376,7 +387,7 @@ def _fetch_items_for_tmdb_group(
         return [], None, 200
 
     return _match_jellyfin_items_by_provider(
-        tmdb_ids, "Tmdb", "tmdb_list_order", sort_order, url, api_key, group_name
+        tmdb_ids, "Tmdb", "tmdb_list_order", sort_order, url, api_key, group_name, watch_state
     )
 
 
@@ -386,6 +397,7 @@ def _fetch_items_for_anilist_group(
     sort_order: str,
     url: str,
     api_key: str,
+    watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
     """Resolve Jellyfin items for an AniList-list–backed group.
 
@@ -395,6 +407,7 @@ def _fetch_items_for_anilist_group(
         sort_order: Requested sort order key.
         url: Jellyfin base URL.
         api_key: Jellyfin API key.
+        watch_state: Optional filter for watch state ("unwatched", "watched").
 
     Returns:
         A ``(items, error, status_code)`` tuple (same semantics as
@@ -419,7 +432,7 @@ def _fetch_items_for_anilist_group(
         return [], None, 200
 
     return _match_jellyfin_items_by_provider(
-        anilist_ids, "AniList", "anilist_list_order", sort_order, url, api_key, group_name
+        anilist_ids, "Anilist", "anilist_list_order", sort_order, url, api_key, group_name, watch_state
     )
 
 
@@ -430,6 +443,7 @@ def _fetch_items_for_mal_group(
     url: str,
     api_key: str,
     mal_client_id: str,
+    watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
     """Resolve Jellyfin items for a MyAnimeList-list–backed group.
 
@@ -469,7 +483,7 @@ def _fetch_items_for_mal_group(
         return [], None, 200
 
     return _match_jellyfin_items_by_provider(
-        mal_ids, "Mal", "mal_list_order", sort_order, url, api_key, group_name
+        mal_ids, "Mal", "mal_list_order", sort_order, url, api_key, group_name, watch_state
     )
 
 
@@ -479,6 +493,7 @@ def _fetch_items_for_letterboxd_group(
     sort_order: str,
     url: str,
     api_key: str,
+    watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
     """Resolve Jellyfin items for a Letterboxd-list–backed group.
 
@@ -488,6 +503,7 @@ def _fetch_items_for_letterboxd_group(
         sort_order: Requested sort order key.
         url: Jellyfin base URL.
         api_key: Jellyfin API key.
+        watch_state: Optional filter for watch state ("unwatched", "watched").
 
     Returns:
         A ``(items, error, status_code)`` tuple (same semantics as
@@ -505,13 +521,7 @@ def _fetch_items_for_letterboxd_group(
         return [], None, 200
 
     # Letterboxd IDs can be IMDb (tt...) or TMDb (numeric)
-    imdb_ids = [eid for eid in external_ids if str(eid).startswith("tt")]
-    tmdb_ids = [eid for eid in external_ids if not str(eid).startswith("tt")]
-
-    # We need to fetch both and merge them if the list contains both
-    all_matched_items: list[dict[str, Any]] = []
-    
-    # We'll use a simplified version of matching here since we have two types of IDs
+    # Filter them properly
     raw_items, error, status_code = _fetch_full_library(url, api_key, group_name)
     if error is not None:
         return [], error, status_code
@@ -528,31 +538,32 @@ def _fetch_items_for_letterboxd_group(
         if tmdb_v:
             items_by_tmdb[str(tmdb_v)] = item
 
+    items = []
     if sort_order == "letterboxd_list_order":
-        items = []
-        for eid in external_ids:
-            if str(eid).startswith("tt"):
-                key = str(eid).lower()
-                if key in items_by_imdb:
-                    items.append(items_by_imdb[key])
-            else:
-                key = str(eid)
-                if key in items_by_tmdb:
-                    items.append(items_by_tmdb[key])
-    else:
-        # Just gather all that match
-        seen_jf_ids = set()
-        items = []
         for eid in external_ids:
             match = None
             if str(eid).startswith("tt"):
                 match = items_by_imdb.get(str(eid).lower())
             else:
                 match = items_by_tmdb.get(str(eid))
-            
+            if match:
+                items.append(match)
+    else:
+        seen_jf_ids = set()
+        for eid in external_ids:
+            match = None
+            if str(eid).startswith("tt"):
+                match = items_by_imdb.get(str(eid).lower())
+            else:
+                match = items_by_tmdb.get(str(eid))
             if match and match["Id"] not in seen_jf_ids:
                 items.append(match)
                 seen_jf_ids.add(match["Id"])
+
+    if watch_state == "unwatched":
+        items = [i for i in items if not i.get("UserData", {}).get("Played")]
+    elif watch_state == "watched":
+        items = [i for i in items if i.get("UserData", {}).get("Played")]
 
     return items, None, 200
 
@@ -641,6 +652,7 @@ def _fetch_items_for_complex_group(
     sort_order: str,
     url: str,
     api_key: str,
+    watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
     """Resolve Jellyfin items by evaluating a stacked list of rules.
 
@@ -650,6 +662,7 @@ def _fetch_items_for_complex_group(
         sort_order: Requested sort order key.
         url: Jellyfin base URL.
         api_key: Jellyfin API key.
+        watch_state: Optional filter for watch state ("unwatched", "watched").
 
     Returns:
         A ``(items, error, status_code)`` tuple.
@@ -680,6 +693,11 @@ def _fetch_items_for_complex_group(
 
     filtered = [item for item in raw_items if _eval_item(item, valid_rules)]
     
+    if watch_state == "unwatched":
+        filtered = [i for i in filtered if not i.get("UserData", {}).get("Played")]
+    elif watch_state == "watched":
+        filtered = [i for i in filtered if i.get("UserData", {}).get("Played")]
+
     # In-memory sorting because this is local filtering
     sorted_items = _sort_items_in_memory(filtered, sort_order)
     
@@ -693,6 +711,7 @@ def _fetch_items_for_metadata_group(
     sort_order: str,
     url: str,
     api_key: str,
+    watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
     """Resolve Jellyfin items for a metadata-filter–backed group.
 
@@ -708,6 +727,7 @@ def _fetch_items_for_metadata_group(
         sort_order: Requested sort order key.
         url: Jellyfin base URL.
         api_key: Jellyfin API key.
+        watch_state: Optional filter for watch state ("unwatched", "watched").
 
     Returns:
         A ``(items, error, status_code)`` tuple.
@@ -727,6 +747,11 @@ def _fetch_items_for_metadata_group(
     }
     if source_type in filter_map and source_value:
         params[filter_map[source_type]] = source_value
+
+    if watch_state == "unwatched":
+        params["Filters"] = "IsUnplayed"
+    elif watch_state == "watched":
+        params["Filters"] = "IsPlayed"
 
     # Apply Jellyfin-side sorting
     if sort_order and sort_order in SORT_MAP and sort_order not in _LIST_ORDER_VALUES:
@@ -796,7 +821,8 @@ def preview_group(
     type_name: str, 
     val: str, 
     url: str, 
-    api_key: str
+    api_key: str,
+    watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
     """Resolve items for a grouping preview.
 
@@ -814,9 +840,9 @@ def preview_group(
     """
     if re.search(r"\s+(AND NOT|OR NOT|AND|OR)\s+", val, re.IGNORECASE):
         rules = parse_complex_query(val, type_name)
-        return _fetch_items_for_complex_group("preview", rules, "", url, api_key)
+        return _fetch_items_for_complex_group("preview", rules, "", url, api_key, watch_state)
     else:
-        return _fetch_items_for_metadata_group("preview", type_name, val, "", url, api_key)
+        return _fetch_items_for_metadata_group("preview", type_name, val, "", url, api_key, watch_state)
 
 
 
@@ -889,35 +915,36 @@ def _process_group(
     # --- Resolve items ---
     error: str | None = None
     status_code: int = 200
+    watch_state: str = group.get("watch_state", "")
 
     if source_type == "imdb_list":
         items, error, status_code = _fetch_items_for_imdb_group(
-            group_name, source_value or "", sort_order, url, api_key
+            group_name, source_value or "", sort_order, url, api_key, watch_state
         )
     elif source_type == "trakt_list":
         items, error, status_code = _fetch_items_for_trakt_group(
-            group_name, source_value or "", sort_order, url, api_key, trakt_client_id
+            group_name, source_value or "", sort_order, url, api_key, trakt_client_id, watch_state
         )
     elif source_type == "tmdb_list":
         items, error, status_code = _fetch_items_for_tmdb_group(
-            group_name, source_value or "", sort_order, url, api_key, tmdb_api_key
+            group_name, source_value or "", sort_order, url, api_key, tmdb_api_key, watch_state
         )
     elif source_type == "anilist_list":
         items, error, status_code = _fetch_items_for_anilist_group(
-            group_name, source_value or "", sort_order, url, api_key
+            group_name, source_value or "", sort_order, url, api_key, watch_state
         )
     elif source_type == "mal_list":
         items, error, status_code = _fetch_items_for_mal_group(
-            group_name, source_value or "", sort_order, url, api_key, mal_client_id
+            group_name, source_value or "", sort_order, url, api_key, mal_client_id, watch_state
         )
     elif source_type == "letterboxd_list":
         items, error, status_code = _fetch_items_for_letterboxd_group(
-            group_name, source_value or "", sort_order, url, api_key
+            group_name, source_value or "", sort_order, url, api_key, watch_state
         )
     elif isinstance(group.get("rules"), list) and group["rules"]:
         rules_list = group["rules"]
         items, error, status_code = _fetch_items_for_complex_group(
-            group_name, rules_list, sort_order, url, api_key
+            group_name, rules_list, sort_order, url, api_key, watch_state
         )
     else:
         val_str = str(source_value or "")
@@ -926,11 +953,11 @@ def _process_group(
         if source_type in ["genre", "actor", "studio", "tag", "year"] and re.search(r'\s+(AND NOT|OR NOT|AND|OR)\s+', val_str, re.IGNORECASE):
             rules = parse_complex_query(val_str, str(source_type))
             items, error, status_code = _fetch_items_for_complex_group(
-                group_name, rules, sort_order, url, api_key
+                group_name, rules, sort_order, url, api_key, watch_state
             )
         else:
             items, error, status_code = _fetch_items_for_metadata_group(
-                group_name, source_type, source_value, sort_order, url, api_key
+                group_name, source_type, source_value, sort_order, url, api_key, watch_state
             )
 
     if error is not None:

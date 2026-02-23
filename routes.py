@@ -389,9 +389,11 @@ def preview_grouping() -> ResponseReturnValue:
     if not val:
         return jsonify({"status": "error", "message": "Value cannot be empty"}), 400
 
+    watch_state = data.get("watch_state", "").strip().lower()
+
     try:
         # Resolve items using the public sync API
-        items, error, status_code = preview_group(type_name, val, url, api_key)
+        items, error, status_code = preview_group(type_name, val, url, api_key, watch_state)
 
         if error is not None:
             return jsonify({"status": "error", "message": error}), status_code
