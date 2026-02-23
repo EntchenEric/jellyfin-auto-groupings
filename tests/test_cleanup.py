@@ -40,8 +40,8 @@ def test_run_cleanup_broken_symlinks(tmp_path):
     # Verify final state
     assert deleted_count == 2
     assert healthy_link.exists()
-    assert not broken_link.exists()
-    assert not broken_sub_link.exists()
+    assert not broken_link.is_symlink()
+    assert not broken_sub_link.is_symlink()
 
 def test_run_cleanup_invalid_path():
     """Test cleanup with a non-existent path."""
