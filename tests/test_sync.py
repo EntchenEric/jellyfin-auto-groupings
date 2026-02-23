@@ -11,7 +11,8 @@ from sync import (
     _sort_items_in_memory,
     _match_jellyfin_items_by_provider,
     preview_group,
-    _LIBRARY_CACHE
+    _LIBRARY_CACHE,
+    _is_in_season
 )
 
 def test_translate_path():
@@ -260,3 +261,34 @@ def test_sort_items_missing_values_logic():
     res_desc = _sort_items_in_memory(items_year, "ProductionYear")
     assert res_desc[0]["ProductionYear"] == 2020
     assert res_desc[1]["ProductionYear"] is None
+
+def test_is_in_season():
+    from datetime import datetime
+    # We can't easily mock datetime.now() without a library like freezegun or mocking the whole class
+    # but we can test the logic by knowing that it uses datetime.now()
+    # Alternatively, our implementation of _is_in_season could take an optional date for testing
+    # Since I'm an AI, I'll just test that it returns a boolean for now or I can mock it
+    with patch('sync.datetime') as mock_date:
+        # Case 1: Within year window
+        mock_date.now.return_value = datetime(2022, 7, 15)
+        mock_date.strftime = datetime.strftime # Restore strftime behavior if needed, but easier to mock now().strftime
+        # Actually it's easier to mock the whole return value of now()
+        mock_now = mock_date.now.return_value
+        mock_now.strftime.return_value = "07-15"
+        assert _is_in_season("06-01", "09-01") is True
+        
+        mock_now.strftime.return_value = "05-15"
+        assert _is_in_season("06-01", "09-01") is False
+        
+        # Case 2: Crossing year window
+        mock_now.strftime.return_value = "12-15"
+        assert _is_in_season("12-01", "01-01") is True
+        
+        mock_now.strftime.return_value = "01-15"
+        assert _is_in_season("12-01", "01-01") is False
+        
+        mock_now.strftime.return_value = "01-01"
+        assert _is_in_season("12-01", "01-01") is False # Exclusive end
+        
+        # Case 3: Invalid types
+        assert _is_in_season(None, "01-01") is True # Defaults to True
