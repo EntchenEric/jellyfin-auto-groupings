@@ -400,3 +400,49 @@ def test_run_sync_with_library_creation(mock_add_lib, mock_get_libs, mock_jf_fet
     mock_add_lib.assert_called_once_with(
         "http://jf", "key", "NewGroup", ["/virtual/NewGroup"], collection_type="mixed"
     )
+
+@patch('sync.shutil.copy2')
+@patch('sync.set_virtual_folder_image')
+@patch('sync.get_cover_path')
+@patch('sync.shutil.rmtree')
+@patch('sync.os.makedirs')
+@patch('sync.os.path.exists')
+@patch('sync.os.path.isdir')
+@patch('sync.os.symlink')
+@patch('sync.fetch_jellyfin_items')
+def test_run_sync_with_auto_set_library_covers(mock_jf_fetch, _mock_symlink, _mock_isdir, _mock_exists, _mock_makedirs, _mock_rmtree, mock_get_cover, mock_set_image, mock_copy2):
+    config = {
+        "jellyfin_url": "http://jf",
+        "api_key": "key",
+        "target_path": "/target",
+        "auto_set_library_covers": True,
+        "groups": [
+            {
+                "name": "CoverGroup",
+                "source_type": "tmdb_list",
+                "source_value": "1",
+                "sort_order": "SortName"
+            }
+        ]
+    }
+    
+    # Mock items to sync
+    mock_jf_fetch.return_value = [
+        {"Name": "M1", "Path": "/p1", "ProviderIds": {"Tmdb": "101"}}
+    ]
+    
+    # Mock cover existence
+    _mock_exists.side_effect = lambda path: True if path == "/target/CoverGroup_cover.jpg" or path == "/p1" else False
+    _mock_isdir.return_value = True
+    mock_get_cover.return_value = "/target/CoverGroup_cover.jpg"
+    
+    with patch('sync.fetch_tmdb_list', return_value=["101"]):
+        results = run_sync(config)
+        
+    assert results[0]["group"] == "CoverGroup"
+    assert results[0]["links"] == 1
+    
+    # Verify image setting was called
+    mock_set_image.assert_called_once_with("http://jf", "key", "CoverGroup", "/target/CoverGroup_cover.jpg")
+    mock_copy2.assert_called_once_with("/target/CoverGroup_cover.jpg", "/target/CoverGroup/poster.jpg")
+

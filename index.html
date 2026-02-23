@@ -1119,9 +1119,7 @@
             }
         }
 
-        #app-layout {
-            position: relative;
-        }
+
 
         #sidebar-resizer {
             width: 8px;
@@ -1268,6 +1266,17 @@
                         <p
                             style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 0.75rem; line-height: 1.4;">
                             Automatically creates a Jellyfin library for each grouping after syncing.</p>
+
+                        <label class="checkbox-label" style="margin-bottom: 0.75rem;">
+                            <input type="checkbox" id="auto_set_library_covers"
+                                style="width:15px;height:15px;accent-color:var(--accent-color);">
+                            <span>Auto-Set Library Covers</span>
+                        </label>
+                        <p
+                            style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 0.75rem; line-height: 1.4;">
+                            Automatically upload the generated cover directly to the Jellyfin library upon sync.
+                            Requires Library Creation above.</p>
+
                         <label style="font-size: 0.68rem; opacity: 0.8;">Target path as Jellyfin sees it
                             (optional)</label>
                         <div id="target_path_in_jellyfin_group" class="picker-row path-field-locked">
@@ -1873,6 +1882,8 @@
             <div style="display: flex; gap: 0.75rem; margin-top: 1.25rem;">
                 <button type="button" onclick="applyCover()" style="flex: 2; font-weight: 600; margin-top:0;">Apply
                     Cover</button>
+                <button type="button" onclick="downloadCover()" class="secondary-btn"
+                    style="flex: 1; font-weight: 600; margin-top:0;">Download</button>
                 <button type="button" onclick="closeModal('cover-generator-modal')" class="secondary-btn"
                     style="flex: 1; margin-top:0;">Cancel</button>
             </div>
@@ -2245,6 +2256,7 @@
                 document.getElementById('mal_client_id').value = currentConfig.mal_client_id || '';
 
                 document.getElementById('auto_create_libraries').checked = !!currentConfig.auto_create_libraries;
+                document.getElementById('auto_set_library_covers').checked = !!currentConfig.auto_set_library_covers;
                 document.getElementById('target_path_in_jellyfin').value = currentConfig.target_path_in_jellyfin || '';
 
                 // Scheduler settings
@@ -2637,6 +2649,7 @@
             currentConfig.media_path_in_jellyfin = document.getElementById('media_path_in_jellyfin').value;
             currentConfig.media_path_on_host = document.getElementById('media_path_on_host').value;
             currentConfig.auto_create_libraries = document.getElementById('auto_create_libraries').checked;
+            currentConfig.auto_set_library_covers = document.getElementById('auto_set_library_covers').checked;
             currentConfig.target_path_in_jellyfin = document.getElementById('target_path_in_jellyfin').value;
 
             await saveAllConfig();
@@ -3279,6 +3292,21 @@
             for (let i = 0; i < lines.length; i++) {
                 ctx.fillText(lines[i].trim(), x, startY + (i * lineHeight));
             }
+        }
+
+        function downloadCover() {
+            if (activeCoverIndex < 0) return;
+            const group = currentConfig.groups[activeCoverIndex];
+            const canvas = document.getElementById('cover-canvas');
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+
+            const a = document.createElement('a');
+            a.href = dataUrl;
+            a.download = (group.name || 'group_cover') + '_cover.jpg';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            showStatus('Downloaded cover!', 'success');
         }
 
         async function applyCover() {

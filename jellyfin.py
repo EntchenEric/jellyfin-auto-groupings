@@ -207,3 +207,85 @@ def delete_virtual_folder(base_url: str, api_key: str, name: str, timeout: int =
     if not response.ok:
         print(f"DEBUG: Delete Virtual Folder Failed ({response.status_code}): {response.text}")
     response.raise_for_status()
+
+
+def get_library_id(base_url: str, api_key: str, name: str, timeout: int = 30) -> str | None:
+    """Get the ItemId of a virtual folder (library) from Jellyfin by name.
+
+    Args:
+        base_url: Jellyfin server base URL.
+        api_key: Jellyfin API key.
+        name: Name of the library.
+        timeout: HTTP request timeout.
+
+    Returns:
+        The string ItemId of the library if found, else None.
+    """
+    try:
+        response = requests.get(
+            f"{base_url}/Library/VirtualFolders",
+            params={"api_key": api_key},
+            timeout=timeout,
+        )
+        response.raise_for_status()
+        
+        for folder in response.json():
+            if folder.get("Name") == name:
+                return str(folder.get("ItemId"))
+    except requests.exceptions.RequestException as exc:
+        print(f"Failed to get library ID for {name!r}: {exc}")
+    
+    return None
+
+
+def set_virtual_folder_image(
+    base_url: str,
+    api_key: str,
+    name: str,
+    image_path: str,
+    timeout: int = 30,
+) -> None:
+    """Set the primary image for a virtual folder (library) in Jellyfin.
+
+    Args:
+        base_url: Jellyfin server base URL.
+        api_key: Jellyfin API key.
+        name: Name of the library to update.
+        image_path: Absolute path to the local image file to upload.
+        timeout: HTTP request timeout.
+    """
+    library_id = get_library_id(base_url, api_key, name, timeout=timeout)
+    if not library_id:
+        print(f"Cannot set image: Library {name!r} not found or ID unknown.")
+        return
+
+    import builtins
+    try:
+        with builtins.open(image_path, "rb") as f:
+            image_bytes = f.read()
+    except OSError as exc:
+        print(f"Cannot set image: Failed to read image file {image_path!r}: {exc}")
+        return
+
+    headers = {
+        "X-Emby-Token": api_key,
+        "Content-Type": "image/jpeg",
+    }
+    
+    url = f"{base_url}/Items/{library_id}/Images/Primary"
+    try:
+        response = requests.post(
+            url,
+            data=image_bytes,
+            headers=headers,
+            timeout=timeout,
+        )
+        response.raise_for_status()
+        print(f"Successfully updated cover image for library {name!r}")
+    except requests.exceptions.RequestException as exc:
+        msg = f"Failed to set image for library {name!r}"
+        if hasattr(exc, "response") and exc.response is not None:
+            msg += f" (Status {exc.response.status_code}): {exc.response.text}"
+        else:
+            msg += f": {exc!s}"
+        print(msg)
