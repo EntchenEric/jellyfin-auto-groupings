@@ -82,9 +82,10 @@ def test_start_scheduler(mock_sched, mock_load):
     start_scheduler()
     mock_sched.start.assert_called_once()
 
+@patch('scheduler.CronTrigger.from_crontab')
 @patch('scheduler._scheduler')
 @patch('scheduler.load_config')
-def test_update_scheduler_jobs_error(mock_load, mock_sched):
+def test_update_scheduler_jobs_error(mock_load, mock_sched, mock_cron):
     mock_load.return_value = {
         "scheduler": {
             "global_enabled": True,
@@ -92,6 +93,7 @@ def test_update_scheduler_jobs_error(mock_load, mock_sched):
         },
         "groups": []
     }
+    mock_cron.side_effect = ValueError("Invalid cron")
     # Should log and continue, not raise
     update_scheduler_jobs()
     mock_sched.add_job.assert_not_called()

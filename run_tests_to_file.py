@@ -12,4 +12,4 @@ with open('test_results.txt', 'w') as f:
         f.write("\nSTDERR:\n")
         f.write(result.stderr)
     except Exception as e:
-        f.write(f"ERROR: {str(e)}")
+        f.write(f"ERROR: {e!s}")

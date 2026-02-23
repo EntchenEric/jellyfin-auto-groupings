@@ -128,6 +128,7 @@ def test_get_cover_path(tmp_path):
 
 @patch('sync.fetch_jellyfin_items')
 def test_match_jellyfin_items_by_provider(mock_jf):
+    _LIBRARY_CACHE.clear()
     mock_jf.return_value = [
         {"Id": "1", "Name": "M1", "ProviderIds": {"Tmdb": "101"}},
         {"Id": "2", "Name": "M2", "ProviderIds": {"Tmdb": "202"}}
@@ -140,6 +141,7 @@ def test_match_jellyfin_items_by_provider(mock_jf):
 
 @patch('sync.fetch_jellyfin_items')
 def test_preview_group(mock_jf):
+    _LIBRARY_CACHE.clear()
     mock_jf.return_value = [{"Name": "M1", "Genres": ["Action"]}]
     
     # Metadata group
@@ -155,6 +157,7 @@ def test_preview_group(mock_jf):
 
 @patch('sync.fetch_jellyfin_items')
 def test_preview_group_fetch_error(mock_jf):
+    _LIBRARY_CACHE.clear()
     mock_jf.side_effect = Exception("Network error")
     _items, err, code = preview_group("genre", "Action", "http://jf", "key")
     assert code == 500
@@ -193,6 +196,7 @@ def test_match_condition_variants():
 
 @patch('sync.fetch_jellyfin_items')
 def test_match_by_provider_empty_library(mock_jf):
+    _LIBRARY_CACHE.clear()
     mock_jf.return_value = []
     items, _err, code = _match_jellyfin_items_by_provider(
         ["101"], "Tmdb", "tmdb_list_order", "tmdb_list_order", "http://jf", "key", "Group"
@@ -214,6 +218,7 @@ def test_sort_items_missing_field():
 
 @patch('sync.fetch_jellyfin_items')
 def test_match_jellyfin_items_no_match(mock_jf):
+    _LIBRARY_CACHE.clear()
     mock_jf.return_value = [
         {"Id": "1", "Name": "M1", "ProviderIds": {"Tmdb": "202"}}
     ]

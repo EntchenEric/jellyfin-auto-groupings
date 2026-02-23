@@ -4,13 +4,15 @@ import requests
 from unittest.mock import patch, MagicMock
 from config import save_config
 
-def test_get_config(client, temp_config):
+@pytest.mark.usefixtures("temp_config")
+def test_get_config(client):
     response = client.get('/api/config')
     assert response.status_code == 200
     data = response.get_json()
     assert "jellyfin_url" in data
 
-def test_update_config(client, temp_config):
+@pytest.mark.usefixtures("temp_config")
+def test_update_config(client):
     new_cfg = {"jellyfin_url": "http://new-url", "api_key": "new-key"}
     response = client.post('/api/config', json=new_cfg)
     assert response.status_code == 200
@@ -29,6 +31,7 @@ def test_test_server_success(mock_get, client):
     response = client.post('/api/test-server', json={"jellyfin_url": "http://test", "api_key": "key"})
     assert response.status_code == 200
     assert response.get_json()["status"] == "success"
+    assert "successfully" in response.get_json()["message"]
 
 @patch('routes.requests.get')
 def test_test_server_failure(mock_get, client):
@@ -49,7 +52,8 @@ def test_browse_directory(client):
     assert "dirs" in data
 
 @patch('routes.fetch_jellyfin_items')
-def test_get_jellyfin_metadata(mock_fetch, client, temp_config):
+@pytest.mark.usefixtures("temp_config")
+def test_get_jellyfin_metadata(mock_fetch, client):
     save_config({"jellyfin_url": "http://test", "api_key": "key"})
     mock_fetch.return_value = [
         {"Genres": ["Action"], "People": [{"Name": "Actor A", "Type": "Actor"}]}
@@ -61,7 +65,8 @@ def test_get_jellyfin_metadata(mock_fetch, client, temp_config):
     assert "Actor A" in data["metadata"]["actor"]
 
 @patch('routes.run_sync')
-def test_api_sync(mock_sync, client, temp_config):
+@pytest.mark.usefixtures("temp_config")
+def test_api_sync(mock_sync, client):
     mock_sync.return_value = [{"group": "G1", "links": 5}]
     response = client.post('/api/sync')
     assert response.status_code == 200
@@ -83,24 +88,18 @@ def test_upload_cover_success(mock_get_path, client, tmp_path):
     assert response.status_code == 200
     assert os.path.exists(tmp_path / "test.jpg")
 
-def test_save_config_route(client, temp_config):
+@pytest.mark.usefixtures("temp_config")
+def test_save_config_route(client):
     new_cfg = {"jellyfin_url": "http://new", "api_key": "new_key"}
     response = client.post('/api/config', json=new_cfg)
     assert response.status_code == 200
     assert response.get_json()["config"]["jellyfin_url"] == "http://new"
 
-@patch('routes.requests.get')
-def test_server_route(mock_get, client):
-    mock_resp = MagicMock()
-    mock_resp.status_code = 200
-    mock_get.return_value = mock_resp
-    
-    response = client.post('/api/test-server', json={"jellyfin_url": "http://jf", "api_key": "key"})
-    assert response.status_code == 200
-    assert "successfully" in response.get_json()["message"]
+
 
 @patch('routes.fetch_jellyfin_items')
-def test_auto_detect_paths(mock_fetch, client, temp_config):
+@pytest.mark.usefixtures("temp_config")
+def test_auto_detect_paths(mock_fetch, client):
     save_config({"jellyfin_url": "http://test", "api_key": "key"})
     mock_fetch.return_value = [{"Path": "/data/Movies/M1.mkv"}]
     
@@ -114,7 +113,8 @@ def test_auto_detect_paths(mock_fetch, client, temp_config):
         assert data["detected"]["media_path_on_host"] == "/home/user"
 
 @patch('routes.preview_group')
-def test_preview_grouping(mock_preview, client, temp_config):
+@pytest.mark.usefixtures("temp_config")
+def test_preview_grouping(mock_preview, client):
     save_config({"jellyfin_url": "http://test", "api_key": "key"})
     mock_preview.return_value = ([{"Name": "M1"}], None, 200)
     
@@ -124,7 +124,8 @@ def test_preview_grouping(mock_preview, client, temp_config):
     assert response.get_json()["count"] == 1
     
 @patch('routes.run_sync')
-def test_preview_all_sync(mock_sync, client, temp_config):
+@pytest.mark.usefixtures("temp_config")
+def test_preview_all_sync(mock_sync, client):
     mock_sync.return_value = [{"group": "G1", "links": 5}]
     response = client.post('/api/sync/preview_all')
     assert response.status_code == 200
@@ -144,7 +145,8 @@ def test_update_config_non_dict(client):
     assert response.status_code == 400
 
 @patch('routes.update_scheduler_jobs')
-def test_update_config_scheduler_fail(mock_sched, client, temp_config):
+@pytest.mark.usefixtures("temp_config")
+def test_update_config_scheduler_fail(mock_sched, client):
     mock_sched.side_effect = Exception("Fail")
     response = client.post('/api/config', json={"jellyfin_url": "http://jf"})
     assert response.status_code == 200 # Should not fail the whole request
@@ -172,13 +174,15 @@ def test_test_server_exception(mock_get, client):
     assert response.status_code == 400
     assert "Connection error" in response.get_json()["message"]
 
-def test_get_jellyfin_metadata_no_config(client, temp_config):
+@pytest.mark.usefixtures("temp_config")
+def test_get_jellyfin_metadata_no_config(client):
     # Config is empty by default in temp_config if we don't save anything
     response = client.get('/api/jellyfin/metadata')
     assert response.status_code == 400
 
 @patch('routes.fetch_jellyfin_items')
-def test_get_jellyfin_metadata_error(mock_fetch, client, temp_config):
+@pytest.mark.usefixtures("temp_config")
+def test_get_jellyfin_metadata_error(mock_fetch, client):
     save_config({"jellyfin_url": "http://test", "api_key": "key"})
     mock_fetch.side_effect = Exception("Fetch failed")
     response = client.get('/api/jellyfin/metadata')
@@ -193,30 +197,35 @@ def test_upload_cover_bad_format(client):
     assert response.status_code == 400
 
 @patch('routes.save_config')
-def test_update_config_error(mock_save, client, temp_config):
+@pytest.mark.usefixtures("temp_config")
+def test_update_config_error(mock_save, client):
     mock_save.side_effect = OSError("Disk full")
     response = client.post('/api/config', json={"jellyfin_url": "http://u"})
     assert response.status_code == 500
 
-def test_preview_grouping_missing_type(client, temp_config):
+@pytest.mark.usefixtures("temp_config")
+def test_preview_grouping_missing_type(client):
     save_config({"jellyfin_url": "http://t", "api_key": "k"})
     response = client.post('/api/grouping/preview', json={"value": "V"})
     assert response.status_code == 400
 
-def test_preview_grouping_invalid_type(client, temp_config):
+@pytest.mark.usefixtures("temp_config")
+def test_preview_grouping_invalid_type(client):
     save_config({"jellyfin_url": "http://t", "api_key": "k"})
     response = client.post('/api/grouping/preview', json={"type": "invalid", "value": "V"})
     assert response.status_code == 400
 
 @patch('routes.preview_group')
-def test_preview_grouping_error(mock_preview, client, temp_config):
+@pytest.mark.usefixtures("temp_config")
+def test_preview_grouping_error(mock_preview, client):
     save_config({"jellyfin_url": "http://t", "api_key": "k"})
     mock_preview.return_value = ([], "Error occurred", 500)
     response = client.post('/api/grouping/preview', json={"type": "genre", "value": "Action"})
     assert response.status_code == 500
 
 @patch('routes.fetch_jellyfin_items')
-def test_auto_detect_no_media(mock_fetch, client, temp_config):
+@pytest.mark.usefixtures("temp_config")
+def test_auto_detect_no_media(mock_fetch, client):
     save_config({"jellyfin_url": "http://t", "api_key": "k"})
     mock_fetch.return_value = []
     response = client.post('/api/jellyfin/auto-detect-paths')

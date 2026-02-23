@@ -5,24 +5,25 @@ import shutil
 import pytest
 from unittest.mock import MagicMock, patch
 
-# We don't want the real BackgroundScheduler to run during tests
-# but we DO want to be able to import and test the scheduler module.
-mock_bg_sched_class = MagicMock()
-sys.modules.setdefault('apscheduler', mock_bg_sched_class)
-sys.modules.setdefault('apscheduler.schedulers', mock_bg_sched_class)
-sys.modules.setdefault('apscheduler.schedulers.background', mock_bg_sched_class)
-sys.modules.setdefault('apscheduler.triggers', mock_bg_sched_class)
-sys.modules.setdefault('apscheduler.triggers.cron', mock_bg_sched_class)
+# Sys.modules mock removed as requested, using patch instead to prevent real thread start
+patcher = patch('scheduler._scheduler')
+mock_bg_sched_instance = patcher.start()
 
 from app import app as flask_app
 from config import DEFAULT_CONFIG, CONFIG_DIR
 
 @pytest.fixture
 def app():
+    from copy import deepcopy
+    old_config = deepcopy(flask_app.config)
     flask_app.config.update({
         "TESTING": True,
     })
-    yield flask_app
+    
+    with flask_app.app_context():
+        yield flask_app
+    
+    flask_app.config = old_config
 
 @pytest.fixture
 def client(app):

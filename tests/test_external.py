@@ -110,28 +110,7 @@ def test_fetch_trakt_list(mock_get):
     ids = fetch_trakt_list("username/list", "client_id")
     assert ids == ["tt123"]
 
-@patch('requests.post')
-def test_fetch_anilist_list(mock_post):
-    mock_resp = MagicMock()
-    mock_resp.status_code = 200
-    mock_resp.json.return_value = {
-        "data": {
-            "MediaListCollection": {
-                "lists": [
-                    {
-                        "entries": [{"mediaId": 101}, {"mediaId": 102}]
-                    }
-                ]
-            }
-        }
-    }
-    mock_post.return_value = mock_resp
-    
-    ids = fetch_anilist_list("user", "completed")
-    assert ids == [101, 102]
-    # Verify status mapping
-    _args, kwargs = mock_post.call_args
-    assert kwargs['json']['variables']['status'] == "COMPLETED"
+
 
 @patch('requests.post')
 def test_fetch_anilist_all(mock_post):
@@ -143,22 +122,12 @@ def test_fetch_anilist_all(mock_post):
     _args, kwargs = mock_post.call_args
     assert 'status' not in kwargs['json']['variables']
 
-@patch('requests.get')
-def test_fetch_tmdb_list(mock_get):
-    mock_resp = MagicMock()
-    mock_resp.status_code = 200
-    mock_resp.json.return_value = {
-        "items": [{"id": 10}, {"id": 20}],
-        "total_pages": 1
-    }
-    mock_get.return_value = mock_resp
-    ids = fetch_tmdb_list("123", "key")
-    assert ids == ["10", "20"]
+
 
 def test_fetch_tmdb_invalid_args():
-    with pytest.raises(ValueError, match="A TMDb API Key is required to fetch TMDb lists."):
+    with pytest.raises(ValueError, match=r"A TMDb API Key is required to fetch TMDb lists\."):
         fetch_tmdb_list("123", "")
-    with pytest.raises(ValueError, match="A TMDb List ID is required."):
+    with pytest.raises(ValueError, match=r"A TMDb List ID is required\."):
         fetch_tmdb_list("", "key")
 
 @patch('requests.get')

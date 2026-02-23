@@ -57,5 +57,7 @@ def test_fetch_anilist_list(mock_post):
     }
     mock_post.return_value = mock_response
     
-    ids = fetch_anilist_list("username")
+    ids = fetch_anilist_list("username", "completed")
     assert ids == [12345]
+    _args, kwargs = mock_post.call_args
+    assert kwargs['json']['variables']['status'] == "COMPLETED"
