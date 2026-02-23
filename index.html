@@ -2622,16 +2622,42 @@
 
         async function deleteGroup(index) {
             if (confirm('Permanently remove this grouping?')) {
+                const groupName = currentConfig.groups[index]?.name;
                 if (editingIndex === index) cancelEdit();
                 currentConfig.groups.splice(index, 1);
                 await saveAllConfig();
+
+                if (groupName) {
+                    try {
+                        await fetch('/api/cleanup', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ folders: [groupName] })
+                        });
+                    } catch (e) {
+                        console.error('Failed to cleanup folder from disk:', e);
+                    }
+                }
             }
         }
 
         async function clearAllGroups() {
             if (confirm('Are you sure you want to remove ALL groupings? This cannot be undone.')) {
+                const groupNames = currentConfig.groups.map(g => g.name).filter(Boolean);
                 currentConfig.groups = [];
                 await saveAllConfig();
+
+                if (groupNames.length > 0) {
+                    try {
+                        await fetch('/api/cleanup', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ folders: groupNames })
+                        });
+                    } catch (e) {
+                        console.error('Failed to cleanup folders from disk:', e);
+                    }
+                }
             }
         }
 
