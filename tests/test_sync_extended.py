@@ -415,6 +415,7 @@ def test_run_sync_with_auto_set_library_covers(mock_jf_fetch, _mock_symlink, _mo
         "jellyfin_url": "http://jf",
         "api_key": "key",
         "target_path": "/target",
+        "tmdb_api_key": "tmdb_key",
         "auto_set_library_covers": True,
         "groups": [
             {
