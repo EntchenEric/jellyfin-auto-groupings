@@ -35,7 +35,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "scheduler": {
         "global_enabled": False,
         "global_schedule": "0 0 * * *",
-        "global_exclude_ids": []
+        "global_exclude_ids": [],
+        "cleanup_enabled": True,
+        "cleanup_schedule": "0 * * * *"
     }
 }
 
