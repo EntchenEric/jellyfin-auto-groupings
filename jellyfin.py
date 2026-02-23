@@ -120,9 +120,10 @@ def add_virtual_folder(
     # We omit 'paths' here to avoid the 400 error.
     create_params = {
         "name": name,
-        "collectionType": collection_type if collection_type != "mixed" else "movies",
         "refreshLibrary": "false",
     }
+    if collection_type != "mixed":
+        create_params["collectionType"] = collection_type
     
     try:
         # data="" ensures non-JSON POST works for creation if needed

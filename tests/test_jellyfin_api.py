@@ -102,3 +102,20 @@ def test_delete_virtual_folder(mock_delete):
         headers={"X-Emby-Token": "test_key"},
         timeout=30
     )
+
+@patch('requests.post')
+def test_add_virtual_folder_mixed(mock_post):
+    mock_response = MagicMock()
+    mock_response.ok = True
+    mock_response.status_code = 200
+    mock_post.return_value = mock_response
+    
+    add_virtual_folder("http://localhost:8096", "test_key", "MixedLib", ["/path1"], collection_type="mixed")
+    
+    # Check the first call (creation) parameters
+    args, kwargs = mock_post.call_args_list[0]
+    params = kwargs.get('params', {})
+    
+    assert "collectionType" not in params
+    assert params["name"] == "MixedLib"
+    assert params["refreshLibrary"] == "false"
