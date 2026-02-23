@@ -750,6 +750,16 @@
                                 style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.4rem; text-align: center;">
                                 See exactly what will be created without modifying the disk.</p>
                         </div>
+                        <div>
+                            <button id="cleanup-btn" onclick="openCleanupModal()" class="secondary-btn"
+                                style="width: 100%; padding: 1rem; font-weight: 600; border-color: var(--error-color); color: var(--error-color);">
+                                <span class="loading-spinner"></span>
+                                <span class="btn-text">🧹 Clean Up Folders</span>
+                            </button>
+                            <p
+                                style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.4rem; text-align: center;">
+                                Delete old or unneeded grouping folders from your disk.</p>
+                        </div>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                             <div>
                                 <button onclick="openExportModal()" class="secondary-btn"
@@ -1115,6 +1125,38 @@
                 <div style="display: flex; gap: 1rem; margin-top: auto;">
                     <button onclick="closeModal('preview-sync-modal')" class="secondary-btn"
                         style="flex: 1; width: 100%;">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cleanup Modal -->
+        <div id="cleanup-modal" class="modal"
+            style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(8px);">
+            <div class="card"
+                style="max-width: 500px; width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
+                <h2>Clean Up Folders</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.85rem;">Select the folders
+                    you want to delete from the target directory.</p>
+
+                <div id="cleanup-loading" style="display: flex; justify-content: center; padding: 2rem;">
+                    <div class="loading-spinner" style="border-top-color: var(--accent-color); display: block;"></div>
+                </div>
+
+                <div id="cleanup-error" class="status-msg error" style="display: none; margin-bottom: 1rem;"></div>
+
+                <div id="cleanup-content" style="display: none; flex: 1; min-height: 0; flex-direction: column;">
+                    <div id="cleanup-list"
+                        style="border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 0.5rem; overflow-y: auto; margin-bottom: 1.5rem; background: rgba(0,0,0,0.2);">
+                        <!-- Filled by JS -->
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; margin-top: auto;">
+                        <button id="confirm-cleanup-btn" onclick="execCleanup()"
+                            style="flex: 2; background: var(--error-color); border-color: var(--error-color);">Delete
+                            Selected <span id="cleanup-count"></span></button>
+                        <button onclick="closeModal('cleanup-modal')" class="secondary-btn"
+                            style="flex: 1;">Cancel</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2917,6 +2959,120 @@
 
         function pickerOutsideClick(e) {
             if (e.target === document.getElementById('path-picker-modal')) closePicker();
+        }
+
+        async function openCleanupModal() {
+            document.getElementById('cleanup-modal').style.display = 'flex';
+            document.getElementById('cleanup-loading').style.display = 'flex';
+            document.getElementById('cleanup-content').style.display = 'none';
+            document.getElementById('cleanup-error').style.display = 'none';
+
+            try {
+                const response = await fetch('/api/cleanup');
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    const listContainer = document.getElementById('cleanup-list');
+                    listContainer.innerHTML = '';
+
+                    if (!result.items || result.items.length === 0) {
+                        listContainer.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-secondary); font-style: italic;">No folders found in Target Directory.</div>';
+                    } else {
+                        result.items.forEach(item => {
+                            const row = document.createElement('label');
+                            row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 0.8rem; border-bottom: 1px solid var(--glass-border); cursor: pointer; transition: background 0.15s; text-transform: none; font-weight: 400;';
+                            row.onmouseover = () => row.style.background = 'rgba(255,255,255,0.05)';
+                            row.onmouseout = () => row.style.background = 'transparent';
+
+                            const left = document.createElement('div');
+                            left.style.display = 'flex';
+                            left.style.alignItems = 'center';
+                            left.style.gap = '1rem';
+
+                            const checkbox = document.createElement('input');
+                            checkbox.type = 'checkbox';
+                            checkbox.value = item.name;
+                            checkbox.checked = !item.is_configured; // Default: check if unconfigured
+                            checkbox.style.cssText = 'width: 16px; height: 16px; accent-color: var(--error-color);';
+                            checkbox.onchange = updateCleanupCount;
+
+                            const nameSpan = document.createElement('span');
+                            nameSpan.textContent = item.name;
+                            nameSpan.style.color = 'var(--text-primary)';
+                            nameSpan.style.fontFamily = 'monospace';
+
+                            const badge = document.createElement('span');
+                            if (item.is_configured) {
+                                badge.textContent = 'Configured';
+                                badge.style.cssText = 'font-size: 0.7rem; background: rgba(34, 197, 94, 0.2); color: #4ade80; padding: 0.2rem 0.5rem; border-radius: 4px;';
+                            } else {
+                                badge.textContent = 'Unconfigured';
+                                badge.style.cssText = 'font-size: 0.7rem; background: rgba(239, 68, 68, 0.2); color: #f87171; padding: 0.2rem 0.5rem; border-radius: 4px;';
+                            }
+
+                            left.appendChild(checkbox);
+                            left.appendChild(nameSpan);
+                            row.appendChild(left);
+                            row.appendChild(badge);
+                            listContainer.appendChild(row);
+                        });
+                    }
+
+                    document.getElementById('cleanup-loading').style.display = 'none';
+                    document.getElementById('cleanup-content').style.display = 'flex';
+                    updateCleanupCount();
+                } else {
+                    document.getElementById('cleanup-loading').style.display = 'none';
+                    document.getElementById('cleanup-error').textContent = result.message || 'Failed to load folders';
+                    document.getElementById('cleanup-error').style.display = 'block';
+                }
+            } catch (err) {
+                document.getElementById('cleanup-loading').style.display = 'none';
+                document.getElementById('cleanup-error').textContent = 'Network error fetching folders';
+                document.getElementById('cleanup-error').style.display = 'block';
+            }
+        }
+
+        function updateCleanupCount() {
+            const checked = document.querySelectorAll('#cleanup-list input[type="checkbox"]:checked').length;
+            const countSpan = document.getElementById('cleanup-count');
+            countSpan.textContent = checked > 0 ? `(${checked})` : '';
+            document.getElementById('confirm-cleanup-btn').disabled = checked === 0;
+            document.getElementById('confirm-cleanup-btn').style.opacity = checked === 0 ? '0.5' : '1';
+        }
+
+        async function execCleanup() {
+            const checkboxes = document.querySelectorAll('#cleanup-list input[type="checkbox"]:checked');
+            const folders = Array.from(checkboxes).map(cb => cb.value);
+
+            if (folders.length === 0) return;
+
+            const btn = document.getElementById('confirm-cleanup-btn');
+            btn.innerHTML = '<span class="loading-spinner" style="display:inline-block; border-top-color:#fff; width:16px; height:16px;border-width:2px;margin-right:8px;"></span>Deleting...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/api/cleanup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ folders })
+                });
+                const result = await response.json();
+
+                btn.innerHTML = 'Delete Selected <span id="cleanup-count"></span>';
+                btn.disabled = false;
+
+                if (result.status === 'success' || result.status === 'partial_success') {
+                    closeModal('cleanup-modal');
+                    alert(`Successfully deleted ${result.deleted} folder(s). ${result.errors ? 'Errors: ' + result.errors.join(', ') : ''}`);
+                } else {
+                    alert('Error deleting folders: ' + result.message);
+                }
+            } catch (err) {
+                btn.innerHTML = 'Delete Selected <span id="cleanup-count"></span>';
+                btn.disabled = false;
+                alert('Network error while deleting folders.');
+            }
         }
 
         async function previewSyncAll() {
