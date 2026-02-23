@@ -9,7 +9,10 @@ from unittest.mock import MagicMock, patch
 # but we DO want to be able to import and test the scheduler module.
 mock_bg_sched_class = MagicMock()
 sys.modules.setdefault('apscheduler', mock_bg_sched_class)
+sys.modules.setdefault('apscheduler.schedulers', mock_bg_sched_class)
 sys.modules.setdefault('apscheduler.schedulers.background', mock_bg_sched_class)
+sys.modules.setdefault('apscheduler.triggers', mock_bg_sched_class)
+sys.modules.setdefault('apscheduler.triggers.cron', mock_bg_sched_class)
 
 from app import app as flask_app
 from config import DEFAULT_CONFIG, CONFIG_DIR
