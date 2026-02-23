@@ -11,7 +11,8 @@ def test_load_config_defaults(temp_config):
 
 def test_save_and_load_config(temp_config):
     """Test saving and then loading configuration."""
-    new_cfg = DEFAULT_CONFIG.copy()
+    import copy
+    new_cfg = copy.deepcopy(DEFAULT_CONFIG)
     new_cfg["jellyfin_url"] = "http://localhost:8096"
     save_config(new_cfg)
     

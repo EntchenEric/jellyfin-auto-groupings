@@ -5,7 +5,7 @@ from tmdb import fetch_tmdb_list
 from anilist import fetch_anilist_list
 from jellyfin import fetch_jellyfin_items
 
-@patch('requests.get')
+@patch('jellyfin.requests.get')
 def test_fetch_jellyfin_items(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 200
@@ -15,7 +15,7 @@ def test_fetch_jellyfin_items(mock_get):
     items = fetch_jellyfin_items("http://jf", "key", {"Type": "Movie"})
     assert items == [{"Name": "M1"}]
     # Verify params
-    args, kwargs = mock_get.call_args
+    _args, kwargs = mock_get.call_args
     assert kwargs['params']['api_key'] == "key"
     assert kwargs['params']['Type'] == "Movie"
 

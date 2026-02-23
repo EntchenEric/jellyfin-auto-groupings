@@ -127,37 +127,36 @@ def test_get_cover_path(tmp_path):
     assert get_cover_path("Existent", target_base, check_exists=True) == lib_path
 
 @patch('sync.fetch_jellyfin_items')
-def test_match_jellyfin_items_by_provider(mock_jf, temp_config):
+def test_match_jellyfin_items_by_provider(mock_jf):
     mock_jf.return_value = [
         {"Id": "1", "Name": "M1", "ProviderIds": {"Tmdb": "101"}},
         {"Id": "2", "Name": "M2", "ProviderIds": {"Tmdb": "202"}}
     ]
-    items, err, code = _match_jellyfin_items_by_provider(
+    items, _err, _code = _match_jellyfin_items_by_provider(
         ["101"], "Tmdb", "tmdb_list_order", "tmdb_list_order", "http://jf", "key", "Group"
     )
     assert len(items) == 1
     assert items[0]["Name"] == "M1"
 
 @patch('sync.fetch_jellyfin_items')
-def test_preview_group(mock_jf, temp_config):
+def test_preview_group(mock_jf):
     mock_jf.return_value = [{"Name": "M1", "Genres": ["Action"]}]
     
     # Metadata group
-    items, err, code = preview_group("genre", "Action", "http://jf", "key")
+    items, _err, code = preview_group("genre", "Action", "http://jf", "key")
     assert code == 200
     assert len(items) == 1
     
     # Complex group (AND)
     _LIBRARY_CACHE.clear() # Ensure _fetch_full_library calls mock
-    items, err, code = preview_group("genre", "Action AND NOT Comedy", "http://jf", "key")
-    assert code == 200
+    items, _err, code = preview_group("genre", "Action AND NOT Comedy", "http://jf", "key")
     assert code == 200
     assert len(items) == 1
 
 @patch('sync.fetch_jellyfin_items')
-def test_preview_group_fetch_error(mock_jf, temp_config):
+def test_preview_group_fetch_error(mock_jf):
     mock_jf.side_effect = Exception("Network error")
-    items, err, code = preview_group("genre", "Action", "http://jf", "key")
+    _items, err, code = preview_group("genre", "Action", "http://jf", "key")
     assert code == 500
     assert "Internal error" in err
 
@@ -195,15 +194,15 @@ def test_match_condition_variants():
 @patch('sync.fetch_jellyfin_items')
 def test_match_by_provider_empty_library(mock_jf):
     mock_jf.return_value = []
-    items, err, code = _match_jellyfin_items_by_provider(
+    items, _err, code = _match_jellyfin_items_by_provider(
         ["101"], "Tmdb", "tmdb_list_order", "tmdb_list_order", "http://jf", "key", "Group"
     )
     assert items == []
     assert code == 200
 
 def test_translate_path_edge_cases():
-    # Paths with same prefix but not matches
-    assert _translate_path("/jelly/movie", "/jell", "/host") == "/jelly/movie"
+    # Paths that share a string prefix but are completely different directories
+    assert _translate_path("/jelly/movie", "/jell", "/mnt/host") == "/jelly/movie"
     # Root path (normpath strips trailing slash)
     assert _translate_path("/jf/", "/jf", "/host") == "/host"
 
@@ -219,7 +218,7 @@ def test_match_jellyfin_items_no_match(mock_jf):
         {"Id": "1", "Name": "M1", "ProviderIds": {"Tmdb": "202"}}
     ]
     # Should return empty if no match
-    items, err, code = _match_jellyfin_items_by_provider(
+    items, _err, _code = _match_jellyfin_items_by_provider(
         ["101"], "Tmdb", "tmdb_list_order", "tmdb_list_order", "http://jf", "key", "Group"
     )
     assert len(items) == 0

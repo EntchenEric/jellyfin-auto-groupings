@@ -29,7 +29,7 @@ def test_update_scheduler_jobs_global(mock_load, mock_sched):
     update_scheduler_jobs()
     # Check if add_job was called for global sync
     mock_sched.add_job.assert_called_once()
-    args, kwargs = mock_sched.add_job.call_args
+    _args, kwargs = mock_sched.add_job.call_args
     assert kwargs["id"] == "global_sync"
     assert kwargs["args"] == [["Excluded"]]
 
@@ -48,7 +48,7 @@ def test_update_scheduler_jobs_groups(mock_load, mock_sched):
     }
     update_scheduler_jobs()
     mock_sched.add_job.assert_called_once()
-    args, kwargs = mock_sched.add_job.call_args
+    _args, kwargs = mock_sched.add_job.call_args
     assert kwargs["id"] == "group_sync_MyGroup"
     assert kwargs["args"] == ["MyGroup"]
 
@@ -63,7 +63,7 @@ def test_run_global_sync_job(mock_load, mock_sync):
     }
     _run_global_sync_job(["Excluded"])
     mock_sync.assert_called_once()
-    args, kwargs = mock_sync.call_args
+    _args, kwargs = mock_sync.call_args
     assert kwargs["group_names"] == ["G1"]
 
 @patch('scheduler.run_sync')
@@ -71,11 +71,13 @@ def test_run_global_sync_job(mock_load, mock_sync):
 def test_run_group_sync_job(mock_load, mock_sync):
     _run_group_sync_job("G1")
     mock_sync.assert_called_once()
-    args, kwargs = mock_sync.call_args
+    _args, kwargs = mock_sync.call_args
     assert kwargs["group_names"] == ["G1"]
 
+@patch('scheduler.load_config')
 @patch('scheduler._scheduler')
-def test_start_scheduler(mock_sched):
+def test_start_scheduler(mock_sched, mock_load):
+    mock_load.return_value = {}
     mock_sched.running = False
     start_scheduler()
     mock_sched.start.assert_called_once()

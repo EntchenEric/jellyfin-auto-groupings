@@ -1,7 +1,8 @@
 import subprocess
 import os
 
-os.environ['PYTHONPATH'] = '.'
+existing = os.environ.get('PYTHONPATH')
+os.environ['PYTHONPATH'] = f"{existing}:." if existing else "."
 with open('test_results.txt', 'w') as f:
     try:
         # Running all tests with coverage

@@ -89,7 +89,7 @@ def test_save_config_route(client, temp_config):
     assert response.status_code == 200
     assert response.get_json()["config"]["jellyfin_url"] == "http://new"
 
-@patch('requests.get')
+@patch('routes.requests.get')
 def test_server_route(mock_get, client):
     mock_resp = MagicMock()
     mock_resp.status_code = 200
@@ -144,7 +144,7 @@ def test_update_config_non_dict(client):
     assert response.status_code == 400
 
 @patch('routes.update_scheduler_jobs')
-def test_update_config_scheduler_fail(mock_sched, client):
+def test_update_config_scheduler_fail(mock_sched, client, temp_config):
     mock_sched.side_effect = Exception("Fail")
     response = client.post('/api/config', json={"jellyfin_url": "http://jf"})
     assert response.status_code == 200 # Should not fail the whole request

@@ -67,9 +67,13 @@ def _translate_path(
     Returns:
         The host-side absolute path.
     """
-    if jellyfin_root and host_root and jellyfin_path.startswith(jellyfin_root):
-        rel = os.path.relpath(jellyfin_path, jellyfin_root)
-        return os.path.normpath(os.path.join(host_root, rel))
+    if jellyfin_root and host_root:
+        try:
+            if os.path.commonpath([os.path.normpath(jellyfin_path), os.path.normpath(jellyfin_root)]) == os.path.normpath(jellyfin_root):
+                rel = os.path.relpath(jellyfin_path, jellyfin_root)
+                return os.path.normpath(os.path.join(host_root, rel))
+        except ValueError:
+            pass
     return jellyfin_path
 
 
@@ -244,9 +248,7 @@ def _sort_items_in_memory(
         value = item.get(primary_key)
         # For ascending (reverse=False): missing=1 > present=0  → end
         # For descending (reverse=True):  missing=0 < present=1 → end (smallest after reversal)
-        missing = 0 if value is None else 1
-        if not reverse:
-            missing = 1 if value is None else 0
+        missing = (1 if value is None else 0) if not reverse else (0 if value is None else 1)
         return (missing, value or "")
 
     return sorted(items, key=_key, reverse=reverse)

@@ -76,7 +76,7 @@ def test_fetch_mal_list(mock_get):
     ids = fetch_mal_list("user", "client_id", "watching")
     assert ids == [123]
     # Verify status normalization
-    args, kwargs = mock_get.call_args
+    _args, kwargs = mock_get.call_args
     assert kwargs['params']['status'] == "watching"
 
 @patch('requests.get')
@@ -130,7 +130,7 @@ def test_fetch_anilist_list(mock_post):
     ids = fetch_anilist_list("user", "completed")
     assert ids == [101, 102]
     # Verify status mapping
-    args, kwargs = mock_post.call_args
+    _args, kwargs = mock_post.call_args
     assert kwargs['json']['variables']['status'] == "COMPLETED"
 
 @patch('requests.post')
@@ -140,7 +140,7 @@ def test_fetch_anilist_all(mock_post):
     mock_resp.json.return_value = {"data": {"MediaListCollection": {"lists": []}}}
     mock_post.return_value = mock_resp
     fetch_anilist_list("user", "all")
-    args, kwargs = mock_post.call_args
+    _args, kwargs = mock_post.call_args
     assert 'status' not in kwargs['json']['variables']
 
 @patch('requests.get')
@@ -156,9 +156,9 @@ def test_fetch_tmdb_list(mock_get):
     assert ids == ["10", "20"]
 
 def test_fetch_tmdb_invalid_args():
-    with pytest.raises(ValueError, match="API Key is required"):
+    with pytest.raises(ValueError, match="A TMDb API Key is required to fetch TMDb lists."):
         fetch_tmdb_list("123", "")
-    with pytest.raises(ValueError, match="List ID is required"):
+    with pytest.raises(ValueError, match="A TMDb List ID is required."):
         fetch_tmdb_list("", "key")
 
 @patch('requests.get')
@@ -168,7 +168,7 @@ def test_fetch_tmdb_url_parsing(mock_get):
     mock_resp.json.return_value = {"items": [], "total_pages": 1}
     mock_get.return_value = mock_resp
     fetch_tmdb_list("https://www.themoviedb.org/list/999?foo=bar", "key")
-    args, kwargs = mock_get.call_args
+    args, _kwargs = mock_get.call_args
     assert "list/999" in args[0]
 
 @patch('requests.get')
