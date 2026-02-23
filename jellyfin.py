@@ -117,7 +117,7 @@ def add_virtual_folder(
     headers = {"X-Emby-Token": api_key}
     
     # Step 1: Create the virtual folder shell
-    # We omit 'paths' here to avoid the 400 error you saw earlier.
+    # We omit 'paths' here to avoid the 400 error.
     create_params = {
         "name": name,
         "collectionType": collection_type if collection_type != "mixed" else "movies",
@@ -133,10 +133,15 @@ def add_virtual_folder(
             data="",
             timeout=timeout,
         )
-        if not create_resp.ok and create_resp.status_code != 409:
-            print(f"DEBUG: Create Virtual Folder Failed ({create_resp.status_code}): {create_resp.text}")
-    except Exception as e:
-        print(f"DEBUG: Create Virtual Folder Exception: {e}")
+        if create_resp.status_code != 409:
+            create_resp.raise_for_status()
+    except requests.exceptions.RequestException as exc:
+        msg = f"Failed to create virtual folder {name!r}"
+        if hasattr(exc, "response") and exc.response is not None:
+            msg += f" (Status {exc.response.status_code}): {exc.response.text}"
+        else:
+            msg += f": {exc!s}"
+        raise RuntimeError(msg) from exc
 
     # Step 2: Add each path using strictly a JSON body as recommended
     for path in paths:
@@ -154,24 +159,31 @@ def add_virtual_folder(
                 headers=headers,
                 timeout=timeout,
             )
-            
-            if path_resp.ok:
-                print(f"DEBUG: Successfully added path '{path}' to library '{name}'")
+            path_resp.raise_for_status()
+        except requests.exceptions.RequestException as exc:
+            msg = f"Failed to add path {path!r} to library {name!r}"
+            if hasattr(exc, "response") and exc.response is not None:
+                msg += f" (Status {exc.response.status_code}): {exc.response.text}"
             else:
-                print(f"DEBUG: Add Path Failed ({path_resp.status_code}): {path_resp.text}")
-        except Exception as e:
-            print(f"DEBUG: Add Path Exception for '{path}': {e}")
+                msg += f": {exc!s}"
+            raise RuntimeError(msg) from exc
             
     # Step 3: Trigger a library refresh if requested
     if refresh_library:
         try:
-            requests.post(
+            refresh_resp = requests.post(
                 f"{base_url}/Library/Refresh",
                 headers=headers,
                 timeout=timeout
             )
-        except Exception as e:
-            print(f"DEBUG: Refresh Trigger Failed: {e}")
+            refresh_resp.raise_for_status()
+        except requests.exceptions.RequestException as exc:
+            msg = f"Failed to trigger library refresh for {name!r}"
+            if hasattr(exc, "response") and exc.response is not None:
+                msg += f" (Status {exc.response.status_code}): {exc.response.text}"
+            else:
+                msg += f": {exc!s}"
+            raise RuntimeError(msg) from exc
 
 
 def delete_virtual_folder(base_url: str, api_key: str, name: str, timeout: int = 30) -> None:
