@@ -22,10 +22,13 @@
             --glass-border: rgba(255, 255, 255, 0.08);
             --success-color: #10b981;
             --error-color: #ef4444;
+            --warning-color: #f59e0b;
             --radius-lg: 16px;
-            --radius-md: 12px;
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            --container-width: 1200px;
+            --radius-md: 10px;
+            --radius-sm: 6px;
+            --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            --sidebar-width: 340px;
+            --topbar-height: 58px;
         }
 
         * {
@@ -34,118 +37,344 @@
             box-sizing: border-box;
         }
 
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
             background-color: var(--bg-color);
             color: var(--text-primary);
             line-height: 1.6;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow-x: hidden;
         }
 
-        .background-blob {
+        /* ── Background blobs ───────────────────────────────────── */
+        .bg-blob {
             position: fixed;
-            width: 600px;
-            height: 600px;
-            background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
             border-radius: 50%;
-            z-index: -1;
-            filter: blur(80px);
-            animation: move-blob 20s infinite alternate;
+            z-index: 0;
+            pointer-events: none;
+            filter: blur(90px);
+            animation: blobFloat 22s ease-in-out infinite alternate;
         }
 
-        @keyframes move-blob {
+        .bg-blob-1 {
+            width: 700px;
+            height: 700px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, transparent 70%);
+            top: -200px;
+            left: -200px;
+        }
+
+        .bg-blob-2 {
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(147, 51, 234, 0.08) 0%, transparent 70%);
+            bottom: -150px;
+            right: -100px;
+            animation-delay: -10s;
+        }
+
+        @keyframes blobFloat {
             0% {
-                transform: translate(-20%, -20%) scale(1);
+                transform: translate(0, 0) scale(1);
             }
 
             100% {
-                transform: translate(20%, 20%) scale(1.2);
+                transform: translate(40px, 30px) scale(1.12);
             }
         }
 
-        .container {
-            width: 100%;
-            max-width: var(--container-width);
-            padding: 2rem;
-            animation: fadeIn 0.8s ease-out;
+        /* ── Top bar ────────────────────────────────────────────── */
+        #topbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--topbar-height);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0 1.5rem;
+            background: rgba(13, 13, 18, 0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--glass-border);
         }
 
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        #topbar .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            text-decoration: none;
+            flex-shrink: 0;
         }
 
-        header {
-            text-align: center;
-            margin-bottom: 3rem;
-        }
-
-        h1 {
+        #topbar .brand h1 {
             font-family: 'Outfit', sans-serif;
-            font-size: 3rem;
+            font-size: 1.2rem;
             font-weight: 700;
             background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin-bottom: 0.5rem;
+            white-space: nowrap;
         }
 
-        .subtitle {
+        .topbar-spacer {
+            flex: 1;
+        }
+
+        /* connection status pill */
+        #connection-status {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.78rem;
+            font-weight: 600;
             color: var(--text-secondary);
-            font-size: 1.1rem;
-            font-weight: 300;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 0.3rem 0.8rem;
+            white-space: nowrap;
         }
 
+        .connection-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #444;
+            flex-shrink: 0;
+        }
+
+        .connection-dot.online {
+            background: var(--success-color);
+            box-shadow: 0 0 6px var(--success-color);
+        }
+
+        .connection-dot.offline {
+            background: var(--error-color);
+            box-shadow: 0 0 6px var(--error-color);
+        }
+
+        /* topbar action buttons */
+        .topbar-actions {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .topbar-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.42rem 0.9rem;
+            border-radius: var(--radius-md);
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            border: 1px solid var(--glass-border);
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+            white-space: nowrap;
+            font-family: inherit;
+        }
+
+        .topbar-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.18);
+            color: var(--text-primary);
+        }
+
+        .topbar-btn.primary {
+            background: var(--accent-color);
+            border-color: transparent;
+            color: #fff;
+        }
+
+        .topbar-btn.primary:hover {
+            background: var(--accent-hover);
+            box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35);
+        }
+
+        .topbar-btn.danger {
+            border-color: rgba(239, 68, 68, 0.35);
+            color: var(--error-color);
+        }
+
+        .topbar-btn.danger:hover {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: var(--error-color);
+        }
+
+        .topbar-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        #hamburger-btn {
+            display: none;
+            padding: 0.4rem 0.6rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+
+        /* ── App shell ──────────────────────────────────────────── */
+        #app-layout {
+            position: fixed;
+            top: var(--topbar-height);
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: grid;
+            grid-template-columns: var(--sidebar-width) 1fr;
+            z-index: 1;
+        }
+
+        /* ── Sidebar ────────────────────────────────────────────── */
+        #sidebar {
+            height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            background: rgba(255, 255, 255, 0.015);
+            border-right: 1px solid var(--glass-border);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+        }
+
+        #sidebar::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        #sidebar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
+        /* ── Main content ───────────────────────────────────────── */
+        #main-content {
+            height: 100%;
+            overflow-y: auto;
+            padding: 1.75rem 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+        }
+
+        #main-content::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        #main-content::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 3px;
+        }
+
+        /* ── Cards ──────────────────────────────────────────────── */
         .card {
-            background: var(--glass-bg);
+            background: rgba(255, 255, 255, 0.035);
             backdrop-filter: blur(12px);
             border: 1px solid var(--glass-border);
             border-radius: var(--radius-lg);
-            padding: 2.5rem;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
         }
 
-        .main-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 2rem;
-            align-items: start;
-        }
-
-        @media (min-width: 1024px) {
-            .main-grid {
-                grid-template-columns: 400px 1fr;
-            }
+        .card-sm {
+            padding: 1rem 1.25rem;
         }
 
         h2,
         h3 {
             font-family: 'Outfit', sans-serif;
-            margin-bottom: 1.5rem;
             color: var(--text-primary);
         }
 
+        h2 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+        }
+
+        h3 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+
+        .section-desc {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            line-height: 1.5;
+        }
+
+        /* ── How it works (sidebar tip cards) ─────────────────── */
+        .how-step {
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-start;
+            padding: 0.75rem;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+        }
+
+        .step-num {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: var(--accent-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.78rem;
+            flex-shrink: 0;
+        }
+
+        .step-body {
+            font-size: 0.78rem;
+        }
+
+        .step-body strong {
+            display: block;
+            margin-bottom: 0.15rem;
+            font-size: 0.82rem;
+        }
+
+        .step-body span {
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        /* ── Forms ──────────────────────────────────────────────── */
         .form-group {
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
         }
 
         label {
             display: block;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.35rem;
             font-weight: 600;
-            font-size: 0.8rem;
+            font-size: 0.72rem;
             color: var(--text-secondary);
             text-transform: uppercase;
             letter-spacing: 0.05em;
@@ -155,45 +384,75 @@
         input[type="password"],
         input[type="text"] {
             width: 100%;
-            padding: 0.8rem 1rem;
-            background: rgba(0, 0, 0, 0.2);
+            padding: 0.65rem 0.9rem;
+            background: rgba(0, 0, 0, 0.25);
             border: 1px solid var(--glass-border);
             border-radius: var(--radius-md);
             color: var(--text-primary);
             font-family: inherit;
-            font-size: 1rem;
+            font-size: 0.9rem;
             transition: var(--transition);
         }
 
         input:focus {
             outline: none;
             border-color: var(--accent-color);
-            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
             background: rgba(0, 0, 0, 0.3);
         }
 
+        select {
+            width: 100%;
+            padding: 0.65rem 0.9rem;
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.9rem;
+            appearance: none;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        small,
+        .hint {
+            display: block;
+            margin-top: 0.3rem;
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        /* ── Buttons ────────────────────────────────────────────── */
         button {
             width: 100%;
-            padding: 1rem;
+            padding: 0.75rem 1rem;
             background: var(--accent-color);
             color: white;
             border: none;
             border-radius: var(--radius-md);
-            font-size: 1rem;
+            font-size: 0.88rem;
             font-weight: 600;
             cursor: pointer;
             transition: var(--transition);
-            margin-top: 1rem;
+            margin-top: 0.75rem;
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.4rem;
+            font-family: inherit;
         }
 
         button:hover {
             background: var(--accent-hover);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3);
         }
 
         button:active {
@@ -201,61 +460,31 @@
         }
 
         button:disabled {
-            opacity: 0.7;
+            opacity: 0.6;
             cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
         }
 
         .secondary-btn {
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid var(--glass-border);
             color: var(--text-secondary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: var(--transition);
-            border-radius: var(--radius-md);
         }
 
         .secondary-btn:hover {
             background: rgba(255, 255, 255, 0.1);
             border-color: var(--accent-color);
             color: var(--text-primary);
-        }
-
-        .group-card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-md);
-            padding: 1rem;
-            margin-bottom: 1rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: var(--transition);
-        }
-
-        .group-card:hover {
-            border-color: var(--accent-color);
-            background: rgba(255, 255, 255, 0.08);
-        }
-
-        .group-info h4 {
-            font-size: 1.1rem;
-            margin-bottom: 0.2rem;
-        }
-
-        .group-meta {
-            font-size: 0.85rem;
-            color: var(--text-secondary);
+            box-shadow: none;
         }
 
         .delete-btn {
             background: transparent;
             color: var(--error-color);
             border: 1px solid var(--error-color);
-            padding: 0.5rem 0.8rem;
-            font-size: 0.8rem;
+            padding: 0.4rem 0.7rem;
+            font-size: 0.78rem;
             width: auto;
             margin: 0;
         }
@@ -266,20 +495,90 @@
             box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
         }
 
+        .btn-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.6rem;
+            margin-top: 0.75rem;
+        }
+
+        .btn-row button {
+            margin-top: 0;
+        }
+
+        /* ── Group cards (responsive grid) ─────────────────────── */
+        #groups-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .group-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            padding: 0.9rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            /* Allow wrapping if too tight */
+            transition: var(--transition);
+            gap: 1rem;
+            /* slightly increased gap */
+        }
+
+        .group-card:hover {
+            border-color: rgba(99, 102, 241, 0.4);
+            background: rgba(255, 255, 255, 0.07);
+        }
+
+        .group-info {
+            flex: 1 1 200px;
+            /* Take available space, min width 200px before wrapping */
+            min-width: 0;
+        }
+
+        .group-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-shrink: 0;
+            /* Keep buttons from shrinking */
+        }
+
+        .group-info h4 {
+            font-size: 0.95rem;
+            margin-bottom: 0.25rem;
+            white-space: normal;
+            /* Don't truncate name */
+            line-height: 1.3;
+        }
+
+        .group-meta {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            white-space: normal;
+            /* Don't truncate meta */
+            line-height: 1.4;
+        }
+
+        /* ── Status messages ────────────────────────────────────── */
         .status-msg {
-            margin-top: 1.5rem;
+            margin-top: 0.75rem;
             text-align: center;
             font-weight: 500;
-            padding: 0.8rem;
+            padding: 0.65rem;
             border-radius: var(--radius-md);
             display: none;
-            animation: slideIn 0.3s ease-out;
+            font-size: 0.85rem;
+            animation: slideIn 0.25s ease-out;
         }
 
         @keyframes slideIn {
             from {
                 opacity: 0;
-                transform: translateY(-10px);
+                transform: translateY(-6px);
             }
 
             to {
@@ -302,20 +601,126 @@
             border: 1px solid rgba(239, 68, 68, 0.2);
         }
 
+        /* fixed toast at bottom right */
+        #status-msg {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            margin: 0;
+            max-width: 360px;
+            z-index: 200;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        /* ── Loading spinner ────────────────────────────────────── */
         .loading-spinner {
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.25);
             border-top-color: white;
             border-radius: 50%;
-            animation: spin 0.8s linear infinite;
+            animation: spin 0.7s linear infinite;
             display: none;
+            flex-shrink: 0;
         }
 
         @keyframes spin {
             to {
                 transform: rotate(360deg);
             }
+        }
+
+        /* ── Modals ─────────────────────────────────────────────── */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(8px);
+        }
+
+        .modal-content {
+            background: var(--surface-color);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            width: min(500px, 95vw);
+            max-width: 100%;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+            overflow: hidden;
+            animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes modalPop {
+            from {
+                opacity: 0;
+                transform: scale(0.95) translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .modal-header {
+            padding: 1.2rem 1.5rem 1rem;
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+            transition: color 0.2s;
+            width: auto;
+            margin: 0;
+        }
+
+        .close-btn:hover {
+            color: var(--error-color);
+            background: none;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+            overflow-y: auto;
+            max-height: 60vh;
+        }
+
+        .modal-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
+
+        .modal-footer button {
+            width: auto;
+            margin: 0;
+            padding: 0.6rem 1.2rem;
         }
 
         .btn-loading .loading-spinner {
@@ -326,30 +731,38 @@
             display: none;
         }
 
-        .footer {
-            margin-top: 2rem;
-            text-align: center;
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-        }
-
-        select:focus {
-            outline: none;
-            border-color: var(--accent-color);
-        }
-
-        .modal-item {
-            padding: 0.8rem;
-            border-bottom: 1px solid var(--glass-border);
+        /* ── Section headers ────────────────────────────────────── */
+        .section-header {
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            gap: 1rem;
+            margin-bottom: 0.6rem;
         }
 
-        .modal-item:last-child {
-            border-bottom: none;
+        .section-header h2 {
+            margin-bottom: 0;
         }
 
+        /* ── Sub-panels (dashed inset boxes) ───────────────────── */
+        .sub-panel {
+            padding: 0.9rem;
+            background: rgba(0, 0, 0, 0.12);
+            border-radius: var(--radius-md);
+            border: 1px dashed var(--glass-border);
+            margin-top: 0.75rem;
+        }
+
+        .sub-panel-accent {
+            background: rgba(99, 102, 241, 0.04);
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+
+        .sub-panel>h3 {
+            margin-bottom: 0.6rem;
+            font-size: 0.85rem;
+        }
+
+        /* ── Locked overlay ─────────────────────────────────────── */
         .locked-section {
             opacity: 0.5;
             pointer-events: none;
@@ -365,59 +778,42 @@
             transform: translate(-50%, -50%) rotate(-5deg);
             background: var(--error-color);
             color: white;
-            padding: 0.5rem 1rem;
+            padding: 0.35rem 0.8rem;
             border-radius: 4px;
             font-weight: bold;
-            font-size: 0.9rem;
+            font-size: 0.8rem;
             z-index: 10;
             box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
             pointer-events: none;
             text-transform: uppercase;
+            white-space: nowrap;
         }
 
         .locked-section .locked-overlay-text {
             display: block;
         }
 
-        .connection-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 6px;
-            background: #444;
-        }
-
-        .connection-dot.online {
-            background: var(--success-color);
-            box-shadow: 0 0 8px var(--success-color);
-        }
-
-        .connection-dot.offline {
-            background: var(--error-color);
-            box-shadow: 0 0 8px var(--error-color);
-        }
-
-        /* ── Folder Picker ─────────────────────────────────────────── */
+        /* ── Picker row (path input + browse btn) ───────────────── */
         .picker-row {
             display: flex;
-            gap: 0.5rem;
+            gap: 0.4rem;
             align-items: stretch;
         }
 
         .picker-row input {
             flex: 1;
             min-width: 0;
+            margin: 0;
         }
 
         .browse-btn {
             flex-shrink: 0;
             width: auto;
-            padding: 0 1rem;
+            padding: 0 0.8rem;
             margin: 0;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             border-radius: var(--radius-md);
-            background: rgba(255, 255, 255, 0.06);
+            background: rgba(255, 255, 255, 0.05);
             border: 1px solid var(--glass-border);
             color: var(--text-secondary);
             cursor: pointer;
@@ -426,7 +822,7 @@
         }
 
         .browse-btn:hover {
-            background: rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.1);
             border-color: var(--accent-color);
             color: var(--text-primary);
             transform: none;
@@ -438,7 +834,24 @@
             cursor: not-allowed;
         }
 
-        /* Picker modal */
+        .path-field-locked {
+            opacity: 0.45;
+            pointer-events: none;
+        }
+
+        /* ── Modal ──────────────────────────────────────────────── */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(8px);
+        }
+
+        /* ── Folder picker ──────────────────────────────────────── */
         #path-picker-modal {
             display: none;
             position: fixed;
@@ -463,46 +876,45 @@
         }
 
         .picker-header {
-            padding: 1.2rem 1.5rem 0.8rem;
+            padding: 1rem 1.25rem 0.7rem;
             border-bottom: 1px solid var(--glass-border);
             display: flex;
             flex-direction: column;
-            gap: 0.6rem;
+            gap: 0.5rem;
         }
 
         .picker-title {
             font-family: 'Outfit', sans-serif;
-            font-size: 1rem;
+            font-size: 0.95rem;
             font-weight: 600;
-            color: var(--text-primary);
         }
 
         .picker-breadcrumb {
-            font-size: 0.78rem;
+            font-size: 0.75rem;
             color: var(--text-secondary);
             word-break: break-all;
             font-family: monospace;
             background: rgba(0, 0, 0, 0.2);
-            padding: 0.35rem 0.7rem;
-            border-radius: 6px;
+            padding: 0.3rem 0.6rem;
+            border-radius: 5px;
             border: 1px solid var(--glass-border);
         }
 
         .picker-body {
             overflow-y: auto;
             flex: 1;
-            padding: 0.5rem 0;
+            padding: 0.4rem 0;
         }
 
         .picker-item {
             display: flex;
             align-items: center;
-            gap: 0.7rem;
-            padding: 0.55rem 1.5rem;
+            gap: 0.6rem;
+            padding: 0.5rem 1.25rem;
             cursor: pointer;
-            font-size: 0.9rem;
+            font-size: 0.88rem;
             color: var(--text-primary);
-            transition: background 0.15s;
+            transition: background 0.12s;
             border: none;
             background: none;
             width: 100%;
@@ -517,33 +929,33 @@
             color: var(--text-secondary);
             font-style: italic;
             border-bottom: 1px solid var(--glass-border);
-            margin-bottom: 0.25rem;
+            margin-bottom: 0.2rem;
         }
 
         .picker-item-icon {
-            font-size: 1rem;
+            font-size: 0.95rem;
             flex-shrink: 0;
         }
 
         .picker-empty {
-            padding: 2rem 1.5rem;
+            padding: 1.5rem;
             text-align: center;
             color: var(--text-secondary);
-            font-size: 0.85rem;
+            font-size: 0.82rem;
             font-style: italic;
         }
 
         .picker-footer {
-            padding: 1rem 1.5rem;
+            padding: 0.85rem 1.25rem;
             border-top: 1px solid var(--glass-border);
             display: flex;
-            gap: 0.75rem;
+            gap: 0.6rem;
             align-items: center;
         }
 
         .picker-footer-path {
             flex: 1;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             color: var(--text-secondary);
             font-family: monospace;
             white-space: nowrap;
@@ -551,856 +963,939 @@
             text-overflow: ellipsis;
         }
 
-        /* Locked path fields */
-        .path-field-locked {
-            opacity: 0.45;
-            pointer-events: none;
+        /* ── Modal items (for export/import lists) ──────────────── */
+        .modal-item {
+            padding: 0.7rem 0.5rem;
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+        }
+
+        .modal-item:last-child {
+            border-bottom: none;
+        }
+
+        /* ── Connection warning banner ──────────────────────────── */
+        #connection-warning {
+            margin: 0.75rem 0;
+            display: none;
+        }
+
+        /* ── Sync/maintenance action buttons ────────────────────── */
+        .action-btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+
+        .action-btn-group button {
+            margin-top: 0;
+        }
+
+        /* ── 2-col form grid ────────────────────────────────────── */
+        .form-grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        /* ── Checkbox label ─────────────────────────────────────── */
+        .checkbox-label {
+            display: flex !important;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            text-transform: none !important;
+            font-size: 0.8rem !important;
+            font-weight: 600;
+            color: var(--text-secondary);
+            letter-spacing: 0.04em;
+            margin-bottom: 0 !important;
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            width: 15px;
+            height: 15px;
+            accent-color: var(--accent-color);
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .checkbox-label span {
+            text-transform: uppercase;
+        }
+
+        /* ── Animations ──────────────────────────────────────────── */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        #main-content>* {
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        /* ── Footer ─────────────────────────────────────────────── */
+        .footer {
+            margin-top: auto;
+            padding-top: 1rem;
+            font-size: 0.72rem;
+            color: rgba(148, 163, 184, 0.45);
+            text-align: center;
+        }
+
+        /* ─────────────────────────────────────────────────────────
+           MOBILE  (< 768px)
+        ───────────────────────────────────────────────────────── */
+        @media (max-width: 768px) {
+
+            html,
+            body {
+                overflow: auto;
+                height: auto;
+            }
+
+            #topbar {
+                padding: 0 1rem;
+                gap: 0.6rem;
+            }
+
+            #topbar .brand h1 {
+                font-size: 1rem;
+            }
+
+            #hamburger-btn {
+                display: flex;
+                align-items: center;
+            }
+
+            .topbar-actions .topbar-btn:not(.primary) {
+                display: none;
+            }
+
+            #app-layout {
+                position: static;
+                display: block;
+                margin-top: var(--topbar-height);
+            }
+
+            #sidebar {
+                height: auto;
+                overflow: visible;
+                display: none;
+                border-right: none;
+                border-bottom: 1px solid var(--glass-border);
+                padding: 1rem;
+            }
+
+            #sidebar.open {
+                display: flex;
+            }
+
+            #main-content {
+                height: auto;
+                overflow: visible;
+                padding: 1rem;
+            }
+
+            #groups-list {
+                grid-template-columns: 1fr;
+            }
+
+            .form-grid-2 {
+                grid-template-columns: 1fr;
+            }
+
+            .btn-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        #app-layout {
+            position: relative;
+        }
+
+        #sidebar-resizer {
+            width: 8px;
+            cursor: col-resize;
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: var(--sidebar-width);
+            transform: translateX(-50%);
+            z-index: 100;
+            background: transparent;
+            transition: background 0.2s ease;
+        }
+
+        #sidebar-resizer:hover,
+        #sidebar-resizer.active {
+            background: rgba(99, 102, 241, 0.5);
+            /* var(--accent-color) */
         }
     </style>
 </head>
 
 <body>
-    <div class="background-blob"></div>
-    <div class="container">
-        <!-- Connectivity Warning -->
-        <div id="connection-warning" class="status-msg error"
-            style="margin-bottom: 2rem; border-radius: var(--radius-lg); padding: 1.5rem; display: none;">
-            <h3 style="color: var(--error-color); margin-bottom: 0.5rem; border-bottom: none;">⚠️ Server Not Connected
-            </h3>
-            <p style="font-size: 0.9rem; margin-bottom: 1rem;">You are accessing this page directly from your
-                filesystem. The settings <b>cannot be saved</b> because the backend API is unreachable.</p>
-            <p style="font-size: 0.8rem;">Please run <code>python app.py</code> and open <a href="http://localhost:5000"
-                    style="color: var(--accent-color); font-weight: 600;">http://localhost:5000</a> instead.</p>
-        </div>
+    <!-- Background blobs -->
+    <div class="bg-blob bg-blob-1"></div>
+    <div class="bg-blob bg-blob-2"></div>
 
-        <header>
+    <!-- ── Top Bar ──────────────────────────────────────────────── -->
+    <header id="topbar">
+        <button id="hamburger-btn" onclick="document.getElementById('sidebar').classList.toggle('open')"
+            title="Menu">☰</button>
+        <div class="brand">
             <h1>Jellyfin Groupings</h1>
-            <p class="subtitle">Create virtual Jellyfin libraries grouped by genre, actor, tag or external lists</p>
-        </header>
-
-        <!-- How It Works banner -->
-        <div style="display: flex; gap: 1rem; margin-bottom: 2.5rem; flex-wrap: wrap;">
-            <div
-                style="flex: 1; min-width: 200px; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 1.2rem; display: flex; gap: 1rem; align-items: flex-start;">
-                <div
-                    style="width: 32px; height: 32px; border-radius: 50%; background: var(--accent-color); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; flex-shrink: 0;">
-                    1</div>
-                <div>
-                    <div style="font-weight: 600; margin-bottom: 0.2rem;">Connect Jellyfin</div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary);">Enter your server URL and API key so
-                        this tool can read your library metadata.</div>
-                </div>
-            </div>
-            <div
-                style="flex: 1; min-width: 200px; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 1.2rem; display: flex; gap: 1rem; align-items: flex-start;">
-                <div
-                    style="width: 32px; height: 32px; border-radius: 50%; background: var(--accent-color); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; flex-shrink: 0;">
-                    2</div>
-                <div>
-                    <div style="font-weight: 600; margin-bottom: 0.2rem;">Define Groupings</div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary);">A grouping becomes a new Jellyfin
-                        library. Choose what to group by (genre, actor, tag…) and give it a name.</div>
-                </div>
-            </div>
-            <div
-                style="flex: 1; min-width: 200px; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 1.2rem; display: flex; gap: 1rem; align-items: flex-start;">
-                <div
-                    style="width: 32px; height: 32px; border-radius: 50%; background: var(--accent-color); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; flex-shrink: 0;">
-                    3</div>
-                <div>
-                    <div style="font-weight: 600; margin-bottom: 0.2rem;">Sync &amp; Add Libraries</div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary);">Hit "Sync All Groupings" to create
-                        symlinks on disk. Then <strong style="color: var(--text-primary);">manually add each folder as a
-                            library</strong> in Jellyfin
-                        (Content Type: <code style="font-size:0.75rem;">Mixed Movies and Shows</code>).</div>
-                </div>
-            </div>
         </div>
 
-        <div class="main-grid">
-            <section class="settings-column">
-                <main class="card">
-                    <div
-                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
-                        <h2 style="margin-bottom: 0;">① Server Settings</h2>
-                        <div id="connection-status"
-                            style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary);">
-                            <span class="connection-dot" id="status-dot"></span>
-                            <span id="status-text">Disconnected</span>
-                        </div>
+        <div id="connection-status">
+            <span class="connection-dot" id="status-dot"></span>
+            <span id="status-text">Disconnected</span>
+        </div>
+
+        <div class="topbar-spacer"></div>
+
+        <div class="topbar-actions">
+            <button id="topbar-preview-btn" class="topbar-btn" onclick="previewSyncAll()">
+                <span class="loading-spinner" id="topbar-preview-spinner" style="border-top-color:#fff;"></span>
+                <span class="btn-text">👁 Preview</span>
+            </button>
+            <button id="topbar-sync-btn" class="topbar-btn primary" onclick="syncAll()">
+                <span class="loading-spinner" id="topbar-sync-spinner" style="border-top-color:#fff;"></span>
+                <span class="btn-text">🚀 Sync All</span>
+            </button>
+            <button class="topbar-btn danger" onclick="openCleanupModal()">🧹 Clean Up</button>
+            <button class="topbar-btn" onclick="openExportModal()">⬇ Export</button>
+            <button class="topbar-btn" onclick="openImportModal()">⬆ Import</button>
+        </div>
+    </header>
+
+    <!-- ── App Layout ────────────────────────────────────────────── -->
+    <div id="app-layout">
+
+        <!-- ── Sidebar ──────────────────────────────────────────── -->
+        <div id="sidebar-resizer" title="Drag to resize sidebar"></div>
+        <aside id="sidebar">
+
+            <!-- Connectivity Warning -->
+            <div id="connection-warning" class="status-msg error"
+                style="margin: 0; padding: 0.9rem; border-radius: var(--radius-md);">
+                <h3 style="color: var(--error-color); font-size: 0.85rem; margin-bottom: 0.3rem;">⚠️ Server Not
+                    Connected</h3>
+                <p style="font-size: 0.75rem; margin-bottom: 0.5rem;">Open this via <code>python app.py</code> at
+                    <a href="http://localhost:5000"
+                        style="color: var(--accent-color); font-weight: 600;">localhost:5000</a>.
+                </p>
+            </div>
+
+            <!-- ① Server Settings -->
+            <section class="card" style="padding: 1.25rem;">
+                <div class="section-header">
+                    <h2 style="margin-bottom:0;">① Server Settings</h2>
+                </div>
+                <p class="section-desc">Point this tool at your Jellyfin server to get started.</p>
+
+                <form id="config-form">
+                    <div class="form-group">
+                        <label for="jellyfin_url">Jellyfin Server URL</label>
+                        <input type="url" id="jellyfin_url" placeholder="https://jellyfin.yourdomain.com" required>
+                        <small>Full URL including protocol and port.</small>
                     </div>
-                    <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 1.5rem;">Point this tool
-                        at your Jellyfin server to get started.</p>
-                    <form id="config-form">
+                    <div class="form-group">
+                        <label for="api_key">API Key</label>
+                        <input type="password" id="api_key" placeholder="Your Jellyfin API Key" required>
+                        <small>Dashboard → API Keys.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="target_path">Base Target Path</label>
+                        <div id="target_path_group" class="picker-row path-field-locked">
+                            <input type="text" id="target_path" placeholder="/path/to/virtual/libraries" required
+                                disabled>
+                            <button type="button" class="browse-btn" onclick="openPathPicker('target_path')" disabled
+                                title="Browse">📂</button>
+                        </div>
+                        <small>Where symlink folders will be created on <em>this machine</em>.</small>
+                    </div>
+
+                    <!-- Path Translation -->
+                    <div class="sub-panel" style="margin-top: 0.75rem;">
+                        <h3 style="font-size: 0.82rem; display: flex; align-items: center; gap: 0.4rem;">
+                            🗂️ Media Path Translation <span
+                                style="font-weight: 400; color: var(--text-secondary); font-size: 0.78rem;">(Optional)</span>
+                        </h3>
+                        <p
+                            style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 0.75rem; line-height: 1.4;">
+                            Only needed when Jellyfin paths differ from this machine's paths (e.g. Docker).</p>
                         <div class="form-group">
-                            <label for="jellyfin_url">Jellyfin Server URL</label>
-                            <input type="url" id="jellyfin_url" placeholder="https://jellyfin.yourdomain.com" required>
-                            <small style="color: var(--text-secondary); font-size: 0.75rem;">The full URL to your
-                                Jellyfin instance, including protocol and port if needed.</small>
-                        </div>
-                        <div class="form-group">
-                            <label for="api_key">API Key</label>
-                            <input type="password" id="api_key" placeholder="Enter your Jellyfin API Key" required>
-                            <small style="color: var(--text-secondary); font-size: 0.75rem;">Generate at Jellyfin →
-                                Dashboard → API Keys. This is used to read library metadata.</small>
-                        </div>
-                        <div class="form-group">
-                            <label for="target_path">Base Target Path</label>
-                            <div id="target_path_group" class="picker-row path-field-locked">
-                                <input type="text" id="target_path" placeholder="/path/to/virtual/libraries" required
-                                    disabled>
-                                <button type="button" class="browse-btn" onclick="openPathPicker('target_path')"
-                                    disabled title="Browse">📂 Browse</button>
-                            </div>
-                            <small style="color: var(--text-secondary); font-size: 0.75rem;">A folder on <em>this
-                                    machine</em> where symlink folders will be created for each grouping. Jellyfin must
-                                be able to see this path.</small>
-                        </div>
-
-
-                        <div class="form-group"
-                            style="margin-top: 1rem; padding: 1rem; background: rgba(0,0,0,0.1); border-radius: var(--radius-md); border: 1px dashed var(--glass-border);">
-                            <h3
-                                style="font-size: 0.9rem; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.5rem;">
-                                <span>🗂️</span> Media Path Translation <span
-                                    style="font-weight: 400; color: var(--text-secondary);">(Optional)</span>
-                            </h3>
-                            <p style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.8rem;">Only
-                                needed when Jellyfin's media paths (from Docker or a remote server) differ from where
-                                those files actually live on <em>this</em> machine. Leave blank if the paths match.
-                            </p>
-                            <div style="display: flex; flex-direction: column; gap: 1rem;">
-                                <div>
-                                    <label for="media_path_in_jellyfin" style="font-size: 0.75rem; opacity: 0.8;">Media
-                                        path as Jellyfin sees it</label>
-                                    <div id="media_path_in_jellyfin_group" class="picker-row path-field-locked">
-                                        <input type="text" id="media_path_in_jellyfin" placeholder="e.g. /media"
-                                            style="padding: 0.5rem; font-size: 0.85rem;" disabled>
-                                        <button type="button" class="browse-btn"
-                                            onclick="openPathPicker('media_path_in_jellyfin')" disabled
-                                            title="Browse">📂</button>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label for="media_path_on_host" style="font-size: 0.75rem; opacity: 0.8;">Same path
-                                        on this machine</label>
-                                    <div id="media_path_on_host_group" class="picker-row path-field-locked">
-                                        <input type="text" id="media_path_on_host" placeholder="e.g. /home/user/media"
-                                            style="padding: 0.5rem; font-size: 0.85rem;" disabled>
-                                        <button type="button" class="browse-btn"
-                                            onclick="openPathPicker('media_path_on_host')" disabled
-                                            title="Browse">📂</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="form-group"
-                            style="margin-top: 1.5rem; padding: 1rem; background: rgba(99, 102, 241, 0.05); border-radius: var(--radius-md); border: 1px solid rgba(99, 102, 241, 0.2);">
-                            <h3
-                                style="font-size: 0.9rem; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.5rem; color: var(--accent-color);">
-                                <span>🚀</span> Automatic Library Creation
-                            </h3>
-                            <label
-                                style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; text-transform: none; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.05em; margin-bottom: 1rem;">
-                                <input type="checkbox" id="auto_create_libraries"
-                                    style="width: 18px; height: 18px; accent-color: var(--accent-color); cursor: pointer; flex-shrink: 0;">
-                                <span>AUTO-CREATE LIBRARIES IN JELLYFIN</span>
-                            </label>
-                            <p style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 1rem;">When
-                                enabled, this tool will automatically create a new Jellyfin library for each grouping.
-                                No manual steps required!</p>
-
-                            <label for="target_path_in_jellyfin" style="font-size: 0.75rem; opacity: 0.8;">Target path
-                                as Jellyfin sees it (Optional)</label>
-                            <div id="target_path_in_jellyfin_group" class="picker-row path-field-locked">
-                                <input type="text" id="target_path_in_jellyfin" placeholder="e.g. /groupings"
-                                    style="padding: 0.5rem; font-size: 0.85rem;" disabled>
+                            <label style="font-size: 0.68rem;">Path in Jellyfin</label>
+                            <div id="media_path_in_jellyfin_group" class="picker-row path-field-locked">
+                                <input type="text" id="media_path_in_jellyfin" placeholder="/media"
+                                    style="font-size:0.82rem; padding: 0.5rem 0.7rem;" disabled>
                                 <button type="button" class="browse-btn"
-                                    onclick="openPathPicker('target_path_in_jellyfin')" disabled
-                                    title="Browse">📂</button>
+                                    onclick="openPathPicker('media_path_in_jellyfin')" disabled>📂</button>
                             </div>
-                            <small
-                                style="color: var(--text-secondary); font-size: 0.7rem; margin-top: 0.5rem; display: block;">Only
-                                needed if the "Base Target Path" above is different inside Jellyfin (e.g. in
-                                Docker).</small>
                         </div>
-
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
-                            <button type="button" id="auto-detect-btn" onclick="autoDetectPaths()" class="secondary-btn"
-                                style="border-color: var(--accent-color); color: var(--accent-color);">
-                                <span class="loading-spinner"></span>
-                                <span class="btn-text">✨ Auto-Detect Settings</span>
-                            </button>
-                            <button type="button" id="test-btn" onclick="testConnection()" class="secondary-btn">
-                                <span class="loading-spinner"></span>
-                                <span class="btn-text">Test Connection</span>
-                            </button>
-                        </div>
-                        <button type="submit" id="save-btn" style="margin-top: 1rem; width: 100%;">
-                            <span class="loading-spinner"></span>
-                            <span class="btn-text">Save Server Settings</span>
-                        </button>
-                    </form>
-                </main>
-
-                <main class="card locked-section" id="maintenance-card" style="margin-top: 2rem;">
-                    <div class="locked-overlay-text">Server Required</div>
-                    <h2>③ Sync &amp; Maintenance</h2>
-                    <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 1.2rem;">After defining
-                        your groupings, press Sync to build the symlink folders on disk.</p>
-                    <div
-                        style="padding: 0.8rem 1rem; background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.3); border-radius: var(--radius-md); margin-bottom: 1rem;">
-                        <p style="font-size: 0.78rem; color: #fbbf24; margin: 0; line-height: 1.5;">
-                            ⚠️ <strong>Libraries are NOT created automatically.</strong><br>
-                            After syncing, go to Jellyfin → <strong>Dashboard → Libraries → Add Media
-                                Library</strong>.<br>
-                            Set <strong>Content Type</strong> to <code
-                                style="font-size:0.75rem; background:rgba(0,0,0,0.2); padding: 0.1rem 0.3rem; border-radius:3px;">Mixed Movies and Shows</code>
-                            and point it at each group's subfolder.
-                        </p>
-                    </div>
-                    <div style="display: flex; flex-direction: column; gap: 1rem;">
-                        <div>
-                            <button id="sync-btn" onclick="syncAll()" class="primary-btn"
-                                style="width: 100%; padding: 1rem; background: var(--accent-color); border: none; font-weight: 600;">
-                                <span class="loading-spinner"></span>
-                                <span class="btn-text">🚀 Sync All Groupings</span>
-                            </button>
-                            <p
-                                style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.4rem; text-align: center;">
-                                Creates symlinks inside the Base Target Path for every defined grouping.</p>
-                        </div>
-                        <div>
-                            <button id="preview-sync-btn" onclick="previewSyncAll()" class="secondary-btn"
-                                style="width: 100%; padding: 1rem; font-weight: 600;">
-                                <span class="loading-spinner"></span>
-                                <span class="btn-text">👁️ Preview Sync</span>
-                            </button>
-                            <p
-                                style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.4rem; text-align: center;">
-                                See exactly what will be created without modifying the disk.</p>
-                        </div>
-                        <div>
-                            <button id="cleanup-btn" onclick="openCleanupModal()" class="secondary-btn"
-                                style="width: 100%; padding: 1rem; font-weight: 600; border-color: var(--error-color); color: var(--error-color);">
-                                <span class="loading-spinner"></span>
-                                <span class="btn-text">🧹 Clean Up Folders</span>
-                            </button>
-                            <p
-                                style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.4rem; text-align: center;">
-                                Delete old or unneeded grouping folders from your disk.</p>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                            <div>
-                                <button onclick="openExportModal()" class="secondary-btn"
-                                    style="width: 100%; padding: 0.9rem;">⬇ Export Config</button>
-                                <p
-                                    style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.3rem; text-align: center;">
-                                    Download settings &amp; groupings as JSON</p>
-                            </div>
-                            <div>
-                                <button onclick="openImportModal()" class="secondary-btn"
-                                    style="width: 100%; padding: 0.9rem;">⬆ Import Config</button>
-                                <p
-                                    style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.3rem; text-align: center;">
-                                    Restore from a previously exported JSON</p>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label style="font-size: 0.68rem;">Same path on this machine</label>
+                            <div id="media_path_on_host_group" class="picker-row path-field-locked">
+                                <input type="text" id="media_path_on_host" placeholder="/home/user/media"
+                                    style="font-size:0.82rem; padding: 0.5rem 0.7rem;" disabled>
+                                <button type="button" class="browse-btn" onclick="openPathPicker('media_path_on_host')"
+                                    disabled>📂</button>
                             </div>
                         </div>
                     </div>
-                </main>
-                <main class="card locked-section" id="scheduler-card" style="margin-top: 2rem;">
-                    <div class="locked-overlay-text">Server Required</div>
-                    <h2>④ Automatic Sync Scheduling</h2>
-                    <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 1.2rem;">Configure a
-                        global
-                        sync schedule to keep your libraries up to date automatically.</p>
 
-                    <div class="form-group"
-                        style="padding: 1rem; background: rgba(0,0,0,0.1); border-radius: var(--radius-md); border: 1px dashed var(--glass-border);">
-                        <label
-                            style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; text-transform: none; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.05em; margin-bottom: 1rem;">
-                            <input type="checkbox" id="global_scheduler_enabled" onchange="toggleGlobalScheduler(this)"
-                                style="width: 16px; height: 16px; accent-color: var(--accent-color); cursor: pointer; flex-shrink: 0;">
-                            <span style="text-transform: uppercase; letter-spacing: 0.05em;">Enable Global
-                                Scheduler</span>
+                    <!-- Auto Library Creation -->
+                    <div class="sub-panel sub-panel-accent" style="margin-top: 0.75rem;">
+                        <h3
+                            style="font-size: 0.82rem; color: var(--accent-color); display: flex; align-items: center; gap: 0.4rem;">
+                            🚀 Automatic Library Creation</h3>
+                        <label class="checkbox-label" style="margin-bottom: 0.75rem;">
+                            <input type="checkbox" id="auto_create_libraries"
+                                style="width:15px;height:15px;accent-color:var(--accent-color);">
+                            <span>Auto-Create Libraries in Jellyfin</span>
                         </label>
-
-                        <div id="global_scheduler_panel" style="display: none;">
-                            <label for="global_sync_schedule">Global Sync Schedule (Cron)</label>
-                            <input type="text" id="global_sync_schedule" placeholder="0 0 * * * (Every midnight)"
-                                style="margin-bottom: 0.5rem; width: 100%; padding: 0.8rem 1rem; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary);">
-                            <small
-                                style="color: var(--text-secondary); display: block; margin-top: 0.25rem; font-size: 0.75rem; margin-bottom: 1rem;">
-                                Standard crontab expression: <code>minute hour day month day_of_week</code>.
-                            </small>
-
-                            <label style="margin-top: 1rem; display: block; margin-bottom: 0.5rem;">Excluded
-                                Groupings</label>
-                            <div id="global_sync_exclusions"
-                                style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; max-height: 150px; overflow-y: auto; padding-right: 0.5rem; background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: var(--radius-md);">
-                                <!-- Checkboxes for each group to exclude -->
-                            </div>
-                            <small
-                                style="color: var(--text-secondary); display: block; margin-top: 0.5rem; font-size: 0.75rem;">
-                                These groupings will be skipped during the global scheduled sync.
-                            </small>
-                        </div>
-
-                        <div
-                            style="margin-top: 1.5rem; border-top: 1px dashed var(--glass-border); padding-top: 1.5rem;">
-                            <label
-                                style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; text-transform: none; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.05em; margin-bottom: 1rem;">
-                                <input type="checkbox" id="cleanup_scheduler_enabled"
-                                    onchange="toggleCleanupScheduler(this)"
-                                    style="width: 16px; height: 16px; accent-color: var(--accent-color); cursor: pointer; flex-shrink: 0;">
-                                <span style="text-transform: uppercase; letter-spacing: 0.05em;">Enable Auto-Cleanup
-                                    Scheduler</span>
-                            </label>
-
-                            <div id="cleanup_scheduler_panel" style="display: none;">
-                                <label for="cleanup_sync_schedule">Cleanup Schedule (Cron)</label>
-                                <input type="text" id="cleanup_sync_schedule" placeholder="0 * * * * (Every hour)"
-                                    style="margin-bottom: 0.5rem; width: 100%; padding: 0.8rem 1rem; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary);">
-                                <small
-                                    style="color: var(--text-secondary); display: block; margin-top: 0.25rem; font-size: 0.75rem; margin-bottom: 0;">
-                                    Standard crontab expression. Checks if original files were deleted and removes
-                                    broken symlinks.
-                                </small>
-                            </div>
+                        <p
+                            style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 0.75rem; line-height: 1.4;">
+                            Automatically creates a Jellyfin library for each grouping after syncing.</p>
+                        <label style="font-size: 0.68rem; opacity: 0.8;">Target path as Jellyfin sees it
+                            (optional)</label>
+                        <div id="target_path_in_jellyfin_group" class="picker-row path-field-locked">
+                            <input type="text" id="target_path_in_jellyfin" placeholder="/groupings"
+                                style="font-size:0.82rem; padding: 0.5rem 0.7rem;" disabled>
+                            <button type="button" class="browse-btn" onclick="openPathPicker('target_path_in_jellyfin')"
+                                disabled>📂</button>
                         </div>
                     </div>
-                </main>
+
+                    <div class="btn-row" style="margin-top: 0.75rem;">
+                        <button type="button" id="auto-detect-btn" onclick="autoDetectPaths()" class="secondary-btn"
+                            style="border-color: var(--accent-color); color: var(--accent-color);">
+                            <span class="loading-spinner"></span>
+                            <span class="btn-text">✨ Auto-Detect</span>
+                        </button>
+                        <button type="button" id="test-btn" onclick="testConnection()" class="secondary-btn">
+                            <span class="loading-spinner"></span>
+                            <span class="btn-text">⚡ Test</span>
+                        </button>
+                    </div>
+                    <button type="submit" id="save-btn" style="margin-top: 0.5rem;">
+                        <span class="loading-spinner"></span>
+                        <span class="btn-text">Save Server Settings</span>
+                    </button>
+                </form>
             </section>
 
-            <section class="groupings-column locked-section" id="groupings-section">
+            <!-- ④ Scheduler -->
+            <section class="card locked-section" id="scheduler-card" style="padding: 1.25rem;">
                 <div class="locked-overlay-text">Server Required</div>
-                <main class="card" style="height: 100%; display: flex; flex-direction: column;">
-                    <div
-                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
-                        <h2>② Groupings</h2>
-                        <button onclick="clearAllGroups()" class="secondary-btn delete-btn"
-                            style="padding: 0.5rem 0.8rem; font-size: 0.8rem; border: none;"
-                            title="Remove All Groupings">
-                            Clear All
+                <h2>④ Auto Sync Scheduling</h2>
+                <p class="section-desc">Configure automatic sync schedules.</p>
+
+                <div class="sub-panel">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="global_scheduler_enabled" onchange="toggleGlobalScheduler(this)"
+                            style="width:15px;height:15px;accent-color:var(--accent-color);">
+                        <span>Enable Global Scheduler</span>
+                    </label>
+
+                    <div id="global_scheduler_panel" style="display: none; margin-top: 0.75rem;">
+                        <div class="form-group">
+                            <label for="global_sync_schedule">Global Sync Schedule (Cron)</label>
+                            <input type="text" id="global_sync_schedule" placeholder="0 0 * * * (Every midnight)"
+                                style="font-size:0.85rem;">
+                            <small>Standard crontab: <code>minute hour day month weekday</code></small>
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>Excluded Groupings</label>
+                            <div id="global_sync_exclusions"
+                                style="max-height: 130px; overflow-y: auto; background: rgba(0,0,0,0.15); padding: 0.5rem; border-radius: var(--radius-sm); display: flex; flex-direction: column; gap: 0.3rem;">
+                                <!-- Checkboxes injected by JS -->
+                            </div>
+                            <small>These groupings skip the global scheduled sync.</small>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 1rem; border-top: 1px dashed var(--glass-border); padding-top: 1rem;">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="cleanup_scheduler_enabled"
+                                onchange="toggleCleanupScheduler(this)"
+                                style="width:15px;height:15px;accent-color:var(--accent-color);">
+                            <span>Enable Auto-Cleanup</span>
+                        </label>
+                        <div id="cleanup_scheduler_panel" style="display: none; margin-top: 0.75rem;">
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label for="cleanup_sync_schedule">Cleanup Schedule (Cron)</label>
+                                <input type="text" id="cleanup_sync_schedule" placeholder="0 * * * * (Every hour)"
+                                    style="font-size:0.85rem;">
+                                <small>Removes broken symlinks when originals are deleted.</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- How it Works guide -->
+            <section style="display: flex; flex-direction: column; gap: 0.6rem;">
+                <p
+                    style="font-size: 0.72rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em;">
+                    How It Works</p>
+                <div class="how-step">
+                    <div class="step-num">1</div>
+                    <div class="step-body"><strong>Connect Jellyfin</strong><span>Enter your server URL and API
+                            key.</span></div>
+                </div>
+                <div class="how-step">
+                    <div class="step-num">2</div>
+                    <div class="step-body"><strong>Define Groupings</strong><span>Each grouping becomes a virtual
+                            Jellyfin library.</span></div>
+                </div>
+                <div class="how-step">
+                    <div class="step-num">3</div>
+                    <div class="step-body"><strong>Sync &amp; Add</strong><span>Sync creates symlinks. Then add each
+                            folder as a library in Jellyfin (Mixed Movies and Shows).</span></div>
+                </div>
+            </section>
+
+            <div class="footer">
+                <p>Run <code>python app.py</code> · Jellyfin Groupings</p>
+            </div>
+
+        </aside>
+
+        <!-- ── Main Content ──────────────────────────────────────── -->
+        <main id="main-content">
+
+            <!-- ③ Sync & Maintenance -->
+            <section class="card locked-section" id="maintenance-card">
+                <div class="locked-overlay-text">Server Required</div>
+                <div class="section-header">
+                    <h2>③ Sync &amp; Maintenance</h2>
+                </div>
+                <p class="section-desc">After defining your groupings, press Sync to build the symlink folders on disk.
+                </p>
+
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem;">
+                    <div>
+                        <button id="sync-btn" onclick="syncAll()"
+                            style="width: 100%; background: var(--accent-color); border: none; font-weight: 600; margin: 0;">
+                            <span class="loading-spinner"></span>
+                            <span class="btn-text">🚀 Sync All Groupings</span>
                         </button>
+                        <p
+                            style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.3rem; text-align: center;">
+                            Creates symlinks for every grouping.</p>
                     </div>
-                    <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 1.5rem;">Each grouping
-                        becomes a virtual Jellyfin library. Define as many as you like — e.g. one per genre, actor, or
-                        IMDb list.</p>
+                    <div>
+                        <button id="preview-sync-btn" onclick="previewSyncAll()" class="secondary-btn"
+                            style="width: 100%; font-weight: 600; margin: 0;">
+                            <span class="loading-spinner"></span>
+                            <span class="btn-text">👁️ Preview Sync</span>
+                        </button>
+                        <p
+                            style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.3rem; text-align: center;">
+                            Dry-run without touching disk.</p>
+                    </div>
+                    <div>
+                        <button id="cleanup-btn" onclick="openCleanupModal()" class="secondary-btn"
+                            style="width: 100%; font-weight: 600; margin: 0; border-color: var(--error-color); color: var(--error-color);">
+                            <span class="loading-spinner"></span>
+                            <span class="btn-text">🧹 Clean Up Folders</span>
+                        </button>
+                        <p
+                            style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.3rem; text-align: center;">
+                            Delete old grouping folders from disk.</p>
+                    </div>
+                    <div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                            <button onclick="openExportModal()" class="secondary-btn"
+                                style="margin: 0; padding: 0.65rem 0.5rem; font-size: 0.8rem;">⬇ Export</button>
+                            <button onclick="openImportModal()" class="secondary-btn"
+                                style="margin: 0; padding: 0.65rem 0.5rem; font-size: 0.8rem;">⬆ Import</button>
+                        </div>
+                        <p
+                            style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.3rem; text-align: center;">
+                            Backup / restore config JSON.</p>
+                    </div>
+                </div>
+            </section>
 
-                    <div id="groups-list" style="margin: 0.5rem 0; flex: 1; min-height: 200px;">
-                        <!-- Group cards will be injected here -->
+            <!-- ② Groupings -->
+            <section class="card locked-section" id="groupings-section">
+                <div class="locked-overlay-text">Server Required</div>
+                <div class="section-header">
+                    <h2>② Groupings</h2>
+                    <button onclick="clearAllGroups()" class="secondary-btn delete-btn"
+                        style="border: none; font-size: 0.78rem;" title="Remove All Groupings">Clear All</button>
+                </div>
+                <p class="section-desc">Each grouping becomes a virtual Jellyfin library. Define as many as you like —
+                    e.g. one per genre, actor, or IMDb list.</p>
+
+                <div id="groups-list">
+                    <!-- Group cards injected here -->
+                </div>
+
+                <hr style="border: 0; border-top: 1px solid var(--glass-border); margin: 1.25rem 0;">
+
+                <h3 id="group-form-title"
+                    style="margin-bottom: 1rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 0.5rem;">
+                    Create New Grouping</h3>
+                <form id="group-form"
+                    style="background: rgba(0,0,0,0.15); border: 1px solid var(--glass-border); padding: 1.5rem; border-radius: var(--radius-lg);">
+
+                    <h4 style="font-size: 0.9rem; color: var(--accent-color); margin-bottom: 1rem; margin-top: 0;">1.
+                        Basic Info</h4>
+                    <div class="form-group" style="margin-bottom: 1.25rem;">
+                        <label for="group_name">Group Name</label>
+                        <input type="text" id="group_name" placeholder="Action Movies" required>
+                        <small>Becomes the folder name and Jellyfin library name.</small>
                     </div>
 
-                    <hr style="border: 0; border-top: 1px solid var(--glass-border); margin: 2rem 0;">
+                    <h4
+                        style="font-size: 0.9rem; color: var(--accent-color); margin-bottom: 1rem; margin-top: 1.5rem; border-top: 1px dashed var(--glass-border); padding-top: 1.5rem;">
+                        2. Source Filtering</h4>
 
-                    <h3 id="group-form-title">Create New Grouping</h3>
-                    <form id="group-form" style="margin-top: 0.5rem;">
-                        <div class="form-group">
-                            <label for="group_name">Group Name</label>
-                            <input type="text" id="group_name" placeholder="e.g. Action Movies" required>
-                            <small style="color: var(--text-secondary); font-size: 0.75rem;">This becomes the folder
-                                name and the Jellyfin library name.</small>
+                    <div class="form-grid-2">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label for="source_category">Source Category</label>
+                            <select id="source_category" onchange="updateSourceTypeOptions()">
+                                <option value="jellyfin">Jellyfin (Integrated)</option>
+                                <option value="external">External (3rd Party)</option>
+                            </select>
                         </div>
-                        <div class="grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                            <div class="form-group">
-                                <label for="source_category">Source Category</label>
-                                <select id="source_category" onchange="updateSourceTypeOptions()"
-                                    style="width: 100%; padding: 0.8rem 1rem; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-family: inherit; font-size: 1rem; appearance: none;">
-                                    <option value="jellyfin">Jellyfin (Integrated)</option>
-                                    <option value="external">External (3rd Party)</option>
-                                </select>
-                                <small style="color: var(--text-secondary); font-size: 0.75rem;">Use <em>Jellyfin</em>
-                                    to filter by data already in your server, or <em>External</em> for IMDb / Trakt
-                                    lists.</small>
-                            </div>
-                            <div class="form-group">
-                                <label for="source_type">Filter By</label>
-                                <select id="source_type" onchange="updateSourceValueUI()"
-                                    style="width: 100%; padding: 0.8rem 1rem; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-family: inherit; font-size: 1rem; appearance: none;">
-                                    <!-- Options injected via JS -->
-                                </select>
-                                <small style="color: var(--text-secondary); font-size: 0.75rem;">The metadata field used
-                                    to collect matching media into this grouping.</small>
-                            </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label for="source_type">Filter By</label>
+                            <select id="source_type" onchange="updateSourceValueUI()">
+                                <!-- Options injected via JS -->
+                            </select>
                         </div>
-                        <div class="form-group">
-                            <label for="source_value">Filter Value</label>
+                    </div>
+                    <div class="form-group" style="margin-top: 0.75rem;">
+                        <label for="source_value">Filter Value</label>
 
-                            <div id="metadata_rules_container"
-                                style="display: none; flex-direction: column; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                <!-- Filled by JS -->
-                            </div>
-                            <button type="button" onclick="addMetadataRule()" class="secondary-btn" id="add-rule-btn"
-                                style="display: none; margin-bottom: 0.5rem; padding: 0.4rem 0.8rem; font-size: 0.85rem; width: fit-content;">+
-                                Add Condition</button>
+                        <div id="metadata_rules_container"
+                            style="display: none; flex-direction: column; gap: 0.5rem; margin-bottom: 0.5rem;"></div>
+                        <button type="button" onclick="addMetadataRule()" class="secondary-btn" id="add-rule-btn"
+                            style="display: none; margin-bottom: 0.5rem; padding: 0.35rem 0.75rem; font-size: 0.82rem; width: fit-content; margin-top:0;">+
+                            Add Condition</button>
 
-                            <div id="source_value_container"
-                                style="display: flex; gap: 0.5rem; flex-direction: column;">
-                                <input type="text" id="source_value" list="source_value_datalist"
-                                    placeholder="e.g. Action  or  ls000024390" required
-                                    style="width: 100%; padding: 0.8rem 1rem; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-family: inherit; font-size: 1rem;">
-                                <datalist id="source_value_datalist">
-                                    <!-- Populated via JS -->
-                                </datalist>
-                                <button type="button" onclick="previewGrouping()" class="secondary-btn" id="preview-btn"
-                                    style="padding: 0.6rem 1rem; font-size: 0.9rem; align-self: flex-start; margin-bottom: 0.25rem;">Preview
-                                    Filter</button>
-                            </div>
-                            <small id="source_value_help"
-                                style="color: var(--text-secondary); display: block; margin-top: 0.25rem; font-size: 0.75rem;">
-                                The specific genre, actor name, tag, or list ID to include in this grouping.
-                                <br><span style="color: var(--accent-color);">Tip: You can chain logic operators for
-                                    complex filters: e.g. <code>Horror AND Action AND NOT Comedy</code></span>
-                            </small>
-
-                            <!-- Removed complex rules container, using free-text logical parsing -->
-                            <div id="preview_result"
-                                style="display: none; margin-top: 0.8rem; font-size: 0.8rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: var(--radius-md); border: 1px dashed var(--glass-border);">
-                            </div>
+                        <div id="source_value_container" style="display: flex; gap: 0.5rem; flex-direction: column;">
+                            <input type="text" id="source_value" list="source_value_datalist"
+                                placeholder="Action  or  ls000024390" required>
+                            <datalist id="source_value_datalist"></datalist>
+                            <button type="button" onclick="previewGrouping()" class="secondary-btn" id="preview-btn"
+                                style="padding: 0.5rem 0.9rem; font-size: 0.85rem; align-self: flex-start; margin: 0;">Preview
+                                Filter</button>
                         </div>
-                        <div class="form-group">
+                        <small id="source_value_help">
+                            The specific genre, actor name, tag, or list ID.<br>
+                            <span style="color: var(--accent-color);">Tip: Chain logic operators — e.g.
+                                <code>Horror AND Action AND NOT Comedy</code></span>
+                        </small>
+
+                        <div id="preview_result"
+                            style="display: none; margin-top: 0.75rem; font-size: 0.8rem; padding: 0.9rem; background: rgba(0,0,0,0.2); border-radius: var(--radius-md); border: 1px dashed var(--glass-border);">
+                        </div>
+                    </div>
+
+                    <div class="form-grid-2">
+                        <div class="form-group" style="margin-bottom: 0;">
                             <label for="watch_state">Watch State Filter</label>
-                            <select id="watch_state"
-                                style="width: 100%; padding: 0.8rem 1rem; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-family: inherit; font-size: 1rem; appearance: none;">
+                            <select id="watch_state">
                                 <option value="">All Items (Default)</option>
                                 <option value="unwatched">Unwatched Only</option>
                                 <option value="watched">Watched Only</option>
                             </select>
-                            <small style="color: var(--text-secondary); font-size: 0.75rem;">Limit results based on
-                                their played status in Jellyfin.</small>
+                            <small>Filter by played status in Jellyfin.</small>
                         </div>
-                        <div class="form-group">
-                            <label
-                                style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; text-transform: none; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.05em;">
-                                <input type="checkbox" id="sort_order_enabled" onchange="toggleSortOrder(this)"
-                                    style="width: 16px; height: 16px; accent-color: var(--accent-color); cursor: pointer; flex-shrink: 0;">
-                                <span style="text-transform: uppercase; letter-spacing: 0.05em;">Custom Sort Order <span
-                                        style="font-weight:400; text-transform: none;">(optional)</span></span>
-                            </label>
-                            <div id="sort_order_panel" style="display: none; margin-top: 0.75rem;">
-                                <select id="sort_order"
-                                    style="width: 100%; padding: 0.8rem 1rem; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-family: inherit; font-size: 1rem; appearance: none;">
-                                    <option value="">None (filesystem order)</option>
-                                    <option value="imdb_list_order">📋 IMDb List Order</option>
-                                    <option value="trakt_list_order">📋 Trakt List Order</option>
-                                    <option value="tmdb_list_order">🎞️ TMDb List Order</option>
-                                    <option value="anilist_list_order">🎨 AniList List Order</option>
-                                    <option value="mal_list_order">📋 MyAnimeList List Order</option>
-                                    <option value="letterboxd_list_order">📋 Letterboxd List Order</option>
-                                    <option value="CommunityRating">⭐ Community Rating (highest first)</option>
-                                    <option value="ProductionYear">📅 Production Year (newest first)</option>
-                                    <option value="SortName">🔤 Name (A → Z)</option>
-                                    <option value="DateCreated">🕐 Date Added (newest first)</option>
-                                    <option value="Random">🎲 Random</option>
-                                </select>
-                                <small
-                                    style="color: var(--text-secondary); display: block; margin-top: 0.25rem; font-size: 0.75rem;">
-                                    Symlinks are named <code style="font-size:0.7rem;">0001 - Title</code>, <code
-                                        style="font-size:0.7rem;">0002 - Title</code>… so Jellyfin's "Sort by Name"
-                                    reflects this order. List Order options only work with their corresponding list
-                                    source type.
-                                </small>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label
-                                style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; text-transform: none; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.05em;">
-                                <input type="checkbox" id="schedule_enabled" onchange="toggleGroupScheduler(this)"
-                                    style="width: 16px; height: 16px; accent-color: var(--accent-color); cursor: pointer; flex-shrink: 0;">
-                                <span style="text-transform: uppercase; letter-spacing: 0.05em;">Individual Sync
-                                    Schedule <span
-                                        style="font-weight:400; text-transform: none;">(optional)</span></span>
-                            </label>
-                            <div id="group_scheduler_panel" style="display: none; margin-top: 0.75rem;">
-                                <input type="text" id="group_schedule" placeholder="e.g. 0 12 * * * (Every day at noon)"
-                                    style="width: 100%; padding: 0.8rem 1rem; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-family: inherit; font-size: 1rem;">
-                                <small
-                                    style="color: var(--text-secondary); display: block; margin-top: 0.25rem; font-size: 0.75rem;">
-                                    Standard crontab expression. Leave empty to use only the global schedule.
-                                </small>
-                            </div>
-                        </div>
+                    </div>
 
-                        <!-- Seasonal Grouping -->
-                        <div class="form-group">
-                            <label
-                                style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; text-transform: none; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.05em;">
-                                <input type="checkbox" id="seasonal_enabled" onchange="toggleSeasonal(this)"
-                                    style="width: 16px; height: 16px; accent-color: var(--accent-color); cursor: pointer; flex-shrink: 0;">
-                                <span style="text-transform: uppercase; letter-spacing: 0.05em;">Seasonal Grouping <span
-                                        style="font-weight:400; text-transform: none;">(optional)</span></span>
-                            </label>
-                            <div id="seasonal_panel" style="display: none; margin-top: 0.75rem;">
-                                <div style="display: flex; gap: 1rem; align-items: center;">
-                                    <div style="flex: 1;">
-                                        <label style="font-size: 0.7rem; margin-bottom: 0.3rem;">Show From</label>
-                                        <div style="display: flex; gap: 0.3rem;">
-                                            <select id="seasonal_start_month"
-                                                style="flex: 2; padding: 0.5rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 4px; color: white; font-size: 0.85rem;">
-                                                <option value="01">Jan</option>
-                                                <option value="02">Feb</option>
-                                                <option value="03">Mar</option>
-                                                <option value="04">Apr</option>
-                                                <option value="05">May</option>
-                                                <option value="06">Jun</option>
-                                                <option value="07">Jul</option>
-                                                <option value="08">Aug</option>
-                                                <option value="09">Sep</option>
-                                                <option value="10">Oct</option>
-                                                <option value="11">Nov</option>
-                                                <option value="12">Dec</option>
-                                            </select>
-                                            <select id="seasonal_start_day"
-                                                style="flex: 1; padding: 0.5rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 4px; color: white; font-size: 0.85rem;">
-                                                <!-- JS populated -->
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div style="color: var(--text-secondary); padding-top: 1rem;">to</div>
-                                    <div style="flex: 1;">
-                                        <label style="font-size: 0.7rem; margin-bottom: 0.3rem;">Delete On</label>
-                                        <div style="display: flex; gap: 0.3rem;">
-                                            <select id="seasonal_end_month"
-                                                style="flex: 2; padding: 0.5rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 4px; color: white; font-size: 0.85rem;">
-                                                <option value="01">Jan</option>
-                                                <option value="02">Feb</option>
-                                                <option value="03">Mar</option>
-                                                <option value="04">Apr</option>
-                                                <option value="05">May</option>
-                                                <option value="06">Jun</option>
-                                                <option value="07">Jul</option>
-                                                <option value="08">Aug</option>
-                                                <option value="09">Sep</option>
-                                                <option value="10">Oct</option>
-                                                <option value="11">Nov</option>
-                                                <option value="12">Dec</option>
-                                            </select>
-                                            <select id="seasonal_end_day"
-                                                style="flex: 1; padding: 0.5rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 4px; color: white; font-size: 0.85rem;">
-                                                <!-- JS populated -->
-                                            </select>
-                                        </div>
+                    <h4
+                        style="font-size: 0.9rem; color: var(--accent-color); margin-bottom: 1rem; margin-top: 1.5rem; border-top: 1px dashed var(--glass-border); padding-top: 1.5rem;">
+                        3. Advanced Options</h4>
+
+                    <!-- Sort Order -->
+                    <div class="form-group" style="margin-top: 0.75rem;">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="sort_order_enabled" onchange="toggleSortOrder(this)"
+                                style="width:14px;height:14px;accent-color:var(--accent-color);">
+                            <span>Custom Sort Order <span
+                                    style="font-weight:400; text-transform:none;">(optional)</span></span>
+                        </label>
+                        <div id="sort_order_panel" style="display: none; margin-top: 0.6rem;">
+                            <select id="sort_order">
+                                <option value="">None (filesystem order)</option>
+                                <option value="imdb_list_order">📋 IMDb List Order</option>
+                                <option value="trakt_list_order">📋 Trakt List Order</option>
+                                <option value="tmdb_list_order">🎞️ TMDb List Order</option>
+                                <option value="anilist_list_order">🎨 AniList List Order</option>
+                                <option value="mal_list_order">📋 MyAnimeList List Order</option>
+                                <option value="letterboxd_list_order">📋 Letterboxd List Order</option>
+                                <option value="CommunityRating">⭐ Community Rating (highest first)</option>
+                                <option value="ProductionYear">📅 Production Year (newest first)</option>
+                                <option value="SortName">🔤 Name (A → Z)</option>
+                                <option value="DateCreated">🕐 Date Added (newest first)</option>
+                                <option value="Random">🎲 Random</option>
+                            </select>
+                            <small>Symlinks are named <code>0001 - Title</code>, <code>0002 - Title</code>… reflecting
+                                this order.</small>
+                        </div>
+                    </div>
+
+                    <!-- Individual Schedule -->
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="schedule_enabled" onchange="toggleGroupScheduler(this)"
+                                style="width:14px;height:14px;accent-color:var(--accent-color);">
+                            <span>Individual Sync Schedule <span
+                                    style="font-weight:400; text-transform:none;">(optional)</span></span>
+                        </label>
+                        <div id="group_scheduler_panel" style="display: none; margin-top: 0.6rem;">
+                            <input type="text" id="group_schedule" placeholder="0 12 * * * (Every day at noon)">
+                            <small>Leave empty to use only the global schedule.</small>
+                        </div>
+                    </div>
+
+                    <!-- Seasonal Grouping -->
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="seasonal_enabled" onchange="toggleSeasonal(this)"
+                                style="width:14px;height:14px;accent-color:var(--accent-color);">
+                            <span>Seasonal Grouping <span
+                                    style="font-weight:400; text-transform:none;">(optional)</span></span>
+                        </label>
+                        <div id="seasonal_panel" style="display: none; margin-top: 0.6rem;">
+                            <div style="display: flex; gap: 1rem; align-items: center;">
+                                <div style="flex: 1;">
+                                    <label style="font-size: 0.68rem; margin-bottom: 0.25rem;">Show From</label>
+                                    <div style="display: flex; gap: 0.3rem;">
+                                        <select id="seasonal_start_month"
+                                            style="flex: 2; padding: 0.45rem; font-size: 0.82rem;">
+                                            <option value="01">Jan</option>
+                                            <option value="02">Feb</option>
+                                            <option value="03">Mar</option>
+                                            <option value="04">Apr</option>
+                                            <option value="05">May</option>
+                                            <option value="06">Jun</option>
+                                            <option value="07">Jul</option>
+                                            <option value="08">Aug</option>
+                                            <option value="09">Sep</option>
+                                            <option value="10">Oct</option>
+                                            <option value="11">Nov</option>
+                                            <option value="12">Dec</option>
+                                        </select>
+                                        <select id="seasonal_start_day"
+                                            style="flex: 1; padding: 0.45rem; font-size: 0.82rem;"><!-- JS populated --></select>
                                     </div>
                                 </div>
-                                <small
-                                    style="color: var(--text-secondary); display: block; margin-top: 0.5rem; font-size: 0.75rem;">
-                                    The grouping will only exist between these dates. E.g. Dec 1st to Jan 1st.
-                                </small>
+                                <div style="color: var(--text-secondary); padding-top: 1rem; flex-shrink:0;">to</div>
+                                <div style="flex: 1;">
+                                    <label style="font-size: 0.68rem; margin-bottom: 0.25rem;">Delete On</label>
+                                    <div style="display: flex; gap: 0.3rem;">
+                                        <select id="seasonal_end_month"
+                                            style="flex: 2; padding: 0.45rem; font-size: 0.82rem;">
+                                            <option value="01">Jan</option>
+                                            <option value="02">Feb</option>
+                                            <option value="03">Mar</option>
+                                            <option value="04">Apr</option>
+                                            <option value="05">May</option>
+                                            <option value="06">Jun</option>
+                                            <option value="07">Jul</option>
+                                            <option value="08">Aug</option>
+                                            <option value="09">Sep</option>
+                                            <option value="10">Oct</option>
+                                            <option value="11">Nov</option>
+                                            <option value="12">Dec</option>
+                                        </select>
+                                        <select id="seasonal_end_day"
+                                            style="flex: 1; padding: 0.45rem; font-size: 0.82rem;"><!-- JS populated --></select>
+                                    </div>
+                                </div>
                             </div>
+                            <small style="margin-top: 0.4rem;">The grouping will only exist between these dates. E.g.
+                                Dec 1st to Jan 1st.</small>
                         </div>
-                        <div style="display: flex; gap: 1rem;">
-                            <button type="submit" id="add-group-btn"
-                                style="flex: 2; background: var(--surface-color); border: 1px solid var(--accent-color); color: var(--accent-color);">
-                                Add Grouping
-                            </button>
-                            <button type="button" id="cancel-edit-btn" onclick="cancelEdit()"
-                                style="flex: 1; display: none; background: transparent; border: 1px solid var(--text-secondary); color: var(--text-secondary);">
-                                Cancel
-                            </button>
-                        </div>
-                    </form>
-                </main>
-
-                <main class="card" style="margin-top: 2rem;">
-                    <h3>External API Connections</h3>
-                    <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 1.5rem;">Configure
-                        optional 3rd-party services to use as grouping sources.</p>
-
-                    <form id="api-config-form">
-                        <div class="form-group"
-                            style="margin-top: 0.8rem; padding: 1rem; background: rgba(0,0,0,0.1); border-radius: var(--radius-md); border: 1px dashed var(--glass-border);">
-                            <h3
-                                style="font-size: 0.9rem; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.5rem;">
-                                <span>📡</span> Trakt API <span
-                                    style="font-weight: 400; color: var(--text-secondary);">(Optional)</span>
-                            </h3>
-                            <p style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.8rem;">Only
-                                needed for Trakt lists. Create an app at
-                                <a href="https://trakt.tv/oauth/applications/new" target="_blank"
-                                    style="color: var(--accent-color);">trakt.tv/oauth/applications</a>.
-                            </p>
-                            <label for="trakt_client_id" style="font-size: 0.75rem; opacity: 0.8;">Trakt Client
-                                ID</label>
-                            <input type="text" id="trakt_client_id" placeholder="Your Trakt API Client ID"
-                                style="padding: 0.5rem; font-size: 0.85rem;">
-                        </div>
-
-                        <div class="form-group"
-                            style="margin-top: 0.8rem; padding: 1rem; background: rgba(0,0,0,0.1); border-radius: var(--radius-md); border: 1px dashed var(--glass-border);">
-                            <h3
-                                style="font-size: 0.9rem; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.5rem;">
-                                <span>🎬</span> TMDb API <span
-                                    style="font-weight: 400; color: var(--text-secondary);">(Optional)</span>
-                            </h3>
-                            <p style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.8rem;">Only
-                                needed for TMDb lists. Get your v3 API Key at
-                                <a href="https://www.themoviedb.org/settings/api" target="_blank"
-                                    style="color: var(--accent-color);">themoviedb.org/settings/api</a>.
-                            </p>
-                            <label for="tmdb_api_key" style="font-size: 0.75rem; opacity: 0.8;">TMDb API Key</label>
-                            <input type="text" id="tmdb_api_key" placeholder="Your TMDb API Key"
-                                style="padding: 0.5rem; font-size: 0.85rem;">
-                        </div>
-
-                        <div class="form-group"
-                            style="margin-top: 0.8rem; padding: 1rem; background: rgba(0,0,0,0.1); border-radius: var(--radius-md); border: 1px dashed var(--glass-border);">
-                            <h3
-                                style="font-size: 0.9rem; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.5rem;">
-                                <span>📺</span> MyAnimeList API <span
-                                    style="font-weight: 400; color: var(--text-secondary);">(Optional)</span>
-                            </h3>
-                            <p style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.8rem;">Only
-                                needed for MAL lists. Get your Client ID at
-                                <a href="https://myanimelist.net/apiconfig" target="_blank"
-                                    style="color: var(--accent-color);">myanimelist.net/apiconfig</a>.
-                            </p>
-                            <label for="mal_client_id" style="font-size: 0.75rem; opacity: 0.8;">MAL Client ID</label>
-                            <input type="text" id="mal_client_id" placeholder="Your MyAnimeList API Client ID"
-                                style="padding: 0.5rem; font-size: 0.85rem;">
-                        </div>
-
-                        <button type="submit" id="save-apis-btn" style="margin-top: 1rem; width: 100%;">
-                            <span class="loading-spinner"></span>
-                            <span class="btn-text">Save API Keys</span>
-                        </button>
-                    </form>
-                </main>
-            </section>
-        </div>
-
-        <!-- Export Modal -->
-        <div id="export-modal" class="modal"
-            style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(8px);">
-            <div class="card" style="max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;">
-                <h2>Export Settings</h2>
-                <div class="form-group" style="margin-bottom: 2rem;">
-                    <label>What do you want to export?</label>
-                    <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;">
-                        <label
-                            style="display: flex; align-items: center; gap: 1rem; text-transform: none; cursor: pointer;">
-                            <input type="radio" name="export-type" value="all" checked
-                                onchange="toggleExportSelection()">
-                            Full Configuration (Settings + All Groups)
-                        </label>
-                        <label
-                            style="display: flex; align-items: center; gap: 1rem; text-transform: none; cursor: pointer;">
-                            <input type="radio" name="export-type" value="selective" onchange="toggleExportSelection()">
-                            Selected Groupings Only
-                        </label>
-                    </div>
-                </div>
-
-                <div id="export-selection-list"
-                    style="display: none; border-top: 1px solid var(--glass-border); padding-top: 1rem; margin-bottom: 1.5rem;">
-                    <label>Select Groups</label>
-                    <div id="export-groups-container"></div>
-                </div>
-
-                <div style="display: flex; gap: 1rem;">
-                    <button onclick="execExport()" style="flex: 2;">Download Export</button>
-                    <button onclick="closeModal('export-modal')" class="secondary-btn"
-                        style="flex: 1; border-color: var(--error-color); color: var(--error-color);">Cancel</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Import Modal -->
-        <div id="import-modal" class="modal"
-            style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(8px);">
-            <div class="card" style="max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;">
-                <h2>Import Settings</h2>
-
-                <div id="import-step-1">
-                    <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Select a file to begin the import
-                        process.</p>
-                    <button onclick="document.getElementById('import-file-input').click()" style="width: 100%;">Select
-                        JSON File</button>
-                    <input type="file" id="import-file-input" style="display: none;" accept=".json"
-                        onchange="handleFileSelected(event)">
-                </div>
-
-                <div id="import-step-2" style="display: none;">
-                    <div id="import-warning" class="status-msg error" style="margin-bottom: 1.5rem; display: none;">
-                        WARNING: This will overwrite your entire current configuration!
-                    </div>
-                    <div id="import-selection-list">
-                        <label>Select items to import</label>
-                        <div id="import-groups-container" style="margin-top: 0.5rem;"></div>
-                    </div>
-                    <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                        <button id="confirm-import" style="flex: 2;">Confirm Import</button>
-                        <button onclick="closeModal('import-modal')" class="secondary-btn"
-                            style="flex: 1;">Cancel</button>
-                    </div>
-                </div>
-
-                <button id="cancel-import-top" onclick="closeModal('import-modal')" class="secondary-btn"
-                    style="margin-top: 1.5rem; width: 100%;">Cancel</button>
-            </div>
-        </div>
-
-        <!-- Preview Sync Modal -->
-        <div id="preview-sync-modal" class="modal"
-            style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(8px);">
-            <div class="card"
-                style="max-width: 700px; width: 90%; max-height: 85vh; display: flex; flex-direction: column;">
-                <h2>Preview Sync</h2>
-                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">This is a dry-run. No
-                    files or folders will be created on disk.</p>
-
-                <div id="preview-sync-results"
-                    style="flex: 1; overflow-y: auto; padding-right: 0.5rem; margin-bottom: 1rem; display: flex; flex-direction: column; gap: 1rem;">
-                    <!-- Results populated by JS -->
-                </div>
-
-                <div style="display: flex; gap: 1rem; margin-top: auto;">
-                    <button onclick="closeModal('preview-sync-modal')" class="secondary-btn"
-                        style="flex: 1; width: 100%;">Close</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Cleanup Modal -->
-        <div id="cleanup-modal" class="modal"
-            style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(8px);">
-            <div class="card"
-                style="max-width: 500px; width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
-                <h2>Clean Up Folders</h2>
-                <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.85rem;">Select the folders
-                    you want to delete from the target directory.</p>
-
-                <div id="cleanup-loading" style="display: flex; justify-content: center; padding: 2rem;">
-                    <div class="loading-spinner" style="border-top-color: var(--accent-color); display: block;"></div>
-                </div>
-
-                <div id="cleanup-error" class="status-msg error" style="display: none; margin-bottom: 1rem;"></div>
-
-                <div id="cleanup-content" style="display: none; flex: 1; min-height: 0; flex-direction: column;">
-                    <div id="cleanup-list"
-                        style="border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 0.5rem; overflow-y: auto; margin-bottom: 1.5rem; background: rgba(0,0,0,0.2);">
-                        <!-- Filled by JS -->
                     </div>
 
-                    <div style="display: flex; gap: 1rem; margin-top: auto;">
-                        <button id="confirm-cleanup-btn" onclick="execCleanup()"
-                            style="flex: 2; background: var(--error-color); border-color: var(--error-color);">Delete
-                            Selected <span id="cleanup-count"></span></button>
-                        <button onclick="closeModal('cleanup-modal')" class="secondary-btn"
-                            style="flex: 1;">Cancel</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Cover Generator Modal -->
-        <div id="cover-generator-modal" class="modal"
-            style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center; backdrop-filter: blur(8px);">
-            <div class="card"
-                style="max-width: 800px; width: 90%; max-height: 90vh; display: flex; flex-direction: column;">
-                <h2>🎨 Generate Cover (16:9)</h2>
-                <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 1.5rem; margin-bottom: 1.5rem;">
-                    <!-- Row 1: Primary Content (Text) -->
-                    <div style="grid-column: span 3;">
-                        <label for="cover-text"
-                            style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; display: block;">Cover
-                            Text</label>
-                        <input type="text" id="cover-text"
-                            style="width: 100%; padding: 0.75rem 1rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 1.1rem; outline: none; transition: var(--transition);"
-                            oninput="renderCover()" placeholder="Enter group name...">
-                    </div>
-
-                    <!-- Row 2: Aesthetics & Style -->
-                    <div style="min-width: 0;">
-                        <label for="cover-theme"
-                            style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; display: block;">Theme</label>
-                        <select id="cover-theme" onchange="renderCover()"
-                            style="width: 100%; padding: 0.7rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); cursor: pointer;">
-                            <option value="modern-dark">Dark Gradient (Modern)</option>
-                            <option value="vibrant-glow">Vibrant Glow</option>
-                            <option value="minimal-glass">Minimal Glassmorphism</option>
-                            <option value="cyberpunk">Cyberpunk Night</option>
-                            <option value="aurora">Aurora Borealis</option>
-                            <option value="monochrome">Monochrome Peak</option>
-                            <option value="vintage">Golden Age</option>
-                        </select>
-                    </div>
-                    <div style="min-width: 0;">
-                        <label for="cover-border-style"
-                            style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; display: block;">Border
-                            Style</label>
-                        <select id="cover-border-style" onchange="renderCover()"
-                            style="width: 100%; padding: 0.7rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); cursor: pointer;">
-                            <option value="none">None</option>
-                            <option value="elegant">Elegant Thin</option>
-                            <option value="bold-frame">Bold Frame</option>
-                            <option value="neon-glow">Neon Glow</option>
-                            <option value="tech-corners">Sci-Fi Corners</option>
-                            <option value="double-inset">Double Inset</option>
-                            <option value="corner-brackets">Corner Brackets</option>
-                            <option value="industrial-dash">Dashed Industrial</option>
-                            <option value="ornate">Ornate Frame</option>
-                        </select>
-                    </div>
                     <div
-                        style="display: flex; gap: 0.75rem; align-items: flex-end; background: rgba(255,255,255,0.03); padding: 0.5rem 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border);">
-                        <div>
-                            <label for="cover-border-color"
-                                style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 0.3rem; display: block;">Border</label>
-                            <input type="color" id="cover-border-color" value="#ffffff" onchange="renderCover()"
-                                style="width: 44px; height: 32px; padding: 0; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; cursor: pointer; background: transparent;">
+                        style="display: flex; gap: 0.75rem; margin-top: 2rem; border-top: 1px solid var(--glass-border); padding-top: 1.5rem;">
+                        <button type="button" id="cancel-edit-btn" onclick="cancelEdit()"
+                            style="flex: 1; display: none; background: rgba(255,255,255,0.05); border: 1px solid var(--text-secondary); color: var(--text-primary); margin-top: 0; padding: 0.8rem;">
+                            Cancel
+                        </button>
+                        <button type="submit" id="add-group-btn"
+                            style="flex: 3; background: var(--accent-color); border: none; font-weight: 600; color: white; margin-top: 0; padding: 0.8rem;">
+                            Add Grouping
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- External API Connections -->
+            <section class="card">
+                <h2>External API Connections</h2>
+                <p class="section-desc">Configure optional 3rd-party services to use as grouping sources.</p>
+
+                <form id="api-config-form">
+                    <div class="form-grid-2">
+                        <div class="sub-panel">
+                            <h3 style="font-size: 0.82rem; display:flex; align-items:center; gap:0.4rem;">📡 Trakt <span
+                                    style="font-weight:400; color:var(--text-secondary);">(Optional)</span></h3>
+                            <p style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Create
+                                an app at <a href="https://trakt.tv/oauth/applications/new" target="_blank"
+                                    style="color: var(--accent-color);">trakt.tv</a>.</p>
+                            <label style="font-size: 0.68rem;">Trakt Client ID</label>
+                            <input type="text" id="trakt_client_id" placeholder="Your Trakt API Client ID"
+                                style="font-size:0.85rem; padding: 0.5rem 0.7rem;">
                         </div>
-                        <div>
-                            <label for="cover-color-1"
-                                style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 0.3rem; display: block;">Color
-                                1</label>
-                            <input type="color" id="cover-color-1" value="#4f46e5" onchange="renderCover()"
-                                style="width: 44px; height: 32px; padding: 0; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; cursor: pointer; background: transparent;">
+                        <div class="sub-panel">
+                            <h3 style="font-size: 0.82rem; display:flex; align-items:center; gap:0.4rem;">🎬 TMDb <span
+                                    style="font-weight:400; color:var(--text-secondary);">(Optional)</span></h3>
+                            <p style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Get v3
+                                API Key at <a href="https://www.themoviedb.org/settings/api" target="_blank"
+                                    style="color: var(--accent-color);">themoviedb.org</a>.</p>
+                            <label style="font-size: 0.68rem;">TMDb API Key</label>
+                            <input type="text" id="tmdb_api_key" placeholder="Your TMDb API Key"
+                                style="font-size:0.85rem; padding: 0.5rem 0.7rem;">
                         </div>
-                        <div>
-                            <label for="cover-color-2"
-                                style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 0.3rem; display: block;">Color
-                                2</label>
-                            <input type="color" id="cover-color-2" value="#9333ea" onchange="renderCover()"
-                                style="width: 44px; height: 32px; padding: 0; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; cursor: pointer; background: transparent;">
+                        <div class="sub-panel">
+                            <h3 style="font-size: 0.82rem; display:flex; align-items:center; gap:0.4rem;">📺 MyAnimeList
+                                <span style="font-weight:400; color:var(--text-secondary);">(Optional)</span>
+                            </h3>
+                            <p style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Get
+                                Client ID at <a href="https://myanimelist.net/apiconfig" target="_blank"
+                                    style="color: var(--accent-color);">myanimelist.net</a>.</p>
+                            <label style="font-size: 0.68rem;">MAL Client ID</label>
+                            <input type="text" id="mal_client_id" placeholder="Your MyAnimeList API Client ID"
+                                style="font-size:0.85rem; padding: 0.5rem 0.7rem;">
                         </div>
                     </div>
+                    <button type="submit" id="save-apis-btn" style="margin-top: 1rem;">
+                        <span class="loading-spinner"></span>
+                        <span class="btn-text">Save API Keys</span>
+                    </button>
+                </form>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- ── Modals ──────────────────────────────────────────────────── -->
+
+    <!-- Export Modal -->
+    <div id="export-modal" class="modal">
+        <div class="card" style="max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;">
+            <h2>Export Settings</h2>
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label>What do you want to export?</label>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.75rem;">
+                    <label
+                        style="display: flex; align-items: center; gap: 0.75rem; text-transform: none; cursor: pointer; font-size: 0.9rem;">
+                        <input type="radio" name="export-type" value="all" checked onchange="toggleExportSelection()">
+                        Full Configuration (Settings + All Groups)
+                    </label>
+                    <label
+                        style="display: flex; align-items: center; gap: 0.75rem; text-transform: none; cursor: pointer; font-size: 0.9rem;">
+                        <input type="radio" name="export-type" value="selective" onchange="toggleExportSelection()">
+                        Selected Groupings Only
+                    </label>
+                </div>
+            </div>
+            <div id="export-selection-list"
+                style="display: none; border-top: 1px solid var(--glass-border); padding-top: 1rem; margin-bottom: 1.25rem;">
+                <label>Select Groups</label>
+                <div id="export-groups-container"></div>
+            </div>
+            <div style="display: flex; gap: 0.75rem;">
+                <button onclick="execExport()" style="flex: 2; margin-top:0;">Download Export</button>
+                <button onclick="closeModal('export-modal')" class="secondary-btn"
+                    style="flex: 1; border-color: var(--error-color); color: var(--error-color); margin-top:0;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Modal -->
+    <div id="import-modal" class="modal">
+        <div class="card" style="max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;">
+            <h2>Import Settings</h2>
+            <div id="import-step-1">
+                <p style="color: var(--text-secondary); margin-bottom: 1.25rem; font-size: 0.9rem;">Select a file to
+                    begin the import process.</p>
+                <button onclick="document.getElementById('import-file-input').click()"
+                    style="width: 100%; margin-top:0;">Select JSON File</button>
+                <input type="file" id="import-file-input" style="display: none;" accept=".json"
+                    onchange="handleFileSelected(event)">
+            </div>
+            <div id="import-step-2" style="display: none;">
+                <div id="import-warning" class="status-msg error" style="margin-bottom: 1.25rem; display: none;">
+                    WARNING: This will overwrite your entire current configuration!</div>
+                <div id="import-selection-list">
+                    <label>Select items to import</label>
+                    <div id="import-groups-container" style="margin-top: 0.5rem;"></div>
+                </div>
+                <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                    <button id="confirm-import" style="flex: 2; margin-top:0;">Confirm Import</button>
+                    <button onclick="closeModal('import-modal')" class="secondary-btn"
+                        style="flex: 1; margin-top:0;">Cancel</button>
+                </div>
+            </div>
+            <button id="cancel-import-top" onclick="closeModal('import-modal')" class="secondary-btn"
+                style="margin-top: 1.25rem; width: 100%;">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Preview Sync Modal -->
+    <div id="preview-sync-modal" class="modal">
+        <div class="card"
+            style="max-width: 700px; width: 90%; max-height: 85vh; display: flex; flex-direction: column;">
+            <h2>Preview Sync</h2>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">This is a dry-run. No
+                files or folders will be created on disk.</p>
+            <div id="preview-sync-results"
+                style="flex: 1; overflow-y: auto; padding-right: 0.5rem; margin-bottom: 1rem; display: flex; flex-direction: column; gap: 1rem;">
+            </div>
+            <div style="display: flex; gap: 0.75rem; margin-top: auto;">
+                <button onclick="closeModal('preview-sync-modal')" class="secondary-btn"
+                    style="flex: 1; width: 100%; margin-top:0;">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cleanup Modal -->
+    <div id="cleanup-modal" class="modal">
+        <div class="card"
+            style="max-width: 500px; width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
+            <h2>Clean Up Folders</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1.25rem; font-size: 0.85rem;">Select the folders you
+                want to delete from the target directory.</p>
+            <div id="cleanup-loading" style="display: flex; justify-content: center; padding: 2rem;">
+                <div class="loading-spinner" style="border-top-color: var(--accent-color); display: block;"></div>
+            </div>
+            <div id="cleanup-error" class="status-msg error" style="display: none; margin-bottom: 1rem;"></div>
+            <div id="cleanup-content" style="display: none; flex: 1; min-height: 0; flex-direction: column;">
+                <div id="cleanup-list"
+                    style="border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 0.5rem; overflow-y: auto; margin-bottom: 1.25rem; background: rgba(0,0,0,0.2);">
+                </div>
+                <div style="display: flex; gap: 0.75rem; margin-top: auto;">
+                    <button id="confirm-cleanup-btn" onclick="execCleanup()"
+                        style="flex: 2; background: var(--error-color); border-color: var(--error-color); margin-top:0;">Delete
+                        Selected <span id="cleanup-count"></span></button>
+                    <button onclick="closeModal('cleanup-modal')" class="secondary-btn"
+                        style="flex: 1; margin-top:0;">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cover Generator Modal -->
+    <div id="cover-generator-modal" class="modal" style="z-index: 2000;">
+        <div class="card"
+            style="max-width: 800px; width: 90%; max-height: 90vh; display: flex; flex-direction: column;">
+            <h2>🎨 Generate Cover (16:9)</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 1.25rem; margin-bottom: 1.25rem;">
+                <!-- Row 1: Text -->
+                <div style="grid-column: span 3;">
+                    <label for="cover-text"
+                        style="font-size: 0.72rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem; display: block;">Cover
+                        Text</label>
+                    <input type="text" id="cover-text" oninput="renderCover()" placeholder="Enter group name...">
+                </div>
+                <!-- Row 2: Style -->
+                <div style="min-width: 0;">
+                    <label for="cover-theme"
+                        style="font-size: 0.72rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem; display: block;">Theme</label>
+                    <select id="cover-theme" onchange="renderCover()">
+                        <option value="modern-dark">Dark Gradient (Modern)</option>
+                        <option value="vibrant-glow">Vibrant Glow</option>
+                        <option value="minimal-glass">Minimal Glassmorphism</option>
+                        <option value="cyberpunk">Cyberpunk Night</option>
+                        <option value="aurora">Aurora Borealis</option>
+                        <option value="monochrome">Monochrome Peak</option>
+                        <option value="vintage">Golden Age</option>
+                    </select>
+                </div>
+                <div style="min-width: 0;">
+                    <label for="cover-border-style"
+                        style="font-size: 0.72rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem; display: block;">Border
+                        Style</label>
+                    <select id="cover-border-style" onchange="renderCover()">
+                        <option value="none">None</option>
+                        <option value="elegant">Elegant Thin</option>
+                        <option value="bold-frame">Bold Frame</option>
+                        <option value="neon-glow">Neon Glow</option>
+                        <option value="tech-corners">Sci-Fi Corners</option>
+                        <option value="double-inset">Double Inset</option>
+                        <option value="corner-brackets">Corner Brackets</option>
+                        <option value="industrial-dash">Dashed Industrial</option>
+                        <option value="ornate">Ornate Frame</option>
+                    </select>
                 </div>
                 <div
-                    style="flex: 1; display: flex; justify-content: center; align-items: center; background: rgba(0,0,0,0.3); border-radius: var(--radius-md); padding: 1rem; overflow: hidden; border: 1px dashed var(--glass-border); min-height: 350px;">
-                    <canvas id="cover-canvas" width="1920" height="1080"
-                        style="max-width: 100%; max-height: 50vh; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);"></canvas>
-                </div>
-                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
-                    <button type="button" onclick="applyCover()" style="flex: 2; font-weight: 600;">Apply Cover</button>
-                    <button type="button" onclick="closeModal('cover-generator-modal')" class="secondary-btn"
-                        style="flex: 1;">Cancel</button>
-                </div>
-            </div>
-        </div>
-
-        <div id="status-msg" class="status-msg"></div>
-
-        <!-- Folder Picker Modal -->
-        <div id="path-picker-modal" onclick="pickerOutsideClick(event)">
-            <div class="picker-box">
-                <div class="picker-header">
-                    <div class="picker-title" id="picker-title">Select Folder</div>
-                    <div class="picker-breadcrumb" id="picker-breadcrumb">/</div>
-                </div>
-                <div class="picker-body" id="picker-body"></div>
-                <div class="picker-footer">
-                    <span class="picker-footer-path" id="picker-footer-path">No folder selected</span>
-                    <button onclick="closePicker()" class="secondary-btn"
-                        style="width:auto;padding:0.6rem 1.1rem;margin:0;">Cancel</button>
-                    <button onclick="confirmPicker()" style="width:auto;padding:0.6rem 1.2rem;margin:0;">Select</button>
+                    style="display: flex; gap: 0.6rem; align-items: flex-end; background: rgba(255,255,255,0.03); padding: 0.4rem 0.6rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border);">
+                    <div>
+                        <label for="cover-border-color"
+                            style="font-size: 0.62rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 0.25rem; display: block;">Border</label>
+                        <input type="color" id="cover-border-color" value="#ffffff" onchange="renderCover()"
+                            style="width: 44px; height: 32px; padding: 0; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; cursor: pointer; background: transparent;">
+                    </div>
+                    <div>
+                        <label for="cover-color-1"
+                            style="font-size: 0.62rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 0.25rem; display: block;">Color
+                            1</label>
+                        <input type="color" id="cover-color-1" value="#4f46e5" onchange="renderCover()"
+                            style="width: 44px; height: 32px; padding: 0; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; cursor: pointer; background: transparent;">
+                    </div>
+                    <div>
+                        <label for="cover-color-2"
+                            style="font-size: 0.62rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 0.25rem; display: block;">Color
+                            2</label>
+                        <input type="color" id="cover-color-2" value="#9333ea" onchange="renderCover()"
+                            style="width: 44px; height: 32px; padding: 0; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; cursor: pointer; background: transparent;">
+                    </div>
                 </div>
             </div>
+            <div
+                style="flex: 1; display: flex; justify-content: center; align-items: center; background: rgba(0,0,0,0.3); border-radius: var(--radius-md); padding: 1rem; overflow: hidden; border: 1px dashed var(--glass-border); min-height: 300px;">
+                <canvas id="cover-canvas" width="1920" height="1080"
+                    style="max-width: 100%; max-height: 45vh; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);"></canvas>
+            </div>
+            <div style="display: flex; gap: 0.75rem; margin-top: 1.25rem;">
+                <button type="button" onclick="applyCover()" style="flex: 2; font-weight: 600; margin-top:0;">Apply
+                    Cover</button>
+                <button type="button" onclick="closeModal('cover-generator-modal')" class="secondary-btn"
+                    style="flex: 1; margin-top:0;">Cancel</button>
+            </div>
         </div>
+    </div>
 
-        <div class="footer">
-            <p>Run <code>python app.py</code> to start the backend &nbsp;·&nbsp; Jellyfin Groupings</p>
+    <!-- Global Status Toast -->
+    <div id="status-msg" class="status-msg"></div>
+
+    <!-- Folder Picker Modal -->
+    <div id="path-picker-modal" onclick="pickerOutsideClick(event)">
+        <div class="picker-box">
+            <div class="picker-header">
+                <div class="picker-title" id="picker-title">Select Folder</div>
+                <div class="picker-breadcrumb" id="picker-breadcrumb">/</div>
+            </div>
+            <div class="picker-body" id="picker-body"></div>
+            <div class="picker-footer">
+                <span class="picker-footer-path" id="picker-footer-path">No folder selected</span>
+                <button onclick="closePicker()" class="secondary-btn"
+                    style="width:auto;padding:0.5rem 1rem;margin:0;">Cancel</button>
+                <button onclick="confirmPicker()" style="width:auto;padding:0.5rem 1rem;margin:0;">Select</button>
+            </div>
         </div>
     </div>
 
@@ -2066,7 +2561,7 @@
                 card.appendChild(infoDiv);
 
                 const actionsDiv = document.createElement('div');
-                actionsDiv.setAttribute('style', 'display: flex; gap: 0.5rem;');
+                actionsDiv.className = 'group-actions';
 
                 const coverBtn = document.createElement('button');
                 coverBtn.className = 'secondary-btn';
@@ -3407,6 +3902,44 @@
         } else {
             loadConfig();
         }
+        // --- Sidebar Resizer Logic ---
+        const resizer = document.getElementById('sidebar-resizer');
+        let isResizing = false;
+
+        // Load saved width
+        const savedWidth = localStorage.getItem('sidebarWidth');
+        if (savedWidth) {
+            document.documentElement.style.setProperty('--sidebar-width', `${savedWidth}px`);
+        }
+
+        resizer.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            resizer.classList.add('active');
+            document.body.style.cursor = 'col-resize';
+            e.preventDefault(); // prevent text selection
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            let newWidth = e.clientX;
+            // Constrain width
+            if (newWidth < 200) newWidth = 200;
+            if (newWidth > 800) newWidth = 800;
+
+            document.documentElement.style.setProperty('--sidebar-width', `${newWidth}px`);
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                resizer.classList.remove('active');
+                document.body.style.cursor = 'default';
+
+                // Save width setting
+                const currentWidth = getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width').replace('px', '').trim();
+                localStorage.setItem('sidebarWidth', currentWidth);
+            }
+        });
     </script>
 </body>
 
