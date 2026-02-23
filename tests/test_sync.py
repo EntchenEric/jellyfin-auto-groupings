@@ -263,17 +263,12 @@ def test_sort_items_missing_values_logic():
     assert res_desc[1]["ProductionYear"] is None
 
 def test_is_in_season():
-    from datetime import datetime
-    # We can't easily mock datetime.now() without a library like freezegun or mocking the whole class
-    # but we can test the logic by knowing that it uses datetime.now()
-    # Alternatively, our implementation of _is_in_season could take an optional date for testing
-    # Since I'm an AI, I'll just test that it returns a boolean for now or I can mock it
-    with patch('sync.datetime') as mock_date:
+    from unittest.mock import MagicMock
+    with patch('sync.datetime') as mock_datetime:
+        mock_now = MagicMock()
+        mock_datetime.now.return_value = mock_now
+        
         # Case 1: Within year window
-        mock_date.now.return_value = datetime(2022, 7, 15)
-        mock_date.strftime = datetime.strftime # Restore strftime behavior if needed, but easier to mock now().strftime
-        # Actually it's easier to mock the whole return value of now()
-        mock_now = mock_date.now.return_value
         mock_now.strftime.return_value = "07-15"
         assert _is_in_season("06-01", "09-01") is True
         
