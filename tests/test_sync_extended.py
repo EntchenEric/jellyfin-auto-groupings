@@ -352,3 +352,51 @@ def test_fetch_items_trakt_empty(mock_trakt):
     items, _err, code = _fetch_items_for_trakt_group("G", "val", "order", "http://jf", "key", "cli")
     assert code == 200
     assert items == []
+
+
+@patch('sync.shutil.rmtree')
+@patch('sync.os.makedirs')
+@patch('sync.os.path.exists')
+@patch('sync.os.path.isdir')
+@patch('sync.os.symlink')
+@patch('sync.fetch_jellyfin_items')
+@patch('sync.get_libraries')
+@patch('sync.add_virtual_folder')
+def test_run_sync_with_library_creation(mock_add_lib, mock_get_libs, mock_jf_fetch, _mock_symlink, _mock_isdir, _mock_exists, _mock_makedirs, _mock_rmtree):
+    config = {
+        "jellyfin_url": "http://jf",
+        "api_key": "key",
+        "target_path": "/target",
+        "tmdb_api_key": "tmdb_key",
+        "auto_create_libraries": True,
+        "target_path_in_jellyfin": "/virtual",
+        "groups": [
+            {
+                "name": "NewGroup",
+                "source_type": "tmdb_list",
+                "source_value": "1",
+                "sort_order": "SortName"
+            }
+        ]
+    }
+    
+    # Mock items to sync
+    mock_get_libs.return_value = [] # No libraries yet
+    mock_jf_fetch.return_value = [
+        {"Name": "M1", "Path": "/p1", "ProviderIds": {"Tmdb": "101"}}
+    ]
+    _mock_exists.return_value = True
+    _mock_isdir.return_value = True
+    
+    # Force _process_group to think there's 1 link created
+    with patch('sync.fetch_tmdb_list', return_value=["101"]):
+        results = run_sync(config)
+        
+    assert results[0]["group"] == "NewGroup"
+    assert results[0]["links"] == 1
+    
+    # Verify library creation was called
+    mock_get_libs.assert_called_once()
+    mock_add_lib.assert_called_once_with(
+        "http://jf", "key", "NewGroup", ["/virtual/NewGroup"], collection_type="mixed"
+    )
