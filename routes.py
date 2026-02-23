@@ -412,6 +412,72 @@ def preview_grouping() -> ResponseReturnValue:
 
 
 # ---------------------------------------------------------------------------
+# Cleanup
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/api/cleanup", methods=["GET"])
+def get_cleanup_items() -> ResponseReturnValue:
+    """Return a list of logical folders in the target directory."""
+    config: dict[str, Any] = load_config()
+    target_base: str = str(config.get("target_path", ""))
+    if not target_base or not os.path.exists(target_base):
+        return jsonify({"status": "success", "items": []})
+        
+    configured_groups: set[str] = {str(g.get("name")) for g in config.get("groups", []) if g.get("name")}
+    
+    try:
+        entries: list[dict[str, Any]] = []
+        for name in os.listdir(target_base):
+            path = os.path.join(target_base, name)
+            if os.path.isdir(path) and not name.startswith("."):
+                entries.append({
+                    "name": name,
+                    "is_configured": name in configured_groups
+                })
+        return jsonify({"status": "success", "items": sorted(entries, key=lambda x: str(x["name"]))})
+    except OSError as exc:
+        return jsonify({"status": "error", "message": str(exc)}), 500
+
+
+@bp.route("/api/cleanup", methods=["POST"])
+def perform_cleanup() -> ResponseReturnValue:
+    """Delete the selected folders from the target directory."""
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"status": "error", "message": "Request body must be JSON"}), 400
+        
+    folders = data.get("folders", [])
+    if not isinstance(folders, list):
+         return jsonify({"status": "error", "message": "'folders' must be a list"}), 400
+         
+    config: dict[str, Any] = load_config()
+    target_base: str = str(config.get("target_path", ""))
+    if not target_base or not os.path.exists(target_base):
+        return jsonify({"status": "error", "message": "Target path not found"}), 404
+        
+    deleted: int = 0
+    errors: list[str] = []
+    for name in folders:
+        if not isinstance(name, str) or not name or "/" in name or "\\" in name or name == ".." or name == ".":
+            errors.append(f"Invalid folder name: {name}")
+            continue
+            
+        path = os.path.join(target_base, name)
+        if os.path.exists(path) and os.path.isdir(path):
+            try:
+                import shutil
+                shutil.rmtree(path)
+                deleted += 1
+            except OSError as exc:
+                errors.append(f"Failed to delete {name}: {exc}")
+                
+    if errors:
+        return jsonify({"status": "partial_success", "deleted": deleted, "errors": errors}), 207
+    return jsonify({"status": "success", "deleted": deleted})
+
+
+# ---------------------------------------------------------------------------
 # Auto-detect paths
 # ---------------------------------------------------------------------------
 
