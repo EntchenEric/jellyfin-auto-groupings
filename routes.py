@@ -91,14 +91,20 @@ def update_config() -> ResponseReturnValue:
         )
     try:
         save_config(new_config)
-        update_scheduler_jobs()
-        return jsonify({"status": "success", "config": new_config})
     except OSError as exc:
         logging.exception("Failed to write config file")
         return (
             jsonify({"status": "error", "message": f"Config file write failed: {exc}"}),
             500,
         )
+
+    # Update background jobs based on new config
+    try:
+        update_scheduler_jobs()
+    except Exception:
+        logging.exception("Failed to update scheduler jobs")
+
+    return jsonify({"status": "success", "config": new_config})
 
 
 # ---------------------------------------------------------------------------

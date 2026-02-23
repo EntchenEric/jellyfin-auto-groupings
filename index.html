@@ -1433,6 +1433,10 @@
                 currentConfig.scheduler.global_exclude_ids = [];
             }
 
+            // Prune stale group names from global_exclude_ids
+            const validGroupNames = currentConfig.groups.map(g => g.name).filter(Boolean);
+            currentConfig.scheduler.global_exclude_ids = currentConfig.scheduler.global_exclude_ids.filter(id => validGroupNames.includes(id));
+
             const excludedIds = currentConfig.scheduler.global_exclude_ids;
 
             currentConfig.groups.forEach((group) => {

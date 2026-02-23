@@ -68,6 +68,10 @@ def load_config() -> dict[str, Any]:
         # Fill in any keys added after initial creation
         for key, default_value in DEFAULT_CONFIG.items():
             cfg.setdefault(key, default_value)
+            # Ensure nested dictionaries (like scheduler) also have defaults
+            if isinstance(default_value, dict) and isinstance(cfg[key], dict):
+                for sub_key, sub_val in default_value.items():
+                    cfg[key].setdefault(sub_key, sub_val)
 
         # Migrate renamed keys
         migrated = False

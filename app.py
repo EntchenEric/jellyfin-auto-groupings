@@ -32,7 +32,8 @@ app = Flask(__name__)
 app.register_blueprint(bp)
 
 # Start the background sync scheduler
-start_scheduler()
+if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+    start_scheduler()
 
 # ---------------------------------------------------------------------------
 # Entry-point
