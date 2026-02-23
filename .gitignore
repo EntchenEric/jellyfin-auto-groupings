@@ -10,3 +10,7 @@ __pycache__/
 .venv/
 venv/
 env/
+
+# Test artifacts
+coverage_report.txt
+test_results.txt
