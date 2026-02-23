@@ -249,7 +249,7 @@ def _sort_items_in_memory(
             missing = 1 if value is None else 0
         return (missing, value or "")
 
-    return sorted(items, key=_key)
+    return sorted(items, key=_key, reverse=reverse)
 
 
 def _fetch_items_for_imdb_group(
@@ -552,6 +552,84 @@ def _fetch_items_for_letterboxd_group(
     return items, None, 200
 
 
+def _match_condition(item: dict[str, Any], r_type: str, r_val: str) -> bool:
+    """Check if a Jellyfin item matches a single rule condition.
+
+    Args:
+        item: The Jellyfin item dictionary.
+        r_type: The rule type (genre, actor, studio, tag, year).
+        r_val: The normalized rule value to match against.
+
+    Returns:
+        True if the item matches the condition, False otherwise.
+    """
+    if not r_type or not r_val:
+        return False
+        
+    try:
+        if r_type == "genre":
+            return any(r_val == str(g).strip().lower() for g in (item.get("Genres") or []))
+        elif r_type == "actor":
+            return any(
+                r_val == str(p.get("Name", "")).strip().lower() 
+                for p in (item.get("People") or []) 
+                if isinstance(p, dict) and p.get("Type") == "Actor"
+            )
+        elif r_type == "studio":
+            return any(
+                r_val == str(s.get("Name", "")).strip().lower() 
+                for s in (item.get("Studios") or []) 
+                if isinstance(s, dict)
+            )
+        elif r_type == "tag":
+            return any(r_val == str(t).strip().lower() for t in (item.get("Tags") or []))
+        elif r_type == "year":
+            val = item.get("ProductionYear")
+            if val is not None:
+                return str(val).strip().lower() == r_val
+    except (AttributeError, TypeError, ValueError):
+        pass
+        
+    return False
+
+
+def _eval_item(item: dict[str, Any], rules: list[dict[str, Any]]) -> bool:
+    """Evaluate a stacked list of rules against a single Jellyfin item.
+
+    Args:
+        item: The Jellyfin item dictionary.
+        rules: List of parsed rules.
+
+    Returns:
+        True if the item passes the entire rule set, False otherwise.
+    """
+    if not rules:
+        return True
+
+    first_rule = rules[0]
+    # Treat the first rule as initializing the boolean state
+    result = _match_condition(item, first_rule["type"], first_rule["value"])
+    
+    # If the very first rule is NOT, we invert it (so we start with everything else)
+    if first_rule["operator"].endswith("NOT"):
+        result = not result
+
+    for rule in rules[1:]:
+        op = rule["operator"]
+        matched = _match_condition(item, rule["type"], rule["value"])
+        
+        if op == "AND":
+            result = result and matched
+        elif op == "OR":
+            result = result or matched
+        elif op in ("AND NOT", "NOT"):
+            result = result and not matched
+        elif op == "OR NOT":
+            result = result or not matched
+
+    return result
+
+
 def _fetch_items_for_complex_group(
     group_name: str,
     rules: list[dict[str, Any]],
@@ -595,80 +673,7 @@ def _fetch_items_for_complex_group(
     if not valid_rules:
         return [], None, 200
 
-    def _match_condition(item: dict[str, Any], r_type: str, r_val: str) -> bool:
-        """Check if a Jellyfin item matches a single rule condition.
-
-        Args:
-            item: The Jellyfin item dictionary.
-            r_type: The rule type (genre, actor, studio, tag, year).
-            r_val: The normalized rule value to match against.
-
-        Returns:
-            True if the item matches the condition, False otherwise.
-        """
-        if not r_type or not r_val:
-            return False
-            
-        try:
-            if r_type == "genre":
-                return any(r_val == str(g).strip().lower() for g in (item.get("Genres") or []))
-            elif r_type == "actor":
-                return any(
-                    r_val == str(p.get("Name", "")).strip().lower() 
-                    for p in (item.get("People") or []) 
-                    if isinstance(p, dict) and p.get("Type") == "Actor"
-                )
-            elif r_type == "studio":
-                return any(
-                    r_val == str(s.get("Name", "")).strip().lower() 
-                    for s in (item.get("Studios") or []) 
-                    if isinstance(s, dict)
-                )
-            elif r_type == "tag":
-                return any(r_val == str(t).strip().lower() for t in (item.get("Tags") or []))
-            elif r_type == "year":
-                val = item.get("ProductionYear")
-                if val is not None:
-                    return str(val).strip().lower() == r_val
-        except (AttributeError, TypeError, ValueError):
-            pass
-            
-        return False
-
-    def _eval_item(item: dict[str, Any]) -> bool:
-        """Evaluate a stacked list of rules against a single Jellyfin item.
-
-        Args:
-            item: The Jellyfin item dictionary.
-
-        Returns:
-            True if the item passes the entire rule set, False otherwise.
-        """
-        first_rule = valid_rules[0]
-        # Treat the first rule as initializing the boolean state
-        result = _match_condition(item, first_rule["type"], first_rule["value"])
-        
-        # If the very first rule is NOT, we invert it (so we start with everything else)
-        if first_rule["operator"].endswith("NOT"):
-            result = not result
-
-        for rule in valid_rules[1:]:
-            op = rule["operator"]
-            matched = _match_condition(item, rule["type"], rule["value"])
-
-            
-            if op == "AND":
-                result = result and matched
-            elif op == "OR":
-                result = result or matched
-            elif op in ("AND NOT", "NOT"):
-                result = result and not matched
-            elif op == "OR NOT":
-                result = result or not matched
-
-        return result
-
-    filtered = [item for item in raw_items if _eval_item(item)]
+    filtered = [item for item in raw_items if _eval_item(item, valid_rules)]
     
     # In-memory sorting because this is local filtering
     sorted_items = _sort_items_in_memory(filtered, sort_order)

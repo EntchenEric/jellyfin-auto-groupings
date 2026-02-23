@@ -1,0 +1,9 @@
+repos:
+-   repo: local
+  hooks:
+    -   id: pytest-coverage
+        name: check code coverage
+        entry: bash -c "export PYTHONPATH=$PYTHONPATH:. && pytest --cov=. --cov-fail-under=80 tests/"
+        language: system
+        pass_filenames: false
+        always_run: true

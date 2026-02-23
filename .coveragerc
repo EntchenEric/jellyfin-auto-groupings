@@ -1,0 +1,12 @@
+[run]
+omit =
+    tests/*
+    venv/*
+    .venv/*
+    run_tests_to_file.py
+    parse_test.py
+    app.py
+
+[report]
+show_missing = True
+precision = 2
