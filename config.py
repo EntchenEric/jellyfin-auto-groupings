@@ -38,7 +38,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "global_exclude_ids": [],
         "cleanup_enabled": True,
         "cleanup_schedule": "0 * * * *"
-    }
+    },
+    "auto_create_libraries": False,
+    "target_path_in_jellyfin": ""
 }
 
 # ---------------------------------------------------------------------------

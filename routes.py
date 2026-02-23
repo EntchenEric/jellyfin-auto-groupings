@@ -22,7 +22,7 @@ from flask import Blueprint, jsonify, request, send_from_directory
 from flask.typing import ResponseReturnValue
 
 from config import load_config, save_config
-from jellyfin import fetch_jellyfin_items
+from jellyfin import delete_virtual_folder, fetch_jellyfin_items
 from scheduler import update_scheduler_jobs
 from sync import get_cover_path, parse_complex_query, preview_group, run_sync
 
@@ -469,6 +469,16 @@ def perform_cleanup() -> ResponseReturnValue:
                 import shutil
                 shutil.rmtree(path)
                 deleted += 1
+                
+                # Also delete from Jellyfin if configured
+                if config.get("auto_create_libraries"):
+                    url = str(config.get("jellyfin_url", "")).rstrip("/")
+                    api_key = str(config.get("api_key", ""))
+                    if url and api_key:
+                        try:
+                            delete_virtual_folder(url, api_key, name)
+                        except Exception as e:
+                            logging.warning(f"Failed to delete Jellyfin library '{name}': {e}")
             except OSError as exc:
                 errors.append(f"Failed to delete {name}: {exc}")
                 
@@ -584,6 +594,7 @@ def auto_detect_paths() -> ResponseReturnValue:
                 "media_path_in_jellyfin": detected_j_root,
                 "media_path_on_host": detected_h_root,
                 "target_path": suggested_target,
+                "target_path_in_jellyfin": suggested_target,
             },
         }
     )

@@ -695,6 +695,37 @@
                             </div>
                         </div>
 
+                        <div class="form-group"
+                            style="margin-top: 1.5rem; padding: 1rem; background: rgba(99, 102, 241, 0.05); border-radius: var(--radius-md); border: 1px solid rgba(99, 102, 241, 0.2);">
+                            <h3
+                                style="font-size: 0.9rem; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.5rem; color: var(--accent-color);">
+                                <span>🚀</span> Automatic Library Creation
+                            </h3>
+                            <label
+                                style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; text-transform: none; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.05em; margin-bottom: 1rem;">
+                                <input type="checkbox" id="auto_create_libraries"
+                                    style="width: 18px; height: 18px; accent-color: var(--accent-color); cursor: pointer; flex-shrink: 0;">
+                                <span>AUTO-CREATE LIBRARIES IN JELLYFIN</span>
+                            </label>
+                            <p style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 1rem;">When
+                                enabled, this tool will automatically create a new Jellyfin library for each grouping.
+                                No manual steps required!</p>
+
+                            <label for="target_path_in_jellyfin" style="font-size: 0.75rem; opacity: 0.8;">Target path
+                                as Jellyfin sees it (Optional)</label>
+                            <div id="target_path_in_jellyfin_group" class="picker-row path-field-locked">
+                                <input type="text" id="target_path_in_jellyfin" placeholder="e.g. /groupings"
+                                    style="padding: 0.5rem; font-size: 0.85rem;" disabled>
+                                <button type="button" class="browse-btn"
+                                    onclick="openPathPicker('target_path_in_jellyfin')" disabled
+                                    title="Browse">📂</button>
+                            </div>
+                            <small
+                                style="color: var(--text-secondary); font-size: 0.7rem; margin-top: 0.5rem; display: block;">Only
+                                needed if the "Base Target Path" above is different inside Jellyfin (e.g. in
+                                Docker).</small>
+                        </div>
+
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
                             <button type="button" id="auto-detect-btn" onclick="autoDetectPaths()" class="secondary-btn"
                                 style="border-color: var(--accent-color); color: var(--accent-color);">
@@ -1707,6 +1738,9 @@
                 document.getElementById('tmdb_api_key').value = currentConfig.tmdb_api_key || '';
                 document.getElementById('mal_client_id').value = currentConfig.mal_client_id || '';
 
+                document.getElementById('auto_create_libraries').checked = !!currentConfig.auto_create_libraries;
+                document.getElementById('target_path_in_jellyfin').value = currentConfig.target_path_in_jellyfin || '';
+
                 // Scheduler settings
                 const sched = currentConfig.scheduler || { global_enabled: false, global_schedule: '', global_exclude_ids: [], cleanup_enabled: true, cleanup_schedule: '0 * * * *' };
                 document.getElementById('global_scheduler_enabled').checked = sched.global_enabled;
@@ -1916,8 +1950,8 @@
         function updateValidationUI(isValid) {
             isServerValidated = isValid;
 
-            const pathFieldIds = ['target_path', 'media_path_in_jellyfin', 'media_path_on_host'];
-            const pathGroupIds = ['target_path_group', 'media_path_in_jellyfin_group', 'media_path_on_host_group'];
+            const pathFieldIds = ['target_path', 'media_path_in_jellyfin', 'media_path_on_host', 'target_path_in_jellyfin'];
+            const pathGroupIds = ['target_path_group', 'media_path_in_jellyfin_group', 'media_path_on_host_group', 'target_path_in_jellyfin_group'];
 
             const schedulerCard = document.getElementById('scheduler-card');
 
@@ -2096,6 +2130,8 @@
             currentConfig.target_path = document.getElementById('target_path').value;
             currentConfig.media_path_in_jellyfin = document.getElementById('media_path_in_jellyfin').value;
             currentConfig.media_path_on_host = document.getElementById('media_path_on_host').value;
+            currentConfig.auto_create_libraries = document.getElementById('auto_create_libraries').checked;
+            currentConfig.target_path_in_jellyfin = document.getElementById('target_path_in_jellyfin').value;
 
             await saveAllConfig();
             saveBtn.classList.remove('btn-loading');
@@ -3006,9 +3042,11 @@
                     document.getElementById('media_path_in_jellyfin').value = result.detected.media_path_in_jellyfin;
                     document.getElementById('media_path_on_host').value = result.detected.media_path_on_host;
                     document.getElementById('target_path').value = result.detected.target_path;
+                    document.getElementById('target_path_in_jellyfin').value = result.detected.target_path_in_jellyfin;
                     currentConfig.media_path_in_jellyfin = result.detected.media_path_in_jellyfin;
                     currentConfig.media_path_on_host = result.detected.media_path_on_host;
                     currentConfig.target_path = result.detected.target_path;
+                    currentConfig.target_path_in_jellyfin = result.detected.target_path_in_jellyfin;
                     showStatus('Paths auto-detected! Remember to Save.', 'success');
                 } else if (result.status === 'success') {
                     showStatus('Auto-detection finished but could not find matching host paths. You may need to set them manually.', 'error');
@@ -3043,6 +3081,7 @@
                 if (!targetEl.value && d.target_path) { targetEl.value = d.target_path; currentConfig.target_path = d.target_path; }
                 if (!jfEl.value && d.media_path_in_jellyfin) { jfEl.value = d.media_path_in_jellyfin; currentConfig.media_path_in_jellyfin = d.media_path_in_jellyfin; }
                 if (!hostEl.value && d.media_path_on_host) { hostEl.value = d.media_path_on_host; currentConfig.media_path_on_host = d.media_path_on_host; }
+                if (d.target_path_in_jellyfin) { document.getElementById('target_path_in_jellyfin').value = d.target_path_in_jellyfin; currentConfig.target_path_in_jellyfin = d.target_path_in_jellyfin; }
                 showStatus('Paths auto-filled — review and save.', 'success');
             } catch (_) { /* silently ignore */ }
         }
@@ -3169,7 +3208,7 @@
                             const checkbox = document.createElement('input');
                             checkbox.type = 'checkbox';
                             checkbox.value = item.name;
-                            checkbox.checked = !item.is_configured; // Default: check if unconfigured
+                            checkbox.checked = true; // Default: select all for cleanup as requested
                             checkbox.style.cssText = 'width: 16px; height: 16px; accent-color: var(--error-color);';
                             checkbox.onchange = updateCleanupCount;
 

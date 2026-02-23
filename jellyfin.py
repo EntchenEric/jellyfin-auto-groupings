@@ -69,3 +69,128 @@ def fetch_jellyfin_items(
     response = requests.get(f"{base_url}/Items", params=params, timeout=timeout)
     response.raise_for_status()
     return response.json().get("Items", [])
+
+
+def get_libraries(base_url: str, api_key: str, timeout: int = 30) -> list[str]:
+    """Fetch the list of virtual folder (library) names from Jellyfin.
+
+    Args:
+        base_url: Jellyfin server base URL.
+        api_key: Jellyfin API key.
+        timeout: HTTP request timeout.
+
+    Returns:
+        A list of library names.
+    """
+    response = requests.get(
+        f"{base_url}/Library/VirtualFolders",
+        params={"api_key": api_key},
+        timeout=timeout,
+    )
+    response.raise_for_status()
+    return [folder.get("Name", "") for folder in response.json()]
+
+
+def add_virtual_folder(
+    base_url: str,
+    api_key: str,
+    name: str,
+    paths: list[str],
+    collection_type: str = "movies",
+    refresh_library: bool = True,
+    timeout: int = 30,
+) -> None:
+    """Create a new virtual folder (library) in Jellyfin.
+
+    Args:
+        base_url: Jellyfin server base URL.
+        api_key: Jellyfin API key.
+        name: Name of the new library.
+        paths: List of absolute paths to include in the library.
+        collection_type: Type of media (e.g., "movies", "tvshows", "music", "mixed").
+        refresh_library: Whether to trigger a library scan after creation.
+        timeout: HTTP request timeout.
+    """
+    # Strategy: Try to create with all info in query string first (most common for simple cases)
+    # If it already exists, we skip creation.
+    
+    headers = {"X-Emby-Token": api_key}
+    
+    # Step 1: Create the virtual folder shell
+    # We omit 'paths' here to avoid the 400 error you saw earlier.
+    create_params = {
+        "name": name,
+        "collectionType": collection_type if collection_type != "mixed" else "movies",
+        "refreshLibrary": "false",
+    }
+    
+    try:
+        # data="" ensures non-JSON POST works for creation if needed
+        create_resp = requests.post(
+            f"{base_url}/Library/VirtualFolders",
+            params=create_params,
+            headers=headers,
+            data="",
+            timeout=timeout,
+        )
+        if not create_resp.ok and create_resp.status_code != 409:
+            print(f"DEBUG: Create Virtual Folder Failed ({create_resp.status_code}): {create_resp.text}")
+    except Exception as e:
+        print(f"DEBUG: Create Virtual Folder Exception: {e}")
+
+    # Step 2: Add each path using strictly a JSON body as recommended
+    for path in paths:
+        path_url = f"{base_url}/Library/VirtualFolders/Paths"
+        payload = {
+            "Name": name,
+            "Path": path
+        }
+        
+        try:
+            # We use json= which automatically sets Content-Type: application/json
+            path_resp = requests.post(
+                path_url,
+                json=payload,
+                headers=headers,
+                timeout=timeout,
+            )
+            
+            if path_resp.ok:
+                print(f"DEBUG: Successfully added path '{path}' to library '{name}'")
+            else:
+                print(f"DEBUG: Add Path Failed ({path_resp.status_code}): {path_resp.text}")
+        except Exception as e:
+            print(f"DEBUG: Add Path Exception for '{path}': {e}")
+            
+    # Step 3: Trigger a library refresh if requested
+    if refresh_library:
+        try:
+            requests.post(
+                f"{base_url}/Library/Refresh",
+                headers=headers,
+                timeout=timeout
+            )
+        except Exception as e:
+            print(f"DEBUG: Refresh Trigger Failed: {e}")
+
+
+def delete_virtual_folder(base_url: str, api_key: str, name: str, timeout: int = 30) -> None:
+    """Delete a virtual folder (library) from Jellyfin.
+
+    Args:
+        base_url: Jellyfin server base URL.
+        api_key: Jellyfin API key.
+        name: Name of the library to delete.
+        timeout: HTTP request timeout.
+    """
+    params = {"name": name}
+    headers = {"X-Emby-Token": api_key}
+    response = requests.delete(
+        f"{base_url}/Library/VirtualFolders",
+        params=params,
+        headers=headers,
+        timeout=timeout,
+    )
+    if not response.ok:
+        print(f"DEBUG: Delete Virtual Folder Failed ({response.status_code}): {response.text}")
+    response.raise_for_status()

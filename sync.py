@@ -23,7 +23,7 @@ from typing import Any
 
 from anilist import fetch_anilist_list
 from imdb import fetch_imdb_list
-from jellyfin import SORT_MAP, fetch_jellyfin_items
+from jellyfin import SORT_MAP, add_virtual_folder, fetch_jellyfin_items, get_libraries
 from letterboxd import fetch_letterboxd_list
 from mal import fetch_mal_list
 from tmdb import fetch_tmdb_list
@@ -832,6 +832,9 @@ def _process_group(
     tmdb_api_key: str,
     mal_client_id: str,
     dry_run: bool = False,
+    auto_create_libraries: bool = False,
+    existing_libraries: list[str] | None = None,
+    target_path_in_jellyfin: str = "",
 ) -> dict[str, Any]:
     """Process a single grouping: fetch items, then create symlinks.
 
@@ -993,6 +996,30 @@ def _process_group(
     result: dict[str, Any] = {"group": group_name, "links": links_created}
     if dry_run:
         result["items"] = preview_items
+    
+    # --- Automatic Library Creation ---
+    if (
+        not dry_run
+        and auto_create_libraries
+        and links_created > 0
+        and existing_libraries is not None
+        and group_name not in existing_libraries
+    ):
+        print(f"Creating Jellyfin library for grouping: {group_name!r}")
+        # Resolve the path as Jellyfin sees it
+        if target_path_in_jellyfin:
+            lib_path = os.path.join(target_path_in_jellyfin, group_name)
+        else:
+            lib_path = group_dir
+            
+        try:
+            add_virtual_folder(url, api_key, group_name, [lib_path], collection_type="mixed")
+            print(f"Successfully created library {group_name!r} with path {lib_path!r}")
+            existing_libraries.append(group_name) # Prevent double creation in same run
+        except Exception as exc:
+            print(f"Failed to create Jellyfin library {group_name!r}: {exc}")
+            result["library_error"] = str(exc)
+
     return result
 
 
@@ -1061,6 +1088,8 @@ def run_sync(
     trakt_client_id: str = str(config.get("trakt_client_id", "")).strip()
     tmdb_api_key: str = str(config.get("tmdb_api_key", "")).strip()
     mal_client_id: str = str(config.get("mal_client_id", "")).strip()
+    auto_create_libraries: bool = bool(config.get("auto_create_libraries", False))
+    target_path_in_jellyfin: str = str(config.get("target_path_in_jellyfin", "")).strip()
 
     if not url or not api_key or not target_base:
         raise ValueError("Server settings or target path not configured")
@@ -1071,6 +1100,16 @@ def run_sync(
     print(f"Starting sync to: {target_base}")
     if jellyfin_root and host_root:
         print(f"Path translation active: {jellyfin_root} -> {host_root}")
+
+    existing_libraries: list[str] = []
+    if auto_create_libraries:
+        try:
+            existing_libraries = get_libraries(url, api_key)
+            print(f"Found {len(existing_libraries)} existing virtual folders in Jellyfin")
+        except Exception as exc:
+            print(f"Warning: Could not fetch existing libraries: {exc}")
+            # We'll continue, but library creation might fail or try to recreate existing ones
+            auto_create_libraries = False 
 
     _LIBRARY_CACHE.clear()
 
@@ -1109,6 +1148,9 @@ def run_sync(
             tmdb_api_key,
             mal_client_id,
             dry_run=dry_run,
+            auto_create_libraries=auto_create_libraries,
+            existing_libraries=existing_libraries,
+            target_path_in_jellyfin=target_path_in_jellyfin,
         )
         results.append(result)
 
