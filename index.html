@@ -815,6 +815,29 @@
                                 These groupings will be skipped during the global scheduled sync.
                             </small>
                         </div>
+
+                        <div
+                            style="margin-top: 1.5rem; border-top: 1px dashed var(--glass-border); padding-top: 1.5rem;">
+                            <label
+                                style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; text-transform: none; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.05em; margin-bottom: 1rem;">
+                                <input type="checkbox" id="cleanup_scheduler_enabled"
+                                    onchange="toggleCleanupScheduler(this)"
+                                    style="width: 16px; height: 16px; accent-color: var(--accent-color); cursor: pointer; flex-shrink: 0;">
+                                <span style="text-transform: uppercase; letter-spacing: 0.05em;">Enable Auto-Cleanup
+                                    Scheduler</span>
+                            </label>
+
+                            <div id="cleanup_scheduler_panel" style="display: none;">
+                                <label for="cleanup_sync_schedule">Cleanup Schedule (Cron)</label>
+                                <input type="text" id="cleanup_sync_schedule" placeholder="0 * * * * (Every hour)"
+                                    style="margin-bottom: 0.5rem; width: 100%; padding: 0.8rem 1rem; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary);">
+                                <small
+                                    style="color: var(--text-secondary); display: block; margin-top: 0.25rem; font-size: 0.75rem; margin-bottom: 0;">
+                                    Standard crontab expression. Checks if original files were deleted and removes
+                                    broken symlinks.
+                                </small>
+                            </div>
+                        </div>
                     </div>
                 </main>
             </section>
@@ -1458,6 +1481,11 @@
             if (panel) panel.style.display = cb.checked ? 'block' : 'none';
         }
 
+        function toggleCleanupScheduler(cb) {
+            const panel = document.getElementById('cleanup_scheduler_panel');
+            if (panel) panel.style.display = cb.checked ? 'block' : 'none';
+        }
+
         function toggleGroupScheduler(cb) {
             const panel = document.getElementById('group_scheduler_panel');
             if (panel) panel.style.display = cb.checked ? 'block' : 'none';
@@ -1612,10 +1640,14 @@
                 document.getElementById('mal_client_id').value = currentConfig.mal_client_id || '';
 
                 // Scheduler settings
-                const sched = currentConfig.scheduler || { global_enabled: false, global_schedule: '', global_exclude_ids: [] };
+                const sched = currentConfig.scheduler || { global_enabled: false, global_schedule: '', global_exclude_ids: [], cleanup_enabled: true, cleanup_schedule: '0 * * * *' };
                 document.getElementById('global_scheduler_enabled').checked = sched.global_enabled;
                 document.getElementById('global_sync_schedule').value = sched.global_schedule || '';
                 toggleGlobalScheduler(document.getElementById('global_scheduler_enabled'));
+
+                document.getElementById('cleanup_scheduler_enabled').checked = sched.cleanup_enabled !== false; // Default true
+                document.getElementById('cleanup_sync_schedule').value = sched.cleanup_schedule || '0 * * * *';
+                toggleCleanupScheduler(document.getElementById('cleanup_scheduler_enabled'));
 
                 updateSourceTypeOptions();
                 renderGroups();
@@ -1951,6 +1983,9 @@
             if (!currentConfig.scheduler) currentConfig.scheduler = {};
             currentConfig.scheduler.global_enabled = document.getElementById('global_scheduler_enabled').checked;
             currentConfig.scheduler.global_schedule = document.getElementById('global_sync_schedule').value.trim();
+
+            currentConfig.scheduler.cleanup_enabled = document.getElementById('cleanup_scheduler_enabled').checked;
+            currentConfig.scheduler.cleanup_schedule = document.getElementById('cleanup_sync_schedule').value.trim() || '0 * * * *';
             // global_exclude_ids is updated in real-time by checkbox event listeners in updateGlobalSyncExclusionsUI
 
             try {

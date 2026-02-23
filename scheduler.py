@@ -15,7 +15,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 import threading
 from config import load_config
-from sync import run_sync
+from sync import run_sync, run_cleanup_broken_symlinks
 
 # Initialize the scheduler
 _scheduler = BackgroundScheduler()
@@ -77,6 +77,22 @@ def update_scheduler_jobs() -> None:
             except Exception:
                 logger.exception(f"Failed to schedule sync for group '{group_name}'")
 
+    # 3. Cleanup Scheduler
+    if sched_cfg.get("cleanup_enabled", True): # Default to true
+        cleanup_cron = sched_cfg.get("cleanup_schedule", "0 * * * *")
+        if cleanup_cron:
+            try:
+                _scheduler.add_job(
+                    _run_cleanup_job,
+                    CronTrigger.from_crontab(cleanup_cron),
+                    id="cleanup_sync",
+                    name="Cleanup Broken Symlinks"
+                )
+                logger.info(f"Scheduled cleanup job: {cleanup_cron}")
+            except Exception:
+                logger.exception("Failed to schedule cleanup job")
+
+
 def _run_global_sync_job(exclude_names: list[str]) -> None:
     """Job handler for global sync."""
     config = load_config()
@@ -101,3 +117,12 @@ def _run_group_sync_job(group_name: str) -> None:
     logger.info(f"Background sync starting for group: {group_name}")
     with sync_lock:
         run_sync(config, group_names=[group_name])
+
+def _run_cleanup_job() -> None:
+    """Job handler for cleaning up broken symlinks."""
+    config = load_config()
+    logger.info("Background cleanup job starting")
+    with sync_lock:
+        deleted = run_cleanup_broken_symlinks(config)
+        logger.info(f"Background cleanup job finished: deleted {deleted} broken symlinks")
+

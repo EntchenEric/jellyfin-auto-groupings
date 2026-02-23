@@ -1075,3 +1075,35 @@ def run_sync(
 
     _LIBRARY_CACHE.clear()
     return results
+
+
+def run_cleanup_broken_symlinks(config: dict[str, Any]) -> int:
+    """Scan the target directory for broken symlinks and remove them.
+
+    Args:
+        config: The application configuration dict.
+
+    Returns:
+        The number of broken symlinks deleted.
+    """
+    target_base: str = str(config.get("target_path", ""))
+    
+    if not target_base or not os.path.isdir(target_base):
+        print(f"Cleanup aborted: invalid target base path '{target_base}'")
+        return 0
+
+    deleted_count = 0
+    
+    for root, dirs, files in os.walk(target_base):
+        for name in files:
+            path = os.path.join(root, name)
+            if os.path.islink(path) and not os.path.exists(path):
+                # The symlink is broken
+                try:
+                    os.unlink(path)
+                    print(f"Deleted broken symlink: {path}")
+                    deleted_count += 1
+                except OSError as exc:
+                    print(f"Error deleting broken symlink {path}: {exc}")
+                    
+    return deleted_count
