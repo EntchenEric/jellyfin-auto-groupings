@@ -1,6 +1,6 @@
 from unittest.mock import patch, MagicMock
 import pytest
-from jellyfin import get_libraries, add_virtual_folder, delete_virtual_folder
+from jellyfin import get_libraries, add_virtual_folder, delete_virtual_folder, get_library_id, set_virtual_folder_image
 
 @patch('requests.get')
 def test_get_libraries(mock_get):
@@ -119,3 +119,43 @@ def test_add_virtual_folder_mixed(mock_post):
     assert "collectionType" not in params
     assert params["name"] == "MixedLib"
     assert params["refreshLibrary"] == "false"
+
+@patch('requests.get')
+def test_get_library_id(mock_get):
+    mock_response = MagicMock()
+    mock_response.json.return_value = [
+        {"Name": "Movies", "ItemId": "12345"},
+        {"Name": "TV Shows", "ItemId": "67890"},
+        {"Name": "Orphans"}
+    ]
+    mock_response.raise_for_status.return_value = None
+    mock_get.return_value = mock_response
+
+    item_id = get_library_id("http://localhost:8096", "test_key", "Movies")
+    assert item_id == "12345"
+    item_id_none = get_library_id("http://localhost:8096", "test_key", "NonExistent")
+    assert item_id_none is None
+    item_id_orphans = get_library_id("http://localhost:8096", "test_key", "Orphans")
+    assert item_id_orphans is None
+
+@patch('mimetypes.guess_type')
+@patch('builtins.open')
+@patch('requests.post')
+@patch('jellyfin.get_library_id')
+def test_set_virtual_folder_image(mock_get_library_id, mock_post, mock_open, mock_guess):
+    mock_guess.return_value = ("image/jpeg", None)
+    mock_get_library_id.return_value = "12345"
+    mock_open.return_value.__enter__.return_value.read.return_value = b"image_data"
+    
+    mock_response = MagicMock()
+    mock_response.ok = True
+    mock_post.return_value = mock_response
+
+    set_virtual_folder_image("http://localhost:8096", "test_key", "Movies", "/path/to/image.jpg")
+    
+    mock_post.assert_called_once()
+    args, kwargs = mock_post.call_args
+    assert args[0] == "http://localhost:8096/Items/12345/Images/Primary"
+    assert kwargs["data"] == b"image_data"
+    assert kwargs["headers"]["X-Emby-Token"] == "test_key"
+    assert kwargs["headers"]["Content-Type"] == "image/jpeg"
