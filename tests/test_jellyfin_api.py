@@ -1,6 +1,6 @@
 from unittest.mock import patch, MagicMock
 import pytest
-from jellyfin import get_libraries, add_virtual_folder, delete_virtual_folder, get_library_id, set_virtual_folder_image
+from jellyfin import get_libraries, add_virtual_folder, delete_virtual_folder, get_library_id, set_virtual_folder_image, get_users, get_user_recent_items
 
 @patch('requests.get')
 def test_get_libraries(mock_get):
@@ -159,3 +159,47 @@ def test_set_virtual_folder_image(mock_get_library_id, mock_post, mock_open, moc
     assert kwargs["data"] == b"image_data"
     assert kwargs["headers"]["X-Emby-Token"] == "test_key"
     assert kwargs["headers"]["Content-Type"] == "image/jpeg"
+
+@patch('requests.get')
+def test_get_users(mock_get):
+    mock_response = MagicMock()
+    mock_response.json.return_value = [{"Id": "u1", "Name": "Alice"}, {"Id": "u2", "Name": "Bob"}]
+    mock_response.raise_for_status.return_value = None
+    mock_get.return_value = mock_response
+
+    users = get_users("http://localhost:8096", "test_key")
+    assert len(users) == 2
+    assert users[0]["id"] == "u1"
+    assert users[0]["name"] == "Alice"
+    
+    mock_get.assert_called_once_with(
+        "http://localhost:8096/Users",
+        params={"api_key": "test_key"},
+        timeout=30
+    )
+
+@patch('requests.get')
+def test_get_user_recent_items(mock_get):
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"Items": [{"Name": "Movie 1"}, {"Name": "Show 1"}]}
+    mock_response.raise_for_status.return_value = None
+    mock_get.return_value = mock_response
+
+    items = get_user_recent_items("http://localhost:8096", "test_key", "u1", limit=10)
+    assert len(items) == 2
+    assert items[0]["Name"] == "Movie 1"
+    
+    expected_params = {
+        "api_key": "test_key",
+        "Filters": "IsPlayed",
+        "SortBy": "DatePlayed",
+        "SortOrder": "Descending",
+        "IncludeItemTypes": "Movie,Episode",
+        "Recursive": "true",
+        "Limit": 10
+    }
+    mock_get.assert_called_once_with(
+        "http://localhost:8096/Users/u1/Items",
+        params=expected_params,
+        timeout=30
+    )
