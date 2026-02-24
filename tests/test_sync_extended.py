@@ -469,7 +469,7 @@ def test_run_sync_recommendations(mock_recent, mock_tmdb_rec, mock_jf_fetch, _mo
             }
         ]
     }
-    mock_recent.return_value = [{"ProviderIds": {"Tmdb": "100"}}]
+    mock_recent.return_value = [{"ProviderIds": {"Tmdb": "100"}, "Type": "Movie"}]
     mock_tmdb_rec.return_value = ["101"]
     mock_jf_fetch.return_value = [
         {"Name": "R1", "Path": "/p1", "ProviderIds": {"Tmdb": "101"}}

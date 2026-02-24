@@ -169,8 +169,8 @@ def test_get_users(mock_get):
 
     users = get_users("http://localhost:8096", "test_key")
     assert len(users) == 2
-    assert users[0]["id"] == "u1"
-    assert users[0]["name"] == "Alice"
+    assert users[0]["Id"] == "u1"
+    assert users[0]["Name"] == "Alice"
     
     mock_get.assert_called_once_with(
         "http://localhost:8096/Users",
@@ -194,9 +194,10 @@ def test_get_user_recent_items(mock_get):
         "Filters": "IsPlayed",
         "SortBy": "DatePlayed",
         "SortOrder": "Descending",
-        "IncludeItemTypes": "Movie,Episode",
+        "IncludeItemTypes": "Movie,Series",
         "Recursive": "true",
-        "Limit": 10
+        "Limit": "10",
+        "Fields": "ProviderIds",
     }
     mock_get.assert_called_once_with(
         "http://localhost:8096/Users/u1/Items",
