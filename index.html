@@ -1939,7 +1939,8 @@
                 { value: 'actor', label: 'Actor' },
                 { value: 'studio', label: 'Studio' },
                 { value: 'tag', label: 'Jellyfin Tag' },
-                { value: 'complex', label: 'Complex Rule-set (Mixed)' }
+                { value: 'complex', label: 'Complex Rule-set (Mixed)' },
+                { value: 'recommendations', label: 'User Recommendations', requiredKey: 'tmdb_api_key' }
             ],
             external: [
                 { value: 'imdb_list', label: 'IMDb List' },
@@ -2372,7 +2373,12 @@
                 }
 
                 if (isDisabled) {
-                    o.textContent = `${opt.label} (Keys missing - see Server Settings)`;
+                    let missingName = 'Key';
+                    if (opt.requiredKey === 'tmdb_api_key') missingName = 'TMDb API Key';
+                    else if (opt.requiredKey === 'trakt_client_id') missingName = 'Trakt Client ID';
+                    else if (opt.requiredKey === 'mal_client_id') missingName = 'MAL Client ID';
+
+                    o.textContent = `${opt.label} (${missingName} missing - see External API Connections)`;
                     o.disabled = true;
                 } else {
                     o.textContent = opt.label;
@@ -2399,6 +2405,9 @@
 
             const container = document.getElementById('metadata_rules_container');
             const addBtn = document.getElementById('add-rule-btn');
+
+            const userSelect = document.getElementById('source_value_user_select');
+            if (userSelect) userSelect.style.display = 'none';
 
             // Hide old select logic, always use text input
             sourceValueInput.style.display = 'block';
@@ -2458,6 +2467,72 @@
                 } else if (type === 'general') {
                     sourceValueInput.placeholder = 'e.g. Action  or  tt1234567';
                     sourceValueHelp.textContent = 'Enter item name or date range.';
+                } else if (type === 'recommendations') {
+                    datalist.innerHTML = '';
+                    container.style.display = 'none';
+                    addBtn.style.display = 'none';
+
+                    let userSel = document.getElementById('source_value_user_select');
+                    if (!userSel) {
+                        userSel = document.createElement('select');
+                        userSel.id = 'source_value_user_select';
+                        userSel.setAttribute('style', 'flex: 1; padding: 0.8rem 1rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 1rem; width: 100%;');
+                        userSel.onchange = (e) => { sourceValueInput.value = e.target.value; };
+                        document.getElementById('source_value_container').insertBefore(userSel, sourceValueInput);
+                    }
+
+                    if (isServerValidated) {
+                        sourceValueHelp.innerHTML = 'Select a Jellyfin user. Recommendations are based on their recently watched items.<br>Requires a <strong>TMDb API Key</strong> in Server Settings.';
+                        sourceValueInput.style.display = 'none';
+                        sourceValueInput.required = false;
+                        userSel.style.display = 'block';
+                        userSel.innerHTML = '<option value="" disabled selected>Loading users...</option>';
+                        userSel.disabled = true;
+
+                        fetch('/api/jellyfin/users')
+                            .then(res => res.json())
+                            .then(data => {
+                                userSel.disabled = false;
+                                if (data.status === 'success') {
+                                    userSel.innerHTML = '<option value="" disabled selected>Select User...</option>';
+                                    let matchFound = false;
+                                    data.users.forEach(u => {
+                                        const opt = document.createElement('option');
+                                        opt.value = u.id;
+                                        opt.textContent = u.name;
+                                        if (preValue && preValue === u.id) {
+                                            opt.selected = true;
+                                            matchFound = true;
+                                        }
+                                        userSel.appendChild(opt);
+                                    });
+                                    if (preValue && !matchFound) {
+                                        const opt = document.createElement('option');
+                                        opt.value = preValue;
+                                        opt.textContent = preValue + ' (Unknown User)';
+                                        opt.selected = true;
+                                        userSel.appendChild(opt);
+                                    }
+                                    if (preValue) {
+                                        sourceValueInput.value = preValue;
+                                        userSel.dispatchEvent(new Event('change', { bubbles: true }));
+                                    }
+                                } else {
+                                    userSel.innerHTML = `<option value="">Error: ${data.message}</option>`;
+                                    userSel.disabled = true;
+                                }
+                            })
+                            .catch(err => {
+                                userSel.innerHTML = '<option value="">Error loading users</option>';
+                                userSel.disabled = true;
+                            });
+                    } else {
+                        sourceValueHelp.innerHTML = 'You must connect your Jellyfin server to select a user.<br>Or paste a raw User ID below.';
+                        sourceValueInput.style.display = 'block';
+                        sourceValueInput.required = true;
+                        if (preValue) sourceValueInput.value = preValue;
+                        userSel.style.display = 'none';
+                    }
                 } else {
                     sourceValueInput.placeholder = 'e.g. Action  or  ls000024390';
                     sourceValueHelp.textContent = 'Enter the ID or Value manually.';

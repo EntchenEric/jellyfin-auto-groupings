@@ -76,3 +76,44 @@ def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
         page += 1
 
     return ids
+
+
+def get_tmdb_recommendations(items_with_type: list[tuple[str, str]], api_key: str) -> list[str]:
+    """Fetch recommendations for a list of TMDb IDs.
+
+    Args:
+        items_with_type: A list of tuples (tmdb_id, media_type) where media_type is "movie" or "tv".
+        api_key: TMDb API Key (v3).
+
+    Returns:
+        A list of recommended TMDb IDs (as strings), sorted by recommendation frequency and rank.
+
+    Raises:
+        ValueError: If *api_key* is empty.
+    """
+    if not api_key:
+        raise ValueError("A TMDb API Key is required to fetch TMDb recommendations.")
+
+    recommendation_counts: dict[str, float] = {}
+
+    for tmdb_id, media_type in items_with_type:
+        url = f"{_TMDB_API_BASE}/{media_type}/{tmdb_id}/recommendations"
+        params = {
+            "api_key": api_key,
+            "language": "en-US",
+            "page": "1"
+        }
+        try:
+            resp = requests.get(url, params=params, timeout=10)
+            if resp.status_code == 200:
+                data = resp.json()
+                for i, rec in enumerate(data.get("results", [])):
+                    rec_id = str(rec.get("id"))
+                    score = 1.0 / (i + 1)  # Higher weight for top recommendations
+                    recommendation_counts[rec_id] = recommendation_counts.get(rec_id, 0.0) + score
+        except Exception:
+            pass  # Skip failures for individual items to keep aggregating
+
+    # Sort items by their accumulated score
+    sorted_recs = sorted(recommendation_counts.items(), key=lambda x: x[1], reverse=True)
+    return [rec_id for rec_id, _ in sorted_recs]

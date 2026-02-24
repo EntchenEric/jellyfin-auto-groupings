@@ -22,7 +22,7 @@ from flask import Blueprint, jsonify, request, send_from_directory
 from flask.typing import ResponseReturnValue
 
 from config import load_config, save_config
-from jellyfin import delete_virtual_folder, fetch_jellyfin_items
+from jellyfin import delete_virtual_folder, fetch_jellyfin_items, get_users
 from scheduler import update_scheduler_jobs
 from sync import get_cover_path, parse_complex_query, preview_group, run_sync
 
@@ -224,6 +224,40 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
                     "tag": [x[0] for x in tags_counts.most_common()],
                     "actor": [x[0] for x in people_counts.most_common()],
                 },
+            }
+        )
+    except Exception as exc:
+        return jsonify({"status": "error", "message": str(exc)}), 400
+
+
+# ---------------------------------------------------------------------------
+# Jellyfin users
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/api/jellyfin/users", methods=["GET"])
+def get_jellyfin_users() -> ResponseReturnValue:
+    """Return a list of users from Jellyfin.
+
+    Returns:
+        JSON with ``status`` and a ``users`` object containing ``id`` and ``name``.
+    """
+    config: dict[str, Any] = load_config()
+    if not isinstance(config, dict):
+        return jsonify({"status": "error", "message": "Invalid configuration format"}), 500
+
+    url: str = str(config.get("jellyfin_url", "")).rstrip("/")
+    api_key: str = str(config.get("api_key", ""))
+
+    if not url or not api_key:
+        return jsonify({"status": "error", "message": "Server settings not configured"}), 400
+
+    try:
+        users_list = get_users(url, api_key)
+        return jsonify(
+            {
+                "status": "success",
+                "users": [{"id": u.get("Id"), "name": u.get("Name")} for u in users_list],
             }
         )
     except Exception as exc:

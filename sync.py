@@ -23,16 +23,16 @@ from typing import Any
 
 from anilist import fetch_anilist_list
 from imdb import fetch_imdb_list
-from jellyfin import SORT_MAP, add_virtual_folder, fetch_jellyfin_items, get_libraries, set_virtual_folder_image
+from jellyfin import SORT_MAP, add_virtual_folder, fetch_jellyfin_items, get_libraries, get_user_recent_items, set_virtual_folder_image
 from letterboxd import fetch_letterboxd_list
 from mal import fetch_mal_list
-from tmdb import fetch_tmdb_list
+from tmdb import fetch_tmdb_list, get_tmdb_recommendations
 from trakt import fetch_trakt_list
 
 # Source types that come from external lists (IMDb / Trakt / TMDb / AniList / MyAnimeList / Letterboxd) rather than
 # from a Jellyfin metadata filter.
 _LIST_SOURCES: frozenset[str] = frozenset(
-    {"imdb_list", "trakt_list", "tmdb_list", "anilist_list", "mal_list", "letterboxd_list"}
+    {"imdb_list", "trakt_list", "tmdb_list", "anilist_list", "mal_list", "letterboxd_list", "recommendations"}
 )
 
 # ``sort_order`` values that mean "keep the order from the external list"
@@ -45,6 +45,7 @@ _LIST_ORDER_VALUES: frozenset[str] = frozenset(
         "anilist_list_order",
         "mal_list_order",
         "letterboxd_list_order",
+        "recommendations_list_order",
     }
 )
 
@@ -568,6 +569,71 @@ def _fetch_items_for_letterboxd_group(
     return items, None, 200
 
 
+def _fetch_items_for_recommendations_group(
+    group_name: str,
+    source_value: str,
+    sort_order: str,
+    url: str,
+    api_key: str,
+    tmdb_api_key: str,
+    watch_state: str = "",
+) -> tuple[list[dict[str, Any]], str | None, int]:
+    """Resolve Jellyfin items for a User Recommendations group.
+
+    Args:
+        group_name: Human-readable group name.
+        source_value: Jellyfin User ID.
+        sort_order: Requested sort order key.
+        url: Jellyfin base URL.
+        api_key: Jellyfin API key.
+        tmdb_api_key: TMDb API Key.
+        watch_state: Optional filter for watch state ("unwatched", "watched").
+
+    Returns:
+        A ``(items, error, status_code)`` tuple.
+    """
+    if not tmdb_api_key:
+        msg = "TMDb API Key not set — add tmdb_api_key in Server Settings"
+        print(f"No TMDb API Key configured for recommendations group {group_name!r}")
+        return [], msg, 400
+
+    if not source_value:
+        return [], "User ID must be selected for recommendations", 400
+
+    user_id = source_value
+    try:
+        # Fetch user's recent items from Jellyfin
+        recent_items = get_user_recent_items(url, api_key, user_id, limit=20)
+        
+        # Extract TMDb IDs and Media Type
+        tmdb_requests = []
+        for item in recent_items:
+            tmdb_id = item.get("ProviderIds", {}).get("Tmdb")
+            item_type = item.get("Type")
+            if tmdb_id and item_type in ("Movie", "Series"):
+                media_type = "movie" if item_type == "Movie" else "tv"
+                tmdb_requests.append((str(tmdb_id), media_type))
+                
+        if not tmdb_requests:
+            print(f"No TMDb IDs found in recent items for user {user_id!r}")
+            return [], None, 200
+
+        # Fetch recommendations based on these items
+        tmdb_ids = get_tmdb_recommendations(tmdb_requests, tmdb_api_key)
+        print(f"TMDb recommendations: {len(tmdb_ids)} items found")
+    except Exception as exc:
+        print(f"Error fetching recommendations for group {group_name!r}: {exc!s}")
+        return [], f"Recommendations fetch error: {exc!s}", 400
+
+    if not tmdb_ids:
+        print(f"No items found in TMDb recommendations for group {group_name!r}")
+        return [], None, 200
+
+    return _match_jellyfin_items_by_provider(
+        tmdb_ids, "Tmdb", "recommendations_list_order", sort_order, url, api_key, group_name, watch_state
+    )
+
+
 def _match_condition(item: dict[str, Any], r_type: str, r_val: str) -> bool:
     """Check if a Jellyfin item matches a single rule condition.
 
@@ -941,6 +1007,10 @@ def _process_group(
     elif source_type == "letterboxd_list":
         items, error, status_code = _fetch_items_for_letterboxd_group(
             group_name, source_value or "", sort_order, url, api_key, watch_state
+        )
+    elif source_type == "recommendations":
+        items, error, status_code = _fetch_items_for_recommendations_group(
+            group_name, source_value or "", sort_order, url, api_key, tmdb_api_key, watch_state
         )
     elif isinstance(group.get("rules"), list) and group["rules"]:
         rules_list = group["rules"]

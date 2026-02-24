@@ -92,6 +92,60 @@ def get_libraries(base_url: str, api_key: str, timeout: int = 30) -> list[str]:
     return [folder.get("Name", "") for folder in response.json()]
 
 
+def get_users(base_url: str, api_key: str, timeout: int = 30) -> list[dict[str, Any]]:
+    """Fetch the list of users from Jellyfin.
+
+    Args:
+        base_url: Jellyfin server base URL.
+        api_key: Jellyfin API key.
+        timeout: HTTP request timeout.
+
+    Returns:
+        A list of user dictionaries.
+    """
+    response = requests.get(
+        f"{base_url}/Users",
+        headers={"X-Emby-Token": api_key},
+        timeout=timeout,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+def get_user_recent_items(
+    base_url: str, api_key: str, user_id: str, limit: int = 20, timeout: int = 30
+) -> list[dict[str, Any]]:
+    """Fetch a user's recently played movies and shows.
+
+    Args:
+        base_url: Jellyfin server base URL.
+        api_key: Jellyfin API key.
+        user_id: ID of the user.
+        limit: Number of items to fetch.
+        timeout: HTTP request timeout.
+
+    Returns:
+        A list of item dictionaries.
+    """
+    params = {
+        "api_key": api_key,
+        "Filters": "IsPlayed",
+        "SortBy": "DatePlayed",
+        "SortOrder": "Descending",
+        "IncludeItemTypes": "Movie,Series",
+        "Recursive": "true",
+        "Limit": str(limit),
+        "Fields": "ProviderIds",
+    }
+    response = requests.get(
+        f"{base_url}/Users/{user_id}/Items",
+        params=params,
+        timeout=timeout,
+    )
+    response.raise_for_status()
+    return response.json().get("Items", [])
+
+
 def add_virtual_folder(
     base_url: str,
     api_key: str,

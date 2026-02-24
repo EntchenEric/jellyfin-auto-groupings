@@ -1,7 +1,7 @@
 import pytest
 import os
 from unittest.mock import patch, MagicMock
-from sync import run_sync, preview_group
+from sync import run_sync, preview_group, _fetch_items_for_recommendations_group
 
 @patch('sync.shutil.rmtree')
 @patch('sync.os.makedirs')
@@ -446,4 +446,38 @@ def test_run_sync_with_auto_set_library_covers(mock_jf_fetch, _mock_symlink, _mo
     # Verify image setting was called
     mock_set_image.assert_called_once_with("http://jf", "key", "CoverGroup", "/target/CoverGroup_cover.jpg")
     mock_copy2.assert_called_once_with("/target/CoverGroup_cover.jpg", "/target/CoverGroup/poster.jpg")
+
+
+@patch('sync.shutil.rmtree')
+@patch('sync.os.makedirs')
+@patch('sync.os.path.exists')
+@patch('sync.os.symlink')
+@patch('sync.fetch_jellyfin_items')
+@patch('sync.get_tmdb_recommendations')
+@patch('sync.get_user_recent_items')
+def test_run_sync_recommendations(mock_recent, mock_tmdb_rec, mock_jf_fetch, _mock_symlink, _mock_exists, _mock_makedirs, _mock_rmtree):
+    config = {
+        "jellyfin_url": "http://jf",
+        "api_key": "key",
+        "target_path": "/target",
+        "tmdb_api_key": "tmdb_key",
+        "groups": [
+            {
+                "name": "User Recommends",
+                "source_type": "recommendations",
+                "source_value": "user123"
+            }
+        ]
+    }
+    mock_recent.return_value = [{"ProviderIds": {"Tmdb": "100"}, "Type": "Movie"}]
+    mock_tmdb_rec.return_value = ["101"]
+    mock_jf_fetch.return_value = [
+        {"Name": "R1", "Path": "/p1", "ProviderIds": {"Tmdb": "101"}}
+    ]
+    _mock_exists.return_value = True # Host path exists
+    
+    results = run_sync(config)
+    assert len(results) > 0
+    assert results[0]["links"] == 1
+    _mock_symlink.assert_called_once()
 
