@@ -174,7 +174,7 @@ def test_get_users(mock_get):
     
     mock_get.assert_called_once_with(
         "http://localhost:8096/Users",
-        params={"api_key": "test_key"},
+        headers={"X-Emby-Token": "test_key"},
         timeout=30
     )
 
@@ -204,3 +204,146 @@ def test_get_user_recent_items(mock_get):
         params=expected_params,
         timeout=30
     )
+
+import requests
+
+@patch('requests.post')
+def test_add_virtual_folder_creation_failure_no_response(mock_post):
+    mock_post.side_effect = requests.exceptions.RequestException("Network Error")
+    
+    with pytest.raises(RuntimeError) as excinfo:
+        add_virtual_folder("http://localhost:8096", "test_key", "FailLib", ["/path1"])
+    
+    assert "Failed to create virtual folder 'FailLib': Network Error" in str(excinfo.value)
+
+@patch('requests.post')
+def test_add_virtual_folder_path_failure_no_response(mock_post):
+    mock_response_ok = MagicMock()
+    mock_response_ok.ok = True
+    mock_response_ok.status_code = 200
+    
+    # First call OK, second call RequestException
+    mock_post.side_effect = [mock_response_ok, requests.exceptions.RequestException("Path Network Error")]
+    
+    with pytest.raises(RuntimeError) as excinfo:
+        add_virtual_folder("http://localhost:8096", "test_key", "FailLib", ["/path1"])
+    
+    assert "Failed to add path '/path1' to library 'FailLib': Path Network Error" in str(excinfo.value)
+
+@patch('requests.post')
+def test_add_virtual_folder_refresh_failure(mock_post):
+    mock_response_ok = MagicMock()
+    mock_response_ok.ok = True
+    mock_response_ok.status_code = 200
+    
+    mock_response_fail = MagicMock()
+    mock_response_fail.ok = False
+    mock_response_fail.status_code = 502
+    mock_response_fail.text = "Bad Gateway"
+    
+    mock_response_fail.raise_for_status.side_effect = requests.exceptions.HTTPError(response=mock_response_fail)
+    
+    # create OK, path OK, refresh HTTPError
+    mock_post.side_effect = [mock_response_ok, mock_response_ok, mock_response_fail]
+    
+    with pytest.raises(RuntimeError) as excinfo:
+        add_virtual_folder("http://localhost:8096", "test_key", "RefreshFail", ["/path1"])
+    
+    assert "Failed to trigger library refresh for 'RefreshFail' (Status 502): Bad Gateway" in str(excinfo.value)
+
+@patch('requests.post')
+def test_add_virtual_folder_refresh_failure_no_response(mock_post):
+    mock_response_ok = MagicMock()
+    mock_response_ok.ok = True
+    mock_response_ok.status_code = 200
+    
+    # create OK, path OK, refresh RequestException
+    mock_post.side_effect = [mock_response_ok, mock_response_ok, requests.exceptions.RequestException("Refresh Network Error")]
+    
+    with pytest.raises(RuntimeError) as excinfo:
+        add_virtual_folder("http://localhost:8096", "test_key", "RefreshFail", ["/path1"])
+    
+    assert "Failed to trigger library refresh for 'RefreshFail': Refresh Network Error" in str(excinfo.value)
+
+@patch('requests.delete')
+def test_delete_virtual_folder_not_ok(mock_delete, capsys):
+    mock_response = MagicMock()
+    mock_response.ok = False
+    mock_response.status_code = 404
+    mock_response.text = "Not Found"
+    mock_delete.return_value = mock_response
+    
+    delete_virtual_folder("http://localhost:8096", "test_key", "ToDelete")
+    
+    captured = capsys.readouterr()
+    assert "DEBUG: Delete Virtual Folder Failed (404): Not Found" in captured.out
+
+@patch('requests.get')
+def test_get_library_id_request_exception(mock_get, capsys):
+    mock_get.side_effect = requests.exceptions.RequestException("Fetch Error")
+    
+    result = get_library_id("http://localhost:8096", "test_key", "MyLib")
+    assert result is None
+    
+    captured = capsys.readouterr()
+    assert "Failed to get library ID for 'MyLib': Fetch Error" in captured.out
+
+@patch('jellyfin.get_library_id')
+def test_set_virtual_folder_image_no_library_id(mock_get_library_id, capsys):
+    mock_get_library_id.return_value = None
+    
+    set_virtual_folder_image("http://localhost:8096", "test_key", "MyLib", "/path/to/img.jpg")
+    
+    captured = capsys.readouterr()
+    assert "Cannot set image: Library 'MyLib' not found or ID unknown." in captured.out
+
+@patch('jellyfin.get_library_id')
+def test_set_virtual_folder_image_os_error(mock_get_library_id, capsys):
+    mock_get_library_id.return_value = "123"
+    
+    with patch('builtins.open', side_effect=OSError("Permission Denied")):
+        set_virtual_folder_image("http://localhost:8096", "test_key", "MyLib", "/path/to/img.jpg")
+        
+    captured = capsys.readouterr()
+    assert "Cannot set image: Failed to read image file '/path/to/img.jpg': Permission Denied" in captured.out
+
+@patch('mimetypes.guess_type')
+@patch('builtins.open')
+@patch('requests.post')
+@patch('jellyfin.get_library_id')
+def test_set_virtual_folder_image_request_exception(mock_get_library_id, mock_post, mock_open, mock_guess, capsys):
+    mock_guess.return_value = ("image/jpeg", None)
+    mock_get_library_id.return_value = "123"
+    mock_open.return_value.__enter__.return_value.read.return_value = b"image_data"
+    
+    mock_response_fail = MagicMock()
+    mock_response_fail.ok = False
+    mock_response_fail.status_code = 400
+    mock_response_fail.text = "Bad Request"
+    import requests
+    fail_exc = requests.exceptions.HTTPError(response=mock_response_fail)
+    
+    # We assign the response to the exception so the handler can use exc.response
+    fail_exc.response = mock_response_fail
+    mock_post.side_effect = fail_exc
+    
+    set_virtual_folder_image("http://localhost:8096", "test_key", "MyLib", "/path/to/img.jpg")
+    
+    captured = capsys.readouterr()
+    assert "Failed to set image for library 'MyLib' (Status 400): Bad Request" in captured.out
+
+@patch('mimetypes.guess_type')
+@patch('builtins.open')
+@patch('requests.post')
+@patch('jellyfin.get_library_id')
+def test_set_virtual_folder_image_request_exception_no_response(mock_get_library_id, mock_post, mock_open, mock_guess, capsys):
+    mock_guess.return_value = ("image/jpeg", None)
+    mock_get_library_id.return_value = "123"
+    mock_open.return_value.__enter__.return_value.read.return_value = b"image_data"
+    
+    mock_post.side_effect = requests.exceptions.RequestException("Upload Error")
+    
+    set_virtual_folder_image("http://localhost:8096", "test_key", "MyLib", "/path/to/img.jpg")
+    
+    captured = capsys.readouterr()
+    assert "Failed to set image for library 'MyLib': Upload Error" in captured.out

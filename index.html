@@ -2513,6 +2513,10 @@
                                         opt.selected = true;
                                         userSel.appendChild(opt);
                                     }
+                                    if (preValue) {
+                                        sourceValueInput.value = preValue;
+                                        userSel.dispatchEvent(new Event('change', { bubbles: true }));
+                                    }
                                 } else {
                                     userSel.innerHTML = `<option value="">Error: ${data.message}</option>`;
                                     userSel.disabled = true;
