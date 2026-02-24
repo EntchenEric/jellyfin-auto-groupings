@@ -40,7 +40,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "cleanup_schedule": "0 * * * *"
     },
     "auto_create_libraries": False,
-    "target_path_in_jellyfin": ""
+    "target_path_in_jellyfin": "",
+    "setup_done": False
 }
 
 # ---------------------------------------------------------------------------
