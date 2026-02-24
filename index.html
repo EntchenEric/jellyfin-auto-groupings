@@ -2746,20 +2746,46 @@
 
         async function finishWizard() {
             const nextBtn = document.getElementById('wizard-next');
+
+            // Collect values for validation
+            const url = document.getElementById('wizard_jellyfin_url').value.trim();
+            const key = document.getElementById('wizard_api_key').value.trim();
+            const jPath = document.getElementById('wizard_media_path_in_jellyfin').value.trim();
+            const hPath = document.getElementById('wizard_media_path_on_host').value.trim();
+            const tPath = document.getElementById('wizard_target_path').value.trim();
+
+            // Validate required fields
+            if (!url || !key || !jPath || !hPath || !tPath) {
+                showStatus('All fields are required to complete the setup.', 'error');
+                // Highlight the first missing field
+                if (!url) document.getElementById('wizard_jellyfin_url').focus();
+                else if (!key) document.getElementById('wizard_api_key').focus();
+                else if (!jPath) document.getElementById('wizard_media_path_in_jellyfin').focus();
+                else if (!hPath) document.getElementById('wizard_media_path_on_host').focus();
+                else if (!tPath) document.getElementById('wizard_target_path').focus();
+                return;
+            }
+
             nextBtn.classList.add('btn-loading');
 
-            // Collect all values
-            currentConfig.jellyfin_url = document.getElementById('wizard_jellyfin_url').value;
-            currentConfig.api_key = document.getElementById('wizard_api_key').value;
-            currentConfig.media_path_in_jellyfin = document.getElementById('wizard_media_path_in_jellyfin').value;
-            currentConfig.media_path_on_host = document.getElementById('wizard_media_path_on_host').value;
-            currentConfig.target_path = document.getElementById('wizard_target_path').value;
-            currentConfig.setup_done = true;
+            // Update temporary config
+            currentConfig.jellyfin_url = url;
+            currentConfig.api_key = key;
+            currentConfig.media_path_in_jellyfin = jPath;
+            currentConfig.media_path_on_host = hPath;
+            currentConfig.target_path = tPath;
 
             try {
-                await saveAllConfig();
+                // Only mark as done if save succeeds
+                const configToSave = { ...currentConfig, setup_done: true };
+                await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(configToSave)
+                });
+
                 document.getElementById('setup-wizard-modal').style.display = 'none';
-                window.location.reload(); // Refresh to ensure all states are clean
+                window.location.reload();
             } catch (err) {
                 showStatus('Failed to finalise setup', 'error');
             } finally {
