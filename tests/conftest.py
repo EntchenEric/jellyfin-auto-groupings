@@ -2,12 +2,41 @@ import sys
 import os
 import json
 import shutil
+import threading
+import time
+import requests
 import pytest
 from unittest.mock import MagicMock, patch
+from tests.virtual_jellyfin import app as jelly_mock_app
 
-# Sys.modules mock removed as requested, using patch instead to prevent real thread start
-patcher = patch('scheduler._scheduler')
-mock_bg_sched_instance = patcher.start()
+@pytest.fixture(scope="session")
+def virtual_jellyfin():
+    """Fixture to run a virtual Jellyfin server in a background thread."""
+    server_thread = threading.Thread(target=lambda: jelly_mock_app.run(port=8096, debug=False, use_reloader=False))
+    server_thread.daemon = True
+    server_thread.start()
+    
+    # Wait for server to be ready
+    base_url = "http://localhost:8096"
+    timeout = 5
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        try:
+            requests.get(f"{base_url}/Library/VirtualFolders")
+            break
+        except requests.exceptions.ConnectionError:
+            time.sleep(0.1)
+    else:
+        pytest.fail("Virtual Jellyfin server failed to start")
+        
+    return base_url
+
+@pytest.fixture(autouse=True)
+def mock_scheduler():
+    patcher = patch('scheduler._scheduler')
+    mock_bg_sched_instance = patcher.start()
+    yield mock_bg_sched_instance
+    patcher.stop()
 
 from app import app as flask_app
 from config import DEFAULT_CONFIG, CONFIG_DIR
