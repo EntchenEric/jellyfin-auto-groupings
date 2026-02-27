@@ -15,3 +15,7 @@ env/
 coverage_report.txt
 test_results.txt
 pytest_verbose.log
+
+lib64/
+lib32/
+bin/
