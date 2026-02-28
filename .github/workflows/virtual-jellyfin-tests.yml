@@ -2,16 +2,16 @@ name: Virtual Jellyfin Tests
 
 on:
   push:
-    branches: [ main ]
+    branches: [ '**' ]
   pull_request:
-    branches: [ main ]
+    branches: [ '**' ]
 
 jobs:
   test-virtual:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.12']
+        python-version: ['3.12', '3.11']
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python

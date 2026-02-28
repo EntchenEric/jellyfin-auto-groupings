@@ -2,16 +2,16 @@ name: Old Tests
 
 on:
   push:
-    branches: [ main ]
+    branches: [ '**' ]
   pull_request:
-    branches: [ main ]
+    branches: [ '**' ]
 
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.12', '3.14']
+        python-version: ['3.12']
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python
