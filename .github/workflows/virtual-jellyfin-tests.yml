@@ -1,4 +1,4 @@
-name: Exhaustive Edge-Case Tests
+name: Virtual Jellyfin Tests
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  test-exhaustive:
+  test-virtual:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -30,7 +30,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
-    - name: Run exhaustive edge-case tests
+    - name: Run Virtual Jellyfin Tests
       run: |
         export PYTHONPATH=$PYTHONPATH:.
-        pytest -m exhaustive tests/test_virtual_jellyfin_exhaustive.py
+        pytest tests/test_virtual_jellyfin_api.py tests/test_virtual_jellyfin_exhaustive.py tests/test_deep_sync.py
