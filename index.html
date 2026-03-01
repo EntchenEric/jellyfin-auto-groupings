@@ -1464,16 +1464,27 @@
                                 automatically synced</span>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label>Trakt Client ID</label>
+                    <div class="form-group"
+                        style="padding: 1rem; background: rgba(99, 102, 241, 0.1); border-left: 3px solid var(--accent-color); border-radius: var(--radius-sm); margin: 0.5rem 0;">
+                        <span style="font-size: 0.85rem; color: var(--text-primary);"><strong
+                                style="color: #a5b4fc;">Note:</strong> The API keys below are <strong>entirely
+                                optional</strong>. You only need to provide them if you explicitly plan to use external
+                            lists (like Trakt, TMDB, or MAL) for your groupings. You can safely leave these
+                            blank.</span>
+                    </div>
+                    <div class="form-group" style="margin-top: 0.5rem;">
+                        <label>Trakt Client ID <span
+                                style="text-transform: none; color: var(--text-secondary);">(Optional)</span></label>
                         <input type="text" id="wizard_trakt_client_id" placeholder="Client ID for Trakt.tv lists">
                     </div>
                     <div class="form-group">
-                        <label>TMDB API Key</label>
+                        <label>TMDB API Key <span
+                                style="text-transform: none; color: var(--text-secondary);">(Optional)</span></label>
                         <input type="text" id="wizard_tmdb_api_key" placeholder="API Key for TMDB support">
                     </div>
                     <div class="form-group">
-                        <label>MyAnimeList Client ID</label>
+                        <label>MyAnimeList Client ID <span
+                                style="text-transform: none; color: var(--text-secondary);">(Optional)</span></label>
                         <input type="text" id="wizard_mal_client_id" placeholder="Client ID for MAL lists">
                     </div>
                 </div>
