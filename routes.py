@@ -694,6 +694,41 @@ def browse_directory() -> ResponseReturnValue:
 
 
 # ---------------------------------------------------------------------------
+# Test Dashboard
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/api/test/results", methods=["GET"])
+def get_test_results() -> ResponseReturnValue:
+    """Return the contents of the latest test output logs."""
+    results = {}
+    for filename in ["test_results.txt", "current_test_out.txt", "test_api_out.txt"]:
+        if os.path.exists(filename):
+            try:
+                with open(filename, "r", encoding="utf-8") as f:
+                    results[filename] = f.read()
+            except Exception:
+                results[filename] = "Error reading file."
+        else:
+            results[filename] = "No output found."
+            
+    return jsonify({"status": "success", "results": results})
+
+
+@bp.route("/api/test/run", methods=["POST"])
+def run_tests() -> ResponseReturnValue:
+    """Trigger the test suite programmatically."""
+    import subprocess
+    import sys
+    try:
+        subprocess.run([sys.executable, "run_tests_to_file.py"], check=False, timeout=130)
+        return jsonify({"status": "success", "message": "Tests executed successfully."})
+    except Exception as exc:
+        logging.exception("Failed to run test suite")
+        return jsonify({"status": "error", "message": str(exc)}), 500
+
+
+# ---------------------------------------------------------------------------
 # Static files
 # ---------------------------------------------------------------------------
 
@@ -706,3 +741,13 @@ def index() -> ResponseReturnValue:
         The ``index.html`` file located next to ``app.py``.
     """
     return send_from_directory(".", "index.html")
+
+
+@bp.route("/test")
+def test_dashboard() -> ResponseReturnValue:
+    """Serve the test dashboard frontend.
+
+    Returns:
+        The ``test.html`` file located next to ``app.py``.
+    """
+    return send_from_directory(".", "test.html")

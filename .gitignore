@@ -10,7 +10,16 @@ __pycache__/
 .venv/
 venv/
 env/
+lib/
+lib64/
+lib32/
+bin/
+include/
+pyvenv.cfg
 
 # Test artifacts
 coverage_report.txt
 test_results.txt
+pytest_verbose.log
+.pytest_cache/
+.coverage
