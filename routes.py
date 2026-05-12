@@ -192,7 +192,7 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
                 "IncludeItemTypes": "Movie,Series",
                 "Fields": "Genres,Studios,Tags,People",
             },
-            timeout=30,
+            timeout=120,
         )
 
         genres_counts: Counter[str] = Counter()
