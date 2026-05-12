@@ -127,7 +127,6 @@ async function bootstrap() {
     initCoverGenerator();
     initPathPicker();
     initSidebarResizer();
-    initWizard();
 
     wireTopbarButtons();
     wireConfirmSyncDialog();
@@ -194,6 +193,8 @@ async function bootstrap() {
     } else {
         await loadConfig();
     }
+
+    initWizard();
 }
 
 document.addEventListener('DOMContentLoaded', bootstrap);
