@@ -189,7 +189,7 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
     tags_counts: Counter[str] = Counter()
     people_counts: Counter[str] = Counter()
 
-    chunk_size = 200
+    chunk_size = 50
     start_index = 0
 
     try:
