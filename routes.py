@@ -166,8 +166,9 @@ def test_server() -> ResponseReturnValue:
 def get_jellyfin_metadata() -> ResponseReturnValue:
     """Return aggregated metadata (genres, studios, tags, actors) from Jellyfin.
 
-    Fetches all Movies and Series from the configured Jellyfin instance and
-    counts occurrences of each metadata field, returning sorted lists.
+    Fetches all Movies and Series from the configured Jellyfin instance in
+    paginated chunks to avoid timeouts on large libraries, and counts
+    occurrences of each metadata field, returning sorted lists.
 
     Returns:
         JSON with ``status`` and a ``metadata`` object containing ``genre``,
@@ -183,37 +184,51 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
     if not url or not api_key:
         return jsonify({"status": "error", "message": "Server settings not configured"}), 400
 
+    genres_counts: Counter[str] = Counter()
+    studios_counts: Counter[str] = Counter()
+    tags_counts: Counter[str] = Counter()
+    people_counts: Counter[str] = Counter()
+
+    chunk_size = 500
+    start_index = 0
+
     try:
-        items = fetch_jellyfin_items(
-            url,
-            api_key,
-            {
-                "Recursive": "true",
-                "IncludeItemTypes": "Movie,Series",
-                "Fields": "Genres,Studios,Tags,People",
-            },
-            timeout=30,
-        )
+        while True:
+            items = fetch_jellyfin_items(
+                url,
+                api_key,
+                {
+                    "Recursive": "true",
+                    "IncludeItemTypes": "Movie,Series",
+                    "Fields": "Genres,Studios,Tags,People",
+                    "StartIndex": str(start_index),
+                    "Limit": str(chunk_size),
+                },
+                timeout=30,
+            )
 
-        genres_counts: Counter[str] = Counter()
-        studios_counts: Counter[str] = Counter()
-        tags_counts: Counter[str] = Counter()
-        people_counts: Counter[str] = Counter()
+            if not items:
+                break
 
-        for item in items:
-            for g in item.get("Genres", []):
-                genres_counts[g] += 1
-            for s in item.get("Studios", []):
-                s_name: str | None = s.get("Name")
-                if s_name:
-                    studios_counts[s_name] += 1
-            for t in item.get("Tags", []):
-                tags_counts[t] += 1
-            for p in item.get("People", []):
-                if p.get("Type") == "Actor":
-                    p_name: str | None = p.get("Name")
-                    if p_name:
-                        people_counts[p_name] += 1
+            for item in items:
+                for g in item.get("Genres", []):
+                    genres_counts[g] += 1
+                for s in item.get("Studios", []):
+                    s_name: str | None = s.get("Name")
+                    if s_name:
+                        studios_counts[s_name] += 1
+                for t in item.get("Tags", []):
+                    tags_counts[t] += 1
+                for p in item.get("People", []):
+                    if p.get("Type") == "Actor":
+                        p_name: str | None = p.get("Name")
+                        if p_name:
+                            people_counts[p_name] += 1
+
+            if len(items) < chunk_size:
+                break
+
+            start_index += chunk_size
 
         return jsonify(
             {
