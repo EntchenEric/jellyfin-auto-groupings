@@ -1347,8 +1347,12 @@
     <!-- Setup Wizard Modal -->
     <div id="setup-wizard-modal" class="modal">
         <div class="wizard-box">
-            <div class="wizard-progress">
-                <div id="wizard-progress-bar" class="wizard-progress-bar"></div>
+            <div class="wizard-header" style="justify-content: space-between; border-bottom: none; padding-bottom: 0;">
+                <div class="wizard-progress" style="flex: 1; margin-right: 1rem;">
+                    <div id="wizard-progress-bar" class="wizard-progress-bar"></div>
+                </div>
+                <button type="button" class="secondary-btn" id="wizard-skip-btn" onclick="skipWizard()"
+                    style="width: auto; padding: 0.4rem 0.8rem; font-size: 0.75rem; margin: 0;">Skip Wizard</button>
             </div>
 
             <div class="wizard-body">
@@ -1438,8 +1442,59 @@
                     </div>
                 </div>
 
-                <!-- Step 4: Finished -->
+                <!-- Step 4: Options -->
                 <div id="wizard-step-4" class="wizard-step">
+                    <div class="wizard-header">
+                        <h1>Additional Options</h1>
+                        <p>Configure integrations and background tasks (optional).</p>
+                    </div>
+                    <div class="wizard-card" style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="form-group">
+                            <label>Auto-Create Libraries</label>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <input type="checkbox" id="wizard_auto_create_libraries" style="width: auto;">
+                                <span style="font-size: 0.9rem; color: var(--text-primary);">Automatically create
+                                    libraries
+                                    in Jellyfin for your groups</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Enable Scheduled Sync</label>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <input type="checkbox" id="wizard_scheduler_enabled" style="width: auto;">
+                                <span style="font-size: 0.9rem; color: var(--text-primary);">Keep your groupings
+                                    automatically synced</span>
+                            </div>
+                        </div>
+                        <div class="form-group"
+                            style="padding: 1rem; background: rgba(99, 102, 241, 0.1); border-left: 3px solid var(--accent-color); border-radius: var(--radius-sm); margin: 0.5rem 0;">
+                            <span style="font-size: 0.85rem; color: var(--text-primary);"><strong
+                                    style="color: #a5b4fc;">Note:</strong> The API keys below are <strong>entirely
+                                    optional</strong>. You only need to provide them if you explicitly plan to use
+                                external
+                                lists (like Trakt, TMDB, or MAL) for your groupings. You can safely leave these
+                                blank.</span>
+                        </div>
+                        <div class="form-group" style="margin-top: 0.5rem;">
+                            <label>Trakt Client ID <span
+                                    style="text-transform: none; color: var(--text-secondary);">(Optional)</span></label>
+                            <input type="text" id="wizard_trakt_client_id" placeholder="Client ID for Trakt.tv lists">
+                        </div>
+                        <div class="form-group">
+                            <label>TMDB API Key <span
+                                    style="text-transform: none; color: var(--text-secondary);">(Optional)</span></label>
+                            <input type="text" id="wizard_tmdb_api_key" placeholder="API Key for TMDB support">
+                        </div>
+                        <div class="form-group">
+                            <label>MyAnimeList Client ID <span
+                                    style="text-transform: none; color: var(--text-secondary);">(Optional)</span></label>
+                            <input type="text" id="wizard_mal_client_id" placeholder="Client ID for MAL lists">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 5: Finished -->
+                <div id="wizard-step-5" class="wizard-step">
                     <div class="wizard-illustration"
                         style="background: rgba(16, 185, 129, 0.1); color: var(--success-color);">
                         <svg width="64" height="64" fill="currentColor" viewBox="0 0 16 16">
@@ -2586,7 +2641,7 @@
         /* ── Setup Wizard Logic ─────────────────────────────────── */
         let wizardStep = 1;
         let isWizardServerConnected = false;
-        const totalSteps = 4;
+        const totalSteps = 5;
 
         function openWizardManual() {
             wizardStep = 1;
@@ -2597,6 +2652,13 @@
             document.getElementById('wizard_media_path_in_jellyfin').value = currentConfig.media_path_in_jellyfin || '';
             document.getElementById('wizard_media_path_on_host').value = currentConfig.media_path_on_host || '';
             document.getElementById('wizard_target_path').value = currentConfig.target_path || '';
+
+            // Options
+            document.getElementById('wizard_auto_create_libraries').checked = !!currentConfig.auto_create_libraries;
+            document.getElementById('wizard_scheduler_enabled').checked = currentConfig.scheduler ? !!currentConfig.scheduler.global_enabled : false;
+            document.getElementById('wizard_trakt_client_id').value = currentConfig.trakt_client_id || '';
+            document.getElementById('wizard_tmdb_api_key').value = currentConfig.tmdb_api_key || '';
+            document.getElementById('wizard_mal_client_id').value = currentConfig.mal_client_id || '';
 
             // Listen for changes to reset connection status
             document.getElementById('wizard_jellyfin_url').oninput = () => { isWizardServerConnected = false; updateWizardUI(); };
@@ -2654,6 +2716,30 @@
             if (wizardStep > 1) {
                 wizardStep--;
                 updateWizardUI();
+            }
+        }
+
+        async function skipWizard() {
+            try {
+                // Mark setup as done without saving required fields unless already set
+                const configToSave = { ...currentConfig, setup_done: true };
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(configToSave)
+                });
+
+                if (response.ok) {
+                    document.getElementById('setup-wizard-modal').style.display = 'none';
+                    window.location.reload();
+                } else {
+                    const text = await response.text();
+                    let errMsg = text || response.statusText;
+                    try { const j = JSON.parse(text); if (j.message) errMsg = j.message; } catch (e) { }
+                    showStatus('Failed to skip setup: ' + errMsg, 'error');
+                }
+            } catch (err) {
+                showStatus('Failed to skip setup', 'error');
             }
         }
 
@@ -2766,6 +2852,13 @@
                 return;
             }
 
+            // Options
+            const autoCreate = document.getElementById('wizard_auto_create_libraries').checked;
+            const schedulerEnabled = document.getElementById('wizard_scheduler_enabled').checked;
+            const traktClientId = document.getElementById('wizard_trakt_client_id').value.trim();
+            const tmdbApiKey = document.getElementById('wizard_tmdb_api_key').value.trim();
+            const malClientId = document.getElementById('wizard_mal_client_id').value.trim();
+
             nextBtn.classList.add('btn-loading');
 
             // Update temporary config
@@ -2775,17 +2868,40 @@
             currentConfig.media_path_on_host = hPath;
             currentConfig.target_path = tPath;
 
+            currentConfig.auto_create_libraries = autoCreate;
+            if (!currentConfig.scheduler) {
+                currentConfig.scheduler = { global_enabled: false, global_schedule: "0 0 * * *", global_exclude_ids: [], cleanup_enabled: true, cleanup_schedule: "0 * * * *" };
+            }
+            currentConfig.scheduler.global_enabled = schedulerEnabled;
+
+            if (traktClientId) currentConfig.trakt_client_id = traktClientId;
+            else currentConfig.trakt_client_id = null;
+
+            if (tmdbApiKey) currentConfig.tmdb_api_key = tmdbApiKey;
+            else currentConfig.tmdb_api_key = null;
+
+            if (malClientId) currentConfig.mal_client_id = malClientId;
+            else currentConfig.mal_client_id = null;
+
+
             try {
                 // Only mark as done if save succeeds
                 const configToSave = { ...currentConfig, setup_done: true };
-                await fetch('/api/config', {
+                const response = await fetch('/api/config', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(configToSave)
                 });
 
-                document.getElementById('setup-wizard-modal').style.display = 'none';
-                window.location.reload();
+                if (response.ok) {
+                    document.getElementById('setup-wizard-modal').style.display = 'none';
+                    window.location.reload();
+                } else {
+                    const text = await response.text();
+                    let errMsg = text || response.statusText;
+                    try { const j = JSON.parse(text); if (j.message) errMsg = j.message; } catch (e) { }
+                    showStatus('Failed to finalise setup: ' + errMsg, 'error');
+                }
             } catch (err) {
                 showStatus('Failed to finalise setup', 'error');
             } finally {
