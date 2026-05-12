@@ -40,6 +40,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "cleanup_schedule": "0 * * * *"
     },
     "auto_create_libraries": False,
+    "auto_set_library_covers": False,
     "target_path_in_jellyfin": "",
     "setup_done": False
 }
@@ -58,44 +59,60 @@ def load_config() -> dict[str, Any]:
     * Missing keys are filled in from :data:`DEFAULT_CONFIG` (forward-compat).
     * Legacy keys ``jellyfin_root`` / ``host_root`` are migrated to their new
       names and the updated config is persisted automatically.
+    * Environment variable overrides take precedence for sensitive values:
+      ``JELLYFIN_API_KEY``, ``TRAKT_CLIENT_ID``, ``TMDB_API_KEY``,
+      ``MAL_CLIENT_ID``.
 
     Returns:
         The (possibly migrated) configuration dictionary.
     """
+    _env_overrides = {
+        "api_key": "JELLYFIN_API_KEY",
+        "trakt_client_id": "TRAKT_CLIENT_ID",
+        "tmdb_api_key": "TMDB_API_KEY",
+        "mal_client_id": "MAL_CLIENT_ID",
+    }
+
     if not os.path.exists(CONFIG_FILE):
         save_config(DEFAULT_CONFIG.copy())
-        return DEFAULT_CONFIG.copy()
+        cfg = DEFAULT_CONFIG.copy()
+    else:
+        try:
+            with open(CONFIG_FILE, "r") as fh:
+                cfg: dict[str, Any] = json.load(fh)
 
-    try:
-        with open(CONFIG_FILE, "r") as fh:
-            cfg: dict[str, Any] = json.load(fh)
+            # Fill in any keys added after initial creation
+            for key, default_value in DEFAULT_CONFIG.items():
+                cfg.setdefault(key, default_value)
+                # Ensure nested dictionaries (like scheduler) also have defaults
+                if isinstance(default_value, dict) and isinstance(cfg[key], dict):
+                    for sub_key, sub_val in default_value.items():
+                        cfg[key].setdefault(sub_key, sub_val)
 
-        # Fill in any keys added after initial creation
-        for key, default_value in DEFAULT_CONFIG.items():
-            cfg.setdefault(key, default_value)
-            # Ensure nested dictionaries (like scheduler) also have defaults
-            if isinstance(default_value, dict) and isinstance(cfg[key], dict):
-                for sub_key, sub_val in default_value.items():
-                    cfg[key].setdefault(sub_key, sub_val)
+            # Migrate renamed keys
+            migrated = False
+            if cfg.get("jellyfin_root") and not cfg.get("media_path_in_jellyfin"):
+                cfg["media_path_in_jellyfin"] = cfg["jellyfin_root"]
+                migrated = True
+            if cfg.get("host_root") and not cfg.get("media_path_on_host"):
+                cfg["media_path_on_host"] = cfg["host_root"]
+                migrated = True
+            if migrated:
+                cfg.pop("jellyfin_root", None)
+                cfg.pop("host_root", None)
+                save_config(cfg)
 
-        # Migrate renamed keys
-        migrated = False
-        if cfg.get("jellyfin_root") and not cfg.get("media_path_in_jellyfin"):
-            cfg["media_path_in_jellyfin"] = cfg["jellyfin_root"]
-            migrated = True
-        if cfg.get("host_root") and not cfg.get("media_path_on_host"):
-            cfg["media_path_on_host"] = cfg["host_root"]
-            migrated = True
-        if migrated:
-            cfg.pop("jellyfin_root", None)
-            cfg.pop("host_root", None)
-            save_config(cfg)
+        except Exception:
+            # If the file is corrupt or unreadable, fall back to safe defaults
+            cfg = DEFAULT_CONFIG.copy()
 
-        return cfg
+    # Apply environment-variable overrides (additive, never persisted)
+    for cfg_key, env_var in _env_overrides.items():
+        env_val = os.environ.get(env_var)
+        if env_val:
+            cfg[cfg_key] = env_val
 
-    except Exception:
-        # If the file is corrupt or unreadable, fall back to safe defaults
-        return DEFAULT_CONFIG.copy()
+    return cfg
 
 
 def save_config(config: dict[str, Any]) -> None:

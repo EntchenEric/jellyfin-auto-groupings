@@ -1,0 +1,15 @@
+<!-- Folder Picker Modal -->
+<div id="path-picker-modal" onclick="pickerOutsideClick(event)" role="dialog" aria-label="Select Folder" aria-modal="true">
+    <div class="picker-box">
+        <div class="picker-header">
+            <div class="picker-title" id="picker-title">Select Folder</div>
+            <div class="picker-breadcrumb" id="picker-breadcrumb">/</div>
+        </div>
+        <div class="picker-body" id="picker-body"></div>
+        <div class="picker-footer">
+            <span class="picker-footer-path" id="picker-footer-path">No folder selected</span>
+            <button onclick="closePicker()" class="secondary-btn" style="width:auto;padding:0.5rem 1rem;margin:0;">Cancel</button>
+            <button onclick="confirmPicker()" style="width:auto;padding:0.5rem 1rem;margin:0;">Select</button>
+        </div>
+    </div>
+</div>

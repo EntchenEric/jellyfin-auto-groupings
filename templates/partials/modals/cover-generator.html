@@ -1,0 +1,60 @@
+<!-- Cover Generator Modal -->
+<div id="cover-generator-modal" class="modal" style="z-index: 2000;" role="dialog" aria-label="Generate Cover" aria-modal="true">
+    <div class="card" style="max-width: min(800px, 95vw); width: 90%; max-height: 90vh; display: flex; flex-direction: column;">
+        <h2>Generate Cover (16:9)</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 1.25rem; margin-bottom: 1.25rem;">
+            <div style="grid-column: span 3;">
+                <label for="cover-text" style="font-size: 0.72rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem; display: block;">Cover Text</label>
+                <input type="text" id="cover-text" oninput="renderCover()" placeholder="Enter group name...">
+            </div>
+            <div style="min-width: 0;">
+                <label for="cover-theme" style="font-size: 0.72rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem; display: block;">Theme</label>
+                <select id="cover-theme" onchange="renderCover()">
+                    <option value="modern-dark">Dark Gradient (Modern)</option>
+                    <option value="vibrant-glow">Vibrant Glow</option>
+                    <option value="minimal-glass">Minimal Glassmorphism</option>
+                    <option value="cyberpunk">Cyberpunk Night</option>
+                    <option value="aurora">Aurora Borealis</option>
+                    <option value="monochrome">Monochrome Peak</option>
+                    <option value="vintage">Golden Age</option>
+                </select>
+            </div>
+            <div style="min-width: 0;">
+                <label for="cover-border-style" style="font-size: 0.72rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem; display: block;">Border Style</label>
+                <select id="cover-border-style" onchange="renderCover()">
+                    <option value="none">None</option>
+                    <option value="elegant">Elegant Thin</option>
+                    <option value="bold-frame">Bold Frame</option>
+                    <option value="neon-glow">Neon Glow</option>
+                    <option value="tech-corners">Sci-Fi Corners</option>
+                    <option value="double-inset">Double Inset</option>
+                    <option value="corner-brackets">Corner Brackets</option>
+                    <option value="industrial-dash">Dashed Industrial</option>
+                    <option value="ornate">Ornate Frame</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 0.6rem; align-items: flex-end; background: rgba(255,255,255,0.03); padding: 0.4rem 0.6rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border);">
+                <div>
+                    <label for="cover-border-color" style="font-size: 0.62rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 0.25rem; display: block;">Border</label>
+                    <input type="color" id="cover-border-color" value="#ffffff" onchange="renderCover()" style="width: 44px; height: 32px; padding: 0; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; cursor: pointer; background: transparent;">
+                </div>
+                <div>
+                    <label for="cover-color-1" style="font-size: 0.62rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 0.25rem; display: block;">Color 1</label>
+                    <input type="color" id="cover-color-1" value="#4f46e5" onchange="renderCover()" style="width: 44px; height: 32px; padding: 0; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; cursor: pointer; background: transparent;">
+                </div>
+                <div>
+                    <label for="cover-color-2" style="font-size: 0.62rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 0.25rem; display: block;">Color 2</label>
+                    <input type="color" id="cover-color-2" value="#9333ea" onchange="renderCover()" style="width: 44px; height: 32px; padding: 0; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; cursor: pointer; background: transparent;">
+                </div>
+            </div>
+        </div>
+        <div style="flex: 1; display: flex; justify-content: center; align-items: center; background: rgba(0,0,0,0.3); border-radius: var(--radius-md); padding: 1rem; overflow: hidden; border: 1px dashed var(--glass-border); min-height: 300px;">
+            <canvas id="cover-canvas" width="1920" height="1080" style="max-width: 100%; max-height: 45vh; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);"></canvas>
+        </div>
+        <div style="display: flex; gap: 0.75rem; margin-top: 1.25rem;">
+            <button type="button" id="apply-cover-btn" style="flex: 2; font-weight: 600; margin-top:0;">Apply Cover</button>
+            <button type="button" id="download-cover-btn" class="secondary-btn" style="flex: 1; font-weight: 600; margin-top:0;">Download</button>
+            <button type="button" class="secondary-btn close-modal-btn" style="flex: 1; margin-top:0;">Cancel</button>
+        </div>
+    </div>
+</div>

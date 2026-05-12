@@ -1,0 +1,19 @@
+<!-- Cleanup Modal -->
+<div id="cleanup-modal" class="modal" role="dialog" aria-label="Clean Up Folders" aria-modal="true">
+    <div class="card" style="max-width: 500px; width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
+        <h2>Clean Up Folders</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 1.25rem; font-size: 0.85rem;">Select the folders you want to delete from the target directory.</p>
+        <div id="cleanup-loading" style="display: flex; justify-content: center; padding: 2rem;">
+            <div class="loading-spinner" style="border-top-color: var(--accent-color); display: block;"></div>
+        </div>
+        <div id="cleanup-error" class="status-msg error" style="display: none; margin-bottom: 1rem;"></div>
+        <div id="cleanup-content" style="display: none; flex: 1; min-height: 0; flex-direction: column;">
+            <div id="cleanup-list" style="border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 0.5rem; overflow-y: auto; margin-bottom: 1.25rem; background: rgba(0,0,0,0.2);">
+            </div>
+            <div style="display: flex; gap: 0.75rem; margin-top: auto;">
+                <button id="confirm-cleanup-btn" style="flex: 2; background: var(--error-color); border-color: var(--error-color); margin-top:0;">Delete Selected <span id="cleanup-count"></span></button>
+                <button class="secondary-btn close-modal-btn" style="flex: 1; margin-top:0;">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>

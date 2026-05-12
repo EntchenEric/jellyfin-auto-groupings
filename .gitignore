@@ -23,3 +23,5 @@ test_results.txt
 pytest_verbose.log
 .pytest_cache/
 .coverage
+e2e/test_media/
+e2e/test_output/

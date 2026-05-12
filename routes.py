@@ -738,9 +738,10 @@ def index() -> ResponseReturnValue:
     """Serve the single-page frontend.
 
     Returns:
-        The ``index.html`` file located next to ``app.py``.
+        The rendered ``templates/base.html`` Jinja2 template.
     """
-    return send_from_directory(".", "index.html")
+    from flask import render_template
+    return render_template("base.html")
 
 
 @bp.route("/test")
