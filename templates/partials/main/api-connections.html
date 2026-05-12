@@ -1,0 +1,32 @@
+<!-- External API Connections -->
+<section class="card" aria-labelledby="api-connections-heading">
+    <h2 id="api-connections-heading">External API Connections</h2>
+    <p class="section-desc">Configure optional 3rd-party services to use as grouping sources.</p>
+
+    <form id="api-config-form">
+        <div class="form-grid-2">
+            <div class="sub-panel">
+                <h3 style="font-size: 0.82rem; display:flex; align-items:center; gap:0.4rem;">Trakt <span style="font-weight:400; color:var(--text-secondary);">(Optional)</span></h3>
+                <p style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Create an app at <a href="https://trakt.tv/oauth/applications/new" target="_blank" rel="noopener" style="color: var(--accent-color);">trakt.tv</a>.</p>
+                <label style="font-size: 0.68rem;">Trakt Client ID</label>
+                <input type="text" id="trakt_client_id" placeholder="Your Trakt API Client ID" style="font-size:0.85rem; padding: 0.5rem 0.7rem;">
+            </div>
+            <div class="sub-panel">
+                <h3 style="font-size: 0.82rem; display:flex; align-items:center; gap:0.4rem;">TMDb <span style="font-weight:400; color:var(--text-secondary);">(Optional)</span></h3>
+                <p style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Get v3 API Key at <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener" style="color: var(--accent-color);">themoviedb.org</a>.</p>
+                <label style="font-size: 0.68rem;">TMDb API Key</label>
+                <input type="text" id="tmdb_api_key" placeholder="Your TMDb API Key" style="font-size:0.85rem; padding: 0.5rem 0.7rem;">
+            </div>
+            <div class="sub-panel">
+                <h3 style="font-size: 0.82rem; display:flex; align-items:center; gap:0.4rem;">MyAnimeList <span style="font-weight:400; color:var(--text-secondary);">(Optional)</span></h3>
+                <p style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Get Client ID at <a href="https://myanimelist.net/apiconfig" target="_blank" rel="noopener" style="color: var(--accent-color);">myanimelist.net</a>.</p>
+                <label style="font-size: 0.68rem;">MAL Client ID</label>
+                <input type="text" id="mal_client_id" placeholder="Your MyAnimeList API Client ID" style="font-size:0.85rem; padding: 0.5rem 0.7rem;">
+            </div>
+        </div>
+        <button type="submit" id="save-apis-btn" style="margin-top: 1rem;">
+            <span class="loading-spinner"></span>
+            <span class="btn-text">Save API Keys</span>
+        </button>
+    </form>
+</section>

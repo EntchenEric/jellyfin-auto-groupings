@@ -1,0 +1,35 @@
+<header id="topbar">
+    <button id="hamburger-btn" onclick="document.getElementById('sidebar').classList.toggle('open')"
+        title="Menu" aria-label="Toggle sidebar menu">☰</button>
+    <div class="brand">
+        <h1>Jellyfin Groupings</h1>
+    </div>
+
+    <div id="connection-status">
+        <span class="connection-dot" id="status-dot"></span>
+        <span id="status-text">Disconnected</span>
+    </div>
+
+    <div class="topbar-spacer"></div>
+
+    <div class="topbar-actions">
+        <button class="topbar-btn secondary" id="topbar-wizard-btn" title="Open Setup Wizard" aria-label="Open Setup Wizard">
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 13a6 6 0 1 1 0-12 6 6 0 0 1 0 12z" />
+                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z" />
+            </svg>
+            <span class="btn-text">Wizard</span>
+        </button>
+        <button id="topbar-preview-btn" class="topbar-btn" aria-label="Preview sync">
+            <span class="loading-spinner" style="border-top-color:#fff;"></span>
+            <span class="btn-text">Preview</span>
+        </button>
+        <button id="topbar-sync-btn" class="topbar-btn primary" aria-label="Sync all groupings">
+            <span class="loading-spinner" style="border-top-color:#fff;"></span>
+            <span class="btn-text">Sync All</span>
+        </button>
+        <button id="topbar-cleanup-btn" class="topbar-btn danger" aria-label="Clean up folders">Clean Up</button>
+        <button id="topbar-export-btn" class="topbar-btn" aria-label="Export settings">Export</button>
+        <button id="topbar-import-btn" class="topbar-btn" aria-label="Import settings">Import</button>
+    </div>
+</header>

@@ -117,6 +117,17 @@ If you'd like to build the project from source or contribute:
 3. Run: `python app.py`.
 4. Tests: `python -m pytest`.
 
+### 🧪 Virtual Jellyfin for Development
+If you don't have a real Jellyfin server handy, or want to test without affecting your real setup, you can run a **mock Jellyfin server**:
+
+```bash
+python start_virtual_jellyfin.py
+```
+
+This will start a mock API at `http://localhost:8096`. You can then:
+- Access the **Dashboard** at [http://localhost:8096](http://localhost:8096) to see the mock state.
+- In the Jellyfin Groupings UI, set the **Server URL** to `http://localhost:8096` and **API Key** to anything (e.g., `test`).
+
 ### Unraid Support
 An Unraid Community Applications template is available in the `unraid/` directory.
 

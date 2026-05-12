@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Dashboard - Jellyfin Groupings</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f1115;
+            --pane-bg: rgba(25, 27, 33, 0.7);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-color: #e4e5e8;
+            --text-muted: #949ba4;
+            --accent: #00a4dc;
+            --accent-hover: #008ebf;
+            --font-main: 'Inter', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(0, 164, 220, 0.08), transparent 25%),
+                radial-gradient(circle at 85% 50%, rgba(0, 164, 220, 0.08), transparent 25%);
+            color: var(--text-color);
+            font-family: var(--font-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(15, 17, 21, 0.8);
+            backdrop-filter: blur(12px);
+            z-index: 10;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .header h1::before {
+            content: '';
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: var(--accent);
+            box-shadow: 0 0 10px var(--accent);
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+        }
+
+        button {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 6px;
+            font-family: var(--font-main);
+            font-weight: 500;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        button:hover {
+            background-color: var(--accent-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 164, 220, 0.2);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background-color: #3f4147;
+            color: #949ba4;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .layout {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            padding: 1.5rem;
+            gap: 1.5rem;
+        }
+
+        .pane {
+            flex: 1;
+            background: var(--pane-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        .pane-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(255, 255, 255, 0.02);
+            font-weight: 500;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .pane-content {
+            flex: 1;
+            overflow: auto;
+            position: relative;
+        }
+
+        .terminal {
+            padding: 1.5rem;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: #a9b1d6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .terminal span.success { color: #9ece6a; }
+        .terminal span.error { color: #f7768e; }
+        .terminal span.info { color: #7dcfff; }
+
+        .iframe-container {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #1a1b1e;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .tab {
+            padding: 0.4rem 0.8rem;
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid transparent;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            color: var(--text-color);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .tab.active {
+            color: var(--accent);
+            background: rgba(0, 164, 220, 0.1);
+            border-color: rgba(0, 164, 220, 0.2);
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .loader {
+            display: none;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>Test Environment Dashboard</h1>
+        <div class="controls">
+            <button id="refreshBtn" onclick="fetchResults()">
+                Refresh Logs
+            </button>
+            <button id="runBtn" onclick="runTests()">
+                <div class="loader" id="runLoader"></div>
+                <span id="runText">Run Test Suite</span>
+            </button>
+        </div>
+    </header>
+
+    <div class="layout">
+        <div class="pane">
+            <div class="pane-header">
+                <span>Test Execution Logs</span>
+                <div class="tabs" id="logTabs">
+                    <button class="tab active" onclick="switchTab('test_results.txt')">Full Output</button>
+                    <button class="tab" onclick="switchTab('current_test_out.txt')">Current</button>
+                    <button class="tab" onclick="switchTab('test_api_out.txt')">API Tests</button>
+                </div>
+            </div>
+            <div class="pane-content">
+                <div class="terminal" id="terminalOutput">Loading logs...</div>
+            </div>
+        </div>
+
+        <div class="pane">
+            <div class="pane-header">
+                <span>Virtual Jellyfin State</span>
+                <button class="tab" onclick="document.getElementById('jellyfinIframe').src = document.getElementById('jellyfinIframe').src">Reload View</button>
+            </div>
+            <div class="pane-content">
+                <iframe id="jellyfinIframe" class="iframe-container" src="http://localhost:8096"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentLogs = {};
+        let activeTab = 'test_results.txt';
+
+        function highlightLog(text) {
+            if (!text) return "No output available.";
+            return text
+                .replace(/PASSED/g, '<span class="success">PASSED</span>')
+                .replace(/FAILED/g, '<span class="error">FAILED</span>')
+                .replace(/ERROR:/g, '<span class="error">ERROR:</span>')
+                .replace(/collected \d+ items/g, match => `<span class="info">${match}</span>`);
+        }
+
+        async function fetchResults() {
+            const terminal = document.getElementById('terminalOutput');
+            const btn = document.getElementById('refreshBtn');
+            const oldText = btn.innerText;
+            btn.innerText = "Refreshing...";
+            
+            try {
+                const res = await fetch('/api/test/results');
+                const data = await res.json();
+                
+                if (data.status === 'success') {
+                    currentLogs = data.results;
+                    updateTerminal();
+                } else {
+                    terminal.innerHTML = `<span class="error">Failed to load: ${data.message}</span>`;
+                }
+            } catch (err) {
+                terminal.innerHTML = `<span class="error">Network error: ${err.message}</span>`;
+            } finally {
+                btn.innerText = oldText;
+            }
+        }
+
+        function switchTab(tabId) {
+            activeTab = tabId;
+            document.querySelectorAll('.tab').forEach(t => {
+                if(t.innerText.includes('Reload')) return;
+                t.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            updateTerminal();
+        }
+
+        function updateTerminal() {
+            const terminal = document.getElementById('terminalOutput');
+            terminal.innerHTML = highlightLog(currentLogs[activeTab] || 'File not found or empty.');
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        async function runTests() {
+            const btn = document.getElementById('runBtn');
+            const loader = document.getElementById('runLoader');
+            const text = document.getElementById('runText');
+            
+            btn.disabled = true;
+            loader.style.display = 'block';
+            text.innerText = 'Running...';
+            
+            try {
+                const res = await fetch('/api/test/run', { method: 'POST' });
+                const data = await res.json();
+                
+                if (data.status === 'success') {
+                    await fetchResults();
+                    // Reload iframe
+                    document.getElementById('jellyfinIframe').src = document.getElementById('jellyfinIframe').src;
+                } else {
+                    alert('Error running tests: ' + data.message);
+                }
+            } catch (err) {
+                alert('Network error: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                loader.style.display = 'none';
+                text.innerText = 'Run Test Suite';
+            }
+        }
+
+        // Initial load
+        fetchResults();
+    </script>
+</body>
+</html>

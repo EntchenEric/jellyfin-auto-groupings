@@ -15,3 +15,7 @@ venv/
 *.md
 docker-compose.yml
 unraid/
+
+# Tests and E2E
+tests/
+e2e/
