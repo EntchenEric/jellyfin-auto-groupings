@@ -52,11 +52,6 @@ export async function loadConfig() {
         updateSourceTypeOptions();
         renderGroups();
 
-        if (!state.currentConfig.setup_done) {
-            showModal('setup-wizard-modal');
-            // wizard init will be triggered
-        }
-
         if (state.currentConfig.jellyfin_url && state.currentConfig.api_key) {
             await performSilentTest();
         }
