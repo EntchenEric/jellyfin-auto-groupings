@@ -1,0 +1,172 @@
+<div id="sidebar-resizer" title="Drag to resize sidebar"></div>
+<aside id="sidebar" role="navigation" aria-label="Settings sidebar">
+
+    <!-- Connectivity Warning -->
+    <div id="connection-warning" class="status-msg error"
+        style="margin: 0; padding: 0.9rem; border-radius: var(--radius-md);">
+        <h3 style="color: var(--error-color); font-size: 0.85rem; margin-bottom: 0.3rem;">Server Not Connected</h3>
+        <p style="font-size: 0.75rem; margin-bottom: 0.5rem;">Open this via <code>python app.py</code> at
+            <a href="http://localhost:5000" style="color: var(--accent-color); font-weight: 600;">localhost:5000</a>.
+        </p>
+    </div>
+
+    <!-- 1 Server Settings -->
+    <section class="card" style="padding: 1.25rem;" aria-labelledby="server-settings-heading">
+        <div class="section-header">
+            <h2 id="server-settings-heading" style="margin-bottom:0;">1 Server Settings</h2>
+        </div>
+        <p class="section-desc">Point this tool at your Jellyfin server to get started.</p>
+
+        <form id="config-form">
+            <div class="form-group">
+                <label for="jellyfin_url">Jellyfin Server URL</label>
+                <input type="url" id="jellyfin_url" placeholder="https://jellyfin.yourdomain.com" required>
+                <small>Full URL including protocol and port.</small>
+            </div>
+            <div class="form-group">
+                <label for="api_key">API Key</label>
+                <input type="password" id="api_key" placeholder="Your Jellyfin API Key" required>
+                <small>Dashboard &rarr; API Keys.</small>
+            </div>
+            <div class="form-group">
+                <label for="target_path">Base Target Path</label>
+                <div id="target_path_group" class="picker-row path-field-locked">
+                    <input type="text" id="target_path" placeholder="/path/to/virtual/libraries" required disabled>
+                    <button type="button" class="browse-btn" onclick="openPathPicker('target_path')" disabled title="Browse">Browse</button>
+                </div>
+                <small>Where symlink folders will be created on <em>this machine</em>.</small>
+            </div>
+
+            <!-- Path Translation -->
+            <div class="sub-panel" style="margin-top: 0.75rem;">
+                <h3 style="font-size: 0.82rem; display: flex; align-items: center; gap: 0.4rem;">
+                    Media Path Translation <span style="font-weight: 400; color: var(--text-secondary); font-size: 0.78rem;">(Optional)</span>
+                </h3>
+                <p style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 0.75rem; line-height: 1.4;">
+                    Only needed when Jellyfin paths differ from this machine's paths (e.g. Docker).</p>
+                <div class="form-group">
+                    <label style="font-size: 0.68rem;">Path in Jellyfin</label>
+                    <div id="media_path_in_jellyfin_group" class="picker-row path-field-locked">
+                        <input type="text" id="media_path_in_jellyfin" placeholder="/media" style="font-size:0.82rem; padding: 0.5rem 0.7rem;" disabled>
+                        <button type="button" class="browse-btn" onclick="openPathPicker('media_path_in_jellyfin')" disabled>Browse</button>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label style="font-size: 0.68rem;">Same path on this machine</label>
+                    <div id="media_path_on_host_group" class="picker-row path-field-locked">
+                        <input type="text" id="media_path_on_host" placeholder="/home/user/media" style="font-size:0.82rem; padding: 0.5rem 0.7rem;" disabled>
+                        <button type="button" class="browse-btn" onclick="openPathPicker('media_path_on_host')" disabled>Browse</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Auto Library Creation -->
+            <div class="sub-panel sub-panel-accent" style="margin-top: 0.75rem;">
+                <h3 style="font-size: 0.82rem; color: var(--accent-color); display: flex; align-items: center; gap: 0.4rem;">
+                    Automatic Library Creation</h3>
+                <label class="checkbox-label" style="margin-bottom: 0.75rem;">
+                    <input type="checkbox" id="auto_create_libraries">
+                    <span>Auto-Create Libraries in Jellyfin</span>
+                </label>
+                <p style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 0.75rem; line-height: 1.4;">
+                    Automatically creates a Jellyfin library for each grouping after syncing.</p>
+
+                <label class="checkbox-label" style="margin-bottom: 0.75rem;">
+                    <input type="checkbox" id="auto_set_library_covers">
+                    <span>Auto-Set Library Covers</span>
+                </label>
+                <p style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 0.75rem; line-height: 1.4;">
+                    Automatically upload the generated cover directly to the Jellyfin library upon sync.
+                    Requires Library Creation above.</p>
+
+                <label style="font-size: 0.68rem; opacity: 0.8;">Target path as Jellyfin sees it (optional)</label>
+                <div id="target_path_in_jellyfin_group" class="picker-row path-field-locked">
+                    <input type="text" id="target_path_in_jellyfin" placeholder="/groupings" style="font-size:0.82rem; padding: 0.5rem 0.7rem;" disabled>
+                    <button type="button" class="browse-btn" onclick="openPathPicker('target_path_in_jellyfin')" disabled>Browse</button>
+                </div>
+            </div>
+
+            <div class="btn-row" style="margin-top: 0.75rem;">
+                <button type="button" id="auto-detect-btn" class="secondary-btn"
+                    style="border-color: var(--accent-color); color: var(--accent-color);">
+                    <span class="loading-spinner"></span>
+                    <span class="btn-text">Auto-Detect</span>
+                </button>
+                <button type="button" id="test-btn" class="secondary-btn">
+                    <span class="loading-spinner"></span>
+                    <span class="btn-text">Test</span>
+                </button>
+            </div>
+            <button type="submit" id="save-btn" style="margin-top: 0.5rem;">
+                <span class="loading-spinner"></span>
+                <span class="btn-text">Save Server Settings</span>
+            </button>
+        </form>
+    </section>
+
+    <!-- 4 Scheduler -->
+    <section class="card locked-section" id="scheduler-card" style="padding: 1.25rem;" aria-labelledby="scheduler-heading">
+        <div class="locked-overlay-text">Server Required</div>
+        <h2 id="scheduler-heading">4 Auto Sync Scheduling</h2>
+        <p class="section-desc">Configure automatic sync schedules.</p>
+
+        <div class="sub-panel">
+            <label class="checkbox-label">
+                <input type="checkbox" id="global_scheduler_enabled" onchange="toggleGlobalScheduler(this)">
+                <span>Enable Global Scheduler</span>
+            </label>
+
+            <div id="global_scheduler_panel" style="display: none; margin-top: 0.75rem;">
+                <div class="form-group">
+                    <label for="global_sync_schedule">Global Sync Schedule (Cron)</label>
+                    <input type="text" id="global_sync_schedule" placeholder="0 0 * * * (Every midnight)" style="font-size:0.85rem;">
+                    <small>Standard crontab: <code>minute hour day month weekday</code></small>
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label>Excluded Groupings</label>
+                    <div id="global_sync_exclusions"
+                        style="max-height: 130px; overflow-y: auto; background: rgba(0,0,0,0.15); padding: 0.5rem; border-radius: var(--radius-sm); display: flex; flex-direction: column; gap: 0.3rem;">
+                    </div>
+                    <small>These groupings skip the global scheduled sync.</small>
+                </div>
+            </div>
+
+            <div style="margin-top: 1rem; border-top: 1px dashed var(--glass-border); padding-top: 1rem;">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="cleanup_scheduler_enabled" onchange="toggleCleanupScheduler(this)">
+                    <span>Enable Auto-Cleanup</span>
+                </label>
+                <div id="cleanup_scheduler_panel" style="display: none; margin-top: 0.75rem;">
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label for="cleanup_sync_schedule">Cleanup Schedule (Cron)</label>
+                        <input type="text" id="cleanup_sync_schedule" placeholder="0 * * * * (Every hour)" style="font-size:0.85rem;">
+                        <small>Removes broken symlinks when originals are deleted.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How it Works guide -->
+    <section style="display: flex; flex-direction: column; gap: 0.6rem;" aria-label="How it works">
+        <p style="font-size: 0.72rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em;">
+            How It Works</p>
+        <div class="how-step">
+            <div class="step-num">1</div>
+            <div class="step-body"><strong>Connect Jellyfin</strong><span>Enter your server URL and API key.</span></div>
+        </div>
+        <div class="how-step">
+            <div class="step-num">2</div>
+            <div class="step-body"><strong>Define Groupings</strong><span>Each grouping becomes a virtual Jellyfin library.</span></div>
+        </div>
+        <div class="how-step">
+            <div class="step-num">3</div>
+            <div class="step-body"><strong>Sync &amp; Add</strong><span>Sync creates symlinks. Then add each folder as a library in Jellyfin (Mixed Movies and Shows).</span></div>
+        </div>
+    </section>
+
+    <div class="footer">
+        <p>Run <code>python app.py</code> &middot; Jellyfin Groupings</p>
+    </div>
+
+</aside>

@@ -15,7 +15,7 @@ def virtual_jellyfin():
     server_thread = threading.Thread(target=lambda: jelly_mock_app.run(port=8096, debug=False, use_reloader=False))
     server_thread.daemon = True
     server_thread.start()
-    
+
     # Wait for server to be ready
     base_url = "http://localhost:8096"
     timeout = 5
@@ -28,8 +28,9 @@ def virtual_jellyfin():
             time.sleep(0.1)
     else:
         pytest.fail("Virtual Jellyfin server failed to start")
-        
+
     return base_url
+
 
 @pytest.fixture(autouse=True)
 def mock_scheduler():
@@ -37,6 +38,10 @@ def mock_scheduler():
     mock_bg_sched_instance = patcher.start()
     yield mock_bg_sched_instance
     patcher.stop()
+
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "e2e: end-to-end tests requiring real Jellyfin instance")
 
 from app import app as flask_app
 from config import DEFAULT_CONFIG, CONFIG_DIR

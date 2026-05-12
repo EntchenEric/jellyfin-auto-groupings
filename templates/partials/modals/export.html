@@ -1,0 +1,27 @@
+<!-- Export Modal -->
+<div id="export-modal" class="modal" role="dialog" aria-label="Export Settings" aria-modal="true">
+    <div class="card" style="max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;">
+        <h2>Export Settings</h2>
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label>What do you want to export?</label>
+            <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.75rem;">
+                <label style="display: flex; align-items: center; gap: 0.75rem; text-transform: none; cursor: pointer; font-size: 0.9rem;">
+                    <input type="radio" name="export-type" value="all" checked onchange="toggleExportSelection()">
+                    Full Configuration (Settings + All Groups)
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.75rem; text-transform: none; cursor: pointer; font-size: 0.9rem;">
+                    <input type="radio" name="export-type" value="selective" onchange="toggleExportSelection()">
+                    Selected Groupings Only
+                </label>
+            </div>
+        </div>
+        <div id="export-selection-list" style="display: none; border-top: 1px solid var(--glass-border); padding-top: 1rem; margin-bottom: 1.25rem;">
+            <label>Select Groups</label>
+            <div id="export-groups-container"></div>
+        </div>
+        <div style="display: flex; gap: 0.75rem;">
+            <button id="export-download-btn" style="flex: 2; margin-top:0;">Download Export</button>
+            <button class="secondary-btn close-modal-btn" style="flex: 1; border-color: var(--error-color); color: var(--error-color); margin-top:0;">Cancel</button>
+        </div>
+    </div>
+</div>

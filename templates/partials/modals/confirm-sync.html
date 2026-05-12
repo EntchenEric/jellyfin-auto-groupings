@@ -1,0 +1,27 @@
+<!-- Confirm Sync Modal -->
+<div id="confirm-sync-modal" class="modal" role="dialog" aria-label="Confirm Sync" aria-modal="true">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Confirm Sync</h3>
+            <button class="close-btn close-modal-btn" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5;">
+                This will create/update symlinks for <strong id="confirm-sync-group-count">0</strong> groupings
+                (<span id="confirm-sync-item-count">0</span> potential media items).
+            </p>
+            <p style="color: var(--warning-color); font-size: 0.82rem; margin-top: 0.75rem;">
+                All existing symlink folders will be rebuilt. This cannot be undone.
+            </p>
+            <label class="checkbox-label" style="margin-top: 1rem;">
+                <input type="checkbox" id="confirm-sync-skip-next">
+                <span>Don't ask again</span>
+            </label>
+        </div>
+        <div class="modal-footer">
+            <button class="secondary-btn close-modal-btn" style="margin:0;">Cancel</button>
+            <button id="confirm-sync-preview-btn" class="secondary-btn" style="margin:0;">Preview First</button>
+            <button id="confirm-sync-go-btn" style="margin:0; background: var(--accent-color);">Sync Now</button>
+        </div>
+    </div>
+</div>

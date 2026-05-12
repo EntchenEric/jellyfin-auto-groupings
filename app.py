@@ -28,7 +28,7 @@ import os
 # Application factory
 # ---------------------------------------------------------------------------
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder="templates", static_folder="static")
 app.register_blueprint(bp)
 
 # Start the background sync scheduler
@@ -44,4 +44,5 @@ if __name__ == "__main__":
     if not os.path.exists(CONFIG_FILE):
         save_config(DEFAULT_CONFIG.copy())
 
-    app.run(host="0.0.0.0", debug=True, port=5000)
+    port = int(os.environ.get("FLASK_PORT", "5000"))
+    app.run(host="0.0.0.0", debug=True, port=port)

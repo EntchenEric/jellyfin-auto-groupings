@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jellyfin Groupings | Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/variables.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/reset.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/wizard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/cover-generator.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
+</head>
+
+<body>
+    <div class="bg-blob bg-blob-1"></div>
+    <div class="bg-blob bg-blob-2"></div>
+
+    {% include 'partials/topbar.html' %}
+    {% include 'partials/wizard.html' %}
+
+    <div id="app-layout">
+        {% include 'partials/sidebar.html' %}
+        <main id="main-content">
+            {% include 'partials/main/sync-maintenance.html' %}
+            {% include 'partials/main/groupings.html' %}
+            {% include 'partials/main/api-connections.html' %}
+        </main>
+    </div>
+
+    {% include 'partials/modals/export.html' %}
+    {% include 'partials/modals/import.html' %}
+    {% include 'partials/modals/preview-sync.html' %}
+    {% include 'partials/modals/cleanup.html' %}
+    {% include 'partials/modals/cover-generator.html' %}
+    {% include 'partials/modals/confirm-sync.html' %}
+    {% include 'partials/modals/path-picker.html' %}
+
+    <div id="status-msg" class="status-msg" role="status" aria-live="polite"></div>
+
+    <script type="module" src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
