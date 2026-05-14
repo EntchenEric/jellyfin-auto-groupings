@@ -63,12 +63,35 @@ export async function loadConfig() {
     }
 }
 
+function validateCronField(expr) {
+    if (!expr || !expr.trim()) return 'Cron expression must not be empty';
+    const fields = expr.trim().split(/\s+/);
+    if (fields.length !== 5) return `Cron must have 5 fields (has ${fields.length})`;
+    return null; // Deeper validation done server-side
+}
+
 export async function saveAllConfig() {
     if (!state.currentConfig.scheduler) state.currentConfig.scheduler = {};
     state.currentConfig.scheduler.global_enabled = getEl('global_scheduler_enabled').checked;
     state.currentConfig.scheduler.global_schedule = getEl('global_sync_schedule').value.trim();
     state.currentConfig.scheduler.cleanup_enabled = getEl('cleanup_scheduler_enabled').checked;
     state.currentConfig.scheduler.cleanup_schedule = getEl('cleanup_sync_schedule').value.trim() || '0 * * * *';
+
+    // Client-side cron validation
+    if (state.currentConfig.scheduler.global_enabled) {
+        const err = validateCronField(state.currentConfig.scheduler.global_schedule);
+        if (err) { showToast(`Global schedule: ${err}`, 'error'); return; }
+    }
+    if (state.currentConfig.scheduler.cleanup_enabled) {
+        const err = validateCronField(state.currentConfig.scheduler.cleanup_schedule);
+        if (err) { showToast(`Cleanup schedule: ${err}`, 'error'); return; }
+    }
+    for (const g of state.currentConfig.groups) {
+        if (g.schedule_enabled && g.schedule) {
+            const err = validateCronField(g.schedule);
+            if (err) { showToast(`Group '${g.name}': ${err}`, 'error'); return; }
+        }
+    }
 
     try {
         await apiSaveConfig(state.currentConfig);
@@ -86,12 +109,7 @@ export async function performSilentTest() {
         api_key: state.currentConfig.api_key
     };
     try {
-        const resp = await fetch('/api/test-server', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        const result = await resp.json();
+        const result = await apiPost('/api/test-server', data);
         const isValid = result.status === 'success';
         updateValidationUI(isValid);
         if (isValid) refreshMetadata();
@@ -110,6 +128,20 @@ export function toggleCleanupScheduler(cb) {
     if (panel) panel.style.display = cb.checked ? 'block' : 'none';
 }
 
+export function syncDomToState() {
+    state.currentConfig.jellyfin_url = getEl('jellyfin_url').value;
+    state.currentConfig.api_key = getEl('api_key').value;
+    state.currentConfig.target_path = getEl('target_path').value;
+    state.currentConfig.media_path_in_jellyfin = getEl('media_path_in_jellyfin').value;
+    state.currentConfig.media_path_on_host = getEl('media_path_on_host').value;
+    state.currentConfig.auto_create_libraries = getEl('auto_create_libraries').checked;
+    state.currentConfig.auto_set_library_covers = getEl('auto_set_library_covers').checked;
+    state.currentConfig.target_path_in_jellyfin = getEl('target_path_in_jellyfin').value;
+    state.currentConfig.trakt_client_id = getEl('trakt_client_id').value;
+    state.currentConfig.tmdb_api_key = getEl('tmdb_api_key').value;
+    state.currentConfig.mal_client_id = getEl('mal_client_id').value;
+}
+
 export function initConfig() {
     const configForm = getEl('config-form');
     const saveBtn = getEl('save-btn');
@@ -119,24 +151,19 @@ export function initConfig() {
     configForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         setLoading(saveBtn, true);
-        state.currentConfig.jellyfin_url = getEl('jellyfin_url').value;
-        state.currentConfig.api_key = getEl('api_key').value;
-        state.currentConfig.target_path = getEl('target_path').value;
-        state.currentConfig.media_path_in_jellyfin = getEl('media_path_in_jellyfin').value;
-        state.currentConfig.media_path_on_host = getEl('media_path_on_host').value;
-        state.currentConfig.auto_create_libraries = getEl('auto_create_libraries').checked;
-        state.currentConfig.auto_set_library_covers = getEl('auto_set_library_covers').checked;
-        state.currentConfig.target_path_in_jellyfin = getEl('target_path_in_jellyfin').value;
+        syncDomToState();
         await saveAllConfig();
         setLoading(saveBtn, false);
 
         if (state.currentConfig.jellyfin_url && state.currentConfig.api_key) {
             showLoadingOverlay(
                 'Reconnecting to Jellyfin',
-                'Fetching updated genres, actors, studios, and tags...'
+                'Fetching updated genres, actors, studios, and tags...',
+                1
             );
             try {
                 await refreshMetadata(updateLoadingStatus);
+                updateLoadingStatus('Done', true);
             } catch (err) {
                 // refreshMetadata throws on failure
             } finally {
@@ -148,9 +175,7 @@ export function initConfig() {
     apiConfigForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         setLoading(saveApisBtn, true);
-        state.currentConfig.trakt_client_id = getEl('trakt_client_id').value;
-        state.currentConfig.tmdb_api_key = getEl('tmdb_api_key').value;
-        state.currentConfig.mal_client_id = getEl('mal_client_id').value;
+        syncDomToState();
         await saveAllConfig();
         setLoading(saveApisBtn, false);
     });

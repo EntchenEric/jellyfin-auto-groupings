@@ -450,6 +450,32 @@ def test_find_collection_by_name_request_exception(mock_get):
     assert result is None
 
 
+@patch('requests.get')
+def test_find_collection_by_name_on_second_page(mock_get):
+    page1 = MagicMock()
+    page1.json.return_value = {
+        "Items": [
+            {"Name": "Marvel Phase 1", "Id": "phase1"},
+            {"Name": "Marvel Phase 2", "Id": "phase2"},
+        ],
+        "TotalRecordCount": 3,
+    }
+    page1.raise_for_status.return_value = None
+
+    page2 = MagicMock()
+    page2.json.return_value = {
+        "Items": [{"Name": "Marvel", "Id": "exact_match"}],
+        "TotalRecordCount": 3,
+    }
+    page2.raise_for_status.return_value = None
+
+    mock_get.side_effect = [page1, page2]
+
+    result = find_collection_by_name("http://localhost:8096", "test_key", "Marvel")
+    assert result == "exact_match"
+    assert mock_get.call_count == 2
+
+
 @patch('requests.post')
 def test_add_to_collection_success(mock_post):
     mock_response = MagicMock()

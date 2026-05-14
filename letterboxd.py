@@ -10,14 +10,14 @@ from __future__ import annotations
 import logging
 import re
 import time
-from typing import Any
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 
 logger = logging.getLogger(__name__)
 
-# Maximum pages to scrape (safety guard, 100 items per page)
 _MAX_PAGES: int = 10
+_MAX_WORKERS: int = 6
 
 _REQUEST_HEADERS: dict[str, str] = {
     "User-Agent": (
@@ -29,124 +29,59 @@ _REQUEST_HEADERS: dict[str, str] = {
 }
 
 
-def fetch_letterboxd_list(list_url: str) -> list[str]:
-    """Fetch a Letterboxd list and return its IMDb or TMDb IDs in list order.
+def _extract_ids_from_list_page(html: str) -> dict[str, str]:
+    """Extract IMDb/TMDb IDs embedded in list-page HTML.
 
-    *list_url* should be a full Letterboxd list URL.
-    The function paginates automatically and extracts IDs from the HTML.
-
-    Args:
-        list_url: Full Letterboxd list URL.
-
-    Returns:
-        An ordered list of IDs (IMDb 'tt...' or TMDb numeric strings).
-
-    Raises:
-        ValueError: If *list_url* is invalid.
-        RuntimeError: If an HTTP error occurs while fetching.
+    Returns a mapping of ``slug -> id`` for films where an ID was found
+    directly on the list page, avoiding a per-film page fetch.
     """
-    list_url = list_url.rstrip("/")
-    if "letterboxd.com" not in list_url:
-        raise ValueError(f"Invalid Letterboxd URL: {list_url!r}")
+    found: dict[str, str] = {}
 
-    ids: list[str] = []
-    session = requests.Session()
-    session.headers.update(_REQUEST_HEADERS)
+    for match in re.finditer(
+        r'data-film-slug="([^"]+)".*?data-tmdb-id="(\d+)"', html, re.DOTALL
+    ):
+        found[match.group(1)] = match.group(2)
 
-    page = 1
-    seen_ids: set[str] = set()
+    for match in re.finditer(
+        r'data-film-slug="([^"]+)".*?imdb\.com/title/(tt\d+)', html, re.DOTALL
+    ):
+        slug = match.group(1)
+        if slug not in found:
+            found[slug] = match.group(2)
 
-    while True:
-        # Letterboxd pagination: /page/2/
-        current_url = f"{list_url}/page/{page}/" if page > 1 else f"{list_url}/"
-        
-        try:
-            resp = session.get(current_url, timeout=15)
-            # If we get a 404 on a page > 1, it means we've reached the end
-            if resp.status_code == 404 and page > 1:
-                break
-            resp.raise_for_status()
-        except requests.RequestException as exc:
-            raise RuntimeError(f"Failed to fetch Letterboxd list page {page}: {exc}") from exc
+    for match in re.finditer(
+        r'data-film-slug="([^"]+)".*?themoviedb\.org/movie/(\d+)', html, re.DOTALL
+    ):
+        slug = match.group(1)
+        if slug not in found:
+            found[slug] = match.group(2)
 
-        html = resp.text
-        
-        # Look for the film posters which contain data-film-slug or are wrapped in links
-        # We can also look for data-film-id or data-target-link
-        # A more robust way is to find the slugs and then we might need to fetch the film page 
-        # BUT many enthusiasts have found that Letterboxd often includes TMDB IDs in the HTML
-        # specifically in data attributes of the poster div or in the json-ld.
-        
-        # Method 1: Extraction of slugs
-        slugs = re.findall(r'data-film-slug="([^"]+)"', html)
-        
-        # If no slugs found with data-film-slug, try standard links
-        if not slugs:
-            slugs = re.findall(r'href="/film/([^/"]+)/"', html)
-
-        # Deduplicate slugs while preserving order
-        unique_slugs_in_page = []
-        for slug in slugs:
-            if slug not in unique_slugs_in_page:
-                unique_slugs_in_page.append(slug)
-
-        if not unique_slugs_in_page:
-            logger.warning("No film slugs found on Letterboxd page %d", page)
-            break
-
-        logger.info("Found %d slugs on Letterboxd page %d, fetching IDs...", len(unique_slugs_in_page), page)
-        for slug in unique_slugs_in_page:
-            film_id = _fetch_id_for_slug(session, slug)
-            if film_id:
-                logger.debug("  Found ID for %s: %s", slug, film_id)
-                if film_id not in seen_ids:
-                    ids.append(film_id)
-                    seen_ids.add(film_id)
-            else:
-                logger.debug("  No ID found for: %s", slug)
-
-        # Check for next page
-        if 'class="next"' not in html or page >= _MAX_PAGES:
-            break
-            
-        page += 1
-        # Small delay to be respectful
-        time.sleep(0.5)
-
-    return ids
+    return found
 
 
-def _fetch_id_for_slug(session: requests.Session, slug: str) -> str | None:
-    """Fetch the IMDb or TMDb ID for a specific film slug.
-
-    Performs a GET request to the film's Letterboxd page and extracts either
-    the IMDb ID (tt...) or TMDb ID from the HTML content.
+def _fetch_id_for_slug(slug: str) -> str | None:
+    """Fetch the IMDb or TMDb ID from a film's detail page.
 
     Args:
-        session: The active requests.Session to use for the request.
-        slug: The Letterboxd film slug (e.g., "the-godfather").
+        slug: The Letterboxd film slug (e.g., ``"the-godfather"``).
 
     Returns:
-        The extracted ID as a string, or None if no ID could be found or an
-        error occurred.
+        The extracted ID as a string, or ``None`` if no ID was found.
     """
     film_url = f"https://letterboxd.com/film/{slug}/"
     try:
-        resp = session.get(film_url, timeout=10)
+        resp = requests.get(film_url, headers=_REQUEST_HEADERS, timeout=10)
         resp.raise_for_status()
         html = resp.text
-        
-        # Try to find IMDb ID
+
         imdb_match = re.search(r'href="[^"]*imdb\.com/title/(tt\d+)', html)
         if imdb_match:
             return imdb_match.group(1)
-            
-        # Try to find TMDb ID
+
         tmdb_match = re.search(r'href="[^"]*themoviedb\.org/movie/(\d+)', html)
         if tmdb_match:
             return tmdb_match.group(1)
 
-        # Alternative: check for data-tmdb-id or similar
         tmdb_attr = re.search(r'data-tmdb-id="(\d+)"', html)
         if tmdb_attr:
             return tmdb_attr.group(1)
@@ -156,3 +91,91 @@ def _fetch_id_for_slug(session: requests.Session, slug: str) -> str | None:
         return None
 
     return None
+
+
+def fetch_letterboxd_list(list_url: str) -> list[str]:
+    """Fetch a Letterboxd list and return its IMDb or TMDb IDs in list order.
+
+    Extracts IDs embedded in list-page HTML where possible; remaining slugs
+    are resolved via parallel film-page requests.
+
+    Args:
+        list_url: Full Letterboxd list URL.
+
+    Returns:
+        An ordered list of IDs (IMDb ``tt...`` or TMDb numeric strings).
+
+    Raises:
+        ValueError: If *list_url* is invalid.
+        RuntimeError: If an HTTP error occurs while fetching a list page.
+    """
+    list_url = list_url.rstrip("/")
+    if "letterboxd.com" not in list_url:
+        raise ValueError(f"Invalid Letterboxd URL: {list_url!r}")
+
+    ids: list[str] = []
+    seen_ids: set[str] = set()
+    page = 1
+
+    while True:
+        current_url = f"{list_url}/page/{page}/" if page > 1 else f"{list_url}/"
+
+        try:
+            resp = requests.get(current_url, headers=_REQUEST_HEADERS, timeout=15)
+            if resp.status_code == 404 and page > 1:
+                break
+            resp.raise_for_status()
+        except requests.RequestException as exc:
+            raise RuntimeError(f"Failed to fetch Letterboxd list page {page}: {exc}") from exc
+
+        html = resp.text
+
+        ids_from_list = _extract_ids_from_list_page(html)
+
+        slugs = re.findall(r'data-film-slug="([^"]+)"', html)
+        if not slugs:
+            slugs = re.findall(r'href="/film/([^/"]+)/"', html)
+
+        unique_slugs: list[str] = []
+        for slug in slugs:
+            if slug not in unique_slugs:
+                unique_slugs.append(slug)
+
+        if not unique_slugs:
+            logger.warning("No film slugs found on Letterboxd page %d", page)
+            break
+
+        slugs_to_fetch = [s for s in unique_slugs if s not in ids_from_list]
+        logger.info(
+            "Letterboxd page %d: %d slugs (%d from list, %d to fetch)",
+            page, len(unique_slugs), len(ids_from_list), len(slugs_to_fetch),
+        )
+
+        slug_results: dict[str, str | None] = {}
+        if slugs_to_fetch:
+            with ThreadPoolExecutor(max_workers=_MAX_WORKERS) as executor:
+                future_map = {
+                    executor.submit(_fetch_id_for_slug, slug): slug
+                    for slug in slugs_to_fetch
+                }
+                for future in as_completed(future_map):
+                    slug = future_map[future]
+                    try:
+                        slug_results[slug] = future.result()
+                    except Exception:
+                        logger.debug("Unexpected error for '%s'", slug, exc_info=True)
+                        slug_results[slug] = None
+
+        for slug in unique_slugs:
+            film_id = ids_from_list.get(slug) or slug_results.get(slug)
+            if film_id and film_id not in seen_ids:
+                ids.append(film_id)
+                seen_ids.add(film_id)
+
+        if 'class="next"' not in html or page >= _MAX_PAGES:
+            break
+
+        page += 1
+        time.sleep(0.5)
+
+    return ids

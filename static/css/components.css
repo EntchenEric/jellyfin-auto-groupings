@@ -395,24 +395,24 @@ button:disabled {
     overflow: hidden;
 }
 
-.progress-bar-indeterminate {
+.progress-bar-fill {
     height: 100%;
-    width: 30%;
     background: var(--accent-color);
     border-radius: 2px;
-    animation: progress-indeterminate 1.4s ease-in-out infinite;
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-@keyframes progress-indeterminate {
-    0% {
-        transform: translateX(-100%);
-    }
-    50% {
-        transform: translateX(200%);
-    }
-    100% {
-        transform: translateX(400%);
-    }
+.progress-info {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.5rem;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+}
+
+.progress-info #progress-eta {
+    opacity: 0.7;
+    font-style: italic;
 }
 
 /* ── Modals ─────────────────────────────────────────────── */

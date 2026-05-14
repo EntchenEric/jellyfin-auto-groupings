@@ -14,6 +14,7 @@ import hashlib
 import logging
 import os
 import re
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
@@ -23,7 +24,7 @@ from flask.typing import ResponseReturnValue
 
 from config import load_config, save_config
 from jellyfin import delete_virtual_folder, fetch_jellyfin_items, get_users
-from scheduler import update_scheduler_jobs
+from scheduler import update_scheduler_jobs, validate_cron
 from sync import get_cover_path, parse_complex_query, preview_group, run_sync
 
 bp = Blueprint("main", __name__)
@@ -102,6 +103,30 @@ def update_config() -> ResponseReturnValue:
     if not isinstance(new_config, dict):
         return (
             jsonify({"status": "error", "message": "Request body must be a JSON object"}),
+            400,
+        )
+
+    # Validate cron expressions
+    cron_errors = []
+    sched_cfg = new_config.get("scheduler", {})
+    if sched_cfg.get("global_enabled"):
+        global_sched = sched_cfg.get("global_schedule", "")
+        err = validate_cron(global_sched)
+        if err:
+            cron_errors.append(f"Global schedule: {err}")
+    cleanup_sched = sched_cfg.get("cleanup_schedule", "")
+    if cleanup_sched and sched_cfg.get("cleanup_enabled", True):
+        err = validate_cron(cleanup_sched)
+        if err:
+            cron_errors.append(f"Cleanup schedule: {err}")
+    for group in new_config.get("groups", []):
+        if group.get("schedule_enabled") and group.get("schedule"):
+            err = validate_cron(group["schedule"])
+            if err:
+                cron_errors.append(f"Group '{group.get('name', 'unnamed')}': {err}")
+    if cron_errors:
+        return (
+            jsonify({"status": "error", "message": "Invalid cron expression(s)", "errors": cron_errors}),
             400,
         )
     try:
@@ -641,6 +666,10 @@ def auto_detect_paths() -> ResponseReturnValue:
             400,
         )
 
+    # Walk limits: max 30 seconds, max 50 000 files scanned
+    _WALK_TIMEOUT = 30
+    _WALK_MAX_FILES = 50_000
+
     home_dir: str = os.path.expanduser("~")
     detected_j_root: str | None = None
     detected_h_root: str | None = None
@@ -654,8 +683,28 @@ def auto_detect_paths() -> ResponseReturnValue:
         search_roots: list[str] = [home_dir, "/media", "/mnt"]
 
         match_found: str | None = None
+        walk_start = time.time()
+        files_scanned = 0
         for root in search_roots:
+            if not os.path.isdir(root):
+                continue
             for dirpath, dirnames, filenames in os.walk(root):
+                # Skip mount points and remote filesystems
+                if os.path.ismount(dirpath) and dirpath != root:
+                    dirnames.clear()
+                    continue
+                # Timeout check
+                if time.time() - walk_start > _WALK_TIMEOUT:
+                    logger.warning("auto-detect timed out after %ds, %d files scanned", _WALK_TIMEOUT, files_scanned)
+                    dirnames.clear()
+                    break
+                # File count limit
+                files_scanned += len(filenames)
+                if files_scanned > _WALK_MAX_FILES:
+                    logger.warning("auto-detect hit file limit (%d), stopping scan", _WALK_MAX_FILES)
+                    dirnames.clear()
+                    break
+
                 if filename in filenames:
                     match_found = os.path.join(dirpath, filename)
                     break

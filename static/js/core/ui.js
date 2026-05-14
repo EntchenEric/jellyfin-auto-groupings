@@ -73,22 +73,67 @@ export function getEl(id) {
     return document.getElementById(id);
 }
 
-export function showLoadingOverlay(title, status) {
+let _progressTotal = 0;
+let _progressStep = 0;
+let _progressStartTime = 0;
+
+function _updateProgressBar() {
+    const fill = getEl('progress-bar-fill');
+    const pctEl = getEl('progress-percentage');
+    const etaEl = getEl('progress-eta');
+    if (!fill || !pctEl) return;
+
+    const pct = _progressTotal > 0
+        ? Math.round((_progressStep / _progressTotal) * 100)
+        : 0;
+    fill.style.width = `${pct}%`;
+    pctEl.textContent = `${pct}%`;
+
+    if (etaEl && _progressStartTime > 0 && _progressStep > 0 && _progressStep < _progressTotal) {
+        const elapsed = (Date.now() - _progressStartTime) / 1000;
+        const perStep = elapsed / _progressStep;
+        const remaining = perStep * (_progressTotal - _progressStep);
+        if (remaining > 2) {
+            etaEl.style.display = 'inline';
+            etaEl.textContent = `~${Math.ceil(remaining)}s remaining`;
+        } else {
+            etaEl.style.display = 'none';
+        }
+    } else if (etaEl) {
+        etaEl.style.display = 'none';
+    }
+}
+
+export function showLoadingOverlay(title, status, totalSteps = 0) {
     const overlay = getEl('loading-overlay');
     if (!overlay) return;
     const titleEl = getEl('loading-overlay-title');
     const statusEl = getEl('loading-overlay-status');
     if (titleEl) titleEl.textContent = title || 'Connecting to Jellyfin';
     if (statusEl) statusEl.textContent = status || 'Fetching data...';
+
+    _progressTotal = totalSteps;
+    _progressStep = 0;
+    _progressStartTime = totalSteps > 0 ? Date.now() : 0;
+    _updateProgressBar();
+
     overlay.style.display = 'flex';
 }
 
-export function updateLoadingStatus(status) {
+export function updateLoadingStatus(status, advanceStep = false) {
     const el = getEl('loading-overlay-status');
     if (el) el.textContent = status;
+
+    if (advanceStep && _progressTotal > 0) {
+        _progressStep = Math.min(_progressStep + 1, _progressTotal);
+        _updateProgressBar();
+    }
 }
 
 export function hideLoadingOverlay() {
     const overlay = getEl('loading-overlay');
     if (overlay) overlay.style.display = 'none';
+    _progressTotal = 0;
+    _progressStep = 0;
+    _progressStartTime = 0;
 }
