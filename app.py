@@ -16,13 +16,20 @@ The bulk of the application logic lives in the following modules:
 
 from __future__ import annotations
 
+import logging
+import os
+
 from flask import Flask
 
 from config import DEFAULT_CONFIG, CONFIG_FILE, save_config
 from routes import bp
 from scheduler import start_scheduler
 
-import os
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 # ---------------------------------------------------------------------------
 # Application factory

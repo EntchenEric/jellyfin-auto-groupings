@@ -58,7 +58,7 @@ def test_fetch_letterboxd_invalid_url():
 def test_fetch_letterboxd_http_error(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 500
-    mock_resp.raise_for_status.side_effect = Exception("HTTP Error")
+    mock_resp.raise_for_status.side_effect = requests.exceptions.HTTPError("HTTP Error")
     mock_get.return_value = mock_resp
     with pytest.raises(RuntimeError, match="Failed to fetch Letterboxd"):
         fetch_letterboxd_list("https://letterboxd.com/user/list/list")
