@@ -21,6 +21,9 @@ pyvenv.cfg
 coverage_report.txt
 test_results.txt
 pytest_verbose.log
+current_test_out.txt
+test_api_out.txt
+pytest.log
 .pytest_cache/
 .coverage
 e2e/test_media/
