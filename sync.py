@@ -155,20 +155,33 @@ def _fetch_full_library(
         return _LIBRARY_CACHE[cache_key], None, 200
 
     try:
-        raw_items = fetch_jellyfin_items(
-            url,
-            api_key,
-            {
-                "Recursive": "true",
-                "Fields": "Path,ProviderIds,Genres,Studios,Tags,People,ProductionYear,CommunityRating,UserData",
-                "IncludeItemTypes": "Movie,Series",
-                "Limit": "10000",
-            },
-            timeout=60,
-        )
-        print(f"Jellyfin library: {len(raw_items)} items fetched for matching")
-        _LIBRARY_CACHE[cache_key] = raw_items
-        return raw_items, None, 200
+        all_items: list[dict[str, Any]] = []
+        start_index = 0
+        page_size = 500
+
+        while True:
+            page = fetch_jellyfin_items(
+                url,
+                api_key,
+                {
+                    "Recursive": "true",
+                    "Fields": "Path,ProviderIds,Genres,Studios,Tags,People,ProductionYear,CommunityRating,UserData",
+                    "IncludeItemTypes": "Movie,Series",
+                    "StartIndex": str(start_index),
+                    "Limit": str(page_size),
+                },
+                timeout=30,
+            )
+            all_items.extend(page)
+
+            if len(page) < page_size:
+                break
+            start_index += page_size
+
+        pages_fetched = (start_index // page_size) + 1
+        print(f"Jellyfin library: {len(all_items)} items fetched for matching (in {pages_fetched} pages)")
+        _LIBRARY_CACHE[cache_key] = all_items
+        return all_items, None, 200
     except requests.exceptions.RequestException as exc:
         print(f"Infrastructure error fetching Jellyfin library for group {group_name!r}: {exc!s}")
         return [], f"Jellyfin connection error: {exc!s}", 500
