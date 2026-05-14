@@ -63,11 +63,12 @@ def fetch_jellyfin_items(
         requests.HTTPError: If the server returns a non-2xx status code.
         requests.RequestException: For any other network-level error.
     """
-    params: dict[str, str] = {"api_key": api_key}
+    headers = {"X-Emby-Token": api_key}
+    params: dict[str, str] = {}
     if extra_params:
         params.update(extra_params)
 
-    response = requests.get(f"{base_url}/Items", params=params, timeout=timeout)
+    response = requests.get(f"{base_url}/Items", headers=headers, params=params, timeout=timeout)
     response.raise_for_status()
     return response.json().get("Items", [])
 
@@ -85,7 +86,7 @@ def get_libraries(base_url: str, api_key: str, timeout: int = 30) -> list[str]:
     """
     response = requests.get(
         f"{base_url}/Library/VirtualFolders",
-        params={"api_key": api_key},
+        headers={"X-Emby-Token": api_key},
         timeout=timeout,
     )
     response.raise_for_status()
@@ -128,7 +129,6 @@ def get_user_recent_items(
         A list of item dictionaries.
     """
     params = {
-        "api_key": api_key,
         "Filters": "IsPlayed",
         "SortBy": "DatePlayed",
         "SortOrder": "Descending",
@@ -139,6 +139,7 @@ def get_user_recent_items(
     }
     response = requests.get(
         f"{base_url}/Users/{user_id}/Items",
+        headers={"X-Emby-Token": api_key},
         params=params,
         timeout=timeout,
     )
@@ -279,7 +280,7 @@ def get_library_id(base_url: str, api_key: str, name: str, timeout: int = 30) ->
     try:
         response = requests.get(
             f"{base_url}/Library/VirtualFolders",
-            params={"api_key": api_key},
+            headers={"X-Emby-Token": api_key},
             timeout=timeout,
         )
         response.raise_for_status()
