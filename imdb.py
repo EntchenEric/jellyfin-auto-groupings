@@ -7,9 +7,12 @@ public IMDb list page via regex extraction over the rendered HTML.
 
 from __future__ import annotations
 
+import logging
 import re
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 # Maximum number of pages to scrape (safety guard, ~2 000 items at 100/page)
 _MAX_PAGES: int = 20
@@ -63,7 +66,8 @@ def fetch_imdb_list(list_id: str) -> list[str]:
         try:
             resp = requests.get(page_url, headers=_REQUEST_HEADERS, timeout=15)
             resp.raise_for_status()
-        except Exception as exc:
+        except requests.RequestException as exc:
+            logger.error("HTTP error fetching IMDb list page %d: %s", page, exc)
             raise RuntimeError(f"Failed to fetch IMDb list page {page}: {exc}") from exc
 
         html: str = resp.text
