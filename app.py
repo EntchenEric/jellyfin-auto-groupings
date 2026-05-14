@@ -45,4 +45,5 @@ if __name__ == "__main__":
         save_config(DEFAULT_CONFIG.copy())
 
     port = int(os.environ.get("FLASK_PORT", "5000"))
-    app.run(host="0.0.0.0", debug=True, port=port)
+    debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
+    app.run(host="0.0.0.0", debug=debug, port=port)
