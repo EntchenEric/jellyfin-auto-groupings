@@ -136,7 +136,7 @@ def test_server() -> ResponseReturnValue:
     try:
         response = requests.get(
             f"{url}/System/Info",
-            params={"api_key": api_key},
+            headers={"X-Emby-Token": api_key},
             timeout=5,
         )
         if response.status_code == 200:
@@ -190,7 +190,6 @@ def _fetch_jellyfin_endpoint(
 
     while True:
         params: dict[str, str | int] = {
-            "api_key": api_key,
             "StartIndex": start_index,
             "Limit": limit,
         }
@@ -199,6 +198,7 @@ def _fetch_jellyfin_endpoint(
         try:
             resp = requests.get(
                 f"{base_url}/{endpoint}",
+                headers={"X-Emby-Token": api_key},
                 params=params,
                 timeout=timeout,
             )
