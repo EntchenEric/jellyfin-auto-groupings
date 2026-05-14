@@ -1,7 +1,9 @@
+import json
+import logging
+import os
+
 import pytest
 import requests
-import os
-import json
 from jellyfin import (
     fetch_jellyfin_items,
     get_libraries, 
@@ -102,11 +104,10 @@ def test_add_virtual_folder_empty_paths(jellyfin_url):
     add_virtual_folder(jellyfin_url, "test_key", "EmptyLib", [])
 
 # 5. delete_virtual_folder Exhaustive
-def test_delete_virtual_folder_404(jellyfin_url, capsys):
+def test_delete_virtual_folder_404(jellyfin_url, caplog):
     with pytest.raises(requests.exceptions.HTTPError):
         delete_virtual_folder(jellyfin_url, "test_key", "FAIL_DELETE_404")
-    captured = capsys.readouterr()
-    assert "Delete Virtual Folder Failed (404)" in captured.out
+    assert "Delete Virtual Folder Failed (404)" in caplog.text
 
 def test_delete_virtual_folder_500(jellyfin_url):
     with pytest.raises(requests.exceptions.HTTPError):
@@ -121,49 +122,47 @@ def test_get_library_id_missing_itemid_key(jellyfin_url):
     lib_id = get_library_id(jellyfin_url, "LIB_GET_MISSING_ID", "Movies")
     assert lib_id is None
 
-def test_get_library_id_500(jellyfin_url, capsys):
+def test_get_library_id_500(jellyfin_url, caplog):
     lib_id = get_library_id(jellyfin_url, "LIB_GET_500", "Movies")
     assert lib_id is None
-    captured = capsys.readouterr()
-    assert "Failed to get library ID" in captured.out
+    assert "Failed to get library ID" in caplog.text
 
 # 7. set_virtual_folder_image Exhaustive
-def test_set_virtual_folder_image_missing_id(jellyfin_url, tmp_path, capsys):
+def test_set_virtual_folder_image_missing_id(jellyfin_url, tmp_path, caplog):
+    caplog.set_level(logging.INFO)
     img_path = tmp_path / "test.jpg"
     img_path.write_bytes(b"data")
     set_virtual_folder_image(jellyfin_url, "test_key", "DoesNotExist", str(img_path))
-    captured = capsys.readouterr()
-    assert "not found or ID unknown" in captured.out
+    assert "not found or ID unknown" in caplog.text
 
-def test_set_virtual_folder_image_oserror(jellyfin_url, capsys):
+def test_set_virtual_folder_image_oserror(jellyfin_url, caplog):
     set_virtual_folder_image(jellyfin_url, "test_key", "Movies", "/does/not/exist.jpg")
-    captured = capsys.readouterr()
-    assert "Failed to read image file" in captured.out
+    assert "Failed to read image file" in caplog.text
 
-def test_set_virtual_folder_image_unknown_mime(jellyfin_url, tmp_path, capsys):
+def test_set_virtual_folder_image_unknown_mime(jellyfin_url, tmp_path, caplog):
+    caplog.set_level(logging.INFO)
     img_path = tmp_path / "testfile" # No extension
     img_path.write_bytes(b"data")
     # Standard call should work and fallback to application/octet-stream
     set_virtual_folder_image(jellyfin_url, "test_key", "Movies", str(img_path))
-    captured = capsys.readouterr()
-    assert "Successfully updated cover image" in captured.out
+    assert "Successfully updated cover image" in caplog.text
 
-def test_set_virtual_folder_image_400(jellyfin_url, tmp_path, capsys):
+def test_set_virtual_folder_image_400(jellyfin_url, tmp_path, caplog):
+    caplog.set_level(logging.INFO)
     img_path = tmp_path / "test.jpg"
     img_path.write_bytes(b"data")
-    
+
     # We must mock get_library_id to return our magic ID since standard "Movies" returns "movies_id"
     import jellyfin
     original_get_id = jellyfin.get_library_id
     jellyfin.get_library_id = lambda *args, **kwargs: "FAIL_IMAGE_ID"
-    
+
     try:
         set_virtual_folder_image(jellyfin_url, "test_key", "Movies", str(img_path))
     finally:
         jellyfin.get_library_id = original_get_id
-        
-    captured = capsys.readouterr()
-    assert "Failed to set image" in captured.out
+
+    assert "Failed to set image" in caplog.text
 
 # 8. get_users and get_user_recent_items Exhaustive
 def test_get_users_500(jellyfin_url):
