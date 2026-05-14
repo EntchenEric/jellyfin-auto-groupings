@@ -19,6 +19,8 @@ from __future__ import annotations
 import logging
 import os
 
+import network  # noqa: F401 — monkey-patches requests.get/post/delete with retry
+
 from flask import Flask
 
 from config import DEFAULT_CONFIG, CONFIG_FILE, save_config
