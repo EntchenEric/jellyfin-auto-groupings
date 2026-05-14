@@ -242,6 +242,7 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
         return jsonify({"status": "error", "message": "Server settings not configured"}), 400
 
     result: dict[str, list[str]] = {}
+    failed = 0
 
     try:
         with ThreadPoolExecutor(max_workers=4) as pool:
@@ -265,6 +266,10 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
                     ]
                 except Exception:
                     result[key] = []
+                    failed += 1
+
+        if failed >= len(futures):
+            return jsonify({"status": "error", "message": "Failed to fetch metadata from Jellyfin"}), 400
 
         return jsonify({"status": "success", "metadata": result})
     except Exception as exc:

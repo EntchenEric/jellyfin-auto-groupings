@@ -51,18 +51,37 @@ def test_browse_directory(client):
     assert data["status"] == "success"
     assert "dirs" in data
 
-@patch('routes.fetch_jellyfin_items')
+@patch('routes.requests.get')
 @pytest.mark.usefixtures("temp_config")
-def test_get_jellyfin_metadata(mock_fetch, client):
+def test_get_jellyfin_metadata(mock_get, client):
     save_config({"jellyfin_url": "http://test", "api_key": "key"})
-    mock_fetch.return_value = [
-        {"Genres": ["Action"], "People": [{"Name": "Actor A", "Type": "Actor"}]}
-    ]
+
+    def mock_genres(url, **kwargs):
+        m = MagicMock()
+        params = kwargs.get("params", {})
+        if "Genres" in url:
+            m.json.return_value = {"Items": [{"Name": "Action"}, {"Name": "Comedy"}]}
+        elif "Studios" in url:
+            m.json.return_value = {"Items": [{"Name": "Studio A"}]}
+        elif "Persons" in url:
+            m.json.return_value = {"Items": [{"Name": "Actor A"}]}
+        elif "Tags" in url:
+            m.json.return_value = {"Items": [{"Name": "4K"}]}
+        else:
+            m.json.return_value = {"Items": []}
+        m.raise_for_status = MagicMock()
+        return m
+
+    mock_get.side_effect = mock_genres
+
     response = client.get('/api/jellyfin/metadata')
     assert response.status_code == 200
     data = response.get_json()
     assert "Action" in data["metadata"]["genre"]
+    assert "Comedy" in data["metadata"]["genre"]
     assert "Actor A" in data["metadata"]["actor"]
+    assert "Studio A" in data["metadata"]["studio"]
+    assert "4K" in data["metadata"]["tag"]
 
 @patch('routes.run_sync')
 @pytest.mark.usefixtures("temp_config")
@@ -180,11 +199,11 @@ def test_get_jellyfin_metadata_no_config(client):
     response = client.get('/api/jellyfin/metadata')
     assert response.status_code == 400
 
-@patch('routes.fetch_jellyfin_items')
+@patch('routes.requests.get')
 @pytest.mark.usefixtures("temp_config")
-def test_get_jellyfin_metadata_error(mock_fetch, client):
+def test_get_jellyfin_metadata_error(mock_get, client):
     save_config({"jellyfin_url": "http://test", "api_key": "key"})
-    mock_fetch.side_effect = Exception("Fetch failed")
+    mock_get.side_effect = requests.exceptions.ConnectionError("Fetch failed")
     response = client.get('/api/jellyfin/metadata')
     assert response.status_code == 400
 

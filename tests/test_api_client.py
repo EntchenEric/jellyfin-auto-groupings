@@ -66,20 +66,29 @@ class TestMetadataEndpoints:
     def test_metadata_returns_categories(self, client):
         """Test successful metadata response has expected categories."""
         with patch("routes.load_config") as mock_load, \
-             patch("routes.fetch_jellyfin_items") as mock_fetch:
+             patch("routes.requests.get") as mock_get:
             mock_load.return_value = {
                 "jellyfin_url": "http://localhost:8096",
                 "api_key": "test-key"
             }
-            mock_fetch.return_value = [
-                {
-                    "Name": "Action Movie",
-                    "Genres": ["Action", "Thriller"],
-                    "Studios": [{"Name": "Studio A"}],
-                    "Tags": ["4K"],
-                    "People": [{"Name": "Actor One", "Type": "Actor"}]
-                }
-            ]
+
+            def mock_jellyfin(url, **kwargs):
+                m = MagicMock()
+                params = kwargs.get("params", {})
+                if "Genres" in url:
+                    m.json.return_value = {"Items": [{"Name": "Action"}, {"Name": "Thriller"}]}
+                elif "Studios" in url:
+                    m.json.return_value = {"Items": [{"Name": "Studio A"}]}
+                elif "Persons" in url:
+                    m.json.return_value = {"Items": [{"Name": "Actor One"}]}
+                elif "Tags" in url:
+                    m.json.return_value = {"Items": [{"Name": "4K"}]}
+                else:
+                    m.json.return_value = {"Items": []}
+                m.raise_for_status = MagicMock()
+                return m
+
+            mock_get.side_effect = mock_jellyfin
 
             resp = client.get("/api/jellyfin/metadata")
             data = resp.get_json()
