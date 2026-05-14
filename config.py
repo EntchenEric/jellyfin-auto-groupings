@@ -8,6 +8,7 @@ backwards-compatible key migration and first-run default creation.
 from __future__ import annotations
 
 import json
+import logging
 import os
 from typing import Any
 
@@ -102,8 +103,9 @@ def load_config() -> dict[str, Any]:
                 cfg.pop("host_root", None)
                 save_config(cfg)
 
-        except Exception:
+        except (json.JSONDecodeError, OSError):
             # If the file is corrupt or unreadable, fall back to safe defaults
+            logging.warning("Could not read config file, falling back to defaults", exc_info=True)
             cfg = DEFAULT_CONFIG.copy()
 
     # Apply environment-variable overrides (additive, never persisted)
