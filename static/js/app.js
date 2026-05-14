@@ -156,7 +156,8 @@ async function bootstrap() {
             seasonal_enabled: getEl('seasonal_enabled').checked,
             seasonal_start: `${getEl('seasonal_start_month').value}-${getEl('seasonal_start_day').value}`,
             seasonal_end: `${getEl('seasonal_end_month').value}-${getEl('seasonal_end_day').value}`,
-            watch_state: getEl('watch_state').value
+            watch_state: getEl('watch_state').value,
+            create_as_collection: getEl('create_as_collection').checked
         };
 
         if (metadataTypes.includes(source_type)) {
