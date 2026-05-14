@@ -763,7 +763,10 @@ def get_test_results() -> ResponseReturnValue:
 
 @bp.route("/api/test/run", methods=["POST"])
 def run_tests() -> ResponseReturnValue:
-    """Trigger the test suite programmatically."""
+    """Trigger the test suite programmatically. Only available in debug mode."""
+    from flask import current_app
+    if not current_app.debug:
+        return jsonify({"status": "error", "message": "Not available in production mode"}), 403
     import subprocess
     import sys
     try:
