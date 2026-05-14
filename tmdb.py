@@ -7,9 +7,12 @@ TMDb v3 list.
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 _TMDB_API_BASE: str = "https://api.themoviedb.org/3"
 
@@ -54,7 +57,7 @@ def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
         try:
             resp = requests.get(url, params=params, timeout=15)
             resp.raise_for_status()
-        except Exception as exc:
+        except requests.RequestException as exc:
             raise RuntimeError(
                 f"Failed to fetch TMDb list page {page}: {exc}"
             ) from exc
@@ -112,7 +115,7 @@ def get_tmdb_recommendations(items_with_type: list[tuple[str, str]], api_key: st
                     score = 1.0 / (i + 1)  # Higher weight for top recommendations
                     recommendation_counts[rec_id] = recommendation_counts.get(rec_id, 0.0) + score
         except Exception:
-            pass  # Skip failures for individual items to keep aggregating
+            logger.debug("Skipping failed recommendation item", exc_info=True)
 
     # Sort items by their accumulated score
     sorted_recs = sorted(recommendation_counts.items(), key=lambda x: x[1], reverse=True)

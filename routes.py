@@ -280,6 +280,7 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
                         item.get("Name", "") for item in items if item.get("Name")
                     ]
                 except Exception:
+                    logging.warning("Failed to process metadata key %r", key, exc_info=True)
                     result[key] = []
                     failed += 1
 

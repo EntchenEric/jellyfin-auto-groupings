@@ -7,10 +7,13 @@ Trakt list via the official Trakt v2 API.
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 # Maximum pages to fetch (safety guard, 50 000 items at 1 000/page)
 _MAX_PAGES: int = 50
@@ -79,7 +82,7 @@ def fetch_trakt_list(list_url: str, client_id: str) -> list[str]:
         try:
             resp = requests.get(url, headers=headers, timeout=15)
             resp.raise_for_status()
-        except Exception as exc:
+        except requests.RequestException as exc:
             raise RuntimeError(
                 f"Failed to fetch Trakt list page {page}: {exc}"
             ) from exc
