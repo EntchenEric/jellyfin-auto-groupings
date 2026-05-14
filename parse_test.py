@@ -1,3 +1,6 @@
+import logging
+
+logger = logging.getLogger(__name__)
 """
 parse_test.py - Unit tests for complex query parsing.
 """
@@ -16,4 +19,4 @@ def test_parse_complex_query():
 
 if __name__ == "__main__":
     test_parse_complex_query()
-    print("Test passed!")
+    logger.info("Test passed!")
