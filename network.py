@@ -55,16 +55,42 @@ _original_post = requests.post
 _original_delete = requests.delete
 
 
+def _reraise_timeout(exc: requests.ConnectionError) -> None:
+    """If *exc* wraps a read-timeout from the retry adapter, re-raise as
+    :class:`requests.Timeout` so callers see the expected exception type."""
+    from urllib3.exceptions import MaxRetryError, ReadTimeoutError
+
+    inner = exc.args[0] if exc.args else None
+    if not isinstance(inner, MaxRetryError):
+        return
+
+    reason = getattr(inner, "reason", None)
+    if isinstance(reason, ReadTimeoutError):
+        raise requests.Timeout("Read timed out.") from reason
+
+
 def _patched_get(url, **kwargs):
-    return _SESSION.get(url, **kwargs)
+    try:
+        return _SESSION.get(url, **kwargs)
+    except requests.ConnectionError as exc:
+        _reraise_timeout(exc)
+        raise
 
 
 def _patched_post(url, **kwargs):
-    return _SESSION.post(url, **kwargs)
+    try:
+        return _SESSION.post(url, **kwargs)
+    except requests.ConnectionError as exc:
+        _reraise_timeout(exc)
+        raise
 
 
 def _patched_delete(url, **kwargs):
-    return _SESSION.delete(url, **kwargs)
+    try:
+        return _SESSION.delete(url, **kwargs)
+    except requests.ConnectionError as exc:
+        _reraise_timeout(exc)
+        raise
 
 
 requests.get = _patched_get         # type: ignore[method-assign]
