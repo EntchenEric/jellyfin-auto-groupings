@@ -31,6 +31,8 @@ _ALLOWED_RETRY_METHODS = frozenset({"GET", "POST", "PUT", "DELETE", "PATCH", "HE
 def _build_retry_session() -> requests.Session:
     retry = Retry(
         total=_RETRY_TOTAL,
+        connect=_RETRY_TOTAL,
+        read=0,  # read timeouts are not transient — don't retry
         backoff_factor=_RETRY_BACKOFF_FACTOR,
         status_forcelist=_RETRY_STATUS_FORCELIST,
         allowed_methods=_ALLOWED_RETRY_METHODS,
