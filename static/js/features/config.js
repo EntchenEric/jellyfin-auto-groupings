@@ -86,12 +86,7 @@ export async function performSilentTest() {
         api_key: state.currentConfig.api_key
     };
     try {
-        const resp = await fetch('/api/test-server', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        const result = await resp.json();
+        const result = await apiPost('/api/test-server', data);
         const isValid = result.status === 'success';
         updateValidationUI(isValid);
         if (isValid) refreshMetadata();
