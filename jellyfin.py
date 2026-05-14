@@ -11,7 +11,10 @@ from __future__ import annotations
 from typing import Any
 
 import mimetypes
+import logging
 import requests
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Sort-order mapping
@@ -63,11 +66,12 @@ def fetch_jellyfin_items(
         requests.HTTPError: If the server returns a non-2xx status code.
         requests.RequestException: For any other network-level error.
     """
-    params: dict[str, str] = {"api_key": api_key}
+    headers = {"X-Emby-Token": api_key}
+    params: dict[str, str] = {}
     if extra_params:
         params.update(extra_params)
 
-    response = requests.get(f"{base_url}/Items", params=params, timeout=timeout)
+    response = requests.get(f"{base_url}/Items", headers=headers, params=params, timeout=timeout)
     response.raise_for_status()
     return response.json().get("Items", [])
 
@@ -85,7 +89,7 @@ def get_libraries(base_url: str, api_key: str, timeout: int = 30) -> list[str]:
     """
     response = requests.get(
         f"{base_url}/Library/VirtualFolders",
-        params={"api_key": api_key},
+        headers={"X-Emby-Token": api_key},
         timeout=timeout,
     )
     response.raise_for_status()
@@ -128,7 +132,6 @@ def get_user_recent_items(
         A list of item dictionaries.
     """
     params = {
-        "api_key": api_key,
         "Filters": "IsPlayed",
         "SortBy": "DatePlayed",
         "SortOrder": "Descending",
@@ -139,6 +142,7 @@ def get_user_recent_items(
     }
     response = requests.get(
         f"{base_url}/Users/{user_id}/Items",
+        headers={"X-Emby-Token": api_key},
         params=params,
         timeout=timeout,
     )
@@ -260,7 +264,7 @@ def delete_virtual_folder(base_url: str, api_key: str, name: str, timeout: int =
         timeout=timeout,
     )
     if not response.ok:
-        print(f"DEBUG: Delete Virtual Folder Failed ({response.status_code}): {response.text}")
+        logger.warning("Delete Virtual Folder Failed (%s): %s", response.status_code, response.text)
     response.raise_for_status()
 
 
@@ -279,7 +283,7 @@ def get_library_id(base_url: str, api_key: str, name: str, timeout: int = 30) ->
     try:
         response = requests.get(
             f"{base_url}/Library/VirtualFolders",
-            params={"api_key": api_key},
+            headers={"X-Emby-Token": api_key},
             timeout=timeout,
         )
         response.raise_for_status()
@@ -290,7 +294,7 @@ def get_library_id(base_url: str, api_key: str, name: str, timeout: int = 30) ->
                 if item_id is not None:
                     return str(item_id)
     except requests.exceptions.RequestException as exc:
-        print(f"Failed to get library ID for {name!r}: {exc}")
+        logger.error(f"Failed to get library ID for {name!r}: {exc}")
     
     return None
 
@@ -313,14 +317,14 @@ def set_virtual_folder_image(
     """
     library_id = get_library_id(base_url, api_key, name, timeout=timeout)
     if not library_id:
-        print(f"Cannot set image: Library {name!r} not found or ID unknown.")
+        logger.info(f"Cannot set image: Library {name!r} not found or ID unknown.")
         return
 
     try:
         with open(image_path, "rb") as f:
             image_bytes = f.read()
     except OSError as exc:
-        print(f"Cannot set image: Failed to read image file {image_path!r}: {exc}")
+        logger.error(f"Cannot set image: Failed to read image file {image_path!r}: {exc}")
         return
 
     mime_type, _ = mimetypes.guess_type(image_path)
@@ -340,14 +344,14 @@ def set_virtual_folder_image(
             timeout=timeout,
         )
         response.raise_for_status()
-        print(f"Successfully updated cover image for library {name!r}")
+        logger.info(f"Successfully updated cover image for library {name!r}")
     except requests.exceptions.RequestException as exc:
         msg = f"Failed to set image for library {name!r}"
         if hasattr(exc, "response") and exc.response is not None:
             msg += f" (Status {exc.response.status_code}): {exc.response.text}"
         else:
             msg += f": {exc!s}"
-        print(msg)
+        logger.info(msg)
 
 
 # ---------------------------------------------------------------------------
@@ -584,7 +588,7 @@ def set_collection_image(
         with open(image_path, "rb") as f:
             image_bytes = f.read()
     except OSError as exc:
-        print(f"Cannot set collection image: Failed to read {image_path!r}: {exc}")
+        logger.error(f"Cannot set collection image: Failed to read {image_path!r}: {exc}")
         return
 
     mime_type, _ = mimetypes.guess_type(image_path)
@@ -603,11 +607,11 @@ def set_collection_image(
             timeout=timeout,
         )
         resp.raise_for_status()
-        print(f"Successfully updated cover image for collection {collection_id!r}")
+        logger.info(f"Successfully updated cover image for collection {collection_id!r}")
     except requests.exceptions.RequestException as exc:
         msg = f"Failed to set image for collection {collection_id!r}"
         if hasattr(exc, "response") and exc.response is not None:
             msg += f" (Status {exc.response.status_code}): {exc.response.text}"
         else:
             msg += f": {exc!s}"
-        print(msg)
+        logger.info(msg)

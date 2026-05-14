@@ -16,7 +16,7 @@ def test_fetch_jellyfin_items(mock_get):
     assert items == [{"Name": "M1"}]
     # Verify params
     _args, kwargs = mock_get.call_args
-    assert kwargs['params']['api_key'] == "key"
+    assert kwargs['headers']['X-Emby-Token'] == "key"
     assert kwargs['params']['Type'] == "Movie"
 
 @patch('imdb.requests.get')

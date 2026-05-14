@@ -32,6 +32,21 @@ bp = Blueprint("main", __name__)
 MAX_B64_SIZE = 4 * 1024 * 1024
 
 # ---------------------------------------------------------------------------
+# CSRF protection
+# ---------------------------------------------------------------------------
+
+@bp.before_request
+def _check_csrf() -> ResponseReturnValue | None:
+    """Require X-Requested-With header on state-changing requests."""
+    if request.method in ("POST", "PUT", "DELETE", "PATCH"):
+        from flask import current_app
+        if current_app.testing:
+            return None
+        if request.headers.get("X-Requested-With") != "XMLHttpRequest":
+            return jsonify({"status": "error", "message": "CSRF validation failed"}), 403
+    return None
+
+# ---------------------------------------------------------------------------
 # Security helpers for the filesystem browser
 # ---------------------------------------------------------------------------
 
@@ -136,7 +151,7 @@ def test_server() -> ResponseReturnValue:
     try:
         response = requests.get(
             f"{url}/System/Info",
-            params={"api_key": api_key},
+            headers={"X-Emby-Token": api_key},
             timeout=5,
         )
         if response.status_code == 200:
@@ -190,7 +205,6 @@ def _fetch_jellyfin_endpoint(
 
     while True:
         params: dict[str, str | int] = {
-            "api_key": api_key,
             "StartIndex": start_index,
             "Limit": limit,
         }
@@ -199,6 +213,7 @@ def _fetch_jellyfin_endpoint(
         try:
             resp = requests.get(
                 f"{base_url}/{endpoint}",
+                headers={"X-Emby-Token": api_key},
                 params=params,
                 timeout=timeout,
             )
@@ -265,6 +280,7 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
                         item.get("Name", "") for item in items if item.get("Name")
                     ]
                 except Exception:
+                    logging.warning("Failed to process metadata key %r", key, exc_info=True)
                     result[key] = []
                     failed += 1
 
@@ -763,7 +779,10 @@ def get_test_results() -> ResponseReturnValue:
 
 @bp.route("/api/test/run", methods=["POST"])
 def run_tests() -> ResponseReturnValue:
-    """Trigger the test suite programmatically."""
+    """Trigger the test suite programmatically. Only available in debug mode."""
+    from flask import current_app
+    if not current_app.debug:
+        return jsonify({"status": "error", "message": "Not available in production mode"}), 403
     import subprocess
     import sys
     try:

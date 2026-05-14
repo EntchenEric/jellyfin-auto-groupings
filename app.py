@@ -16,13 +16,20 @@ The bulk of the application logic lives in the following modules:
 
 from __future__ import annotations
 
+import logging
+import os
+
 from flask import Flask
 
 from config import DEFAULT_CONFIG, CONFIG_FILE, save_config
 from routes import bp
 from scheduler import start_scheduler
 
-import os
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 # ---------------------------------------------------------------------------
 # Application factory
@@ -45,4 +52,5 @@ if __name__ == "__main__":
         save_config(DEFAULT_CONFIG.copy())
 
     port = int(os.environ.get("FLASK_PORT", "5000"))
-    app.run(host="0.0.0.0", debug=True, port=port)
+    debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
+    app.run(host="0.0.0.0", debug=debug, port=port)

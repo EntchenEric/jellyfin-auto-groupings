@@ -7,11 +7,14 @@ Letterboxd list by parsing the HTML.
 
 from __future__ import annotations
 
+import logging
 import re
 import time
 from typing import Any
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 # Maximum pages to scrape (safety guard, 100 items per page)
 _MAX_PAGES: int = 10
@@ -63,7 +66,7 @@ def fetch_letterboxd_list(list_url: str) -> list[str]:
             if resp.status_code == 404 and page > 1:
                 break
             resp.raise_for_status()
-        except Exception as exc:
+        except requests.RequestException as exc:
             raise RuntimeError(f"Failed to fetch Letterboxd list page {page}: {exc}") from exc
 
         html = resp.text
@@ -88,20 +91,19 @@ def fetch_letterboxd_list(list_url: str) -> list[str]:
                 unique_slugs_in_page.append(slug)
 
         if not unique_slugs_in_page:
-            print("No slugs found on page.")
+            logger.warning("No film slugs found on Letterboxd page %d", page)
             break
 
-        print(f"Found {len(unique_slugs_in_page)} slugs on page {page}. Fetching IDs...")
+        logger.info("Found %d slugs on Letterboxd page %d, fetching IDs...", len(unique_slugs_in_page), page)
         for slug in unique_slugs_in_page:
-            print(f"  Fetching ID for: {slug}")
             film_id = _fetch_id_for_slug(session, slug)
             if film_id:
-                print(f"    Found ID: {film_id}")
+                logger.debug("  Found ID for %s: %s", slug, film_id)
                 if film_id not in seen_ids:
                     ids.append(film_id)
                     seen_ids.add(film_id)
             else:
-                print(f"    No ID found for: {slug}")
+                logger.debug("  No ID found for: %s", slug)
 
         # Check for next page
         if 'class="next"' not in html or page >= _MAX_PAGES:
@@ -149,7 +151,8 @@ def _fetch_id_for_slug(session: requests.Session, slug: str) -> str | None:
         if tmdb_attr:
             return tmdb_attr.group(1)
 
-    except Exception:
+    except requests.RequestException:
+        logger.warning("Failed to fetch Letterboxd film page for '%s'", slug, exc_info=True)
         return None
-    
+
     return None
