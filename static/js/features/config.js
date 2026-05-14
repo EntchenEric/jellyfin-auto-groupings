@@ -127,16 +127,19 @@ export function initConfig() {
         await saveAllConfig();
         setLoading(saveBtn, false);
 
-        showLoadingOverlay(
-            'Reconnecting to Jellyfin',
-            'Fetching updated genres, actors, studios, and tags...'
-        );
-        try {
-            await refreshMetadata(updateLoadingStatus);
-        } catch (err) {
-            // refreshMetadata logs internally
+        if (state.currentConfig.jellyfin_url && state.currentConfig.api_key) {
+            showLoadingOverlay(
+                'Reconnecting to Jellyfin',
+                'Fetching updated genres, actors, studios, and tags...'
+            );
+            try {
+                await refreshMetadata(updateLoadingStatus);
+            } catch (err) {
+                // refreshMetadata throws on failure
+            } finally {
+                hideLoadingOverlay();
+            }
         }
-        hideLoadingOverlay();
     });
 
     apiConfigForm.addEventListener('submit', async (e) => {

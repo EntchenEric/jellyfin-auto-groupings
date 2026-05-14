@@ -202,13 +202,15 @@ async function bootstrap() {
             try {
                 await refreshMetadata(updateLoadingStatus);
                 updateLoadingStatus('Loading users...');
-                await fetchUsers().then(data => {
-                    if (data.status === 'success') state.cachedUsers = data.users;
-                }).catch(() => {});
+                const data = await fetchUsers();
+                if (data.status === 'success') {
+                    state.cachedUsers = data.users;
+                }
             } catch (err) {
                 showToast('Failed to load data from Jellyfin', 'error');
+            } finally {
+                hideLoadingOverlay();
             }
-            hideLoadingOverlay();
         }
     }
 

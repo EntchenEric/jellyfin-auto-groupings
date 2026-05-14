@@ -373,7 +373,7 @@ button:disabled {
 }
 
 .loading-overlay-card h3 {
-    font-family: 'Outfit', sans-serif;
+    font-family: Outfit, sans-serif;
     font-size: 1.1rem;
     font-weight: 600;
     color: var(--text-primary);
@@ -400,10 +400,10 @@ button:disabled {
     width: 30%;
     background: var(--accent-color);
     border-radius: 2px;
-    animation: progressIndeterminate 1.4s ease-in-out infinite;
+    animation: progress-indeterminate 1.4s ease-in-out infinite;
 }
 
-@keyframes progressIndeterminate {
+@keyframes progress-indeterminate {
     0% {
         transform: translateX(-100%);
     }

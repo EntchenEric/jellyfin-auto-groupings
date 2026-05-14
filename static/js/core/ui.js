@@ -76,8 +76,10 @@ export function getEl(id) {
 export function showLoadingOverlay(title, status) {
     const overlay = getEl('loading-overlay');
     if (!overlay) return;
-    getEl('loading-overlay-title').textContent = title || 'Connecting to Jellyfin';
-    getEl('loading-overlay-status').textContent = status || 'Fetching data...';
+    const titleEl = getEl('loading-overlay-title');
+    const statusEl = getEl('loading-overlay-status');
+    if (titleEl) titleEl.textContent = title || 'Connecting to Jellyfin';
+    if (statusEl) statusEl.textContent = status || 'Fetching data...';
     overlay.style.display = 'flex';
 }
 

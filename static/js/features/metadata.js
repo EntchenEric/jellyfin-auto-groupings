@@ -5,17 +5,13 @@ import { fetchMetadata, fetchUsers, apiPost } from '../core/api.js';
 import { getEl } from '../core/ui.js';
 
 export async function refreshMetadata(onStatus) {
-    try {
-        if (onStatus) onStatus('Fetching genres, actors, studios, and tags...');
-        const result = await fetchMetadata();
-        if (result.status === 'success') {
-            state.cachedMetadata = result.metadata;
-            updateSourceValueUI();
-        } else {
-            console.error('Failed to load metadata from Jellyfin server');
-        }
-    } catch (err) {
-        console.error('Failed to fetch metadata:', err);
+    if (onStatus) onStatus('Fetching genres, actors, studios, and tags...');
+    const result = await fetchMetadata();
+    if (result.status === 'success') {
+        state.cachedMetadata = result.metadata;
+        updateSourceValueUI();
+    } else {
+        throw new Error(result.message || 'Failed to load metadata from Jellyfin server');
     }
 }
 
