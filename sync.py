@@ -17,6 +17,7 @@ import re
 import shutil
 import hashlib
 import logging
+import threading
 import requests
 from datetime import datetime
 from typing import Any
@@ -133,6 +134,7 @@ def get_cover_path(group_name: str, target_base: str, check_exists: bool = True)
 
 
 _LIBRARY_CACHE: dict[tuple[str, str], list[dict[str, Any]]] = {}
+_LIBRARY_CACHE_LOCK = threading.RLock()
 
 
 def _fetch_full_library(
@@ -151,8 +153,9 @@ def _fetch_full_library(
         A (raw_items, error, status_code) tuple.
     """
     cache_key = (url, api_key)
-    if cache_key in _LIBRARY_CACHE:
-        return _LIBRARY_CACHE[cache_key], None, 200
+    with _LIBRARY_CACHE_LOCK:
+        if cache_key in _LIBRARY_CACHE:
+            return _LIBRARY_CACHE[cache_key].copy(), None, 200
 
     try:
         all_items: list[dict[str, Any]] = []
@@ -180,7 +183,8 @@ def _fetch_full_library(
 
         pages_fetched = (start_index // page_size) + 1
         print(f"Jellyfin library: {len(all_items)} items fetched for matching (in {pages_fetched} pages)")
-        _LIBRARY_CACHE[cache_key] = all_items
+        with _LIBRARY_CACHE_LOCK:
+            _LIBRARY_CACHE[cache_key] = all_items
         return all_items, None, 200
     except requests.exceptions.RequestException as exc:
         print(f"Infrastructure error fetching Jellyfin library for group {group_name!r}: {exc!s}")
@@ -1301,7 +1305,8 @@ def run_sync(
             # We'll continue, but library creation might fail or try to recreate existing ones
             auto_create_libraries = False 
 
-    _LIBRARY_CACHE.clear()
+    with _LIBRARY_CACHE_LOCK:
+        _LIBRARY_CACHE.clear()
 
     results: list[dict[str, Any]] = []
     for group in groups:
@@ -1345,7 +1350,8 @@ def run_sync(
         )
         results.append(result)
 
-    _LIBRARY_CACHE.clear()
+    with _LIBRARY_CACHE_LOCK:
+        _LIBRARY_CACHE.clear()
     return results
 
 
