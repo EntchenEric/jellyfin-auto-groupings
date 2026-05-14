@@ -26,6 +26,9 @@ export async function loadConfig() {
             } else if (g.source_type === 'people') {
                 g.source_type = 'actor';
             }
+            if (g.create_as_collection === undefined) {
+                g.create_as_collection = false;
+            }
         });
 
         getEl('jellyfin_url').value = state.currentConfig.jellyfin_url || '';

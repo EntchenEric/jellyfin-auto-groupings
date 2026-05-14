@@ -42,6 +42,12 @@ export function renderGroups() {
             badge.textContent = `${group.seasonal_start} to ${group.seasonal_end}`;
             h4.appendChild(badge);
         }
+        if (group.create_as_collection) {
+            const badge = document.createElement('span');
+            badge.setAttribute('style', 'display:inline-block; margin-left:0.5rem; font-size:0.72rem; background:rgba(16,185,129,0.15); color:var(--success-color); border:1px solid rgba(16,185,129,0.3); border-radius:4px; padding:0.1rem 0.4rem;');
+            badge.textContent = 'Collection';
+            h4.appendChild(badge);
+        }
         infoDiv.appendChild(h4);
 
         const metaDiv = document.createElement('div');
@@ -118,6 +124,7 @@ export function editGroup(index) {
         getEl('seasonal_end_day').value = ed;
     }
     getEl('watch_state').value = group.watch_state || '';
+    getEl('create_as_collection').checked = !!group.create_as_collection;
 
     updateSourceValueUI(group.source_value);
 
@@ -145,6 +152,7 @@ export function resetFormUI() {
     getEl('seasonal_enabled').checked = false;
     getEl('seasonal_panel').style.display = 'none';
     getEl('watch_state').value = '';
+    getEl('create_as_collection').checked = false;
     updateSourceTypeOptions();
 }
 

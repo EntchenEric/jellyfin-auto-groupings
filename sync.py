@@ -23,7 +23,18 @@ from typing import Any
 
 from anilist import fetch_anilist_list
 from imdb import fetch_imdb_list
-from jellyfin import SORT_MAP, add_virtual_folder, fetch_jellyfin_items, get_libraries, get_user_recent_items, set_virtual_folder_image
+from jellyfin import (
+    SORT_MAP,
+    add_to_collection,
+    add_virtual_folder,
+    create_collection,
+    fetch_jellyfin_items,
+    find_collection_by_name,
+    get_libraries,
+    get_user_recent_items,
+    set_collection_image,
+    set_virtual_folder_image,
+)
 from letterboxd import fetch_letterboxd_list
 from mal import fetch_mal_list
 from tmdb import fetch_tmdb_list, get_tmdb_recommendations
@@ -911,6 +922,56 @@ def preview_group(
         return _fetch_items_for_metadata_group("preview", type_name, val, "", url, api_key, watch_state)
 
 
+def _process_collection_group(
+    group_name: str,
+    items: list[dict[str, Any]],
+    url: str,
+    api_key: str,
+    target_base: str,
+    dry_run: bool,
+    auto_set_library_covers: bool,
+) -> dict[str, Any]:
+    """Sync items into a Jellyfin Collection (Boxset) instead of creating symlinks.
+
+    Finds or creates a collection named *group_name*, then adds all resolved
+    item IDs to it.  Jellyfin ignores duplicate additions, so we do not need
+    to diff against the existing membership.
+    """
+    item_ids = [item["Id"] for item in items if isinstance(item, dict) and item.get("Id")]
+    if not item_ids:
+        return {"group": group_name, "links": 0, "error": "No item IDs to add to collection"}
+
+    if dry_run:
+        preview_items = [
+            {"Name": item.get("Name", "Unknown"), "Year": item.get("ProductionYear", "")}
+            for item in items[:100]
+        ]
+        return {"group": group_name, "links": len(item_ids), "items": preview_items}
+
+    try:
+        collection_id = find_collection_by_name(url, api_key, group_name)
+        if collection_id:
+            print(f"Found existing collection {group_name!r} (id={collection_id})")
+        else:
+            collection_id = create_collection(url, api_key, group_name, item_ids)
+            print(f"Created collection {group_name!r} (id={collection_id})")
+
+        add_to_collection(url, api_key, collection_id, item_ids)
+        print(f"Added {len(item_ids)} items to collection {group_name!r}")
+    except Exception as exc:
+        return {"group": group_name, "links": 0, "error": str(exc)}
+
+    result: dict[str, Any] = {"group": group_name, "links": len(item_ids)}
+
+    if auto_set_library_covers:
+        source_cover = get_cover_path(group_name, target_base)
+        if source_cover and os.path.exists(source_cover):
+            try:
+                set_collection_image(url, api_key, collection_id, source_cover)
+            except Exception as exc:
+                print(f"Failed to set collection image for {group_name!r}: {exc}")
+
+    return result
 
 
 def _process_group(
@@ -1046,6 +1107,18 @@ def _process_group(
         and sort_order in SORT_MAP
     ):
         items = _sort_items_in_memory(items, sort_order)
+
+    # --- Collection (Boxset) path ---
+    if group.get("create_as_collection"):
+        return _process_collection_group(
+            group_name,
+            items,
+            url,
+            api_key,
+            target_base,
+            dry_run,
+            auto_set_library_covers,
+        )
 
     # --- Create symlinks ---
     use_prefix: bool = bool(sort_order)  # numbered prefix ↔ any sort order

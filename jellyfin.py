@@ -348,3 +348,266 @@ def set_virtual_folder_image(
         else:
             msg += f": {exc!s}"
         print(msg)
+
+
+# ---------------------------------------------------------------------------
+# Collection (Boxset) helpers
+# ---------------------------------------------------------------------------
+
+
+def create_collection(
+    base_url: str,
+    api_key: str,
+    name: str,
+    item_ids: list[str],
+    timeout: int = 30,
+) -> str:
+    """Create a new Jellyfin Collection (Boxset) with the given items.
+
+    Args:
+        base_url: Jellyfin server base URL.
+        api_key: Jellyfin API key.
+        name: Display name for the collection.
+        item_ids: List of Jellyfin item IDs to include in the collection.
+        timeout: HTTP request timeout.
+
+    Returns:
+        The ``Id`` of the newly created collection.
+
+    Raises:
+        RuntimeError: If the API call fails.
+    """
+    headers = {"X-Emby-Token": api_key}
+    params: dict[str, str] = {"Name": name, "Ids": ",".join(item_ids)}
+
+    try:
+        resp = requests.post(
+            f"{base_url}/Collections",
+            params=params,
+            headers=headers,
+            timeout=timeout,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        collection_id: str | None = data.get("Id")
+        if not collection_id:
+            raise RuntimeError(f"Collection created but no Id returned for {name!r}")
+        return collection_id
+    except requests.exceptions.RequestException as exc:
+        msg = f"Failed to create collection {name!r}"
+        if hasattr(exc, "response") and exc.response is not None:
+            msg += f" (Status {exc.response.status_code}): {exc.response.text}"
+        else:
+            msg += f": {exc!s}"
+        raise RuntimeError(msg) from exc
+
+
+def find_collection_by_name(
+    base_url: str,
+    api_key: str,
+    name: str,
+    timeout: int = 30,
+) -> str | None:
+    """Find an existing Jellyfin Collection (Boxset) by name.
+
+    Args:
+        base_url: Jellyfin server base URL.
+        api_key: Jellyfin API key.
+        name: Exact name of the collection to find.
+        timeout: HTTP request timeout.
+
+    Returns:
+        The collection ``Id`` if found, ``None`` otherwise.
+    """
+    headers = {"X-Emby-Token": api_key}
+    params: dict[str, str] = {
+        "IncludeItemTypes": "BoxSet",
+        "Recursive": "true",
+        "SearchTerm": name,
+    }
+
+    try:
+        resp = requests.get(
+            f"{base_url}/Items",
+            params=params,
+            headers=headers,
+            timeout=timeout,
+        )
+        resp.raise_for_status()
+        items = resp.json().get("Items", [])
+        for item in items:
+            if item.get("Name") == name:
+                item_id: str | None = item.get("Id")
+                if item_id:
+                    return item_id
+        return None
+    except requests.exceptions.RequestException:
+        return None
+
+
+def add_to_collection(
+    base_url: str,
+    api_key: str,
+    collection_id: str,
+    item_ids: list[str],
+    timeout: int = 30,
+) -> None:
+    """Add items to an existing Jellyfin Collection.
+
+    Args:
+        base_url: Jellyfin server base URL.
+        api_key: Jellyfin API key.
+        collection_id: ID of the target collection.
+        item_ids: List of item IDs to add.
+        timeout: HTTP request timeout.
+
+    Raises:
+        RuntimeError: If the API call fails.
+    """
+    if not item_ids:
+        return
+
+    headers = {"X-Emby-Token": api_key}
+    params: dict[str, str] = {"Ids": ",".join(item_ids)}
+
+    try:
+        resp = requests.post(
+            f"{base_url}/Collections/{collection_id}/Items",
+            params=params,
+            headers=headers,
+            timeout=timeout,
+        )
+        resp.raise_for_status()
+    except requests.exceptions.RequestException as exc:
+        msg = f"Failed to add items to collection {collection_id!r}"
+        if hasattr(exc, "response") and exc.response is not None:
+            msg += f" (Status {exc.response.status_code}): {exc.response.text}"
+        else:
+            msg += f": {exc!s}"
+        raise RuntimeError(msg) from exc
+
+
+def remove_from_collection(
+    base_url: str,
+    api_key: str,
+    collection_id: str,
+    item_ids: list[str],
+    timeout: int = 30,
+) -> None:
+    """Remove items from a Jellyfin Collection.
+
+    Args:
+        base_url: Jellyfin server base URL.
+        api_key: Jellyfin API key.
+        collection_id: ID of the collection.
+        item_ids: List of item IDs to remove.
+        timeout: HTTP request timeout.
+
+    Raises:
+        RuntimeError: If the API call fails.
+    """
+    if not item_ids:
+        return
+
+    headers = {"X-Emby-Token": api_key}
+    params: dict[str, str] = {"Ids": ",".join(item_ids)}
+
+    try:
+        resp = requests.delete(
+            f"{base_url}/Collections/{collection_id}/Items",
+            params=params,
+            headers=headers,
+            timeout=timeout,
+        )
+        resp.raise_for_status()
+    except requests.exceptions.RequestException as exc:
+        msg = f"Failed to remove items from collection {collection_id!r}"
+        if hasattr(exc, "response") and exc.response is not None:
+            msg += f" (Status {exc.response.status_code}): {exc.response.text}"
+        else:
+            msg += f": {exc!s}"
+        raise RuntimeError(msg) from exc
+
+
+def delete_collection(
+    base_url: str,
+    api_key: str,
+    collection_id: str,
+    timeout: int = 30,
+) -> None:
+    """Delete a Jellyfin Collection (Boxset) by ID.
+
+    Args:
+        base_url: Jellyfin server base URL.
+        api_key: Jellyfin API key.
+        collection_id: ID of the collection to delete.
+        timeout: HTTP request timeout.
+
+    Raises:
+        RuntimeError: If the API call fails.
+    """
+    headers = {"X-Emby-Token": api_key}
+
+    try:
+        resp = requests.delete(
+            f"{base_url}/Items/{collection_id}",
+            headers=headers,
+            timeout=timeout,
+        )
+        resp.raise_for_status()
+    except requests.exceptions.RequestException as exc:
+        msg = f"Failed to delete collection {collection_id!r}"
+        if hasattr(exc, "response") and exc.response is not None:
+            msg += f" (Status {exc.response.status_code}): {exc.response.text}"
+        else:
+            msg += f": {exc!s}"
+        raise RuntimeError(msg) from exc
+
+
+def set_collection_image(
+    base_url: str,
+    api_key: str,
+    collection_id: str,
+    image_path: str,
+    timeout: int = 30,
+) -> None:
+    """Set the primary image for a Jellyfin Collection.
+
+    Args:
+        base_url: Jellyfin server base URL.
+        api_key: Jellyfin API key.
+        collection_id: ID of the collection.
+        image_path: Absolute path to the local image file to upload.
+        timeout: HTTP request timeout.
+    """
+    try:
+        with open(image_path, "rb") as f:
+            image_bytes = f.read()
+    except OSError as exc:
+        print(f"Cannot set collection image: Failed to read {image_path!r}: {exc}")
+        return
+
+    mime_type, _ = mimetypes.guess_type(image_path)
+    mime_type = mime_type or "application/octet-stream"
+
+    headers = {
+        "X-Emby-Token": api_key,
+        "Content-Type": mime_type,
+    }
+
+    try:
+        resp = requests.post(
+            f"{base_url}/Items/{collection_id}/Images/Primary",
+            data=image_bytes,
+            headers=headers,
+            timeout=timeout,
+        )
+        resp.raise_for_status()
+        print(f"Successfully updated cover image for collection {collection_id!r}")
+    except requests.exceptions.RequestException as exc:
+        msg = f"Failed to set image for collection {collection_id!r}"
+        if hasattr(exc, "response") and exc.response is not None:
+            msg += f" (Status {exc.response.status_code}): {exc.response.text}"
+        else:
+            msg += f": {exc!s}"
+        print(msg)
