@@ -339,6 +339,82 @@ button:disabled {
     }
 }
 
+/* ── Loading Overlay ────────────────────────────────────── */
+.loading-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 2000;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(12px);
+    flex-direction: column;
+}
+
+.loading-overlay-card {
+    background: var(--surface-color);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: 2.5rem 2rem;
+    text-align: center;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+    animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    max-width: 420px;
+    width: 90vw;
+}
+
+.loading-overlay-card .loading-spinner {
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    border-width: 3px;
+    margin-bottom: 1rem;
+}
+
+.loading-overlay-card h3 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 0.5rem;
+}
+
+.loading-overlay-card p {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    margin: 0 0 1.25rem;
+    line-height: 1.4;
+}
+
+.progress-bar-container {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.progress-bar-indeterminate {
+    height: 100%;
+    width: 30%;
+    background: var(--accent-color);
+    border-radius: 2px;
+    animation: progressIndeterminate 1.4s ease-in-out infinite;
+}
+
+@keyframes progressIndeterminate {
+    0% {
+        transform: translateX(-100%);
+    }
+    50% {
+        transform: translateX(200%);
+    }
+    100% {
+        transform: translateX(400%);
+    }
+}
+
 /* ── Modals ─────────────────────────────────────────────── */
 .modal {
     display: none;

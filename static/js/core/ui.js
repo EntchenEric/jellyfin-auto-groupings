@@ -72,3 +72,21 @@ export function renderEmptyState(container, message) {
 export function getEl(id) {
     return document.getElementById(id);
 }
+
+export function showLoadingOverlay(title, status) {
+    const overlay = getEl('loading-overlay');
+    if (!overlay) return;
+    getEl('loading-overlay-title').textContent = title || 'Connecting to Jellyfin';
+    getEl('loading-overlay-status').textContent = status || 'Fetching data...';
+    overlay.style.display = 'flex';
+}
+
+export function updateLoadingStatus(status) {
+    const el = getEl('loading-overlay-status');
+    if (el) el.textContent = status;
+}
+
+export function hideLoadingOverlay() {
+    const overlay = getEl('loading-overlay');
+    if (overlay) overlay.style.display = 'none';
+}

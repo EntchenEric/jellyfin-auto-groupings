@@ -4,8 +4,9 @@ import { state, sourceOptions, metadataTypes } from '../core/state.js';
 import { fetchMetadata, fetchUsers, apiPost } from '../core/api.js';
 import { getEl } from '../core/ui.js';
 
-export async function refreshMetadata() {
+export async function refreshMetadata(onStatus) {
     try {
+        if (onStatus) onStatus('Fetching genres, actors, studios, and tags...');
         const result = await fetchMetadata();
         if (result.status === 'success') {
             state.cachedMetadata = result.metadata;
