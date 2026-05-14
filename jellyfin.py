@@ -424,26 +424,40 @@ def find_collection_by_name(
         The collection ``Id`` if found, ``None`` otherwise.
     """
     headers = {"X-Emby-Token": api_key}
-    params: dict[str, str] = {
-        "IncludeItemTypes": "BoxSet",
-        "Recursive": "true",
-        "SearchTerm": name,
-    }
+    limit = 200
+    start_index = 0
 
     try:
-        resp = requests.get(
-            f"{base_url}/Items",
-            params=params,
-            headers=headers,
-            timeout=timeout,
-        )
-        resp.raise_for_status()
-        items = resp.json().get("Items", [])
-        for item in items:
-            if item.get("Name") == name:
-                item_id: str | None = item.get("Id")
-                if item_id:
-                    return item_id
+        while True:
+            params: dict[str, str | int] = {
+                "IncludeItemTypes": "BoxSet",
+                "Recursive": "true",
+                "SearchTerm": name,
+                "Limit": limit,
+                "StartIndex": start_index,
+            }
+
+            resp = requests.get(
+                f"{base_url}/Items",
+                params=params,
+                headers=headers,
+                timeout=timeout,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            items = data.get("Items", [])
+
+            for item in items:
+                if item.get("Name") == name:
+                    item_id: str | None = item.get("Id")
+                    if item_id:
+                        return item_id
+
+            total = data.get("TotalRecordCount", 0)
+            start_index += len(items)
+            if start_index >= total or not items:
+                break
+
         return None
     except requests.exceptions.RequestException:
         return None
