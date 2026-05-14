@@ -63,12 +63,35 @@ export async function loadConfig() {
     }
 }
 
+function validateCronField(expr) {
+    if (!expr || !expr.trim()) return 'Cron expression must not be empty';
+    const fields = expr.trim().split(/\s+/);
+    if (fields.length !== 5) return `Cron must have 5 fields (has ${fields.length})`;
+    return null; // Deeper validation done server-side
+}
+
 export async function saveAllConfig() {
     if (!state.currentConfig.scheduler) state.currentConfig.scheduler = {};
     state.currentConfig.scheduler.global_enabled = getEl('global_scheduler_enabled').checked;
     state.currentConfig.scheduler.global_schedule = getEl('global_sync_schedule').value.trim();
     state.currentConfig.scheduler.cleanup_enabled = getEl('cleanup_scheduler_enabled').checked;
     state.currentConfig.scheduler.cleanup_schedule = getEl('cleanup_sync_schedule').value.trim() || '0 * * * *';
+
+    // Client-side cron validation
+    if (state.currentConfig.scheduler.global_enabled) {
+        const err = validateCronField(state.currentConfig.scheduler.global_schedule);
+        if (err) { showToast(`Global schedule: ${err}`, 'error'); return; }
+    }
+    if (state.currentConfig.scheduler.cleanup_enabled) {
+        const err = validateCronField(state.currentConfig.scheduler.cleanup_schedule);
+        if (err) { showToast(`Cleanup schedule: ${err}`, 'error'); return; }
+    }
+    for (const g of state.currentConfig.groups) {
+        if (g.schedule_enabled && g.schedule) {
+            const err = validateCronField(g.schedule);
+            if (err) { showToast(`Group '${g.name}': ${err}`, 'error'); return; }
+        }
+    }
 
     try {
         await apiSaveConfig(state.currentConfig);

@@ -255,3 +255,22 @@ def test_browse_directory_oserror(mock_listdir, client):
     mock_listdir.side_effect = OSError("IO Error")
     response = client.get('/api/browse')
     assert response.status_code == 400
+
+
+def test_update_config_invalid_cron(client):
+    response = client.post('/api/config', json={
+        "scheduler": {"global_enabled": True, "global_schedule": "invalid"},
+    })
+    assert response.status_code == 400
+    data = response.get_json()
+    assert data["status"] == "error"
+    assert "Invalid cron" in data["message"]
+
+
+def test_update_config_invalid_group_cron(client):
+    response = client.post('/api/config', json={
+        "groups": [{"name": "Test", "schedule_enabled": True, "schedule": "* * * * * *"}],
+    })
+    assert response.status_code == 400
+    data = response.get_json()
+    assert data["status"] == "error"

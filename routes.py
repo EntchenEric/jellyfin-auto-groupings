@@ -23,7 +23,7 @@ from flask.typing import ResponseReturnValue
 
 from config import load_config, save_config
 from jellyfin import delete_virtual_folder, fetch_jellyfin_items, get_users
-from scheduler import update_scheduler_jobs
+from scheduler import update_scheduler_jobs, validate_cron
 from sync import get_cover_path, parse_complex_query, preview_group, run_sync
 
 bp = Blueprint("main", __name__)
@@ -102,6 +102,30 @@ def update_config() -> ResponseReturnValue:
     if not isinstance(new_config, dict):
         return (
             jsonify({"status": "error", "message": "Request body must be a JSON object"}),
+            400,
+        )
+
+    # Validate cron expressions
+    cron_errors = []
+    sched_cfg = new_config.get("scheduler", {})
+    if sched_cfg.get("global_enabled"):
+        global_sched = sched_cfg.get("global_schedule", "")
+        err = validate_cron(global_sched)
+        if err:
+            cron_errors.append(f"Global schedule: {err}")
+    cleanup_sched = sched_cfg.get("cleanup_schedule", "")
+    if cleanup_sched and sched_cfg.get("cleanup_enabled", True):
+        err = validate_cron(cleanup_sched)
+        if err:
+            cron_errors.append(f"Cleanup schedule: {err}")
+    for group in new_config.get("groups", []):
+        if group.get("schedule_enabled") and group.get("schedule"):
+            err = validate_cron(group["schedule"])
+            if err:
+                cron_errors.append(f"Group '{group.get('name', 'unnamed')}': {err}")
+    if cron_errors:
+        return (
+            jsonify({"status": "error", "message": "Invalid cron expression(s)", "errors": cron_errors}),
             400,
         )
     try:

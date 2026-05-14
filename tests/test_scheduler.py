@@ -1,11 +1,12 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from scheduler import (
-    update_scheduler_jobs, 
-    _run_global_sync_job, 
+    update_scheduler_jobs,
+    _run_global_sync_job,
     _run_group_sync_job,
     start_scheduler,
-    _scheduler
+    _scheduler,
+    validate_cron,
 )
 
 @patch('scheduler._scheduler')
@@ -113,4 +114,35 @@ def test_update_scheduler_jobs_cleanup(mock_load, mock_sched):
     mock_sched.add_job.assert_called_once()
     _args, kwargs = mock_sched.add_job.call_args
     assert kwargs["id"] == "cleanup_sync"
+
+
+# ---------------------------------------------------------------------------
+# validate_cron tests
+# ---------------------------------------------------------------------------
+
+def test_validate_cron_valid():
+    assert validate_cron("0 0 * * *") is None
+    assert validate_cron("*/5 * * * *") is None
+    assert validate_cron("30 14 1 1 0") is None
+
+
+def test_validate_cron_empty():
+    assert validate_cron("") is not None
+    assert validate_cron("   ") is not None
+
+
+def test_validate_cron_wrong_field_count():
+    err = validate_cron("* * * * * *")
+    assert err is not None
+    assert "5 fields" in err
+    err = validate_cron("* * * *")
+    assert err is not None
+    assert "5 fields" in err
+
+
+def test_validate_cron_invalid_values():
+    err = validate_cron("60 0 * * *")
+    assert err is not None
+    err = validate_cron("not a cron expr")
+    assert err is not None
 

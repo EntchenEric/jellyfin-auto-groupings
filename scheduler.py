@@ -126,3 +126,27 @@ def _run_cleanup_job() -> None:
         deleted = run_cleanup_broken_symlinks(config)
         logger.info(f"Background cleanup job finished: deleted {deleted} broken symlinks")
 
+
+def validate_cron(expr: str) -> str | None:
+    """Validate a cron expression.
+
+    Args:
+        expr: A 5-field cron expression (e.g. ``"0 0 * * *"``).
+
+    Returns:
+        ``None`` if valid, otherwise an error message string.
+    """
+    if not expr or not expr.strip():
+        return "Cron expression must not be empty"
+
+    expr = expr.strip()
+    fields = expr.split()
+    if len(fields) != 5:
+        return f"Cron expression must have 5 fields (minute hour day month weekday), got {len(fields)}"
+
+    try:
+        CronTrigger.from_crontab(expr)
+    except (ValueError, TypeError, AttributeError) as exc:
+        return f"Invalid cron expression: {exc}"
+    return None
+
