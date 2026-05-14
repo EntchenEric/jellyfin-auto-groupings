@@ -25,4 +25,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/entcheneric/jellyfin-groupings:latest
+          tags: ghcr.io/entcheneric/jellyfin-groupings:latest, ghcr.io/entcheneric/jellyfin-groupings:${{ github.sha }}
