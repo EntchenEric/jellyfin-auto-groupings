@@ -32,6 +32,21 @@ bp = Blueprint("main", __name__)
 MAX_B64_SIZE = 4 * 1024 * 1024
 
 # ---------------------------------------------------------------------------
+# CSRF protection
+# ---------------------------------------------------------------------------
+
+@bp.before_request
+def _check_csrf() -> ResponseReturnValue | None:
+    """Require X-Requested-With header on state-changing requests."""
+    if request.method in ("POST", "PUT", "DELETE", "PATCH"):
+        from flask import current_app
+        if current_app.testing:
+            return None
+        if request.headers.get("X-Requested-With") != "XMLHttpRequest":
+            return jsonify({"status": "error", "message": "CSRF validation failed"}), 403
+    return None
+
+# ---------------------------------------------------------------------------
 # Security helpers for the filesystem browser
 # ---------------------------------------------------------------------------
 

@@ -37,7 +37,10 @@ export function apiGet(url) {
 export function apiPost(url, body) {
     return apiRequest(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
         body: JSON.stringify(body)
     });
 }
