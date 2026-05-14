@@ -25,7 +25,11 @@
             <h3 id="loading-overlay-title">Connecting to Jellyfin</h3>
             <p id="loading-overlay-status" role="status" aria-live="polite" aria-atomic="true">Fetching genres, actors, studios, and tags...</p>
             <div class="progress-bar-container">
-                <div class="progress-bar-indeterminate"></div>
+                <div class="progress-bar-fill" id="progress-bar-fill" style="width: 0%;"></div>
+            </div>
+            <div class="progress-info" id="progress-info">
+                <span id="progress-percentage">0%</span>
+                <span id="progress-eta" style="display:none;"></span>
             </div>
         </div>
     </div>

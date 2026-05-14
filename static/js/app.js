@@ -198,12 +198,14 @@ async function bootstrap() {
         if (state.currentConfig.jellyfin_url && state.currentConfig.api_key) {
             showLoadingOverlay(
                 'Connecting to Jellyfin',
-                'Fetching genres, actors, studios, and tags...'
+                'Fetching genres, actors, studios, and tags...',
+                3
             );
             try {
                 await refreshMetadata(updateLoadingStatus);
-                updateLoadingStatus('Loading users...');
+                updateLoadingStatus('Loading users...', true);
                 const data = await fetchUsers();
+                updateLoadingStatus('Ready', true);
                 if (data.status === 'success') {
                     state.cachedUsers = data.users;
                 }

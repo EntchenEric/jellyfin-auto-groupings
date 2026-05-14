@@ -158,10 +158,12 @@ export function initConfig() {
         if (state.currentConfig.jellyfin_url && state.currentConfig.api_key) {
             showLoadingOverlay(
                 'Reconnecting to Jellyfin',
-                'Fetching updated genres, actors, studios, and tags...'
+                'Fetching updated genres, actors, studios, and tags...',
+                1
             );
             try {
                 await refreshMetadata(updateLoadingStatus);
+                updateLoadingStatus('Done', true);
             } catch (err) {
                 // refreshMetadata throws on failure
             } finally {
