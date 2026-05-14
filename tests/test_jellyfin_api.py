@@ -1,7 +1,12 @@
 import logging
 from unittest.mock import patch, MagicMock
 import pytest
-from jellyfin import get_libraries, add_virtual_folder, delete_virtual_folder, get_library_id, set_virtual_folder_image, get_users, get_user_recent_items
+from jellyfin import (
+    get_libraries, add_virtual_folder, delete_virtual_folder,
+    get_library_id, set_virtual_folder_image, get_users, get_user_recent_items,
+    create_collection, find_collection_by_name, add_to_collection,
+    remove_from_collection, delete_collection, set_collection_image,
+)
 
 @patch('requests.get')
 def test_get_libraries(mock_get):
@@ -343,3 +348,292 @@ def test_set_virtual_folder_image_request_exception_no_response(mock_get_library
     set_virtual_folder_image("http://localhost:8096", "test_key", "MyLib", "/path/to/img.jpg")
 
     assert "Failed to set image for library 'MyLib': Upload Error" in caplog.text
+
+
+# ---------------------------------------------------------------------------
+# Collection (Boxset) API tests
+# ---------------------------------------------------------------------------
+
+
+@patch('requests.post')
+def test_create_collection_success(mock_post):
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"Id": "col_123"}
+    mock_response.raise_for_status.return_value = None
+    mock_post.return_value = mock_response
+
+    col_id = create_collection("http://localhost:8096", "test_key", "My Collection", ["item_1", "item_2"])
+    assert col_id == "col_123"
+    mock_post.assert_called_once_with(
+        "http://localhost:8096/Collections",
+        params={"Name": "My Collection", "Ids": "item_1,item_2"},
+        headers={"X-Emby-Token": "test_key"},
+        timeout=30,
+    )
+
+
+@patch('requests.post')
+def test_create_collection_no_id(mock_post):
+    mock_response = MagicMock()
+    mock_response.json.return_value = {}
+    mock_response.raise_for_status.return_value = None
+    mock_post.return_value = mock_response
+
+    with pytest.raises(RuntimeError, match="Collection created but no Id returned for 'Bad'"):
+        create_collection("http://localhost:8096", "test_key", "Bad", ["item_1"])
+
+
+@patch('requests.post')
+def test_create_collection_http_error(mock_post):
+    mock_response = MagicMock()
+    mock_response.status_code = 500
+    mock_response.text = "Server Error"
+    mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(response=mock_response)
+    mock_post.return_value = mock_response
+
+    with pytest.raises(RuntimeError) as excinfo:
+        create_collection("http://localhost:8096", "test_key", "Fail", ["item_1"])
+    assert "Failed to create collection 'Fail' (Status 500): Server Error" in str(excinfo.value)
+
+
+@patch('requests.post')
+def test_create_collection_request_exception_no_response(mock_post):
+    mock_post.side_effect = requests.exceptions.RequestException("Network down")
+
+    with pytest.raises(RuntimeError, match="Failed to create collection 'Fail': Network down"):
+        create_collection("http://localhost:8096", "test_key", "Fail", ["item_1"])
+
+
+@patch('requests.get')
+def test_find_collection_by_name_found(mock_get):
+    mock_response = MagicMock()
+    mock_response.json.return_value = {
+        "Items": [
+            {"Name": "Other", "Id": "other_id"},
+            {"Name": "My Boxset", "Id": "boxset_42"},
+        ]
+    }
+    mock_response.raise_for_status.return_value = None
+    mock_get.return_value = mock_response
+
+    result = find_collection_by_name("http://localhost:8096", "test_key", "My Boxset")
+    assert result == "boxset_42"
+
+
+@patch('requests.get')
+def test_find_collection_by_name_not_found(mock_get):
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"Items": [{"Name": "Other", "Id": "x"}]}
+    mock_response.raise_for_status.return_value = None
+    mock_get.return_value = mock_response
+
+    result = find_collection_by_name("http://localhost:8096", "test_key", "Missing")
+    assert result is None
+
+
+@patch('requests.get')
+def test_find_collection_by_name_missing_id(mock_get):
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"Items": [{"Name": "NoId"}]}
+    mock_response.raise_for_status.return_value = None
+    mock_get.return_value = mock_response
+
+    result = find_collection_by_name("http://localhost:8096", "test_key", "NoId")
+    assert result is None
+
+
+@patch('requests.get')
+def test_find_collection_by_name_request_exception(mock_get):
+    mock_get.side_effect = requests.exceptions.RequestException("Timeout")
+
+    result = find_collection_by_name("http://localhost:8096", "test_key", "Anything")
+    assert result is None
+
+
+@patch('requests.post')
+def test_add_to_collection_success(mock_post):
+    mock_response = MagicMock()
+    mock_response.raise_for_status.return_value = None
+    mock_post.return_value = mock_response
+
+    add_to_collection("http://localhost:8096", "test_key", "col_1", ["a", "b"])
+    mock_post.assert_called_once_with(
+        "http://localhost:8096/Collections/col_1/Items",
+        params={"Ids": "a,b"},
+        headers={"X-Emby-Token": "test_key"},
+        timeout=30,
+    )
+
+
+def test_add_to_collection_empty_ids():
+    add_to_collection("http://localhost:8096", "test_key", "col_1", [])
+
+
+@patch('requests.post')
+def test_add_to_collection_http_error(mock_post):
+    mock_response = MagicMock()
+    mock_response.status_code = 400
+    mock_response.text = "Bad item"
+    mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(response=mock_response)
+    mock_post.return_value = mock_response
+
+    with pytest.raises(RuntimeError) as excinfo:
+        add_to_collection("http://localhost:8096", "test_key", "col_1", ["bad"])
+    assert "Failed to add items to collection 'col_1' (Status 400): Bad item" in str(excinfo.value)
+
+
+@patch('requests.post')
+def test_add_to_collection_request_exception(mock_post):
+    mock_post.side_effect = requests.exceptions.RequestException("Net fail")
+
+    with pytest.raises(RuntimeError, match="Failed to add items to collection 'col_1': Net fail"):
+        add_to_collection("http://localhost:8096", "test_key", "col_1", ["x"])
+
+
+@patch('requests.delete')
+def test_remove_from_collection_success(mock_delete):
+    mock_response = MagicMock()
+    mock_response.raise_for_status.return_value = None
+    mock_delete.return_value = mock_response
+
+    remove_from_collection("http://localhost:8096", "test_key", "col_1", ["a", "b"])
+    mock_delete.assert_called_once_with(
+        "http://localhost:8096/Collections/col_1/Items",
+        params={"Ids": "a,b"},
+        headers={"X-Emby-Token": "test_key"},
+        timeout=30,
+    )
+
+
+def test_remove_from_collection_empty_ids():
+    remove_from_collection("http://localhost:8096", "test_key", "col_1", [])
+
+
+@patch('requests.delete')
+def test_remove_from_collection_http_error(mock_delete):
+    mock_response = MagicMock()
+    mock_response.status_code = 404
+    mock_response.text = "Not found"
+    mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(response=mock_response)
+    mock_delete.return_value = mock_response
+
+    with pytest.raises(RuntimeError) as excinfo:
+        remove_from_collection("http://localhost:8096", "test_key", "col_1", ["x"])
+    assert "Failed to remove items from collection 'col_1' (Status 404): Not found" in str(excinfo.value)
+
+
+@patch('requests.delete')
+def test_remove_from_collection_request_exception(mock_delete):
+    mock_delete.side_effect = requests.exceptions.RequestException("Timeout")
+
+    with pytest.raises(RuntimeError, match="Failed to remove items from collection 'col_1': Timeout"):
+        remove_from_collection("http://localhost:8096", "test_key", "col_1", ["x"])
+
+
+@patch('requests.delete')
+def test_delete_collection_success(mock_delete):
+    mock_response = MagicMock()
+    mock_response.raise_for_status.return_value = None
+    mock_delete.return_value = mock_response
+
+    delete_collection("http://localhost:8096", "test_key", "col_1")
+    mock_delete.assert_called_once_with(
+        "http://localhost:8096/Items/col_1",
+        headers={"X-Emby-Token": "test_key"},
+        timeout=30,
+    )
+
+
+@patch('requests.delete')
+def test_delete_collection_http_error(mock_delete):
+    mock_response = MagicMock()
+    mock_response.status_code = 403
+    mock_response.text = "Forbidden"
+    mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(response=mock_response)
+    mock_delete.return_value = mock_response
+
+    with pytest.raises(RuntimeError) as excinfo:
+        delete_collection("http://localhost:8096", "test_key", "col_1")
+    assert "Failed to delete collection 'col_1' (Status 403): Forbidden" in str(excinfo.value)
+
+
+@patch('requests.delete')
+def test_delete_collection_request_exception(mock_delete):
+    mock_delete.side_effect = requests.exceptions.RequestException("Gone")
+
+    with pytest.raises(RuntimeError, match="Failed to delete collection 'col_1': Gone"):
+        delete_collection("http://localhost:8096", "test_key", "col_1")
+
+
+@patch('mimetypes.guess_type')
+@patch('builtins.open')
+@patch('requests.post')
+def test_set_collection_image_success(mock_post, mock_open, mock_guess, caplog):
+    mock_guess.return_value = ("image/png", None)
+    mock_open.return_value.__enter__.return_value.read.return_value = b"png_data"
+    mock_response = MagicMock()
+    mock_response.raise_for_status.return_value = None
+    mock_post.return_value = mock_response
+
+    set_collection_image("http://localhost:8096", "test_key", "col_1", "/path/cover.png")
+
+    mock_post.assert_called_once_with(
+        "http://localhost:8096/Items/col_1/Images/Primary",
+        data=b"png_data",
+        headers={"X-Emby-Token": "test_key", "Content-Type": "image/png"},
+        timeout=30,
+    )
+    assert "Successfully updated cover image for collection 'col_1'" in caplog.text
+
+
+@patch('builtins.open')
+def test_set_collection_image_os_error(mock_open, caplog):
+    mock_open.side_effect = OSError("Permission denied")
+
+    set_collection_image("http://localhost:8096", "test_key", "col_1", "/bad/path.jpg")
+    assert "Cannot set collection image: Failed to read '/bad/path.jpg': Permission denied" in caplog.text
+
+
+@patch('mimetypes.guess_type')
+@patch('builtins.open')
+@patch('requests.post')
+def test_set_collection_image_unknown_mime(mock_post, mock_open, mock_guess, caplog):
+    mock_guess.return_value = (None, None)
+    mock_open.return_value.__enter__.return_value.read.return_value = b"data"
+    mock_response = MagicMock()
+    mock_response.raise_for_status.return_value = None
+    mock_post.return_value = mock_response
+
+    set_collection_image("http://localhost:8096", "test_key", "col_1", "/path/file.bin")
+
+    call_headers = mock_post.call_args[1]["headers"]
+    assert call_headers["Content-Type"] == "application/octet-stream"
+    assert "Successfully updated cover image for collection 'col_1'" in caplog.text
+
+
+@patch('mimetypes.guess_type')
+@patch('builtins.open')
+@patch('requests.post')
+def test_set_collection_image_http_error(mock_post, mock_open, mock_guess, caplog):
+    mock_guess.return_value = ("image/jpeg", None)
+    mock_open.return_value.__enter__.return_value.read.return_value = b"jpeg_data"
+    mock_response = MagicMock()
+    mock_response.status_code = 400
+    mock_response.text = "Bad Image"
+    mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(response=mock_response)
+    mock_post.return_value = mock_response
+
+    set_collection_image("http://localhost:8096", "test_key", "col_1", "/path/img.jpg")
+    assert "Failed to set image for collection 'col_1' (Status 400): Bad Image" in caplog.text
+
+
+@patch('mimetypes.guess_type')
+@patch('builtins.open')
+@patch('requests.post')
+def test_set_collection_image_request_exception_no_response(mock_post, mock_open, mock_guess, caplog):
+    mock_guess.return_value = ("image/jpeg", None)
+    mock_open.return_value.__enter__.return_value.read.return_value = b"jpeg_data"
+    mock_post.side_effect = requests.exceptions.RequestException("Upload Error")
+
+    set_collection_image("http://localhost:8096", "test_key", "col_1", "/path/img.jpg")
+    assert "Failed to set image for collection 'col_1': Upload Error" in caplog.text
