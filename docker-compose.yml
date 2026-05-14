@@ -10,6 +10,16 @@ services:
     restart: unless-stopped
     ports:
       - "5000:5000"
+    environment:
+      # Use environment variables for sensitive API keys instead of
+      # storing them in plaintext in config/config.json.
+      # Values set here override whatever is in the config file.
+      - JELLYFIN_API_KEY=${JELLYFIN_API_KEY:-}
+      - TRAKT_CLIENT_ID=${TRAKT_CLIENT_ID:-}
+      - TMDB_API_KEY=${TMDB_API_KEY:-}
+      - MAL_CLIENT_ID=${MAL_CLIENT_ID:-}
+      # Uncomment to disable debug mode in production:
+      # - FLASK_DEBUG=false
     volumes:
       # 1. Config persistence
       # Stores your API keys and group definitions. 
