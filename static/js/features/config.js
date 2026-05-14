@@ -128,6 +128,20 @@ export function toggleCleanupScheduler(cb) {
     if (panel) panel.style.display = cb.checked ? 'block' : 'none';
 }
 
+export function syncDomToState() {
+    state.currentConfig.jellyfin_url = getEl('jellyfin_url').value;
+    state.currentConfig.api_key = getEl('api_key').value;
+    state.currentConfig.target_path = getEl('target_path').value;
+    state.currentConfig.media_path_in_jellyfin = getEl('media_path_in_jellyfin').value;
+    state.currentConfig.media_path_on_host = getEl('media_path_on_host').value;
+    state.currentConfig.auto_create_libraries = getEl('auto_create_libraries').checked;
+    state.currentConfig.auto_set_library_covers = getEl('auto_set_library_covers').checked;
+    state.currentConfig.target_path_in_jellyfin = getEl('target_path_in_jellyfin').value;
+    state.currentConfig.trakt_client_id = getEl('trakt_client_id').value;
+    state.currentConfig.tmdb_api_key = getEl('tmdb_api_key').value;
+    state.currentConfig.mal_client_id = getEl('mal_client_id').value;
+}
+
 export function initConfig() {
     const configForm = getEl('config-form');
     const saveBtn = getEl('save-btn');
@@ -137,14 +151,7 @@ export function initConfig() {
     configForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         setLoading(saveBtn, true);
-        state.currentConfig.jellyfin_url = getEl('jellyfin_url').value;
-        state.currentConfig.api_key = getEl('api_key').value;
-        state.currentConfig.target_path = getEl('target_path').value;
-        state.currentConfig.media_path_in_jellyfin = getEl('media_path_in_jellyfin').value;
-        state.currentConfig.media_path_on_host = getEl('media_path_on_host').value;
-        state.currentConfig.auto_create_libraries = getEl('auto_create_libraries').checked;
-        state.currentConfig.auto_set_library_covers = getEl('auto_set_library_covers').checked;
-        state.currentConfig.target_path_in_jellyfin = getEl('target_path_in_jellyfin').value;
+        syncDomToState();
         await saveAllConfig();
         setLoading(saveBtn, false);
 
@@ -166,9 +173,7 @@ export function initConfig() {
     apiConfigForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         setLoading(saveApisBtn, true);
-        state.currentConfig.trakt_client_id = getEl('trakt_client_id').value;
-        state.currentConfig.tmdb_api_key = getEl('tmdb_api_key').value;
-        state.currentConfig.mal_client_id = getEl('mal_client_id').value;
+        syncDomToState();
         await saveAllConfig();
         setLoading(saveApisBtn, false);
     });
