@@ -14,9 +14,9 @@ import hashlib
 import logging
 import os
 import re
-from collections import Counter
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
- 
+
 import requests
 from flask import Blueprint, jsonify, request, send_from_directory
 from flask.typing import ResponseReturnValue
@@ -162,17 +162,74 @@ def test_server() -> ResponseReturnValue:
 # ---------------------------------------------------------------------------
 
 
+def _fetch_jellyfin_endpoint(
+    base_url: str,
+    api_key: str,
+    endpoint: str,
+    *,
+    timeout: int = 15,
+    extra_params: dict[str, str] | None = None,
+) -> list[dict[str, Any]]:
+    """Fetch all items from a Jellyfin list endpoint (Genres, Studios, etc.).
+
+    Handles paginated responses, collecting all items across all pages.
+
+    Args:
+        base_url: Jellyfin server base URL.
+        api_key: Jellyfin API key.
+        endpoint: Name of the dedicated endpoint (e.g. ``Genres``, ``Studios``).
+        timeout: HTTP request timeout per page.
+        extra_params: Additional query-string parameters per request.
+
+    Returns:
+        A list of all item dictionaries from the endpoint.
+    """
+    items: list[dict[str, Any]] = []
+    start_index = 0
+    limit = 200
+
+    while True:
+        params: dict[str, str | int] = {
+            "api_key": api_key,
+            "StartIndex": start_index,
+            "Limit": limit,
+        }
+        if extra_params:
+            params.update(extra_params)
+        try:
+            resp = requests.get(
+                f"{base_url}/{endpoint}",
+                params=params,
+                timeout=timeout,
+            )
+            resp.raise_for_status()
+        except requests.RequestException:
+            if items:
+                break  # partial data is better than nothing
+            raise
+
+        data = resp.json()
+        page_items = data.get("Items", [])
+        items.extend(page_items)
+
+        if len(page_items) < limit:
+            break
+        start_index += limit
+
+    return items
+
+
 @bp.route("/api/jellyfin/metadata", methods=["GET"])
 def get_jellyfin_metadata() -> ResponseReturnValue:
     """Return aggregated metadata (genres, studios, tags, actors) from Jellyfin.
 
-    Fetches all Movies and Series from the configured Jellyfin instance in
-    paginated chunks to avoid timeouts on large libraries, and counts
-    occurrences of each metadata field, returning sorted lists.
+    Uses Jellyfin's dedicated ``/Genres``, ``/Studios``, ``/Persons``, and
+    ``/Tags`` endpoints fetched in parallel, which is orders of magnitude
+    faster than scanning all items recursively.
 
     Returns:
         JSON with ``status`` and a ``metadata`` object containing ``genre``,
-        ``studio``, ``tag``, and ``actor`` lists (sorted by frequency).
+        ``studio``, ``tag``, and ``actor`` lists.
     """
     config: dict[str, Any] = load_config()
     if not isinstance(config, dict):
@@ -184,63 +241,37 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
     if not url or not api_key:
         return jsonify({"status": "error", "message": "Server settings not configured"}), 400
 
-    genres_counts: Counter[str] = Counter()
-    studios_counts: Counter[str] = Counter()
-    tags_counts: Counter[str] = Counter()
-    people_counts: Counter[str] = Counter()
-
-    chunk_size = 50
-    start_index = 0
+    result: dict[str, list[str]] = {}
+    failed = 0
 
     try:
-        while True:
-            items = fetch_jellyfin_items(
-                url,
-                api_key,
-                {
-                    "Recursive": "true",
-                    "IncludeItemTypes": "Movie,Series",
-                    "Fields": "Genres,Studios,Tags,People",
-                    "StartIndex": str(start_index),
-                    "Limit": str(chunk_size),
-                },
-                timeout=45,
-            )
-
-            if not items:
-                break
-
-            for item in items:
-                for g in item.get("Genres", []):
-                    genres_counts[g] += 1
-                for s in item.get("Studios", []):
-                    s_name: str | None = s.get("Name")
-                    if s_name:
-                        studios_counts[s_name] += 1
-                for t in item.get("Tags", []):
-                    tags_counts[t] += 1
-                for p in item.get("People", []):
-                    if p.get("Type") == "Actor":
-                        p_name: str | None = p.get("Name")
-                        if p_name:
-                            people_counts[p_name] += 1
-
-            if len(items) < chunk_size:
-                break
-
-            start_index += chunk_size
-
-        return jsonify(
-            {
-                "status": "success",
-                "metadata": {
-                    "genre": [x[0] for x in genres_counts.most_common()],
-                    "studio": [x[0] for x in studios_counts.most_common()],
-                    "tag": [x[0] for x in tags_counts.most_common()],
-                    "actor": [x[0] for x in people_counts.most_common()],
-                },
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            futures: dict[str, Any] = {
+                "genre": pool.submit(_fetch_jellyfin_endpoint, url, api_key, "Genres"),
+                "studio": pool.submit(_fetch_jellyfin_endpoint, url, api_key, "Studios"),
+                "actor": pool.submit(
+                    _fetch_jellyfin_endpoint,
+                    url,
+                    api_key,
+                    "Persons",
+                    extra_params={"PersonTypes": "Actor"},
+                ),
+                "tag": pool.submit(_fetch_jellyfin_endpoint, url, api_key, "Tags"),
             }
-        )
+            for key, future in futures.items():
+                try:
+                    items = future.result()
+                    result[key] = [
+                        item.get("Name", "") for item in items if item.get("Name")
+                    ]
+                except Exception:
+                    result[key] = []
+                    failed += 1
+
+        if failed >= len(futures):
+            return jsonify({"status": "error", "message": "Failed to fetch metadata from Jellyfin"}), 400
+
+        return jsonify({"status": "success", "metadata": result})
     except Exception as exc:
         return jsonify({"status": "error", "message": str(exc)}), 400
 

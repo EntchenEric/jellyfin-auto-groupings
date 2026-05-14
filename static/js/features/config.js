@@ -2,7 +2,7 @@
 
 import { state, sourceOptions, setState } from '../core/state.js';
 import { apiGet, apiPost, loadConfig as apiLoadConfig, saveConfig as apiSaveConfig, fetchMetadata } from '../core/api.js';
-import { showToast, setLoading, showModal, hideModal, getEl } from '../core/ui.js';
+import { showToast, setLoading, showModal, hideModal, getEl, showLoadingOverlay, updateLoadingStatus, hideLoadingOverlay } from '../core/ui.js';
 import { updateSourceTypeOptions, updateSourceValueUI, refreshMetadata } from './metadata.js';
 import { renderGroups } from './groupings.js';
 import { updateValidationUI } from './test-connection.js';
@@ -126,7 +126,20 @@ export function initConfig() {
         state.currentConfig.target_path_in_jellyfin = getEl('target_path_in_jellyfin').value;
         await saveAllConfig();
         setLoading(saveBtn, false);
-        await refreshMetadata();
+
+        if (state.currentConfig.jellyfin_url && state.currentConfig.api_key) {
+            showLoadingOverlay(
+                'Reconnecting to Jellyfin',
+                'Fetching updated genres, actors, studios, and tags...'
+            );
+            try {
+                await refreshMetadata(updateLoadingStatus);
+            } catch (err) {
+                // refreshMetadata throws on failure
+            } finally {
+                hideLoadingOverlay();
+            }
+        }
     });
 
     apiConfigForm.addEventListener('submit', async (e) => {

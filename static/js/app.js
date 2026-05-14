@@ -1,11 +1,12 @@
 // app.js – Application entry point
 
 import { state, metadataTypes } from './core/state.js';
-import { getEl, showToast, setLoading } from './core/ui.js';
+import { getEl, showToast, setLoading, showLoadingOverlay, updateLoadingStatus, hideLoadingOverlay } from './core/ui.js';
 
 import { initConfig, loadConfig, saveAllConfig, toggleGlobalScheduler, toggleCleanupScheduler } from './features/config.js';
 import { initWizard, openWizardManual } from './features/wizard.js';
-import { initMetadata, addMetadataRule, previewGrouping, getFilterValue } from './features/metadata.js';
+import { initMetadata, addMetadataRule, previewGrouping, getFilterValue, refreshMetadata } from './features/metadata.js';
+import { fetchUsers } from './core/api.js';
 import { initSync, syncAll, previewSyncAll, showConfirmSyncDialog } from './features/sync.js';
 import { initCleanup, openCleanupModal } from './features/cleanup.js';
 import { initExportImport, openExportModal, openImportModal, handleFileSelected } from './features/export-import.js';
@@ -192,6 +193,25 @@ async function bootstrap() {
         if (warning) warning.style.display = 'block';
     } else {
         await loadConfig();
+
+        if (state.currentConfig.jellyfin_url && state.currentConfig.api_key) {
+            showLoadingOverlay(
+                'Connecting to Jellyfin',
+                'Fetching genres, actors, studios, and tags...'
+            );
+            try {
+                await refreshMetadata(updateLoadingStatus);
+                updateLoadingStatus('Loading users...');
+                const data = await fetchUsers();
+                if (data.status === 'success') {
+                    state.cachedUsers = data.users;
+                }
+            } catch (err) {
+                showToast('Failed to load data from Jellyfin', 'error');
+            } finally {
+                hideLoadingOverlay();
+            }
+        }
     }
 
     initWizard();
