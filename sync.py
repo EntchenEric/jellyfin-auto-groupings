@@ -1143,7 +1143,7 @@ def _process_group(
     use_prefix: bool = bool(sort_order)  # numbered prefix ↔ any sort order
     width: int = max(len(str(len(items))) if items else 4, 4)
     links_created: int = 0
-    preview_items = []
+    preview_items: list[dict[str, Any]] = []
 
     for idx, item in enumerate(items, start=1):
         if not isinstance(item, dict):

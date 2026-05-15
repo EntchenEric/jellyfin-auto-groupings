@@ -27,6 +27,8 @@ from jellyfin import delete_virtual_folder, fetch_jellyfin_items, get_users
 from scheduler import update_scheduler_jobs, validate_cron
 from sync import get_cover_path, parse_complex_query, preview_group, run_sync
 
+logger = logging.getLogger(__name__)
+
 bp = Blueprint("main", __name__)
 
 # Max size for base64 encoded cover image (approx 4MB)
@@ -400,7 +402,8 @@ def upload_cover() -> ResponseReturnValue:
         
         cover_path = get_cover_path(group_name, target_path, check_exists=False)
         # get_cover_path with check_exists=False never returns None
-            
+        assert cover_path is not None
+
         os.makedirs(os.path.dirname(cover_path), exist_ok=True)
         with open(cover_path, "wb") as f:
             f.write(decoded)

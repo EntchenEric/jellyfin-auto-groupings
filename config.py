@@ -74,13 +74,14 @@ def load_config() -> dict[str, Any]:
         "mal_client_id": "MAL_CLIENT_ID",
     }
 
+    cfg: dict[str, Any]
     if not os.path.exists(CONFIG_FILE):
         save_config(DEFAULT_CONFIG.copy())
         cfg = DEFAULT_CONFIG.copy()
     else:
         try:
             with open(CONFIG_FILE, "r") as fh:
-                cfg: dict[str, Any] = json.load(fh)
+                cfg = json.load(fh)
 
             # Fill in any keys added after initial creation
             for key, default_value in DEFAULT_CONFIG.items():
