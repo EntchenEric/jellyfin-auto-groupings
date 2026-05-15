@@ -27,6 +27,8 @@ from jellyfin import delete_virtual_folder, fetch_jellyfin_items, get_users
 from scheduler import update_scheduler_jobs, validate_cron
 from sync import get_cover_path, parse_complex_query, preview_group, run_sync
 
+logger = logging.getLogger(__name__)
+
 bp = Blueprint("main", __name__)
 
 # Max size for base64 encoded cover image (approx 4MB)
@@ -132,7 +134,7 @@ def update_config() -> ResponseReturnValue:
     try:
         save_config(new_config)
     except OSError as exc:
-        logging.exception("Failed to write config file")
+        logger.exception("Failed to write config file")
         return (
             jsonify({"status": "error", "message": f"Config file write failed: {exc}"}),
             500,
@@ -142,7 +144,7 @@ def update_config() -> ResponseReturnValue:
     try:
         update_scheduler_jobs()
     except Exception:
-        logging.exception("Failed to update scheduler jobs")
+        logger.exception("Failed to update scheduler jobs")
 
     return jsonify({"status": "success", "config": new_config})
 
@@ -193,7 +195,7 @@ def test_server() -> ResponseReturnValue:
     except requests.exceptions.RequestException as exc:
         return jsonify({"status": "error", "message": f"Connection error: {exc!s}"}), 400
     except Exception as exc:
-        logging.exception("Unexpected error during connection test")
+        logger.exception("Unexpected error during connection test")
         return jsonify({"status": "error", "message": f"Server error: {exc!s}"}), 500
 
 
@@ -305,7 +307,7 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
                         item.get("Name", "") for item in items if item.get("Name")
                     ]
                 except Exception:
-                    logging.warning("Failed to process metadata key %r", key, exc_info=True)
+                    logger.warning("Failed to process metadata key %r", key, exc_info=True)
                     result[key] = []
                     failed += 1
 
@@ -407,7 +409,7 @@ def upload_cover() -> ResponseReturnValue:
 
         return jsonify({"status": "success", "message": "Cover saved successfully"})
     except Exception as exc:
-        logging.exception("Failed to save cover image")
+        logger.exception("Failed to save cover image")
         return jsonify({"status": "error", "message": f"Server error: {exc!s}"}), 500
 
 
@@ -527,10 +529,10 @@ def preview_grouping() -> ResponseReturnValue:
 
         return jsonify({"status": "success", "count": len(items), "preview_items": results})
     except (ValueError, RuntimeError, requests.exceptions.RequestException) as exc:
-        logging.exception("Failed to generate grouping preview")
+        logger.exception("Failed to generate grouping preview")
         return jsonify({"status": "error", "message": f"Preview failed: {exc!s}"}), 500
     except Exception as exc:
-        logging.exception("Unexpected error in grouping preview")
+        logger.exception("Unexpected error in grouping preview")
         return jsonify({"status": "error", "message": f"Internal server error: {exc!s}"}), 500
 
 
@@ -601,7 +603,7 @@ def perform_cleanup() -> ResponseReturnValue:
                         try:
                             delete_virtual_folder(url, api_key, name)
                         except Exception as e:
-                            logging.warning(f"Failed to delete Jellyfin library '{name}': {e}")
+                            logger.warning(f"Failed to delete Jellyfin library '{name}': {e}")
             except OSError as exc:
                 errors.append(f"Failed to delete {name}: {exc}")
                 
@@ -838,7 +840,7 @@ def run_tests() -> ResponseReturnValue:
         subprocess.run([sys.executable, "run_tests_to_file.py"], check=False, timeout=130)
         return jsonify({"status": "success", "message": "Tests executed successfully."})
     except Exception as exc:
-        logging.exception("Failed to run test suite")
+        logger.exception("Failed to run test suite")
         return jsonify({"status": "error", "message": str(exc)}), 500
 
 
