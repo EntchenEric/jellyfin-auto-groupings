@@ -9,6 +9,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application files
 COPY . .
 
+# Create a non-root user for security
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+
 # ------------------------------------------------------------------
 # Unraid Community Applications labels
 # These are read by the Unraid CA plugin to auto-populate the
@@ -25,5 +28,10 @@ LABEL org.opencontainers.image.title="Jellyfin Groupings" \
       net.unraid.docker.icon="https://raw.githubusercontent.com/entcheneric/jellyfin-groupings/main/unraid/jellyfin-groupings-icon.png"
 
 EXPOSE 5000
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/')" || exit 1
+
+USER appuser
 
 CMD ["python", "app.py"]
