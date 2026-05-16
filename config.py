@@ -82,7 +82,7 @@ def load_config() -> dict[str, Any]:
         cfg = DEFAULT_CONFIG.copy()
     else:
         try:
-            with open(CONFIG_FILE, "r") as fh:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as fh:
                 cfg = json.load(fh)
 
             # Fill in any keys added after initial creation
@@ -127,5 +127,5 @@ def save_config(config: dict[str, Any]) -> None:
         config: The configuration dictionary to write.
     """
     os.makedirs(CONFIG_DIR, exist_ok=True)
-    with open(CONFIG_FILE, "w") as fh:
+    with open(CONFIG_FILE, "w", encoding="utf-8") as fh:
         json.dump(config, fh, indent=4)
