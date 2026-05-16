@@ -240,9 +240,9 @@ def _fetch_full_library(
     except requests.exceptions.RequestException as exc:
         logger.error("Infrastructure error fetching Jellyfin library for group %r: %s", group_name, exc)
         return [], f"Jellyfin connection error: {exc!s}", 500
-    except Exception as exc:
+    except (RuntimeError, OSError, ValueError) as exc:
         logger.exception("Unexpected error fetching Jellyfin library for group %r", group_name)
-        return [], f"Internal error: {exc!s}", 500  # noqa: BLE001
+        return [], f"Internal error: {exc!s}", 500
 
 
 def _match_jellyfin_items_by_provider(
@@ -372,7 +372,7 @@ def _fetch_and_resolve(
     try:
         external_ids = fetch_fn()
         logger.info(log_msg_fn(len(external_ids)))
-    except Exception as exc:
+    except (requests.RequestException, RuntimeError, ValueError) as exc:
         logger.error("Error fetching %s list for group %r: %s", source_label, group_name, exc)
         return [], f"{source_label} fetch error: {exc!s}", 400
 
@@ -553,7 +553,7 @@ def _fetch_items_for_letterboxd_group(
     try:
         external_ids = fetch_letterboxd_list(source_value)
         logger.info("Letterboxd list %r: %s IDs found", source_value, len(external_ids))
-    except Exception as exc:
+    except (requests.RequestException, RuntimeError, ValueError) as exc:
         logger.error("Error fetching Letterboxd items for group %r: %s", group_name, exc)
         return [], f"Letterboxd fetch error: {exc!s}", 400
 
@@ -658,7 +658,7 @@ def _fetch_items_for_recommendations_group(
         # Fetch recommendations based on these items
         tmdb_ids = get_tmdb_recommendations(tmdb_requests, tmdb_api_key)
         logger.info("TMDb recommendations: %s items found", len(tmdb_ids))
-    except Exception as exc:
+    except (requests.RequestException, RuntimeError, ValueError) as exc:
         logger.error("Error fetching recommendations for group %r: %s", group_name, exc)
         return [], f"Recommendations fetch error: {exc!s}", 400
 
@@ -859,9 +859,9 @@ def _fetch_items_for_metadata_group(
     except requests.exceptions.RequestException as exc:
         logger.error("Infrastructure error fetching items for group %r: %s", group_name, exc)
         return [], f"Jellyfin connection error: {exc!s}", 500
-    except Exception as exc:
+    except (RuntimeError, OSError, ValueError) as exc:
         logger.exception("Unexpected error fetching items for group %r", group_name)
-        return [], f"Internal error: {exc!s}", 500  # noqa: BLE001
+        return [], f"Internal error: {exc!s}", 500
 
 
 def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
@@ -973,7 +973,7 @@ def _process_collection_group(
 
         add_to_collection(url, api_key, collection_id, item_ids)
         logger.info("Added %s items to collection %r", len(item_ids), group_name)
-    except Exception as exc:
+    except (requests.RequestException, RuntimeError, OSError) as exc:
         return {"group": group_name, "links": 0, "error": str(exc)}
 
     result: dict[str, Any] = {"group": group_name, "links": len(item_ids)}
@@ -983,7 +983,7 @@ def _process_collection_group(
         if source_cover and os.path.exists(source_cover):
             try:
                 set_collection_image(url, api_key, collection_id, source_cover)
-            except Exception as exc:
+            except (requests.RequestException, OSError) as exc:
                 logger.error("Failed to set collection image for %r: %s", group_name, exc)
 
     return result
@@ -1209,7 +1209,7 @@ def _process_group(
                 add_virtual_folder(url, api_key, group_name, [lib_path], collection_type="mixed")
                 logger.info("Successfully created library %r with path %r", group_name, lib_path)
                 existing_libraries.append(group_name)  # Prevent double creation in same run
-            except Exception as exc:
+            except (requests.RequestException, RuntimeError, OSError) as exc:
                 logger.error("Failed to create Jellyfin library %r: %s", group_name, exc)
                 result["library_error"] = str(exc)
 
@@ -1302,7 +1302,7 @@ def run_sync(
         try:
             existing_libraries = get_libraries(url, api_key)
             logger.info("Found %s existing virtual folders in Jellyfin", len(existing_libraries))
-        except Exception as exc:
+        except (requests.RequestException, RuntimeError, OSError) as exc:
             logger.warning("Warning: Could not fetch existing libraries: %s", exc)
             # We'll continue, but library creation might fail or try to recreate existing ones
             auto_create_libraries = False

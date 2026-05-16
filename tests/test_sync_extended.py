@@ -270,7 +270,7 @@ def test_run_sync_tmdb_error(mock_tmdb, _mock_makedirs, _mock_rmtree):
         "tmdb_api_key": "tmdb_key",
         "groups": [{"name": "G1", "source_type": "tmdb_list", "source_value": "123"}]
     }
-    mock_tmdb.side_effect = Exception("TMDB Unavailable")
+    mock_tmdb.side_effect = RuntimeError("TMDB Unavailable")
     with patch('sync.os.path.exists', return_value=True):
         results = run_sync(config)
     assert results[0]["error"] is not None
@@ -304,7 +304,7 @@ def test_fetch_items_tmdb_empty(mock_tmdb):
 @patch('sync.fetch_anilist_list')
 def test_fetch_items_anilist_error(mock_ani):
     from sync import _fetch_items_for_anilist_group
-    mock_ani.side_effect = Exception("AniList Error")
+    mock_ani.side_effect = RuntimeError("AniList Error")
     _items, err, code = _fetch_items_for_anilist_group("G", "user/status", "order", "url", "key")
     assert code == 400
     assert "AniList fetch error" in err
@@ -334,7 +334,7 @@ def test_fetch_items_mal_with_status(mock_full, mock_mal):
 @patch('sync.fetch_mal_list')
 def test_fetch_items_mal_error(mock_mal):
     from sync import _fetch_items_for_mal_group
-    mock_mal.side_effect = Exception("MAL Error")
+    mock_mal.side_effect = RuntimeError("MAL Error")
     _items, err, code = _fetch_items_for_mal_group("G", "user", "order", "url", "key", "id")
     assert code == 400
     assert "MAL fetch error" in err
@@ -352,7 +352,7 @@ def test_fetch_items_mal_empty(mock_mal):
 @patch('sync.fetch_trakt_list')
 def test_fetch_items_trakt_error(mock_trakt):
     from sync import _fetch_items_for_trakt_group
-    mock_trakt.side_effect = Exception("Trakt Fail")
+    mock_trakt.side_effect = RuntimeError("Trakt Fail")
     _items, err, code = _fetch_items_for_trakt_group("G", "val", "order", "http://jf", "key", "cli")
     assert code == 400
     assert "Trakt fetch error" in err

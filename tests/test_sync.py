@@ -212,7 +212,7 @@ def test_fetch_items_for_metadata_group_with_watch_state(mock_jf):
 @patch('sync.fetch_jellyfin_items')
 def test_preview_group_fetch_error(mock_jf):
     _LIBRARY_CACHE.clear()
-    mock_jf.side_effect = Exception("Network error")
+    mock_jf.side_effect = RuntimeError("Network error")
     _items, err, code = preview_group("genre", "Action", "http://jf", "key")
     assert code == 500
     assert "Internal error" in err
@@ -396,7 +396,7 @@ def test_fetch_items_recommendations_no_tmdb_ids(mock_recent):
 
 @patch('sync.get_user_recent_items')
 def test_fetch_items_recommendations_exception(mock_recent):
-    mock_recent.side_effect = Exception("Jellyfin down")
+    mock_recent.side_effect = RuntimeError("Jellyfin down")
     items, error, code = _fetch_items_for_recommendations_group(
         "Rec", "user1", "SortName", "http://jf", "key", "api_key"
     )
@@ -429,7 +429,7 @@ def test_process_collection_group_no_ids():
 
 @patch('sync.find_collection_by_name')
 def test_process_collection_group_error(mock_find):
-    mock_find.side_effect = Exception("Collection error")
+    mock_find.side_effect = RuntimeError("Collection error")
     items = [{"Id": "1", "Name": "Movie"}]
     result = _process_collection_group(
         "Group", items, "http://jf", "key", "/target", dry_run=False, auto_set_library_covers=False
@@ -444,7 +444,7 @@ def test_process_collection_group_error(mock_find):
 
 @patch('sync.fetch_letterboxd_list')
 def test_fetch_items_letterboxd_error(mock_fetch):
-    mock_fetch.side_effect = Exception("Network error")
+    mock_fetch.side_effect = RuntimeError("Network error")
     items, error, code = _fetch_items_for_letterboxd_group(
         "LB", "user/list", "SortName", "http://jf", "key"
     )
@@ -511,7 +511,7 @@ def test_fetch_items_letterboxd_non_list_order(mock_lib, mock_fetch):
 
 @patch('sync.fetch_imdb_list')
 def test_fetch_items_imdb_error(mock_fetch):
-    mock_fetch.side_effect = Exception("IMDb down")
+    mock_fetch.side_effect = RuntimeError("IMDb down")
     items, error, code = _fetch_items_for_imdb_group(
         "IMDb", "list_id", "SortName", "http://jf", "key"
     )
@@ -544,7 +544,7 @@ def test_fetch_items_trakt_no_client_id(mock_fetch):
 
 @patch('sync.fetch_trakt_list')
 def test_fetch_items_trakt_error(mock_fetch):
-    mock_fetch.side_effect = Exception("Trakt down")
+    mock_fetch.side_effect = RuntimeError("Trakt down")
     items, error, code = _fetch_items_for_trakt_group(
         "Trakt", "user/list", "SortName", "http://jf", "key", "client_id"
     )
@@ -568,7 +568,7 @@ def test_fetch_items_trakt_empty(mock_fetch):
 
 @patch('sync.fetch_tmdb_list')
 def test_fetch_items_tmdb_error(mock_fetch):
-    mock_fetch.side_effect = Exception("TMDb down")
+    mock_fetch.side_effect = RuntimeError("TMDb down")
     items, error, code = _fetch_items_for_tmdb_group(
         "TMDb", "123", "SortName", "http://jf", "key", "api_key"
     )
@@ -592,7 +592,7 @@ def test_fetch_items_tmdb_empty(mock_fetch):
 
 @patch('sync.fetch_anilist_list')
 def test_fetch_items_anilist_error(mock_fetch):
-    mock_fetch.side_effect = Exception("AniList down")
+    mock_fetch.side_effect = RuntimeError("AniList down")
     items, error, code = _fetch_items_for_anilist_group(
         "AniList", "user", "SortName", "http://jf", "key"
     )
@@ -616,7 +616,7 @@ def test_fetch_items_anilist_empty(mock_fetch):
 
 @patch('sync.fetch_mal_list')
 def test_fetch_items_mal_error(mock_fetch):
-    mock_fetch.side_effect = Exception("MAL down")
+    mock_fetch.side_effect = RuntimeError("MAL down")
     items, error, code = _fetch_items_for_mal_group(
         "MAL", "user", "SortName", "http://jf", "key", "client_id"
     )
@@ -689,7 +689,7 @@ def test_fetch_full_library_request_error(mock_fetch):
 @patch('sync.fetch_jellyfin_items')
 def test_fetch_full_library_unexpected_error(mock_fetch):
     _LIBRARY_CACHE.clear()
-    mock_fetch.side_effect = TypeError("bad")
+    mock_fetch.side_effect = RuntimeError("bad")
     items, error, code = _fetch_full_library("http://jf", "key", "Group")
     assert code == 500
     assert "Internal error" in error
@@ -833,7 +833,7 @@ def test_fetch_items_metadata_request_error(mock_fetch):
 
 @patch('sync.fetch_jellyfin_items')
 def test_fetch_items_metadata_unexpected_error(mock_fetch):
-    mock_fetch.side_effect = TypeError("bad")
+    mock_fetch.side_effect = RuntimeError("bad")
     items, error, code = _fetch_items_for_metadata_group(
         "Group", "genre", "Action", "SortName", "http://jf", "key"
     )
@@ -871,7 +871,7 @@ def test_process_collection_group_create_and_cover(
 def test_process_collection_group_cover_error(mock_find, mock_add, mock_cover, mock_set, mock_exists):
     mock_find.return_value = "col123"
     mock_cover.return_value = "/cover.jpg"
-    mock_set.side_effect = Exception("Cover fail")
+    mock_set.side_effect = OSError("Cover fail")
     mock_exists.return_value = True
     items = [{"Id": "1", "Name": "Movie"}]
     result = _process_collection_group(
@@ -990,7 +990,7 @@ def test_process_group_library_creation_error(mock_meta, mock_add, tmp_path):
     host = tmp_path / "movie.mkv"
     host.write_text("movie")
     mock_meta.return_value = ([{"Id": "1", "Name": "M1", "Path": str(host)}], None, 200)
-    mock_add.side_effect = Exception("Lib fail")
+    mock_add.side_effect = RuntimeError("Lib fail")
     group = {
         "name": "Test",
         "source_type": "genre",
@@ -1125,7 +1125,7 @@ def test_run_sync_missing_settings():
 @patch('sync.get_libraries')
 @patch('sync._process_group')
 def test_run_sync_get_libraries_error(mock_process, mock_libs, tmp_path):
-    mock_libs.side_effect = Exception("Jellyfin down")
+    mock_libs.side_effect = RuntimeError("Jellyfin down")
     mock_process.return_value = {"group": "Test", "links": 0}
     config = {
         "jellyfin_url": "http://jf",
@@ -1506,7 +1506,7 @@ def test_fetch_items_recommendations_empty(mock_recent, mock_tmdb):
 @patch('sync.get_user_recent_items')
 def test_fetch_items_recommendations_error(mock_recent):
     """Cover lines 632-634: exception in recommendations fetch."""
-    mock_recent.side_effect = Exception("Jellyfin down")
+    mock_recent.side_effect = RuntimeError("Jellyfin down")
     items, error, code = _fetch_items_for_recommendations_group(
         "Rec", "user-id", "SortName", "http://jf", "key", "tmdb_key"
     )
