@@ -8,7 +8,7 @@ Jellyfin ``/Items`` endpoint.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, NoReturn
 
 import mimetypes
 import logging
@@ -44,7 +44,7 @@ def _format_request_error(exc: requests.exceptions.RequestException, prefix: str
     return msg
 
 
-def _raise_request_error(exc: requests.exceptions.RequestException, prefix: str) -> None:
+def _raise_request_error(exc: requests.exceptions.RequestException, prefix: str) -> NoReturn:
     """Format *exc* into a ``RuntimeError`` with response details if available."""
     raise RuntimeError(_format_request_error(exc, prefix)) from exc
 

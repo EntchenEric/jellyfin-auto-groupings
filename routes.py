@@ -294,7 +294,7 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
     """
     config_result = _get_jellyfin_config()
     if len(config_result) == 2 and isinstance(config_result[1], int):
-        return config_result
+        return config_result  # type: ignore[return-value]
     url, api_key = config_result
 
     result: dict[str, list[str]] = {}
@@ -347,7 +347,7 @@ def get_jellyfin_users() -> ResponseReturnValue:
     """
     config_result = _get_jellyfin_config()
     if len(config_result) == 2 and isinstance(config_result[1], int):
-        return config_result
+        return config_result  # type: ignore[return-value]
     url, api_key = config_result
 
     try:
@@ -492,7 +492,7 @@ def preview_grouping() -> ResponseReturnValue:
 
     config_result = _get_jellyfin_config()
     if len(config_result) == 2 and isinstance(config_result[1], int):
-        return config_result
+        return config_result  # type: ignore[return-value]
     url, api_key = config_result
 
     # Validate and normalize "type"
@@ -641,7 +641,7 @@ def auto_detect_paths() -> ResponseReturnValue:
         missing_msg="Server settings required for detection"
     )
     if len(config_result) == 2 and isinstance(config_result[1], int):
-        return config_result
+        return config_result  # type: ignore[return-value]
     url, api_key = config_result
 
     try:
