@@ -14,6 +14,14 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+# Environment-variable overrides for sensitive config keys
+_ENV_OVERRIDES: dict[str, str] = {
+    "api_key": "JELLYFIN_API_KEY",
+    "trakt_client_id": "TRAKT_CLIENT_ID",
+    "tmdb_api_key": "TMDB_API_KEY",
+    "mal_client_id": "MAL_CLIENT_ID",
+}
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
@@ -69,13 +77,6 @@ def load_config() -> dict[str, Any]:
     Returns:
         The (possibly migrated) configuration dictionary.
     """
-    _env_overrides = {
-        "api_key": "JELLYFIN_API_KEY",
-        "trakt_client_id": "TRAKT_CLIENT_ID",
-        "tmdb_api_key": "TMDB_API_KEY",
-        "mal_client_id": "MAL_CLIENT_ID",
-    }
-
     cfg: dict[str, Any]
     if not os.path.exists(CONFIG_FILE):
         save_config(DEFAULT_CONFIG.copy())
@@ -112,7 +113,7 @@ def load_config() -> dict[str, Any]:
             cfg = DEFAULT_CONFIG.copy()
 
     # Apply environment-variable overrides (additive, never persisted)
-    for cfg_key, env_var in _env_overrides.items():
+    for cfg_key, env_var in _ENV_OVERRIDES.items():
         env_val = os.environ.get(env_var)
         if env_val:
             cfg[cfg_key] = env_val
