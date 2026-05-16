@@ -339,6 +339,24 @@ def test_get_jellyfin_users_exception(mock_get_users, client):
     assert response.get_json()["status"] == "error"
 
 
+# Invalid configuration format (line 278)
+@patch('routes.load_config')
+def test_get_jellyfin_metadata_invalid_config(mock_load, client):
+    mock_load.return_value = "bad"
+    response = client.get('/api/jellyfin/metadata')
+    assert response.status_code == 500
+    assert "Invalid configuration format" in response.get_json()["message"]
+
+
+# Invalid configuration format (line 336)
+@patch('routes.load_config')
+def test_get_jellyfin_users_invalid_config(mock_load, client):
+    mock_load.return_value = "bad"
+    response = client.get('/api/jellyfin/users')
+    assert response.status_code == 500
+    assert "Invalid configuration format" in response.get_json()["message"]
+
+
 # ---------------------------------------------------------------------------
 # upload_cover edge cases
 # ---------------------------------------------------------------------------
@@ -447,6 +465,22 @@ def test_perform_cleanup_success(client, tmp_path):
     response = client.post('/api/cleanup', json={"folders": ["Action"]})
     assert response.status_code == 200
     assert response.get_json()["deleted"] == 1
+
+
+# perform_cleanup rmtree OSError (lines 608-609)
+@patch('shutil.rmtree')
+@pytest.mark.usefixtures("temp_config")
+def test_perform_cleanup_rmtree_error(mock_rmtree, client, tmp_path):
+    target = tmp_path / "target"
+    target.mkdir()
+    (target / "Action").mkdir()
+    save_config({"target_path": str(target)})
+    mock_rmtree.side_effect = OSError("Permission denied")
+    response = client.post('/api/cleanup', json={"folders": ["Action"]})
+    assert response.status_code == 207
+    data = response.get_json()
+    assert data["status"] == "partial_success"
+    assert "Permission denied" in data["errors"][0]
 
 
 # ---------------------------------------------------------------------------
@@ -562,7 +596,7 @@ def test_fetch_jellyfin_endpoint_partial_data(mock_get, client):
     from routes import _fetch_jellyfin_endpoint
     resp1 = MagicMock()
     resp1.status_code = 200
-    resp1.json.return_value = {"Items": [{"Name": "G1"}]}
+    resp1.json.return_value = {"Items": [{"Name": f"G{i}"} for i in range(200)]}
     resp1.raise_for_status = MagicMock()
 
     resp2 = MagicMock()
@@ -570,7 +604,7 @@ def test_fetch_jellyfin_endpoint_partial_data(mock_get, client):
 
     mock_get.side_effect = [resp1, resp2]
     result = _fetch_jellyfin_endpoint("http://jf", "key", "Genres")
-    assert len(result) == 1
+    assert len(result) == 200
 
 
 # _fetch_jellyfin_endpoint pagination (line 259)
@@ -665,6 +699,15 @@ def test_preview_grouping_empty_value(client):
     assert response.status_code == 400
 
 
+# Preview grouping invalid body (line 485)
+@pytest.mark.usefixtures("temp_config")
+def test_preview_grouping_invalid_body(client):
+    save_config({"jellyfin_url": "http://t", "api_key": "k"})
+    response = client.post('/api/grouping/preview', data="not json")
+    assert response.status_code == 400
+    assert "Request body must be JSON" in response.get_json()["message"]
+
+
 # Preview grouping server not configured (lines 491-492)
 @pytest.mark.usefixtures("temp_config")
 def test_preview_grouping_no_config(client):
@@ -712,6 +755,27 @@ def test_perform_cleanup_with_auto_create(mock_exists, mock_delete, client, tmp_
     mock_delete.assert_called_once()
 
 
+# Cleanup delete_virtual_folder error (lines 606-609)
+@patch('routes.delete_virtual_folder')
+@patch('routes.os.path.exists')
+@pytest.mark.usefixtures("temp_config")
+def test_perform_cleanup_delete_virtual_folder_error(mock_exists, mock_delete, client, tmp_path):
+    target = tmp_path / "target"
+    target.mkdir()
+    (target / "Action").mkdir()
+    save_config({
+        "target_path": str(target),
+        "auto_create_libraries": True,
+        "jellyfin_url": "http://jf",
+        "api_key": "key"
+    })
+    mock_exists.return_value = True
+    mock_delete.side_effect = Exception("Jellyfin error")
+    response = client.post('/api/cleanup', json={"folders": ["Action"]})
+    assert response.status_code == 200
+    assert response.get_json()["deleted"] == 1
+
+
 # Auto-detect: item with no Path (line 683)
 @patch('routes.fetch_jellyfin_items')
 @pytest.mark.usefixtures("temp_config")
@@ -757,27 +821,37 @@ def test_auto_detect_mount_skip(mock_walk, mock_isdir, mock_ismount, mock_fetch,
 @patch('routes.time.time')
 @patch('routes.os.walk')
 @patch('routes.os.path.isdir')
+@patch('routes.os.path.ismount')
 @pytest.mark.usefixtures("temp_config")
-def test_auto_detect_timeout(mock_isdir, mock_walk, mock_time, mock_fetch, client):
+def test_auto_detect_timeout(mock_ismount, mock_isdir, mock_walk, mock_time, mock_fetch, client):
     save_config({"jellyfin_url": "http://test", "api_key": "key"})
     mock_fetch.return_value = [{"Path": "/media/movies/M1.mkv"}]
     mock_isdir.return_value = True
-    mock_time.side_effect = [0, 0, 100]
-    mock_walk.return_value = [("/home", ["sub"], ["M1.mkv"])]
+    mock_ismount.return_value = False
+    # walk_start=0, first tuple=0, second tuple=100 (triggers timeout), rest=0
+    mock_time.side_effect = [0, 0, 100, 0, 0, 0, 0, 0, 0, 0]
+    mock_walk.return_value = [
+        ("/home", ["sub"], ["other.mkv"]),
+        ("/home/sub", [], ["M1.mkv"]),
+    ]
     response = client.post('/api/jellyfin/auto-detect-paths')
     assert response.status_code == 200
+    assert mock_time.call_count >= 3
 
 
 # Auto-detect: file limit (lines 707-709)
 @patch('routes.fetch_jellyfin_items')
 @patch('routes.os.walk')
 @patch('routes.os.path.isdir')
+@patch('routes.os.path.ismount')
 @pytest.mark.usefixtures("temp_config")
-def test_auto_detect_file_limit(mock_isdir, mock_walk, mock_fetch, client):
+def test_auto_detect_file_limit(mock_ismount, mock_isdir, mock_walk, mock_fetch, client):
     save_config({"jellyfin_url": "http://test", "api_key": "key"})
     mock_fetch.return_value = [{"Path": "/media/movies/M1.mkv"}]
     mock_isdir.return_value = True
-    mock_walk.return_value = [("/home", ["sub"], ["f"])]
+    mock_ismount.return_value = False
+    # 50_001 files to exceed the 50_000 limit; target filename not present
+    mock_walk.return_value = [("/home", ["sub"], ["f"] * 50001)]
     response = client.post('/api/jellyfin/auto-detect-paths')
     assert response.status_code == 200
 
@@ -786,13 +860,16 @@ def test_auto_detect_file_limit(mock_isdir, mock_walk, mock_fetch, client):
 @patch('routes.fetch_jellyfin_items')
 @patch('routes.os.walk')
 @patch('routes.os.path.isdir')
+@patch('routes.os.path.ismount')
 @pytest.mark.usefixtures("temp_config")
-def test_auto_detect_depth_limit(mock_isdir, mock_walk, mock_fetch, client):
+def test_auto_detect_depth_limit(mock_ismount, mock_isdir, mock_walk, mock_fetch, client):
     save_config({"jellyfin_url": "http://test", "api_key": "key"})
     mock_fetch.return_value = [{"Path": "/media/movies/M1.mkv"}]
     mock_isdir.return_value = True
+    mock_ismount.return_value = False
     deep_path = "/a/b/c/d/e/f/g"
-    mock_walk.return_value = [(deep_path, [], ["M1.mkv"])]
+    # target filename not present so depth check is reached before match
+    mock_walk.return_value = [(deep_path, [], ["other.mkv"])]
     response = client.post('/api/jellyfin/auto-detect-paths')
     assert response.status_code == 200
 
@@ -807,6 +884,21 @@ def test_get_test_results_read_error(mock_open, mock_exists, client):
     assert response.status_code == 200
     data = response.get_json()
     assert "Error reading file." in data["results"].values()
+
+
+# Test results successful read (line 823)
+@patch('routes.os.path.exists')
+@patch('builtins.open')
+def test_get_test_results_success(mock_open, mock_exists, client):
+    mock_exists.return_value = True
+    mock_file = MagicMock()
+    mock_file.read.return_value = "test output"
+    mock_open.return_value.__enter__ = MagicMock(return_value=mock_file)
+    mock_open.return_value.__exit__ = MagicMock(return_value=False)
+    response = client.get('/api/test/results')
+    assert response.status_code == 200
+    data = response.get_json()
+    assert "test output" in data["results"].values()
 
 
 # run_tests production mode (line 838-845)
@@ -827,3 +919,12 @@ def test_run_tests_subprocess_exception(mock_subprocess, mock_app, client):
     response = client.post('/api/test/run')
     assert response.status_code == 500
     assert "Subprocess fail" in response.get_json()["message"]
+
+
+# run_tests success (line 842)
+@patch('subprocess.run')
+def test_run_tests_success(mock_run, client, app):
+    app.debug = True
+    response = client.post('/api/test/run')
+    assert response.status_code == 200
+    assert "Tests executed successfully." in response.get_json()["message"]
