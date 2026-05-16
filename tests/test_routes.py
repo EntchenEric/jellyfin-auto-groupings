@@ -3,6 +3,7 @@ import os
 import requests
 from unittest.mock import patch, MagicMock
 from config import save_config
+from routes import _compute_common_root
 
 
 @pytest.mark.usefixtures("temp_config")
@@ -1041,8 +1042,6 @@ def test_run_tests_success(mock_run, client, app):
     assert response.status_code == 200
     assert "Tests executed successfully." in response.get_json()["message"]
 
-
-from routes import _compute_common_root
 
 def test_compute_common_root_no_match():
     assert _compute_common_root("/a/b/c", "/x/y/z") == (None, None)

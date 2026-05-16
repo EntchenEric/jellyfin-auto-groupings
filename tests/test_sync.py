@@ -1467,3 +1467,131 @@ def test_run_sync_seasonal_no_dir(mock_libs, mock_season, mock_process, tmp_path
     }
     results = run_sync(config, dry_run=False)
     assert results[0]["status"] == "out_of_season"
+
+
+# ---------------------------------------------------------------------------
+# Remaining branch coverage for sync.py
+# ---------------------------------------------------------------------------
+
+@patch('sync.fetch_letterboxd_list')
+@patch('sync._fetch_full_library')
+def test_fetch_items_letterboxd_tmdb_list_order(mock_lib, mock_fetch):
+    """Cover line 560: TMDb match inside list-order branch."""
+    mock_fetch.return_value = ["456"]
+    mock_lib.return_value = [
+        {"Id": "1", "ProviderIds": {"Tmdb": "456"}}
+    ], None, 200
+    items, error, code = _fetch_items_for_letterboxd_group(
+        "LB", "user/list", "letterboxd_list_order", "http://jf", "key"
+    )
+    assert code == 200
+    assert len(items) == 1
+
+
+@patch('sync.get_tmdb_recommendations')
+@patch('sync.get_user_recent_items')
+def test_fetch_items_recommendations_empty(mock_recent, mock_tmdb):
+    """Cover lines 636-638: empty tmdb_ids after recommendations fetch."""
+    mock_recent.return_value = [
+        {"Id": "1", "ProviderIds": {"Tmdb": "123"}, "Type": "Movie"}
+    ]
+    mock_tmdb.return_value = []
+    items, error, code = _fetch_items_for_recommendations_group(
+        "Rec", "user-id", "SortName", "http://jf", "key", "tmdb_key"
+    )
+    assert code == 200
+    assert items == []
+
+
+@patch('sync.get_user_recent_items')
+def test_fetch_items_recommendations_error(mock_recent):
+    """Cover lines 632-634: exception in recommendations fetch."""
+    mock_recent.side_effect = Exception("Jellyfin down")
+    items, error, code = _fetch_items_for_recommendations_group(
+        "Rec", "user-id", "SortName", "http://jf", "key", "tmdb_key"
+    )
+    assert code == 400
+    assert "Recommendations fetch error" in error
+
+
+def test_eval_item_second_rule_and():
+    """Cover line 712: AND operator in rules[1:]."""
+    item = {"Genres": ["Action"], "ProductionYear": 2020}
+    rules = [
+        {"operator": "AND", "type": "genre", "value": "action"},
+        {"operator": "AND", "type": "year", "value": "2020"},
+    ]
+    assert _eval_item(item, rules) is True
+
+
+def test_eval_item_or_not():
+    """Cover lines 717-718: OR NOT operator."""
+    item = {"Genres": ["Action"], "ProductionYear": 2020}
+    rules = [
+        {"operator": "AND", "type": "genre", "value": "action"},
+        {"operator": "OR NOT", "type": "year", "value": "2021"},
+    ]
+    assert _eval_item(item, rules) is True
+
+
+@patch('sync._fetch_full_library')
+def test_fetch_items_complex_group_malformed_rule(mock_lib):
+    """Cover lines 761-763: malformed rule triggers TypeError/ValueError/AttributeError."""
+    mock_lib.return_value = [{"Id": "1", "Genres": ["Action"]}], None, 200
+    # Create a dict whose operator value raises AttributeError during str()
+    class BadStr:
+        def __str__(self):
+            raise AttributeError("boom")
+
+    class BadRule(dict):
+        def get(self, key, default=None):
+            if key == "operator":
+                return BadStr()
+            return super().get(key, default)
+
+    items, error, code = _fetch_items_for_complex_group(
+        "Group",
+        [BadRule(type="genre", value="action")],
+        "SortName",
+        "http://jf",
+        "key",
+    )
+    assert code == 200
+    assert items == []
+
+
+@patch('sync._fetch_items_for_metadata_group')
+@patch('sync.shutil.rmtree')
+def test_process_group_oserror(mock_rmtree, mock_meta, tmp_path):
+    """Cover lines 1027-1029: OSError when cleaning group directory."""
+    mock_meta.return_value = ([], None, 200)
+    mock_rmtree.side_effect = OSError("Permission denied")
+    target = tmp_path / "target"
+    target.mkdir()
+    group_dir = target / "Test"
+    group_dir.mkdir()
+    group = {
+        "name": "Test",
+        "source_type": "genre",
+        "source_value": "Action",
+        "sort_order": "SortName",
+    }
+    result = _process_group(
+        group,
+        str(target),
+        "http://jf",
+        "key",
+        "",
+        "",
+        "",
+        "",
+        "",
+        dry_run=False,
+    )
+    assert result["links"] == 0
+    assert "Directory error" in result["error"]
+
+
+def test_is_in_season_invalid():
+    """Cover lines 1228-1229: invalid date strings in _is_in_season."""
+    assert _is_in_season("bad", "also-bad") is True
