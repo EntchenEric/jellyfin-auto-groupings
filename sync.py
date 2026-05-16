@@ -1083,9 +1083,7 @@ def _process_group(
         val_str = str(source_value or "")
 
         # Determine if it's a complex textual rule that needs local parsing
-        if source_type in ["genre", "actor", "studio", "tag", "year"] and re.search(
-            r'\s+(AND NOT|OR NOT|AND|OR)\s+', val_str, re.IGNORECASE
-        ):
+        if source_type in ["genre", "actor", "studio", "tag", "year"] and _COMPLEX_QUERY_RE.search(val_str):
             rules = parse_complex_query(val_str, str(source_type))
             items, error, status_code = _fetch_items_for_complex_group(
                 group_name, rules, sort_order, url, api_key, watch_state
