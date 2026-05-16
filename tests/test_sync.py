@@ -11,7 +11,16 @@ from sync import (
     _match_jellyfin_items_by_provider,
     preview_group,
     _LIBRARY_CACHE,
-    _is_in_season
+    _is_in_season,
+    run_cleanup_broken_symlinks,
+    _fetch_items_for_recommendations_group,
+    _process_collection_group,
+    _fetch_items_for_letterboxd_group,
+    _fetch_items_for_imdb_group,
+    _fetch_items_for_trakt_group,
+    _fetch_items_for_tmdb_group,
+    _fetch_items_for_anilist_group,
+    _fetch_items_for_mal_group,
 )
 
 
@@ -328,3 +337,282 @@ def test_is_in_season():
         assert _is_in_season("12-01", "01-01") is False  # Exclusive end
         # Case 3: Invalid types
         assert _is_in_season(None, "01-01") is True  # Defaults to True
+
+
+# ---------------------------------------------------------------------------
+# run_cleanup_broken_symlinks
+# ---------------------------------------------------------------------------
+
+def test_run_cleanup_broken_symlinks_invalid_path():
+    assert run_cleanup_broken_symlinks({"target_path": ""}) == 0
+    assert run_cleanup_broken_symlinks({"target_path": "/nonexistent"}) == 0
+
+
+# ---------------------------------------------------------------------------
+# _fetch_items_for_recommendations_group
+# ---------------------------------------------------------------------------
+
+def test_fetch_items_recommendations_no_api_key():
+    items, error, code = _fetch_items_for_recommendations_group(
+        "Rec", "user1", "SortName", "http://jf", "key", None
+    )
+    assert code == 400
+    assert "TMDb API Key not set" in error
+
+
+def test_fetch_items_recommendations_no_source_value():
+    items, error, code = _fetch_items_for_recommendations_group(
+        "Rec", "", "SortName", "http://jf", "key", "api_key"
+    )
+    assert code == 400
+    assert "User ID must be selected" in error
+
+
+@patch('sync.get_user_recent_items')
+def test_fetch_items_recommendations_no_tmdb_ids(mock_recent):
+    mock_recent.return_value = [{"ProviderIds": {}, "Type": "Movie"}]
+    items, error, code = _fetch_items_for_recommendations_group(
+        "Rec", "user1", "SortName", "http://jf", "key", "api_key"
+    )
+    assert code == 200
+    assert items == []
+
+
+@patch('sync.get_user_recent_items')
+def test_fetch_items_recommendations_exception(mock_recent):
+    mock_recent.side_effect = Exception("Jellyfin down")
+    items, error, code = _fetch_items_for_recommendations_group(
+        "Rec", "user1", "SortName", "http://jf", "key", "api_key"
+    )
+    assert code == 400
+    assert "Recommendations fetch error" in error
+
+
+# ---------------------------------------------------------------------------
+# _process_collection_group
+# ---------------------------------------------------------------------------
+
+@patch('sync.find_collection_by_name')
+@patch('sync.add_to_collection')
+def test_process_collection_group_dry_run(mock_add, mock_find):
+    items = [{"Id": "1", "Name": "Movie"}]
+    result = _process_collection_group(
+        "Group", items, "http://jf", "key", "/target", dry_run=True, auto_set_library_covers=False
+    )
+    assert result["links"] == 1
+    assert "items" in result
+
+
+def test_process_collection_group_no_ids():
+    result = _process_collection_group(
+        "Group", [], "http://jf", "key", "/target", dry_run=False, auto_set_library_covers=False
+    )
+    assert result["links"] == 0
+    assert "No item IDs" in result["error"]
+
+
+@patch('sync.find_collection_by_name')
+def test_process_collection_group_error(mock_find):
+    mock_find.side_effect = Exception("Collection error")
+    items = [{"Id": "1", "Name": "Movie"}]
+    result = _process_collection_group(
+        "Group", items, "http://jf", "key", "/target", dry_run=False, auto_set_library_covers=False
+    )
+    assert result["links"] == 0
+    assert "Collection error" in result["error"]
+
+
+# ---------------------------------------------------------------------------
+# _fetch_items_for_letterboxd_group
+# ---------------------------------------------------------------------------
+
+@patch('sync.fetch_letterboxd_list')
+def test_fetch_items_letterboxd_error(mock_fetch):
+    mock_fetch.side_effect = Exception("Network error")
+    items, error, code = _fetch_items_for_letterboxd_group(
+        "LB", "user/list", "SortName", "http://jf", "key"
+    )
+    assert code == 400
+    assert "Letterboxd fetch error" in error
+
+
+@patch('sync.fetch_letterboxd_list')
+@patch('sync._fetch_full_library')
+def test_fetch_items_letterboxd_empty_list(mock_lib, mock_fetch):
+    mock_fetch.return_value = []
+    items, error, code = _fetch_items_for_letterboxd_group(
+        "LB", "user/list", "SortName", "http://jf", "key"
+    )
+    assert code == 200
+    assert items == []
+
+
+@patch('sync.fetch_letterboxd_list')
+@patch('sync._fetch_full_library')
+def test_fetch_items_letterboxd_watch_state(mock_lib, mock_fetch):
+    mock_fetch.return_value = ["tt123"]
+    mock_lib.return_value = [
+        {"Id": "1", "ProviderIds": {"Imdb": "tt123"}, "UserData": {"Played": True}}
+    ], None, 200
+    items, error, code = _fetch_items_for_letterboxd_group(
+        "LB", "user/list", "SortName", "http://jf", "key", watch_state="unwatched"
+    )
+    assert code == 200
+    assert items == []
+
+
+@patch('sync.fetch_letterboxd_list')
+@patch('sync._fetch_full_library')
+def test_fetch_items_letterboxd_tmdb_match(mock_lib, mock_fetch):
+    mock_fetch.return_value = ["456"]
+    mock_lib.return_value = [
+        {"Id": "1", "ProviderIds": {"Tmdb": "456"}}
+    ], None, 200
+    items, error, code = _fetch_items_for_letterboxd_group(
+        "LB", "user/list", "SortName", "http://jf", "key"
+    )
+    assert code == 200
+    assert len(items) == 1
+
+
+@patch('sync.fetch_letterboxd_list')
+@patch('sync._fetch_full_library')
+def test_fetch_items_letterboxd_non_list_order(mock_lib, mock_fetch):
+    mock_fetch.return_value = ["tt123", "tt123"]
+    mock_lib.return_value = [
+        {"Id": "1", "ProviderIds": {"Imdb": "tt123"}}
+    ], None, 200
+    items, error, code = _fetch_items_for_letterboxd_group(
+        "LB", "user/list", "SortName", "http://jf", "key"
+    )
+    assert code == 200
+    assert len(items) == 1
+
+
+# ---------------------------------------------------------------------------
+# _fetch_items_for_imdb_group
+# ---------------------------------------------------------------------------
+
+@patch('sync.fetch_imdb_list')
+def test_fetch_items_imdb_error(mock_fetch):
+    mock_fetch.side_effect = Exception("IMDb down")
+    items, error, code = _fetch_items_for_imdb_group(
+        "IMDb", "list_id", "SortName", "http://jf", "key"
+    )
+    assert code == 400
+    assert "IMDb fetch error" in error
+
+
+@patch('sync.fetch_imdb_list')
+def test_fetch_items_imdb_empty(mock_fetch):
+    mock_fetch.return_value = []
+    items, error, code = _fetch_items_for_imdb_group(
+        "IMDb", "list_id", "SortName", "http://jf", "key"
+    )
+    assert code == 200
+    assert items == []
+
+
+# ---------------------------------------------------------------------------
+# _fetch_items_for_trakt_group
+# ---------------------------------------------------------------------------
+
+@patch('sync.fetch_trakt_list')
+def test_fetch_items_trakt_no_client_id(mock_fetch):
+    items, error, code = _fetch_items_for_trakt_group(
+        "Trakt", "user/list", "SortName", "http://jf", "key", None
+    )
+    assert code == 400
+    assert "Trakt Client ID not set" in error
+
+
+@patch('sync.fetch_trakt_list')
+def test_fetch_items_trakt_error(mock_fetch):
+    mock_fetch.side_effect = Exception("Trakt down")
+    items, error, code = _fetch_items_for_trakt_group(
+        "Trakt", "user/list", "SortName", "http://jf", "key", "client_id"
+    )
+    assert code == 400
+    assert "Trakt fetch error" in error
+
+
+@patch('sync.fetch_trakt_list')
+def test_fetch_items_trakt_empty(mock_fetch):
+    mock_fetch.return_value = []
+    items, error, code = _fetch_items_for_trakt_group(
+        "Trakt", "user/list", "SortName", "http://jf", "key", "client_id"
+    )
+    assert code == 200
+    assert items == []
+
+
+# ---------------------------------------------------------------------------
+# _fetch_items_for_tmdb_group
+# ---------------------------------------------------------------------------
+
+@patch('sync.fetch_tmdb_list')
+def test_fetch_items_tmdb_error(mock_fetch):
+    mock_fetch.side_effect = Exception("TMDb down")
+    items, error, code = _fetch_items_for_tmdb_group(
+        "TMDb", "123", "SortName", "http://jf", "key", "api_key"
+    )
+    assert code == 400
+    assert "TMDb fetch error" in error
+
+
+@patch('sync.fetch_tmdb_list')
+def test_fetch_items_tmdb_empty(mock_fetch):
+    mock_fetch.return_value = []
+    items, error, code = _fetch_items_for_tmdb_group(
+        "TMDb", "123", "SortName", "http://jf", "key", "api_key"
+    )
+    assert code == 200
+    assert items == []
+
+
+# ---------------------------------------------------------------------------
+# _fetch_items_for_anilist_group
+# ---------------------------------------------------------------------------
+
+@patch('sync.fetch_anilist_list')
+def test_fetch_items_anilist_error(mock_fetch):
+    mock_fetch.side_effect = Exception("AniList down")
+    items, error, code = _fetch_items_for_anilist_group(
+        "AniList", "user", "SortName", "http://jf", "key"
+    )
+    assert code == 400
+    assert "AniList fetch error" in error
+
+
+@patch('sync.fetch_anilist_list')
+def test_fetch_items_anilist_empty(mock_fetch):
+    mock_fetch.return_value = []
+    items, error, code = _fetch_items_for_anilist_group(
+        "AniList", "user", "SortName", "http://jf", "key"
+    )
+    assert code == 200
+    assert items == []
+
+
+# ---------------------------------------------------------------------------
+# _fetch_items_for_mal_group
+# ---------------------------------------------------------------------------
+
+@patch('sync.fetch_mal_list')
+def test_fetch_items_mal_error(mock_fetch):
+    mock_fetch.side_effect = Exception("MAL down")
+    items, error, code = _fetch_items_for_mal_group(
+        "MAL", "user", "SortName", "http://jf", "key", "client_id"
+    )
+    assert code == 400
+    assert "MAL fetch error" in error
+
+
+@patch('sync.fetch_mal_list')
+def test_fetch_items_mal_empty(mock_fetch):
+    mock_fetch.return_value = []
+    items, error, code = _fetch_items_for_mal_group(
+        "MAL", "user", "SortName", "http://jf", "key", "client_id"
+    )
+    assert code == 200
+    assert items == []
