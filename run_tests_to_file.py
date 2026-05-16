@@ -4,7 +4,7 @@ import sys
 
 existing = os.environ.get('PYTHONPATH')
 os.environ['PYTHONPATH'] = f"{existing}:." if existing else "."
-with open('test_results.txt', 'w') as f:
+with open('test_results.txt', 'w', encoding='utf-8') as f:
     try:
         # Running all tests with coverage
         f.write("Starting test run...\n")
@@ -15,5 +15,5 @@ with open('test_results.txt', 'w') as f:
             stderr=subprocess.STDOUT,
             timeout=120
         )
-    except Exception as e:
+    except (subprocess.TimeoutExpired, OSError) as e:
         f.write(f"\nERROR: {e!s}")
