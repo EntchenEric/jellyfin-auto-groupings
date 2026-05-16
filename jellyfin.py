@@ -172,9 +172,9 @@ def add_virtual_folder(
     """
     # Strategy: Try to create with all info in query string first (most common for simple cases)
     # If it already exists, we skip creation.
-    
+
     headers = {"X-Emby-Token": api_key}
-    
+
     # Step 1: Create the virtual folder shell
     # We omit 'paths' here to avoid the 400 error.
     create_params = {
@@ -183,7 +183,7 @@ def add_virtual_folder(
     }
     if collection_type != "mixed":
         create_params["collectionType"] = collection_type
-    
+
     try:
         # data="" ensures non-JSON POST works for creation if needed
         create_resp = requests.post(
@@ -210,7 +210,7 @@ def add_virtual_folder(
             "Name": name,
             "Path": path
         }
-        
+
         try:
             # We use json= which automatically sets Content-Type: application/json
             path_resp = requests.post(
@@ -227,7 +227,7 @@ def add_virtual_folder(
             else:
                 msg += f": {exc!s}"
             raise RuntimeError(msg) from exc
-            
+
     # Step 3: Trigger a library refresh if requested
     if refresh_library:
         try:
@@ -287,7 +287,7 @@ def get_library_id(base_url: str, api_key: str, name: str, timeout: int = 30) ->
             timeout=timeout,
         )
         response.raise_for_status()
-        
+
         for folder in response.json():
             if folder.get("Name") == name:
                 item_id = folder.get("ItemId")
@@ -295,7 +295,7 @@ def get_library_id(base_url: str, api_key: str, name: str, timeout: int = 30) ->
                     return str(item_id)
     except requests.exceptions.RequestException as exc:
         logger.error(f"Failed to get library ID for {name!r}: {exc}")
-    
+
     return None
 
 
@@ -334,7 +334,7 @@ def set_virtual_folder_image(
         "X-Emby-Token": api_key,
         "Content-Type": mime_type,
     }
-    
+
     url = f"{base_url}/Items/{library_id}/Images/Primary"
     try:
         response = requests.post(

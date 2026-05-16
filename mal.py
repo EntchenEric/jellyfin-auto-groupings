@@ -9,16 +9,17 @@ from typing import Any
 
 MAL_API_BASE_URL = "https://api.myanimelist.net/v2"
 
+
 def fetch_mal_list(username: str, client_id: str, status: str | None = None) -> list[int]:
     """
     Fetch anime IDs from a user's MyAnimeList profile.
-    
+
     Args:
         username: The MAL username.
         client_id: The MAL API Client ID.
         status: The list status to fetch (e.g., "watching", "completed", "on_hold", "dropped", "plan_to_watch").
                 If None, all lists are fetched.
-                
+
     Returns:
         A list of MyAnimeList anime IDs (integers).
     """
@@ -43,7 +44,7 @@ def fetch_mal_list(username: str, client_id: str, status: str | None = None) -> 
         elif s == "all":
             normalized_status = None
         else:
-            normalized_status = s # Fallback to whatever user typed
+            normalized_status = s  # Fallback to whatever user typed
 
     url = f"{MAL_API_BASE_URL}/users/{username}/animelist"
     params: dict[str, Any] = {
@@ -58,20 +59,20 @@ def fetch_mal_list(username: str, client_id: str, status: str | None = None) -> 
     }
 
     ids = []
-    
+
     while url:
         response = requests.get(url, params=params, headers=headers, timeout=15)
         response.raise_for_status()
-        
+
         data = response.json()
         for entry in data.get("data", []):
             node = entry.get("node", {})
             if node.get("id"):
                 ids.append(node["id"])
-        
+
         # MAL pagination uses a 'next' URL in the 'paging' object
         url = data.get("paging", {}).get("next")
         # Once we have the 'next' URL, params are already included in it by MAL
-        params = {} 
+        params = {}
 
     return ids

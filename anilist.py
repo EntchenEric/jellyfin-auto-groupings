@@ -5,19 +5,19 @@ anilist.py – AniList API client for fetching user lists.
 from __future__ import annotations
 
 import requests
-from typing import Any
 
 ANILIST_API_URL = "https://graphql.anilist.co"
+
 
 def fetch_anilist_list(username: str, status: str | None = None) -> list[int]:
     """
     Fetch anime IDs from a user's AniList profile.
-    
+
     Args:
         username: The AniList username.
         status: The list status to fetch (e.g., "COMPLETED", "PLANNING", "CURRENT").
                 If None, all lists are fetched.
-                
+
     Returns:
         A list of AniList anime IDs (integers).
     """
@@ -33,7 +33,7 @@ def fetch_anilist_list(username: str, status: str | None = None) -> list[int]:
       }
     }
     """
-    
+
     variables = {
         "userName": username,
     }
@@ -59,7 +59,7 @@ def fetch_anilist_list(username: str, status: str | None = None) -> list[int]:
         timeout=15
     )
     response.raise_for_status()
-    
+
     data = response.json()
     root = data.get("data")
     if not isinstance(root, dict):
@@ -67,11 +67,11 @@ def fetch_anilist_list(username: str, status: str | None = None) -> list[int]:
     collection = root.get("MediaListCollection") or {}
     if not collection:
         return []
-        
+
     ids = []
     for user_list in collection.get("lists", []):
         for entry in user_list.get("entries", []):
             if entry.get("mediaId"):
                 ids.append(entry["mediaId"])
-                
+
     return ids
