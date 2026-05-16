@@ -12,6 +12,7 @@ from __future__ import annotations
 import base64
 import logging
 import os
+import shutil
 import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
@@ -330,7 +331,7 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
                     result[key] = [
                         item.get("Name", "") for item in items if item.get("Name")
                     ]
-                except Exception:
+                except (requests.exceptions.RequestException, ValueError):
                     logger.warning("Failed to process metadata key %r", key, exc_info=True)
                     result[key] = []
                     failed += 1
@@ -368,7 +369,7 @@ def get_jellyfin_users() -> ResponseReturnValue:
                 "users": [{"id": u.get("Id"), "name": u.get("Name")} for u in users_list],
             }
         )
-    except Exception as exc:
+    except (requests.exceptions.RequestException, RuntimeError) as exc:
         return jsonify({"status": "error", "message": str(exc)}), 400
 
 
@@ -606,7 +607,6 @@ def perform_cleanup() -> ResponseReturnValue:
         path = os.path.join(target_base, name)
         if os.path.exists(path) and os.path.isdir(path):
             try:
-                import shutil
                 shutil.rmtree(path)
                 deleted += 1
 
@@ -617,7 +617,7 @@ def perform_cleanup() -> ResponseReturnValue:
                     if url and api_key:
                         try:
                             delete_virtual_folder(url, api_key, name)
-                        except Exception as e:
+                        except (requests.exceptions.RequestException, OSError) as e:
                             logger.warning("Failed to delete Jellyfin library '%s': %s", name, e)
             except OSError as exc:
                 errors.append(f"Failed to delete {name}: {exc}")
@@ -735,7 +735,7 @@ def auto_detect_paths() -> ResponseReturnValue:
             },
             timeout=10,
         )
-    except Exception as exc:
+    except (requests.exceptions.RequestException, RuntimeError) as exc:
         return jsonify({"status": "error", "message": str(exc)}), 400
 
     if not items:
@@ -850,7 +850,7 @@ def get_test_results() -> ResponseReturnValue:
             try:
                 with open(filename, "r", encoding="utf-8") as f:
                     results[filename] = f.read()
-            except Exception:
+            except (OSError, UnicodeDecodeError):
                 results[filename] = "Error reading file."
         else:
             results[filename] = "No output found."

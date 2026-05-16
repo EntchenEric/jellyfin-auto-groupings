@@ -76,7 +76,7 @@ def update_scheduler_jobs() -> None:
                 )
                 logger.info("Scheduled sync for group '%s': %s", group_name, cron_expr)
             except Exception:
-                logger.exception(f"Failed to schedule sync for group '{group_name}'")
+                logger.exception("Failed to schedule sync for group '%s'", group_name)
 
     # 3. Cleanup Scheduler
     if sched_cfg.get("cleanup_enabled", True):  # Default to true
