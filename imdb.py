@@ -14,6 +14,9 @@ import requests
 
 logger = logging.getLogger(__name__)
 
+# Request timeout (seconds)
+_REQUEST_TIMEOUT: int = 15
+
 # Maximum number of pages to scrape (safety guard, ~2 000 items at 100/page)
 _MAX_PAGES: int = 20
 
@@ -64,7 +67,7 @@ def fetch_imdb_list(list_id: str) -> list[str]:
             f"?sort=list_order,asc&st_dt=&mode=detail&page={page}"
         )
         try:
-            resp = requests.get(page_url, headers=_REQUEST_HEADERS, timeout=15)
+            resp = requests.get(page_url, headers=_REQUEST_HEADERS, timeout=_REQUEST_TIMEOUT)
             resp.raise_for_status()
         except requests.RequestException as exc:
             logger.error("HTTP error fetching IMDb list page %d: %s", page, exc)

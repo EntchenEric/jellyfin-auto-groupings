@@ -16,6 +16,10 @@ import requests
 
 logger = logging.getLogger(__name__)
 
+# Request timeouts (seconds)
+_FILM_PAGE_TIMEOUT: int = 10
+_LIST_PAGE_TIMEOUT: int = 15
+
 _MAX_PAGES: int = 10
 _MAX_WORKERS: int = 6
 
@@ -70,7 +74,7 @@ def _fetch_id_for_slug(slug: str) -> str | None:
     """
     film_url = f"https://letterboxd.com/film/{slug}/"
     try:
-        resp = requests.get(film_url, headers=_REQUEST_HEADERS, timeout=10)
+        resp = requests.get(film_url, headers=_REQUEST_HEADERS, timeout=_FILM_PAGE_TIMEOUT)
         resp.raise_for_status()
         html = resp.text
 
@@ -121,7 +125,7 @@ def fetch_letterboxd_list(list_url: str) -> list[str]:
         current_url = f"{list_url}/page/{page}/" if page > 1 else f"{list_url}/"
 
         try:
-            resp = requests.get(current_url, headers=_REQUEST_HEADERS, timeout=15)
+            resp = requests.get(current_url, headers=_REQUEST_HEADERS, timeout=_LIST_PAGE_TIMEOUT)
             if resp.status_code == 404 and page > 1:
                 break
             resp.raise_for_status()

@@ -9,6 +9,9 @@ from typing import Any
 
 MAL_API_BASE_URL = "https://api.myanimelist.net/v2"
 
+# Request timeout (seconds)
+_REQUEST_TIMEOUT: int = 15
+
 
 def fetch_mal_list(username: str, client_id: str, status: str | None = None) -> list[int]:
     """
@@ -61,7 +64,7 @@ def fetch_mal_list(username: str, client_id: str, status: str | None = None) -> 
     ids = []
 
     while url:
-        response = requests.get(url, params=params, headers=headers, timeout=15)
+        response = requests.get(url, params=params, headers=headers, timeout=_REQUEST_TIMEOUT)
         response.raise_for_status()
 
         data = response.json()

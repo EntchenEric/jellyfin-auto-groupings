@@ -15,6 +15,9 @@ import requests
 
 logger = logging.getLogger(__name__)
 
+# Request timeout (seconds)
+_REQUEST_TIMEOUT: int = 15
+
 # Maximum pages to fetch (safety guard, 50 000 items at 1 000/page)
 _MAX_PAGES: int = 50
 _PAGE_LIMIT: int = 1_000
@@ -80,7 +83,7 @@ def fetch_trakt_list(list_url: str, client_id: str) -> list[str]:
             f"?page={page}&limit={_PAGE_LIMIT}"
         )
         try:
-            resp = requests.get(url, headers=headers, timeout=15)
+            resp = requests.get(url, headers=headers, timeout=_REQUEST_TIMEOUT)
             resp.raise_for_status()
         except requests.RequestException as exc:
             raise RuntimeError(
