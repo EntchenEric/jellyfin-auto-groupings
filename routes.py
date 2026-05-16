@@ -218,7 +218,7 @@ def update_config() -> ResponseReturnValue:
     # Update background jobs based on new config
     try:
         update_scheduler_jobs()
-    except Exception as exc:
+    except (ValueError, KeyError, OSError, RuntimeError) as exc:
         logger.exception("Failed to update scheduler jobs")
         return (
             jsonify(
@@ -279,9 +279,6 @@ def test_server() -> ResponseReturnValue:
         )
     except requests.exceptions.RequestException as exc:
         return jsonify({"status": "error", "message": f"Connection error: {exc!s}"}), 400
-    except Exception as exc:
-        logger.exception("Unexpected error during connection test")
-        return jsonify({"status": "error", "message": f"Server error: {exc!s}"}), 500
 
 
 # ---------------------------------------------------------------------------
@@ -392,8 +389,9 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
             return jsonify({"status": "error", "message": "Failed to fetch metadata from Jellyfin"}), 400
 
         return jsonify({"status": "success", "metadata": result})
-    except Exception as exc:
-        return jsonify({"status": "error", "message": str(exc)}), 400
+    except (RuntimeError, OSError) as exc:
+        logger.exception("Unexpected error fetching Jellyfin metadata")
+        return jsonify({"status": "error", "message": str(exc)}), 500
 
 
 # ---------------------------------------------------------------------------
@@ -482,7 +480,7 @@ def upload_cover() -> ResponseReturnValue:
         return jsonify({"status": "success", "message": "Cover saved successfully"})
     except ValueError:
         return jsonify({"status": "error", "message": "Malformed image data"}), 400
-    except Exception as exc:
+    except (OSError, RuntimeError) as exc:
         logger.exception("Failed to save cover image")
         return jsonify({"status": "error", "message": f"Server error: {exc!s}"}), 500
 
@@ -592,9 +590,6 @@ def preview_grouping() -> ResponseReturnValue:
     except (ValueError, RuntimeError, requests.exceptions.RequestException) as exc:
         logger.exception("Failed to generate grouping preview")
         return jsonify({"status": "error", "message": f"Preview failed: {exc!s}"}), 500
-    except Exception as exc:
-        logger.exception("Unexpected error in grouping preview")
-        return jsonify({"status": "error", "message": f"Internal server error: {exc!s}"}), 500
 
 
 # ---------------------------------------------------------------------------
