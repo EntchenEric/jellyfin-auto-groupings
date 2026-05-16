@@ -184,12 +184,12 @@ def _fetch_full_library(
             start_index += page_size
 
         pages_fetched = (start_index // page_size) + 1
-        logger.info(f"Jellyfin library: {len(all_items)} items fetched for matching (in {pages_fetched} pages)")
+        logger.info("Jellyfin library: %s items fetched for matching (in %s pages)", len(all_items), pages_fetched)
         with _LIBRARY_CACHE_LOCK:
             _LIBRARY_CACHE[cache_key] = all_items
         return all_items, None, 200
     except requests.exceptions.RequestException as exc:
-        logger.error(f"Infrastructure error fetching Jellyfin library for group {group_name!r}: {exc!s}")
+        logger.error("Infrastructure error fetching Jellyfin library for group %r: %s", group_name, exc)
         return [], f"Jellyfin connection error: {exc!s}", 500
     except Exception as exc:
         logging.exception("Unexpected error fetching Jellyfin library for group %r", group_name)
@@ -318,13 +318,13 @@ def _fetch_items_for_imdb_group(
     """
     try:
         imdb_ids = fetch_imdb_list(source_value)
-        logger.info(f"IMDb list {source_value!r}: {len(imdb_ids)} IDs found")
+        logger.info("IMDb list %r: %s IDs found", source_value, len(imdb_ids))
     except Exception as exc:
-        logger.error(f"Error fetching IMDb list for group {group_name!r}: {exc!s}")
+        logger.error("Error fetching IMDb list for group %r: %s", group_name, exc)
         return [], f"IMDb fetch error: {exc!s}", 400
 
     if not imdb_ids:
-        logger.info(f"No IMDb IDs found for group {group_name!r}")
+        logger.info("No IMDb IDs found for group %r", group_name)
         return [], None, 200
 
     return _match_jellyfin_items_by_provider(
@@ -357,18 +357,18 @@ def _fetch_items_for_trakt_group(
     """
     if not trakt_client_id:
         msg = "Trakt Client ID not set — add trakt_client_id in Server Settings"
-        logger.info(f"No Trakt Client ID configured for group {group_name!r}")
+        logger.info("No Trakt Client ID configured for group %r", group_name)
         return [], msg, 400
 
     try:
         trakt_ids = fetch_trakt_list(source_value, trakt_client_id)
-        logger.info(f"Trakt list {source_value!r}: {len(trakt_ids)} IMDb IDs found")
+        logger.info("Trakt list %r: %s IMDb IDs found", source_value, len(trakt_ids))
     except Exception as exc:
-        logger.error(f"Error fetching Trakt list for group {group_name!r}: {exc!s}")
+        logger.error("Error fetching Trakt list for group %r: %s", group_name, exc)
         return [], f"Trakt fetch error: {exc!s}", 400
 
     if not trakt_ids:
-        logger.info(f"No items found in Trakt list for group {group_name!r}")
+        logger.info("No items found in Trakt list for group %r", group_name)
         return [], None, 200
 
     return _match_jellyfin_items_by_provider(
@@ -401,18 +401,18 @@ def _fetch_items_for_tmdb_group(
     """
     if not tmdb_api_key:
         msg = "TMDb API Key not set — add tmdb_api_key in Server Settings"
-        logger.info(f"No TMDb API Key configured for group {group_name!r}")
+        logger.info("No TMDb API Key configured for group %r", group_name)
         return [], msg, 400
 
     try:
         tmdb_ids = fetch_tmdb_list(source_value, tmdb_api_key)
-        logger.info(f"TMDb list {source_value!r}: {len(tmdb_ids)} items found")
+        logger.info("TMDb list %r: %s items found", source_value, len(tmdb_ids))
     except Exception as exc:
-        logger.error(f"Error fetching TMDb list for group {group_name!r}: {exc!s}")
+        logger.error("Error fetching TMDb list for group %r: %s", group_name, exc)
         return [], f"TMDb fetch error: {exc!s}", 400
 
     if not tmdb_ids:
-        logger.info(f"No items found in TMDb list for group {group_name!r}")
+        logger.info("No items found in TMDb list for group %r", group_name)
         return [], None, 200
 
     return _match_jellyfin_items_by_provider(
@@ -451,13 +451,13 @@ def _fetch_items_for_anilist_group(
 
     try:
         anilist_ids = fetch_anilist_list(username, status)
-        logger.info(f"AniList user {username!r} (status={status!r}): {len(anilist_ids)} items found")
+        logger.info("AniList user %r (status=%r): %s items found", username, status, len(anilist_ids))
     except Exception as exc:
-        logger.error(f"Error fetching AniList items for group {group_name!r}: {exc!s}")
+        logger.error("Error fetching AniList items for group %r: %s", group_name, exc)
         return [], f"AniList fetch error: {exc!s}", 400
 
     if not anilist_ids:
-        logger.info(f"No items found for AniList user {username!r}")
+        logger.info("No items found for AniList user %r", username)
         return [], None, 200
 
     return _match_jellyfin_items_by_provider(
@@ -490,7 +490,7 @@ def _fetch_items_for_mal_group(
     """
     if not mal_client_id:
         msg = "MyAnimeList Client ID not set — add mal_client_id in Server Settings"
-        logger.info(f"No MAL Client ID configured for group {group_name!r}")
+        logger.info("No MAL Client ID configured for group %r", group_name)
         return [], msg, 400
 
     username = source_value
@@ -502,13 +502,13 @@ def _fetch_items_for_mal_group(
 
     try:
         mal_ids = fetch_mal_list(username, mal_client_id, status)
-        logger.info(f"MyAnimeList user {username!r} (status={status!r}): {len(mal_ids)} items found")
+        logger.info("MyAnimeList user %r (status=%r): %s items found", username, status, len(mal_ids))
     except Exception as exc:
-        logger.error(f"Error fetching MyAnimeList items for group {group_name!r}: {exc!s}")
+        logger.error("Error fetching MyAnimeList items for group %r: %s", group_name, exc)
         return [], f"MAL fetch error: {exc!s}", 400
 
     if not mal_ids:
-        logger.info(f"No items found for MyAnimeList user {username!r}")
+        logger.info("No items found for MyAnimeList user %r", username)
         return [], None, 200
 
     return _match_jellyfin_items_by_provider(
@@ -540,13 +540,13 @@ def _fetch_items_for_letterboxd_group(
     """
     try:
         external_ids = fetch_letterboxd_list(source_value)
-        logger.info(f"Letterboxd list {source_value!r}: {len(external_ids)} IDs found")
+        logger.info("Letterboxd list %r: %s IDs found", source_value, len(external_ids))
     except Exception as exc:
-        logger.error(f"Error fetching Letterboxd items for group {group_name!r}: {exc!s}")
+        logger.error("Error fetching Letterboxd items for group %r: %s", group_name, exc)
         return [], f"Letterboxd fetch error: {exc!s}", 400
 
     if not external_ids:
-        logger.info(f"No items found in Letterboxd list for group {group_name!r}")
+        logger.info("No items found in Letterboxd list for group %r", group_name)
         return [], None, 200
 
     # Letterboxd IDs can be IMDb (tt...) or TMDb (numeric)
@@ -622,7 +622,7 @@ def _fetch_items_for_recommendations_group(
     """
     if not tmdb_api_key:
         msg = "TMDb API Key not set — add tmdb_api_key in Server Settings"
-        logger.info(f"No TMDb API Key configured for recommendations group {group_name!r}")
+        logger.info("No TMDb API Key configured for recommendations group %r", group_name)
         return [], msg, 400
 
     if not source_value:
@@ -643,18 +643,18 @@ def _fetch_items_for_recommendations_group(
                 tmdb_requests.append((str(tmdb_id), media_type))
 
         if not tmdb_requests:
-            logger.info(f"No TMDb IDs found in recent items for user {user_id!r}")
+            logger.info("No TMDb IDs found in recent items for user %r", user_id)
             return [], None, 200
 
         # Fetch recommendations based on these items
         tmdb_ids = get_tmdb_recommendations(tmdb_requests, tmdb_api_key)
-        logger.info(f"TMDb recommendations: {len(tmdb_ids)} items found")
+        logger.info("TMDb recommendations: %s items found", len(tmdb_ids))
     except Exception as exc:
-        logger.error(f"Error fetching recommendations for group {group_name!r}: {exc!s}")
+        logger.error("Error fetching recommendations for group %r: %s", group_name, exc)
         return [], f"Recommendations fetch error: {exc!s}", 400
 
     if not tmdb_ids:
-        logger.info(f"No items found in TMDb recommendations for group {group_name!r}")
+        logger.info("No items found in TMDb recommendations for group %r", group_name)
         return [], None, 200
 
     return _match_jellyfin_items_by_provider(
@@ -855,10 +855,10 @@ def _fetch_items_for_metadata_group(
 
     try:
         items = fetch_jellyfin_items(url, api_key, params, timeout=30)
-        logger.info(f"Found {len(items)} potential items for group {group_name!r}")
+        logger.info("Found %s potential items for group %r", len(items), group_name)
         return items, None, 200
     except requests.exceptions.RequestException as exc:
-        logger.error(f"Infrastructure error fetching items for group {group_name!r}: {exc!s}")
+        logger.error("Infrastructure error fetching items for group %r: %s", group_name, exc)
         return [], f"Jellyfin connection error: {exc!s}", 500
     except Exception as exc:
         logging.exception("Unexpected error fetching items for group %r", group_name)
@@ -969,13 +969,13 @@ def _process_collection_group(
     try:
         collection_id = find_collection_by_name(url, api_key, group_name)
         if collection_id:
-            logger.info(f"Found existing collection {group_name!r} (id={collection_id})")
+            logger.info("Found existing collection %r (id=%s)", group_name, collection_id)
         else:
             collection_id = create_collection(url, api_key, group_name, item_ids)
-            logger.info(f"Created collection {group_name!r} (id={collection_id})")
+            logger.info("Created collection %r (id=%s)", group_name, collection_id)
 
         add_to_collection(url, api_key, collection_id, item_ids)
-        logger.info(f"Added {len(item_ids)} items to collection {group_name!r}")
+        logger.info("Added %s items to collection %r", len(item_ids), group_name)
     except Exception as exc:
         return {"group": group_name, "links": 0, "error": str(exc)}
 
@@ -987,7 +987,7 @@ def _process_collection_group(
             try:
                 set_collection_image(url, api_key, collection_id, source_cover)
             except Exception as exc:
-                logger.error(f"Failed to set collection image for {group_name!r}: {exc}")
+                logger.error("Failed to set collection image for %r: %s", group_name, exc)
 
     return result
 
@@ -1038,12 +1038,12 @@ def _process_group(
     source_type: str | None = group.get("source_type")
     source_value: str | None = group.get("source_value")
 
-    logger.info(f"Processing group: {group_name!r} -> {group_dir}  (sort_order={sort_order!r})")
+    logger.info("Processing group: %r -> %s  (sort_order=%r)", group_name, group_dir, sort_order)
 
     # Clean up and recreate the group directory
     if not dry_run:
         if os.path.exists(group_dir):
-            logger.info(f"Cleaning existing directory: {group_dir}")
+            logger.info("Cleaning existing directory: %s", group_dir)
             shutil.rmtree(group_dir)
         os.makedirs(group_dir, exist_ok=True)
 
@@ -1054,9 +1054,9 @@ def _process_group(
             poster_dest = os.path.join(group_dir, "poster.jpg")
             try:
                 shutil.copy2(source_cover, poster_dest)
-                logger.info(f"Copied cover image from {source_cover} to {poster_dest}")
+                logger.info("Copied cover image from %s to %s", source_cover, poster_dest)
             except OSError as exc:
-                logger.error(f"Failed to copy cover image: {exc}")
+                logger.error("Failed to copy cover image: %s", exc)
 
     # --- Resolve items ---
     error: str | None = None
@@ -1152,15 +1152,15 @@ def _process_group(
 
         source_path: str | None = item.get("Path")
         if not source_path or not isinstance(source_path, str):
-            logger.info(f"Item {item.get('Id')} has no valid Path — skipping")
+            logger.info("Item %s has no valid Path — skipping", item.get('Id'))
             continue
 
         host_path = _translate_path(source_path, jellyfin_root, host_root)
         if host_path != source_path:
-            logger.info(f"Translated path: {source_path} -> {host_path}")
+            logger.info("Translated path: %s -> %s", source_path, host_path)
 
         if not os.path.exists(host_path):
-            logger.info(f"Skipping (path not found on host): {host_path}")
+            logger.info("Skipping (path not found on host): %s", host_path)
             continue
 
         file_name: str = os.path.basename(host_path)
@@ -1179,15 +1179,15 @@ def _process_group(
         else:
             try:
                 os.symlink(host_path, dest_path)
-                logger.info(f"Created symlink: {dest_path} -> {host_path}")
+                logger.info("Created symlink: %s -> %s", dest_path, host_path)
                 links_created += 1
             except OSError as exc:
-                logger.error(f"Error creating symlink {dest_path}: {exc}")
+                logger.error("Error creating symlink %s: %s", dest_path, exc)
 
     if dry_run:
-        logger.info(f"Would create {links_created} symlinks for {group_name!r}")
+        logger.info("Would create %s symlinks for %r", links_created, group_name)
     else:
-        logger.info(f"Created {links_created} symlinks for {group_name!r}")
+        logger.info("Created %s symlinks for %r", links_created, group_name)
     result: dict[str, Any] = {"group": group_name, "links": links_created}
     if dry_run:
         result["items"] = preview_items
@@ -1199,7 +1199,7 @@ def _process_group(
         and links_created > 0
     ):
         if existing_libraries is not None and group_name not in existing_libraries:
-            logger.info(f"Creating Jellyfin library for grouping: {group_name!r}")
+            logger.info("Creating Jellyfin library for grouping: %r", group_name)
             # Resolve the path as Jellyfin sees it
             if target_path_in_jellyfin:
                 lib_path = os.path.join(target_path_in_jellyfin, group_name)
@@ -1208,16 +1208,16 @@ def _process_group(
 
             try:
                 add_virtual_folder(url, api_key, group_name, [lib_path], collection_type="mixed")
-                logger.info(f"Successfully created library {group_name!r} with path {lib_path!r}")
+                logger.info("Successfully created library %r with path %r", group_name, lib_path)
                 existing_libraries.append(group_name)  # Prevent double creation in same run
             except Exception as exc:
-                logger.error(f"Failed to create Jellyfin library {group_name!r}: {exc}")
+                logger.error("Failed to create Jellyfin library %r: %s", group_name, exc)
                 result["library_error"] = str(exc)
 
     # --- Automatic Library Cover ---
     if not dry_run and auto_set_library_covers:
         if source_cover and os.path.exists(source_cover):
-            logger.info(f"Setting cover image for library {group_name!r} via API")
+            logger.info("Setting cover image for library %r via API", group_name)
             set_virtual_folder_image(url, api_key, group_name, source_cover)
 
     return result
@@ -1298,17 +1298,17 @@ def run_sync(
     if not dry_run and not os.path.exists(target_base):
         os.makedirs(target_base, exist_ok=True)
 
-    logger.info(f"Starting sync to: {target_base}")
+    logger.info("Starting sync to: %s", target_base)
     if jellyfin_root and host_root:
-        logger.info(f"Path translation active: {jellyfin_root} -> {host_root}")
+        logger.info("Path translation active: %s -> %s", jellyfin_root, host_root)
 
     existing_libraries: list[str] = []
     if auto_create_libraries:
         try:
             existing_libraries = get_libraries(url, api_key)
-            logger.info(f"Found {len(existing_libraries)} existing virtual folders in Jellyfin")
+            logger.info("Found %s existing virtual folders in Jellyfin", len(existing_libraries))
         except Exception as exc:
-            logger.warning(f"Warning: Could not fetch existing libraries: {exc}")
+            logger.warning("Warning: Could not fetch existing libraries: %s", exc)
             # We'll continue, but library creation might fail or try to recreate existing ones
             auto_create_libraries = False
 
@@ -1318,7 +1318,7 @@ def run_sync(
     results: list[dict[str, Any]] = []
     for group in groups:
         if not isinstance(group, dict):
-            logger.info(f"Skipping invalid group entry: {group}")
+            logger.info("Skipping invalid group entry: %s", group)
             continue
 
         name = group.get("name", "").strip()
@@ -1334,7 +1334,7 @@ def run_sync(
                 if not dry_run and name:
                     group_dir = os.path.join(target_base, name)
                     if os.path.isdir(group_dir):
-                        logger.info(f"Seasonal group {name!r} is out of season. Deleting directory: {group_dir}")
+                        logger.info("Seasonal group %r is out of season. Deleting directory: %s", name, group_dir)
                         shutil.rmtree(group_dir)
                 results.append({"group": name or "(unnamed)", "links": 0, "status": "out_of_season"})
                 continue
@@ -1374,7 +1374,7 @@ def run_cleanup_broken_symlinks(config: dict[str, Any]) -> int:
     target_base: str = str(config.get("target_path", ""))
 
     if not target_base or not os.path.isdir(target_base):
-        logger.info(f"Cleanup aborted: invalid target base path '{target_base}'")
+        logger.info("Cleanup aborted: invalid target base path '%s'", target_base)
         return 0
 
     deleted_count = 0
@@ -1386,9 +1386,9 @@ def run_cleanup_broken_symlinks(config: dict[str, Any]) -> int:
                 # The symlink is broken
                 try:
                     os.unlink(path)
-                    logger.info(f"Deleted broken symlink: {path}")
+                    logger.info("Deleted broken symlink: %s", path)
                     deleted_count += 1
                 except OSError as exc:
-                    logger.error(f"Error deleting broken symlink {path}: {exc}")
+                    logger.error("Error deleting broken symlink %s: %s", path, exc)
 
     return deleted_count

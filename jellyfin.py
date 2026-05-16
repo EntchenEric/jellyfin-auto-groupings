@@ -294,7 +294,7 @@ def get_library_id(base_url: str, api_key: str, name: str, timeout: int = 30) ->
                 if item_id is not None:
                     return str(item_id)
     except requests.exceptions.RequestException as exc:
-        logger.error(f"Failed to get library ID for {name!r}: {exc}")
+        logger.error("Failed to get library ID for %r: %s", name, exc)
 
     return None
 
@@ -317,14 +317,14 @@ def set_virtual_folder_image(
     """
     library_id = get_library_id(base_url, api_key, name, timeout=timeout)
     if not library_id:
-        logger.info(f"Cannot set image: Library {name!r} not found or ID unknown.")
+        logger.info("Cannot set image: Library %r not found or ID unknown.", name)
         return
 
     try:
         with open(image_path, "rb") as f:
             image_bytes = f.read()
     except OSError as exc:
-        logger.error(f"Cannot set image: Failed to read image file {image_path!r}: {exc}")
+        logger.error("Cannot set image: Failed to read image file %r: %s", image_path, exc)
         return
 
     mime_type, _ = mimetypes.guess_type(image_path)
@@ -344,7 +344,7 @@ def set_virtual_folder_image(
             timeout=timeout,
         )
         response.raise_for_status()
-        logger.info(f"Successfully updated cover image for library {name!r}")
+        logger.info("Successfully updated cover image for library %r", name)
     except requests.exceptions.RequestException as exc:
         msg = f"Failed to set image for library {name!r}"
         if hasattr(exc, "response") and exc.response is not None:
@@ -602,7 +602,7 @@ def set_collection_image(
         with open(image_path, "rb") as f:
             image_bytes = f.read()
     except OSError as exc:
-        logger.error(f"Cannot set collection image: Failed to read {image_path!r}: {exc}")
+        logger.error("Cannot set collection image: Failed to read %r: %s", image_path, exc)
         return
 
     mime_type, _ = mimetypes.guess_type(image_path)
@@ -621,7 +621,7 @@ def set_collection_image(
             timeout=timeout,
         )
         resp.raise_for_status()
-        logger.info(f"Successfully updated cover image for collection {collection_id!r}")
+        logger.info("Successfully updated cover image for collection %r", collection_id)
     except requests.exceptions.RequestException as exc:
         msg = f"Failed to set image for collection {collection_id!r}"
         if hasattr(exc, "response") and exc.response is not None:
