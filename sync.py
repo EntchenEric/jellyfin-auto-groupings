@@ -212,7 +212,7 @@ def _fetch_full_library(
         logger.error("Infrastructure error fetching Jellyfin library for group %r: %s", group_name, exc)
         return [], f"Jellyfin connection error: {exc!s}", 500
     except Exception as exc:
-        logging.exception("Unexpected error fetching Jellyfin library for group %r", group_name)
+        logger.exception("Unexpected error fetching Jellyfin library for group %r", group_name)
         return [], f"Internal error: {exc!s}", 500  # noqa: BLE001
 
 
@@ -838,7 +838,7 @@ def _fetch_items_for_metadata_group(
         logger.error("Infrastructure error fetching items for group %r: %s", group_name, exc)
         return [], f"Jellyfin connection error: {exc!s}", 500
     except Exception as exc:
-        logging.exception("Unexpected error fetching items for group %r", group_name)
+        logger.exception("Unexpected error fetching items for group %r", group_name)
         return [], f"Internal error: {exc!s}", 500  # noqa: BLE001
 
 
