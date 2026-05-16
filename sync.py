@@ -1211,22 +1211,18 @@ def _is_in_season(start_str: Any, end_str: Any) -> bool:
     if not isinstance(start_str, str) or not isinstance(end_str, str):
         return True
 
-    try:
-        now = datetime.now()
-        current_md = now.strftime("%m-%d")
+    now = datetime.now()
+    current_md = now.strftime("%m-%d")
 
-        # We know they are strings now
-        s: str = start_str
-        e: str = end_str
+    s: str = start_str
+    e: str = end_str
 
-        if s <= e:
-            # Simple case: window stays within one calendar year (e.g., 06-01 to 08-31)
-            return s <= current_md < e
-        else:
-            # Over-year case: window spans across Jan 1st (e.g., 12-01 to 01-01)
-            return current_md >= s or current_md < e
-    except (ValueError, TypeError):
-        return True
+    if s <= e:
+        # Simple case: window stays within one calendar year (e.g., 06-01 to 08-31)
+        return s <= current_md < e
+    else:
+        # Over-year case: window spans across Jan 1st (e.g., 12-01 to 01-01)
+        return current_md >= s or current_md < e
 
 
 def run_sync(
