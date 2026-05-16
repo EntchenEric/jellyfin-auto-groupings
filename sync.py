@@ -43,6 +43,10 @@ from trakt import fetch_trakt_list
 
 
 logger = logging.getLogger(__name__)
+
+# Pre-compiled regex for splitting complex query logical operators.
+_COMPLEX_QUERY_RE = re.compile(r"\s+(AND NOT|OR NOT|AND|OR)\s+", re.IGNORECASE)
+
 # Source types that come from external lists (IMDb / Trakt / TMDb / AniList / MyAnimeList / Letterboxd) rather than
 # from a Jellyfin metadata filter.
 _LIST_SOURCES: frozenset[str] = frozenset(
@@ -856,9 +860,7 @@ def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
     Returns:
         A list of rule dictionaries suitable for _fetch_items_for_complex_group.
     """
-    # Simple regex to split the logical logic
-    pattern = re.compile(r'\s+(AND NOT|OR NOT|AND|OR)\s+', re.IGNORECASE)
-    parts = pattern.split(query.strip())
+    parts = _COMPLEX_QUERY_RE.split(query.strip())
 
     rules = []
 
