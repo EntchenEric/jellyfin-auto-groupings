@@ -374,6 +374,13 @@ def test_upload_cover_invalid_image_data(client):
     assert response.status_code == 400
 
 
+def test_upload_cover_malformed_data_url(client):
+    # Starts with data:image/ but has no comma -> ValueError from split
+    response = client.post('/api/upload_cover', json={"group_name": "G", "image": "data:image/png;base64_NO_COMMA"})
+    assert response.status_code == 400
+    assert "Malformed image data" in response.get_json()["message"]
+
+
 @patch('routes.get_cover_path')
 def test_upload_cover_server_error(mock_get_cover, client):
     mock_get_cover.side_effect = Exception("Disk full")
@@ -384,6 +391,18 @@ def test_upload_cover_server_error(mock_get_cover, client):
     response = client.post('/api/upload_cover', json={"group_name": "G", "image": img_data})
     assert response.status_code == 500
     assert response.get_json()["status"] == "error"
+
+
+@patch('routes.get_cover_path')
+def test_upload_cover_unresolvable_path(mock_get_cover, client):
+    mock_get_cover.return_value = None
+    img_data = (
+        "data:image/png;base64,"
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+    )
+    response = client.post('/api/upload_cover', json={"group_name": "G", "image": img_data})
+    assert response.status_code == 500
+    assert "Could not resolve cover storage path" in response.get_json()["message"]
 
 
 # ---------------------------------------------------------------------------
