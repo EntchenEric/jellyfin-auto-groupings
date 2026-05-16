@@ -1078,34 +1078,33 @@ def _process_group(
     status_code: int = 200
     watch_state: str = group.get("watch_state", "")
 
-    if source_type == "imdb_list":
-        items, error, status_code = _fetch_items_for_imdb_group(
+    # Table-driven dispatch for external-list sources
+    _source_dispatch: dict[str, Callable[[], tuple[list[dict[str, Any]], str | None, int]]] = {
+        "imdb_list": lambda: _fetch_items_for_imdb_group(
             group_name, source_value or "", sort_order, url, api_key, watch_state
-        )
-    elif source_type == "trakt_list":
-        items, error, status_code = _fetch_items_for_trakt_group(
+        ),
+        "trakt_list": lambda: _fetch_items_for_trakt_group(
             group_name, source_value or "", sort_order, url, api_key, trakt_client_id, watch_state
-        )
-    elif source_type == "tmdb_list":
-        items, error, status_code = _fetch_items_for_tmdb_group(
+        ),
+        "tmdb_list": lambda: _fetch_items_for_tmdb_group(
             group_name, source_value or "", sort_order, url, api_key, tmdb_api_key, watch_state
-        )
-    elif source_type == "anilist_list":
-        items, error, status_code = _fetch_items_for_anilist_group(
+        ),
+        "anilist_list": lambda: _fetch_items_for_anilist_group(
             group_name, source_value or "", sort_order, url, api_key, watch_state
-        )
-    elif source_type == "mal_list":
-        items, error, status_code = _fetch_items_for_mal_group(
+        ),
+        "mal_list": lambda: _fetch_items_for_mal_group(
             group_name, source_value or "", sort_order, url, api_key, mal_client_id, watch_state
-        )
-    elif source_type == "letterboxd_list":
-        items, error, status_code = _fetch_items_for_letterboxd_group(
+        ),
+        "letterboxd_list": lambda: _fetch_items_for_letterboxd_group(
             group_name, source_value or "", sort_order, url, api_key, watch_state
-        )
-    elif source_type == "recommendations":
-        items, error, status_code = _fetch_items_for_recommendations_group(
+        ),
+        "recommendations": lambda: _fetch_items_for_recommendations_group(
             group_name, source_value or "", sort_order, url, api_key, tmdb_api_key, watch_state
-        )
+        ),
+    }
+
+    if source_type in _source_dispatch:
+        items, error, status_code = _source_dispatch[source_type]()
     elif isinstance(group.get("rules"), list) and group["rules"]:
         rules_list = group["rules"]
         items, error, status_code = _fetch_items_for_complex_group(
