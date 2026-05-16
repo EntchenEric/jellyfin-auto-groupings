@@ -72,6 +72,29 @@ def _parse_json(response: requests.Response) -> Any:
         ) from exc
 
 
+def _get_json(
+    url: str,
+    *,
+    headers: dict[str, str] | None = None,
+    params: dict[str, Any] | None = None,
+    timeout: int = 30,
+) -> Any:
+    """GET *url* and return the parsed JSON response.
+
+    Raises:
+        requests.HTTPError: If the server returns a non-2xx status code.
+        RuntimeError: If the response body is not valid JSON.
+    """
+    kwargs: dict[str, Any] = {"timeout": timeout}
+    if headers is not None:
+        kwargs["headers"] = headers
+    if params is not None:
+        kwargs["params"] = params
+    response = requests.get(url, **kwargs)
+    response.raise_for_status()
+    return _parse_json(response)
+
+
 # ---------------------------------------------------------------------------
 # Public helpers
 # ---------------------------------------------------------------------------
@@ -110,9 +133,9 @@ def fetch_jellyfin_items(
     if extra_params:
         params.update(extra_params)
 
-    response = requests.get(f"{base_url}/Items", headers=headers, params=params, timeout=timeout)
-    response.raise_for_status()
-    return _parse_json(response).get("Items", [])
+    return _get_json(
+        f"{base_url}/Items", headers=headers, params=params, timeout=timeout
+    ).get("Items", [])
 
 
 def fetch_all_jellyfin_items(
@@ -193,14 +216,12 @@ def _paginate_jellyfin(
         if params:
             page_params.update(params)
 
-        resp = requests.get(
+        data = _get_json(
             f"{base_url}/{endpoint}",
             headers=headers,
             params=page_params,
             timeout=timeout,
         )
-        resp.raise_for_status()
-        data = _parse_json(resp)
         page_items = data.get("Items", [])
         yield page_items
 
@@ -223,13 +244,15 @@ def get_libraries(base_url: str, api_key: str, timeout: int = 30) -> list[str]:
     Returns:
         A list of library names.
     """
-    response = requests.get(
-        f"{base_url}/Library/VirtualFolders",
-        headers=_auth_headers(api_key),
-        timeout=timeout,
-    )
-    response.raise_for_status()
-    return [name for folder in _parse_json(response) if (name := folder.get("Name"))]
+    return [
+        name
+        for folder in _get_json(
+            f"{base_url}/Library/VirtualFolders",
+            headers=_auth_headers(api_key),
+            timeout=timeout,
+        )
+        if (name := folder.get("Name"))
+    ]
 
 
 def get_users(base_url: str, api_key: str, timeout: int = 30) -> list[dict[str, Any]]:
@@ -243,13 +266,11 @@ def get_users(base_url: str, api_key: str, timeout: int = 30) -> list[dict[str, 
     Returns:
         A list of user dictionaries.
     """
-    response = requests.get(
+    return _get_json(
         f"{base_url}/Users",
         headers=_auth_headers(api_key),
         timeout=timeout,
     )
-    response.raise_for_status()
-    return _parse_json(response)
 
 
 def get_user_recent_items(
@@ -276,14 +297,12 @@ def get_user_recent_items(
         "Limit": str(limit),
         "Fields": "ProviderIds",
     }
-    response = requests.get(
+    return _get_json(
         f"{base_url}/Users/{user_id}/Items",
         headers=_auth_headers(api_key),
         params=params,
         timeout=timeout,
-    )
-    response.raise_for_status()
-    return _parse_json(response).get("Items", [])
+    ).get("Items", [])
 
 
 def add_virtual_folder(
@@ -408,14 +427,11 @@ def get_library_id(base_url: str, api_key: str, name: str, timeout: int = 30) ->
     Returns:
         The string ItemId of the library if found, else None.
     """
-    response = requests.get(
+    for folder in _get_json(
         f"{base_url}/Library/VirtualFolders",
         headers=_auth_headers(api_key),
         timeout=timeout,
-    )
-    response.raise_for_status()
-
-    for folder in _parse_json(response):
+    ):
         if folder.get("Name") == name:
             item_id = folder.get("ItemId")
             if item_id is not None:
