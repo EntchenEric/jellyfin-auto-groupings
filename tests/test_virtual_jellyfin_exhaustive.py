@@ -149,10 +149,9 @@ def test_get_library_id_missing_itemid_key(jellyfin_url):
     assert lib_id is None
 
 
-def test_get_library_id_500(jellyfin_url, caplog):
-    lib_id = get_library_id(jellyfin_url, "LIB_GET_500", "Movies")
-    assert lib_id is None
-    assert "Failed to get library ID" in caplog.text
+def test_get_library_id_500(jellyfin_url):
+    with pytest.raises(requests.exceptions.HTTPError):
+        get_library_id(jellyfin_url, "LIB_GET_500", "Movies")
 
 # 7. set_virtual_folder_image Exhaustive
 

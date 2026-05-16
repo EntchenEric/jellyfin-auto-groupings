@@ -296,21 +296,18 @@ def get_library_id(base_url: str, api_key: str, name: str, timeout: int = 30) ->
     Returns:
         The string ItemId of the library if found, else None.
     """
-    try:
-        response = requests.get(
-            f"{base_url}/Library/VirtualFolders",
-            headers={"X-Emby-Token": api_key},
-            timeout=timeout,
-        )
-        response.raise_for_status()
+    response = requests.get(
+        f"{base_url}/Library/VirtualFolders",
+        headers={"X-Emby-Token": api_key},
+        timeout=timeout,
+    )
+    response.raise_for_status()
 
-        for folder in _parse_json(response):
-            if folder.get("Name") == name:
-                item_id = folder.get("ItemId")
-                if item_id is not None:
-                    return str(item_id)
-    except requests.exceptions.RequestException as exc:
-        logger.error("Failed to get library ID for %r: %s", name, exc)
+    for folder in _parse_json(response):
+        if folder.get("Name") == name:
+            item_id = folder.get("ItemId")
+            if item_id is not None:
+                return str(item_id)
 
     return None
 
@@ -359,12 +356,11 @@ def set_virtual_folder_image(
         image_path: Absolute path to the local image file to upload.
         timeout: HTTP request timeout.
     """
-    library_id = get_library_id(base_url, api_key, name, timeout=timeout)
-    if not library_id:
-        logger.info("Cannot set image: Library %r not found or ID unknown.", name)
-        return
-
     try:
+        library_id = get_library_id(base_url, api_key, name, timeout=timeout)
+        if not library_id:
+            logger.info("Cannot set image: Library %r not found or ID unknown.", name)
+            return
         _upload_image(base_url, api_key, library_id, image_path, timeout=timeout)
     except requests.exceptions.RequestException as exc:
         logger.info(

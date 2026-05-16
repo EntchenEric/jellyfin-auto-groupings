@@ -302,13 +302,11 @@ def test_delete_virtual_folder_not_ok(mock_delete, caplog):
 
 
 @patch('requests.get')
-def test_get_library_id_request_exception(mock_get, caplog):
+def test_get_library_id_request_exception(mock_get):
     mock_get.side_effect = requests.exceptions.RequestException("Fetch Error")
 
-    result = get_library_id("http://localhost:8096", "test_key", "MyLib")
-    assert result is None
-
-    assert "Failed to get library ID for 'MyLib': Fetch Error" in caplog.text
+    with pytest.raises(requests.exceptions.RequestException):
+        get_library_id("http://localhost:8096", "test_key", "MyLib")
 
 
 @patch('jellyfin.get_library_id')
