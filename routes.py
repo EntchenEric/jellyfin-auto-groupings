@@ -39,7 +39,8 @@ bp = Blueprint("main", __name__)
 def _handle_config_error(exc: Exception) -> ResponseReturnValue:
     """Translate blueprint HTTP exceptions into JSON error responses."""
     if isinstance(exc, HTTPException):
-        assert exc.code is not None
+        if exc.code is None:
+            raise exc
         return jsonify({"status": "error", "message": exc.description}), exc.code
     raise exc
 
