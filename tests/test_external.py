@@ -271,7 +271,7 @@ def test_letterboxd_threadpool_exception(mock_get, mock_fetch_slug):
     resp.text = 'data-film-slug="film1"'
     mock_get.return_value = resp
 
-    mock_fetch_slug.side_effect = Exception("Unexpected")
+    mock_fetch_slug.side_effect = RuntimeError("Unexpected")
 
     ids = fetch_letterboxd_list("https://letterboxd.com/user/list/my-list")
     assert ids == []
