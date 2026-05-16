@@ -10,9 +10,9 @@ with open('test_results.txt', 'w') as f:
         f.write("Starting test run...\n")
         f.flush()
         subprocess.run(
-            [sys.executable, '-m', 'pytest', '--cov=.', 'tests/'], 
-            stdout=f, 
-            stderr=subprocess.STDOUT, 
+            [sys.executable, '-m', 'pytest', '--cov=.', 'tests/'],
+            stdout=f,
+            stderr=subprocess.STDOUT,
             timeout=120
         )
     except Exception as e:

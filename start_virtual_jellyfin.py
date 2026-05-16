@@ -1,14 +1,15 @@
-import logging
-
-logger = logging.getLogger(__name__)
 #!/usr/bin/env python3
 """
 Helper script to run the virtual Jellyfin mock server for development and testing.
 Provides a dashboard at http://localhost:8096
 """
 
+import logging
 import os
+
 from tests.virtual_jellyfin import app
+
+logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
     logger.info("Starting Virtual Jellyfin Mock Server...")
