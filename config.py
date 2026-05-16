@@ -12,6 +12,8 @@ import logging
 import os
 from typing import Any
 
+logger = logging.getLogger(__name__)
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
@@ -106,7 +108,7 @@ def load_config() -> dict[str, Any]:
 
         except (json.JSONDecodeError, OSError):
             # If the file is corrupt or unreadable, fall back to safe defaults
-            logging.warning("Could not read config file, falling back to defaults", exc_info=True)
+            logger.warning("Could not read config file, falling back to defaults", exc_info=True)
             cfg = DEFAULT_CONFIG.copy()
 
     # Apply environment-variable overrides (additive, never persisted)
