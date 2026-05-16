@@ -14,45 +14,48 @@ def test_fetch_letterboxd_list(mock_get):
     mock_list_resp = MagicMock()
     mock_list_resp.status_code = 200
     mock_list_resp.text = 'data-film-slug="the-godfather"'
-    
+
     # Mock film detail page
     mock_film_resp = MagicMock()
     mock_film_resp.status_code = 200
     mock_film_resp.text = 'href="https://www.imdb.com/title/tt0068646/"'
-    
+
     mock_get.side_effect = [mock_list_resp, mock_film_resp]
-    
+
     ids = fetch_letterboxd_list("https://letterboxd.com/user/list/my-list")
     assert ids == ["tt0068646"]
+
 
 @patch('requests.Session.get')
 def test_fetch_letterboxd_list_tmdb(mock_get):
     # Test TMDb ID extraction and pagination stop
     mock_list_resp = MagicMock()
     mock_list_resp.status_code = 200
-    mock_list_resp.text = 'data-film-slug="film1" class="next"' 
-    
+    mock_list_resp.text = 'data-film-slug="film1" class="next"'
+
     mock_film_resp = MagicMock()
     mock_film_resp.status_code = 200
     mock_film_resp.text = 'data-tmdb-id="500"'
-    
+
     # Page 2
     mock_list_page2 = MagicMock()
     mock_list_page2.status_code = 200
-    mock_list_page2.text = 'data-film-slug="film2"' # No "next" class
-    
+    mock_list_page2.text = 'data-film-slug="film2"'  # No "next" class
+
     mock_film2_resp = MagicMock()
     mock_film2_resp.status_code = 200
     mock_film2_resp.text = 'href="https://www.themoviedb.org/movie/600"'
 
     mock_get.side_effect = [mock_list_resp, mock_film_resp, mock_list_page2, mock_film2_resp]
-    
+
     ids = fetch_letterboxd_list("https://letterboxd.com/user/list/my-list")
     assert ids == ["500", "600"]
+
 
 def test_fetch_letterboxd_invalid_url():
     with pytest.raises(ValueError, match="Invalid Letterboxd URL"):
         fetch_letterboxd_list("https://not-lb-domain.com")
+
 
 @patch('requests.Session.get')
 def test_fetch_letterboxd_http_error(mock_get):
@@ -63,6 +66,7 @@ def test_fetch_letterboxd_http_error(mock_get):
     with pytest.raises(RuntimeError, match="Failed to fetch Letterboxd"):
         fetch_letterboxd_list("https://letterboxd.com/user/list/list")
 
+
 @patch('requests.get')
 def test_fetch_mal_list(mock_get):
     mock_resp = MagicMock()
@@ -72,12 +76,13 @@ def test_fetch_mal_list(mock_get):
         "paging": {}
     }
     mock_get.return_value = mock_resp
-    
+
     ids = fetch_mal_list("user", "client_id", "watching")
     assert ids == [123]
     # Verify status normalization
     _args, kwargs = mock_get.call_args
     assert kwargs['params']['status'] == "watching"
+
 
 @patch('requests.get')
 def test_fetch_mal_pagination(mock_get):
@@ -97,6 +102,7 @@ def test_fetch_mal_pagination(mock_get):
     ids = fetch_mal_list("user", "cid")
     assert ids == [1, 2]
 
+
 @patch('requests.get')
 def test_fetch_trakt_list(mock_get):
     mock_resp = MagicMock()
@@ -106,10 +112,9 @@ def test_fetch_trakt_list(mock_get):
     ]
     mock_resp.headers = {"X-Pagination-Page-Count": "1"}
     mock_get.return_value = mock_resp
-    
+
     ids = fetch_trakt_list("username/list", "client_id")
     assert ids == ["tt123"]
-
 
 
 @patch('requests.post')
@@ -123,12 +128,12 @@ def test_fetch_anilist_all(mock_post):
     assert 'status' not in kwargs['json']['variables']
 
 
-
 def test_fetch_tmdb_invalid_args():
     with pytest.raises(ValueError, match=r"A TMDb API Key is required to fetch TMDb lists\."):
         fetch_tmdb_list("123", "")
     with pytest.raises(ValueError, match=r"A TMDb List ID is required\."):
         fetch_tmdb_list("", "key")
+
 
 @patch('requests.get')
 def test_fetch_tmdb_url_parsing(mock_get):
@@ -140,6 +145,7 @@ def test_fetch_tmdb_url_parsing(mock_get):
     args, _kwargs = mock_get.call_args
     assert "list/999" in args[0]
 
+
 @patch('requests.get')
 def test_fetch_mal_error(mock_get):
     mock_resp = MagicMock()
@@ -148,6 +154,7 @@ def test_fetch_mal_error(mock_get):
     mock_get.return_value = mock_resp
     with pytest.raises(requests.exceptions.HTTPError):
         fetch_mal_list("u", "c")
+
 
 @patch('requests.get')
 def test_fetch_trakt_pagination(mock_get):
@@ -162,6 +169,7 @@ def test_fetch_trakt_pagination(mock_get):
     mock_get.side_effect = [resp1, resp2]
     ids = fetch_trakt_list("u/l", "c")
     assert ids == ["tt1", "tt2"]
+
 
 @patch('requests.post')
 def test_fetch_anilist_empty_data(mock_post):

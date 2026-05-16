@@ -1,9 +1,9 @@
-import pytest
 from unittest.mock import patch, MagicMock
 from imdb import fetch_imdb_list
 from tmdb import fetch_tmdb_list
 from anilist import fetch_anilist_list
 from jellyfin import fetch_jellyfin_items
+
 
 @patch('jellyfin.requests.get')
 def test_fetch_jellyfin_items(mock_get):
@@ -11,7 +11,6 @@ def test_fetch_jellyfin_items(mock_get):
     mock_resp.status_code = 200
     mock_resp.json.return_value = {"Items": [{"Name": "M1"}]}
     mock_get.return_value = mock_resp
-    
     items = fetch_jellyfin_items("http://jf", "key", {"Type": "Movie"})
     assert items == [{"Name": "M1"}]
     # Verify params
@@ -19,14 +18,15 @@ def test_fetch_jellyfin_items(mock_get):
     assert kwargs['headers']['X-Emby-Token'] == "key"
     assert kwargs['params']['Type'] == "Movie"
 
+
 @patch('imdb.requests.get')
 def test_fetch_imdb_list(mock_get):
     mock_response = MagicMock()
     mock_response.text = '<html><div class="lister-item-header"><a href="/title/tt1234567/"></a></div></html>'
     mock_get.return_value = mock_response
-    
     ids = fetch_imdb_list("ls12345")
     assert ids == ["tt1234567"]
+
 
 @patch('tmdb.requests.get')
 def test_fetch_tmdb_list(mock_get):
@@ -39,9 +39,9 @@ def test_fetch_tmdb_list(mock_get):
         "total_pages": 1
     }
     mock_get.return_value = mock_response
-    
     ids = fetch_tmdb_list("123", "api_key")
     assert ids == ["101", "202"]
+
 
 @patch('anilist.requests.post')
 def test_fetch_anilist_list(mock_post):
@@ -56,7 +56,6 @@ def test_fetch_anilist_list(mock_post):
         }
     }
     mock_post.return_value = mock_response
-    
     ids = fetch_anilist_list("username", "completed")
     assert ids == [12345]
     _args, kwargs = mock_post.call_args

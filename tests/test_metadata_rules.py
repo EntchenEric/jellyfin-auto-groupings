@@ -1,14 +1,9 @@
 """Tests for metadata rule parsing used in grouping filters.
-
 The JS frontend parses filter strings like "Horror AND Action AND NOT Comedy".
 These tests verify the Python-side logic for parsing and filtering rules.
 """
-
-import pytest
-
 # Replicating the frontend's parseMetadataValue logic in Python for testing
 # the algorithm's correctness (the backend sync engine applies these rules).
-
 import re
 
 
@@ -16,7 +11,6 @@ def parse_metadata_value(val_str):
     """Python equivalent of parseMetadataValue from metadata.js."""
     if not val_str or val_str.strip() == "":
         return [{"operator": "", "value": ""}]
-
     pattern = r"\s+(AND NOT|OR NOT|AND|OR)\s+"
     parts = re.split(pattern, val_str, flags=re.IGNORECASE)
     rules = []
@@ -27,15 +21,12 @@ def parse_metadata_value(val_str):
         if match:
             return {"type": match.group(1), "value": match.group(2).strip()}
         return {"value": s}
-
     first = parse_rule(parts[0])
     rules.append({"operator": "", **first})
-
     for i in range(1, len(parts), 2):
         rest = parse_rule(parts[i + 1])
         op = parts[i].strip().upper().replace(r"\s+", " ")
         rules.append({"operator": op, **rest})
-
     return rules
 
 

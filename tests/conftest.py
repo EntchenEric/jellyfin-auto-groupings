@@ -1,13 +1,11 @@
-import sys
-import os
-import json
-import shutil
+from app import app as flask_app
 import threading
 import time
 import requests
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from tests.virtual_jellyfin import app as jelly_mock_app
+
 
 @pytest.fixture(scope="session")
 def virtual_jellyfin():
@@ -43,8 +41,6 @@ def mock_scheduler():
 def pytest_configure(config):
     config.addinivalue_line("markers", "e2e: end-to-end tests requiring real Jellyfin instance")
 
-from app import app as flask_app
-from config import DEFAULT_CONFIG, CONFIG_DIR
 
 @pytest.fixture
 def app():
@@ -53,15 +49,17 @@ def app():
     flask_app.config.update({
         "TESTING": True,
     })
-    
+
     with flask_app.app_context():
         yield flask_app
-    
+
     flask_app.config = old_config
+
 
 @pytest.fixture
 def client(app):
     return app.test_client()
+
 
 @pytest.fixture
 def temp_config(tmp_path):
@@ -69,20 +67,21 @@ def temp_config(tmp_path):
     test_config_dir = tmp_path / "config"
     test_config_dir.mkdir()
     test_config_file = test_config_dir / "config.json"
-    
+
     # Mock CONFIG_FILE in config module
     import config
     original_config_file = config.CONFIG_FILE
     original_config_dir = config.CONFIG_DIR
-    
+
     config.CONFIG_FILE = str(test_config_file)
     config.CONFIG_DIR = str(test_config_dir)
-    
+
     yield test_config_file
-    
+
     # Restore original paths
     config.CONFIG_FILE = original_config_file
     config.CONFIG_DIR = original_config_dir
+
 
 @pytest.fixture
 def mock_jellyfin_items():

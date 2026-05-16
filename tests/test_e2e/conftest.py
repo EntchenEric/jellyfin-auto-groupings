@@ -5,7 +5,7 @@ Run with: pytest tests/test_e2e/ -v -m e2e
 """
 
 import os
-import json
+
 import time
 import pytest
 import requests

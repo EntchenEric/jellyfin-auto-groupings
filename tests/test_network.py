@@ -50,8 +50,10 @@ def test_patched_get_success(monkeypatch):
 
     class FakeResp:
         status_code = 200
+
         def json(self):
             return {"ok": True}
+
         def raise_for_status(self):
             pass
 
@@ -97,8 +99,10 @@ def test_patched_post_success(monkeypatch):
 
     class FakeResp:
         status_code = 201
+
         def json(self):
             return {"created": True}
+
         def raise_for_status(self):
             pass
 
@@ -129,8 +133,10 @@ def test_patched_delete_success(monkeypatch):
 
     class FakeResp:
         status_code = 204
+
         def json(self):
             return {}
+
         def raise_for_status(self):
             pass
 
