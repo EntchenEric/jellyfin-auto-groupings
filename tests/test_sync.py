@@ -269,6 +269,15 @@ def test_translate_path_edge_cases():
     assert _translate_path("/jf/", "/jf", "/host") == "/host"
 
 
+def test_translate_path_normalization():
+    # Redundant separators in path should not affect the result
+    assert _translate_path("/jf//movie.mkv", "/jf", "/host") == "/host/movie.mkv"
+    # Trailing slash on root should work correctly
+    assert _translate_path("/jf/movie.mkv", "/jf/", "/host") == "/host/movie.mkv"
+    # Both path and root have trailing slashes
+    assert _translate_path("/jf//sub/", "/jf/", "/host") == "/host/sub"
+
+
 def test_sort_items_missing_field():
     items = [{"Name": "A"}, {"Name": "B"}]
     # Sorting by missing field should use Name as fallback
