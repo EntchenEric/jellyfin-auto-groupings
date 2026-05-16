@@ -28,7 +28,7 @@ from werkzeug.exceptions import HTTPException
 from config import load_config, save_config
 from jellyfin import _paginate_jellyfin, delete_virtual_folder, fetch_jellyfin_items, get_users
 from scheduler import update_scheduler_jobs, validate_cron
-from sync import get_cover_path, preview_group, run_sync
+from sync import _get_cover_path, preview_group, run_sync
 
 logger = logging.getLogger(__name__)
 
@@ -402,11 +402,11 @@ def upload_cover() -> ResponseReturnValue:
 
     Expects a JSON body with ``group_name`` and ``image`` (data URL).
     Decodes and saves the image to a location determined by
-    :func:`sync.get_cover_path`: it saves to
+    :func:`sync._get_cover_path`: it saves to
     ``target_base/.covers/[md5(group_name)].jpg`` when the target directory
     exists, otherwise it falls back to ``config/covers/[md5(group_name)].jpg``.
     The file name used is md5(group_name) + .jpg. Reference
-    :func:`sync.get_cover_path` for the detailed storage precedence.
+    :func:`sync._get_cover_path` for the detailed storage precedence.
 
     Returns:
         JSON with ``status`` and ``message``.
@@ -435,7 +435,7 @@ def upload_cover() -> ResponseReturnValue:
         cfg = load_config()
         target_path = str(cfg.get("target_path", ""))
 
-        cover_path = get_cover_path(group_name, target_path, check_exists=False)
+        cover_path = _get_cover_path(group_name, target_path, check_exists=False)
         if cover_path is None:
             return _error("Could not resolve cover storage path", 500)
 

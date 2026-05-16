@@ -415,7 +415,7 @@ def test_run_sync_with_library_creation(
 
 @patch('sync.shutil.copy2')
 @patch('sync.set_virtual_folder_image')
-@patch('sync.get_cover_path')
+@patch('sync._get_cover_path')
 @patch('sync.shutil.rmtree')
 @patch('sync.os.makedirs')
 @patch('sync.os.path.exists')

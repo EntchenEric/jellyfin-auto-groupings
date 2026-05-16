@@ -5,7 +5,7 @@ import pytest
 from unittest.mock import patch
 from sync import (
     _translate_path,
-    get_cover_path,
+    _get_cover_path,
     parse_complex_query,
     _match_condition,
     _eval_item,
@@ -124,17 +124,17 @@ def test_get_cover_path(tmp_path):
     os.makedirs(os.path.join(target_base, ".covers"), exist_ok=True)
     # Mock __file__ to control legacy path? A bit hard.
     # Let's just test the logic for check_exists=False
-    path = get_cover_path("My Group", target_base, check_exists=False)
+    path = _get_cover_path("My Group", target_base, check_exists=False)
     assert ".covers" in path
     assert path.endswith(".jpg")
     # Test non-existent with check_exists=True
-    assert get_cover_path("Missing Group", target_base, check_exists=True) is None
+    assert _get_cover_path("Missing Group", target_base, check_exists=True) is None
     # Test existent in lib
     lib_path = os.path.join(target_base, ".covers", hashlib.md5(
         b"Existent", usedforsecurity=False).hexdigest() + ".jpg")
     with open(lib_path, "w") as f:
         f.write("test")
-    assert get_cover_path("Existent", target_base, check_exists=True) == lib_path
+    assert _get_cover_path("Existent", target_base, check_exists=True) == lib_path
 
 
 @patch('sync.fetch_jellyfin_items')
@@ -655,14 +655,14 @@ def test_filter_by_watch_state():
 
 
 def test_get_cover_path_no_target_base():
-    path = get_cover_path("Group", "", check_exists=False)
+    path = _get_cover_path("Group", "", check_exists=False)
     assert "config/covers" in path
 
 
 @patch('sync.os.path.exists')
 def test_get_cover_path_legacy_exists(mock_exists):
     mock_exists.side_effect = lambda p: "config/covers" in p
-    path = get_cover_path("LegacyGroup", "/some/target", check_exists=True)
+    path = _get_cover_path("LegacyGroup", "/some/target", check_exists=True)
     assert "config/covers" in path
 
 
@@ -843,7 +843,7 @@ def test_fetch_items_metadata_unexpected_error(mock_fetch):
 
 @patch('sync.os.path.exists')
 @patch('sync.set_collection_image')
-@patch('sync.get_cover_path')
+@patch('sync._get_cover_path')
 @patch('sync.add_to_collection')
 @patch('sync.create_collection')
 @patch('sync.find_collection_by_name')
@@ -865,7 +865,7 @@ def test_process_collection_group_create_and_cover(
 
 @patch('sync.os.path.exists')
 @patch('sync.set_collection_image')
-@patch('sync.get_cover_path')
+@patch('sync._get_cover_path')
 @patch('sync.add_to_collection')
 @patch('sync.find_collection_by_name')
 def test_process_collection_group_cover_error(mock_find, mock_add, mock_cover, mock_set, mock_exists):
@@ -1079,7 +1079,7 @@ def test_process_group_library_already_exists(mock_meta, mock_add, tmp_path):
 
 
 @patch('sync.set_virtual_folder_image')
-@patch('sync.get_cover_path')
+@patch('sync._get_cover_path')
 @patch('sync._fetch_items_for_metadata_group')
 def test_process_group_auto_set_library_covers(mock_meta, mock_cover, mock_set, tmp_path):
     host = tmp_path / "movie.mkv"
@@ -1379,7 +1379,7 @@ def test_process_group_missing_host_path(mock_meta, tmp_path):
     assert result["links"] == 0
 
 
-@patch('sync.get_cover_path')
+@patch('sync._get_cover_path')
 @patch('sync._fetch_items_for_metadata_group')
 def test_process_group_auto_cover_missing(mock_meta, mock_cover, tmp_path):
     host = tmp_path / "movie.mkv"
