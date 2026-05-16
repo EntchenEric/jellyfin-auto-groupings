@@ -215,7 +215,7 @@ def test_preview_group_fetch_error(mock_jf):
     mock_jf.side_effect = RuntimeError("Network error")
     _items, err, code = preview_group("genre", "Action", "http://jf", "key")
     assert code == 500
-    assert "Internal error" in err
+    assert "Jellyfin connection error" in err
 
 
 def test_parse_complex_query_with_prefixes():
@@ -680,7 +680,7 @@ def test_fetch_full_library_pagination(mock_fetch):
 @patch('sync.fetch_jellyfin_items')
 def test_fetch_full_library_request_error(mock_fetch):
     _LIBRARY_CACHE.clear()
-    mock_fetch.side_effect = requests.exceptions.ConnectionError("fail")
+    mock_fetch.side_effect = RuntimeError("fail")
     items, error, code = _fetch_full_library("http://jf", "key", "Group")
     assert code == 500
     assert "Jellyfin connection error" in error
@@ -692,7 +692,7 @@ def test_fetch_full_library_unexpected_error(mock_fetch):
     mock_fetch.side_effect = RuntimeError("bad")
     items, error, code = _fetch_full_library("http://jf", "key", "Group")
     assert code == 500
-    assert "Internal error" in error
+    assert "Jellyfin connection error" in error
 
 
 @patch('sync._fetch_full_library')
@@ -823,7 +823,7 @@ def test_complex_group_watch_state(mock_lib):
 
 @patch('sync.fetch_jellyfin_items')
 def test_fetch_items_metadata_request_error(mock_fetch):
-    mock_fetch.side_effect = requests.exceptions.ConnectionError("fail")
+    mock_fetch.side_effect = RuntimeError("fail")
     items, error, code = _fetch_items_for_metadata_group(
         "Group", "genre", "Action", "SortName", "http://jf", "key"
     )
@@ -838,7 +838,7 @@ def test_fetch_items_metadata_unexpected_error(mock_fetch):
         "Group", "genre", "Action", "SortName", "http://jf", "key"
     )
     assert code == 500
-    assert "Internal error" in error
+    assert "Jellyfin connection error" in error
 
 
 @patch('sync.os.path.exists')

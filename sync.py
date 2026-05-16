@@ -240,12 +240,9 @@ def _fetch_full_library(
         with _LIBRARY_CACHE_LOCK:
             _LIBRARY_CACHE[cache_key] = all_items
         return all_items, None, 200
-    except requests.exceptions.RequestException as exc:
+    except (RuntimeError, OSError, ValueError) as exc:
         logger.error("Infrastructure error fetching Jellyfin library for group %r: %s", group_name, exc)
         return [], f"Jellyfin connection error: {exc!s}", 500
-    except (RuntimeError, OSError, ValueError) as exc:
-        logger.exception("Unexpected error fetching Jellyfin library for group %r", group_name)
-        return [], f"Internal error: {exc!s}", 500
 
 
 def _match_jellyfin_items_by_provider(
@@ -859,12 +856,9 @@ def _fetch_items_for_metadata_group(
         items = fetch_jellyfin_items(url, api_key, params, timeout=_METADATA_FETCH_TIMEOUT)
         logger.info("Found %s potential items for group %r", len(items), group_name)
         return items, None, 200
-    except requests.exceptions.RequestException as exc:
+    except (RuntimeError, OSError, ValueError) as exc:
         logger.error("Infrastructure error fetching items for group %r: %s", group_name, exc)
         return [], f"Jellyfin connection error: {exc!s}", 500
-    except (RuntimeError, OSError, ValueError) as exc:
-        logger.exception("Unexpected error fetching items for group %r", group_name)
-        return [], f"Internal error: {exc!s}", 500
 
 
 def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
@@ -976,7 +970,7 @@ def _process_collection_group(
 
         add_to_collection(url, api_key, collection_id, item_ids)
         logger.info("Added %s items to collection %r", len(item_ids), group_name)
-    except (requests.exceptions.RequestException, RuntimeError, OSError) as exc:
+    except (RuntimeError, OSError) as exc:
         return {"group": group_name, "links": 0, "error": str(exc)}
 
     result: dict[str, Any] = {"group": group_name, "links": len(item_ids)}
@@ -986,7 +980,7 @@ def _process_collection_group(
         if source_cover and os.path.exists(source_cover):
             try:
                 set_collection_image(url, api_key, collection_id, source_cover)
-            except (requests.exceptions.RequestException, OSError) as exc:
+            except OSError as exc:
                 logger.error("Failed to set collection image for %r: %s", group_name, exc)
 
     return result
@@ -1017,7 +1011,7 @@ def _auto_create_library(
                 add_virtual_folder(url, api_key, group_name, [lib_path], collection_type="mixed")
                 logger.info("Successfully created library %r with path %r", group_name, lib_path)
                 existing_libraries.append(group_name)
-            except (requests.exceptions.RequestException, RuntimeError, OSError) as exc:
+            except (RuntimeError, OSError) as exc:
                 logger.error("Failed to create Jellyfin library %r: %s", group_name, exc)
                 result["library_error"] = str(exc)
     return result
@@ -1362,7 +1356,7 @@ def run_sync(
         try:
             existing_libraries = get_libraries(url, api_key)
             logger.info("Found %s existing virtual folders in Jellyfin", len(existing_libraries))
-        except (requests.exceptions.RequestException, RuntimeError, OSError) as exc:
+        except (RuntimeError, OSError) as exc:
             logger.warning("Warning: Could not fetch existing libraries: %s", exc)
             # We'll continue, but library creation might fail or try to recreate existing ones
             auto_create_libraries = False

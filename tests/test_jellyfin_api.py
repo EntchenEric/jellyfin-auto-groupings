@@ -316,8 +316,9 @@ def test_delete_virtual_folder_not_ok(mock_delete, caplog):
 def test_get_library_id_request_exception(mock_get):
     mock_get.side_effect = requests.exceptions.RequestException("Fetch Error")
 
-    with pytest.raises(requests.exceptions.RequestException):
+    with pytest.raises(RuntimeError) as excinfo:
         get_library_id("http://localhost:8096", "test_key", "MyLib")
+    assert "Failed to GET" in str(excinfo.value)
 
 
 @patch('jellyfin.get_library_id')
@@ -361,7 +362,7 @@ def test_set_virtual_folder_image_request_exception(mock_get_library_id, mock_po
 
     set_virtual_folder_image("http://localhost:8096", "test_key", "MyLib", "/path/to/img.jpg")
 
-    assert "Failed to set image for library 'MyLib' (Status 400): Bad Request" in caplog.text
+    assert "Failed to upload image for item '123' (Status 400): Bad Request" in caplog.text
 
 
 @patch('mimetypes.guess_type')
@@ -379,7 +380,7 @@ def test_set_virtual_folder_image_request_exception_no_response(
 
     set_virtual_folder_image("http://localhost:8096", "test_key", "MyLib", "/path/to/img.jpg")
 
-    assert "Failed to set image for library 'MyLib': Upload Error" in caplog.text
+    assert "Failed to upload image for item '123': Upload Error" in caplog.text
 
 
 # ---------------------------------------------------------------------------
@@ -443,7 +444,8 @@ def test_find_collection_by_name_found(mock_get):
         "Items": [
             {"Name": "Other", "Id": "other_id"},
             {"Name": "My Boxset", "Id": "boxset_42"},
-        ]
+        ],
+        "TotalRecordCount": 2,
     }
     mock_response.raise_for_status.return_value = None
     mock_get.return_value = mock_response
@@ -455,7 +457,7 @@ def test_find_collection_by_name_found(mock_get):
 @patch('requests.get')
 def test_find_collection_by_name_not_found(mock_get):
     mock_response = MagicMock()
-    mock_response.json.return_value = {"Items": [{"Name": "Other", "Id": "x"}]}
+    mock_response.json.return_value = {"Items": [{"Name": "Other", "Id": "x"}], "TotalRecordCount": 1}
     mock_response.raise_for_status.return_value = None
     mock_get.return_value = mock_response
 
@@ -466,7 +468,7 @@ def test_find_collection_by_name_not_found(mock_get):
 @patch('requests.get')
 def test_find_collection_by_name_missing_id(mock_get):
     mock_response = MagicMock()
-    mock_response.json.return_value = {"Items": [{"Name": "NoId"}]}
+    mock_response.json.return_value = {"Items": [{"Name": "NoId"}], "TotalRecordCount": 1}
     mock_response.raise_for_status.return_value = None
     mock_get.return_value = mock_response
 
@@ -478,8 +480,9 @@ def test_find_collection_by_name_missing_id(mock_get):
 def test_find_collection_by_name_request_exception(mock_get):
     mock_get.side_effect = requests.exceptions.RequestException("Timeout")
 
-    with pytest.raises(requests.exceptions.RequestException):
+    with pytest.raises(RuntimeError) as excinfo:
         find_collection_by_name("http://localhost:8096", "test_key", "Anything")
+    assert "Failed to GET" in str(excinfo.value)
 
 
 @patch('requests.get')
@@ -682,7 +685,7 @@ def test_set_collection_image_http_error(mock_post, mock_open, mock_guess, caplo
     mock_post.return_value = mock_response
 
     set_collection_image("http://localhost:8096", "test_key", "col_1", "/path/img.jpg")
-    assert "Failed to set image for collection 'col_1' (Status 400): Bad Image" in caplog.text
+    assert "Failed to upload image for item 'col_1' (Status 400): Bad Image" in caplog.text
 
 
 @patch('mimetypes.guess_type')
@@ -694,4 +697,4 @@ def test_set_collection_image_request_exception_no_response(mock_post, mock_open
     mock_post.side_effect = requests.exceptions.RequestException("Upload Error")
 
     set_collection_image("http://localhost:8096", "test_key", "col_1", "/path/img.jpg")
-    assert "Failed to set image for collection 'col_1': Upload Error" in caplog.text
+    assert "Failed to upload image for item 'col_1': Upload Error" in caplog.text
