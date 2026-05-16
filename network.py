@@ -18,6 +18,7 @@ import logging
 
 import requests
 from requests.adapters import HTTPAdapter
+from urllib3.exceptions import MaxRetryError, ReadTimeoutError
 from urllib3.util.retry import Retry
 
 logger = logging.getLogger(__name__)
@@ -58,8 +59,6 @@ _original_delete = requests.delete
 def _reraise_timeout(exc: requests.ConnectionError) -> None:
     """If *exc* wraps a read-timeout from the retry adapter, re-raise as
     :class:`requests.Timeout` so callers see the expected exception type."""
-    from urllib3.exceptions import MaxRetryError, ReadTimeoutError
-
     inner = exc.args[0] if exc.args else None
     if not isinstance(inner, MaxRetryError):
         return
