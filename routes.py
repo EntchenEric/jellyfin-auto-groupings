@@ -168,6 +168,12 @@ def _get_jellyfin_config(
     return url, api_key
 
 
+def _get_target_base() -> str:
+    """Return the configured target path from the active config."""
+    config = load_config()
+    return str(config.get("target_path", "")) if isinstance(config, dict) else ""
+
+
 # ---------------------------------------------------------------------------
 # Config routes
 # ---------------------------------------------------------------------------
@@ -431,8 +437,7 @@ def upload_cover() -> ResponseReturnValue:
         decoded = base64.b64decode(encoded)
 
         # Determine cover storage path using the shared helper
-        cfg = load_config()
-        target_path = str(cfg.get("target_path", ""))
+        target_path = _get_target_base()
 
         cover_path = get_cover_path(group_name, target_path, check_exists=False)
         if cover_path is None:
@@ -556,8 +561,7 @@ def preview_grouping() -> ResponseReturnValue:
 @bp.route("/api/cleanup", methods=["GET"])
 def get_cleanup_items() -> ResponseReturnValue:
     """Return a list of logical folders in the target directory."""
-    config: dict[str, Any] = load_config()
-    target_base: str = str(config.get("target_path", ""))
+    target_base = _get_target_base()
     if not target_base or not os.path.exists(target_base):
         return _success("", items=[])
 
@@ -588,8 +592,7 @@ def perform_cleanup() -> ResponseReturnValue:
     if not isinstance(folders, list):
         return _error("'folders' must be a list", 400)
 
-    config: dict[str, Any] = load_config()
-    target_base: str = str(config.get("target_path", ""))
+    target_base = _get_target_base()
     if not target_base or not os.path.exists(target_base):
         return _error("Target path not found", 404)
 
