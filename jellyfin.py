@@ -8,6 +8,7 @@ Jellyfin ``/Items`` endpoint.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from typing import Any, NoReturn
 
 import mimetypes
@@ -112,6 +113,97 @@ def fetch_jellyfin_items(
     response = requests.get(f"{base_url}/Items", headers=headers, params=params, timeout=timeout)
     response.raise_for_status()
     return _parse_json(response).get("Items", [])
+
+
+def fetch_all_jellyfin_items(
+    base_url: str,
+    api_key: str,
+    extra_params: dict[str, str] | None = None,
+    *,
+    limit: int = 200,
+    timeout: int = 30,
+) -> list[dict[str, Any]]:
+    """Fetch all items from the Jellyfin ``/Items`` endpoint, handling pagination.
+
+    Args:
+        base_url: Jellyfin server base URL.
+        api_key: Jellyfin API key.
+        extra_params: Additional query-string parameters for every request.
+        limit: Number of items to request per page.
+        timeout: HTTP request timeout in seconds.
+
+    Returns:
+        Concatenated list of all ``Items`` across all pages.
+    """
+    all_items: list[dict[str, Any]] = []
+    start_index = 0
+
+    while True:
+        params: dict[str, str] = {
+            "StartIndex": str(start_index),
+            "Limit": str(limit),
+        }
+        if extra_params:
+            params.update(extra_params)
+        page = fetch_jellyfin_items(base_url, api_key, params, timeout=timeout)
+        all_items.extend(page)
+        if len(page) < limit:
+            break
+        start_index += limit
+
+    return all_items
+
+
+def _paginate_jellyfin(
+    base_url: str,
+    api_key: str,
+    endpoint: str,
+    params: dict[str, Any] | None = None,
+    *,
+    limit: int = 200,
+    timeout: int = 30,
+) -> Iterator[list[dict[str, Any]]]:
+    """Yield pages of items from a Jellyfin endpoint.
+
+    Handles ``StartIndex`` / ``Limit`` pagination automatically.
+
+    Args:
+        base_url: Jellyfin server base URL.
+        api_key: Jellyfin API key.
+        endpoint: API endpoint path (e.g. ``"Items"``, ``"Genres"``).
+        params: Additional query-string parameters for every request.
+        limit: Number of items to request per page.
+        timeout: HTTP request timeout in seconds.
+
+    Yields:
+        Lists of item dictionaries, one per page.
+    """
+    start_index = 0
+    headers = _auth_headers(api_key)
+
+    while True:
+        page_params: dict[str, Any] = {
+            "StartIndex": start_index,
+            "Limit": limit,
+        }
+        if params:
+            page_params.update(params)
+
+        resp = requests.get(
+            f"{base_url}/{endpoint}",
+            headers=headers,
+            params=page_params,
+            timeout=timeout,
+        )
+        resp.raise_for_status()
+        data = _parse_json(resp)
+        page_items = data.get("Items", [])
+        yield page_items
+
+        total = data.get("TotalRecordCount", 0)
+        start_index += len(page_items)
+        if start_index >= total or not page_items:
+            break
 
 
 def get_libraries(base_url: str, api_key: str, timeout: int = 30) -> list[str]:
@@ -445,40 +537,19 @@ def find_collection_by_name(
     Returns:
         The collection ``Id`` if found, ``None`` otherwise.
     """
-    headers = _auth_headers(api_key)
-    limit = _COLLECTION_PAGE_LIMIT
-    start_index = 0
-
-    while True:
-        params: dict[str, str | int] = {
-            "IncludeItemTypes": "BoxSet",
-            "Recursive": "true",
-            "SearchTerm": name,
-            "Limit": limit,
-            "StartIndex": start_index,
-        }
-
-        resp = requests.get(
-            f"{base_url}/Items",
-            params=params,
-            headers=headers,
-            timeout=timeout,
-        )
-        resp.raise_for_status()
-        data = _parse_json(resp)
-        items = data.get("Items", [])
-
-        for item in items:
+    params: dict[str, Any] = {
+        "IncludeItemTypes": "BoxSet",
+        "Recursive": "true",
+        "SearchTerm": name,
+    }
+    for page in _paginate_jellyfin(
+        base_url, api_key, "Items", params, limit=_COLLECTION_PAGE_LIMIT, timeout=timeout
+    ):
+        for item in page:
             if item.get("Name") == name:
                 item_id: str | None = item.get("Id")
                 if item_id:
                     return item_id
-
-        total = data.get("TotalRecordCount", 0)
-        start_index += len(items)
-        if start_index >= total or not items:
-            break
-
     return None
 
 

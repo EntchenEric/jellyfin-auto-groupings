@@ -25,7 +25,7 @@ from flask.typing import ResponseReturnValue
 from werkzeug.exceptions import HTTPException
 
 from config import load_config, save_config
-from jellyfin import delete_virtual_folder, fetch_jellyfin_items, get_users
+from jellyfin import _paginate_jellyfin, delete_virtual_folder, fetch_jellyfin_items, get_users
 from scheduler import update_scheduler_jobs, validate_cron
 from sync import get_cover_path, preview_group, run_sync
 
