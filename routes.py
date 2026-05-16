@@ -20,8 +20,9 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 import requests
-from flask import Blueprint, current_app, jsonify, render_template, request, send_from_directory
+from flask import Blueprint, abort, current_app, jsonify, render_template, request, send_from_directory
 from flask.typing import ResponseReturnValue
+from werkzeug.exceptions import HTTPException
 
 from config import load_config, save_config
 from jellyfin import delete_virtual_folder, fetch_jellyfin_items, get_users
@@ -31,6 +32,17 @@ from sync import get_cover_path, preview_group, run_sync
 logger = logging.getLogger(__name__)
 
 bp = Blueprint("main", __name__)
+
+
+@bp.errorhandler(400)
+@bp.errorhandler(500)
+def _handle_config_error(exc: Exception) -> ResponseReturnValue:
+    """Translate blueprint HTTP exceptions into JSON error responses."""
+    if isinstance(exc, HTTPException):
+        assert exc.code is not None
+        return jsonify({"status": "error", "message": exc.description}), exc.code
+    raise exc
+
 
 # Max size for base64 encoded cover image (approx 4MB)
 MAX_B64_SIZE = 4 * 1024 * 1024
@@ -105,20 +117,22 @@ def _path_is_allowed(path: str) -> bool:
 
 def _get_jellyfin_config(
     missing_msg: str = "Server settings not configured",
-) -> tuple[str, str] | tuple[ResponseReturnValue, int]:
+) -> tuple[str, str]:
     """Load and validate Jellyfin URL + API key from the active config.
 
+    Raises:
+        werkzeug.exceptions.HTTPException: 400 or 500 if the config is missing or invalid.
+
     Returns:
-        ``(url, api_key)`` on success, or a JSON error ``(response, status_code)``
-        tuple when the config is missing or invalid.
+        ``(url, api_key)`` on success.
     """
     config = load_config()
     if not isinstance(config, dict):
-        return jsonify({"status": "error", "message": "Invalid configuration format"}), 500
+        abort(500, description="Invalid configuration format")
     url = str(config.get("jellyfin_url", "")).rstrip("/")
     api_key = str(config.get("api_key", ""))
     if not url or not api_key:
-        return jsonify({"status": "error", "message": missing_msg}), 400
+        abort(400, description=missing_msg)
     return url, api_key
 
 
@@ -329,10 +343,7 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
         JSON with ``status`` and a ``metadata`` object containing ``genre``,
         ``studio``, ``tag``, and ``actor`` lists.
     """
-    config_result = _get_jellyfin_config()
-    if len(config_result) == 2 and isinstance(config_result[1], int):
-        return config_result  # type: ignore[return-value]
-    url, api_key = config_result
+    url, api_key = _get_jellyfin_config()
 
     result: dict[str, list[str]] = {}
     failed = 0
@@ -382,10 +393,7 @@ def get_jellyfin_users() -> ResponseReturnValue:
     Returns:
         JSON with ``status`` and a ``users`` object containing ``id`` and ``name``.
     """
-    config_result = _get_jellyfin_config()
-    if len(config_result) == 2 and isinstance(config_result[1], int):
-        return config_result  # type: ignore[return-value]
-    url, api_key = config_result
+    url, api_key = _get_jellyfin_config()
 
     try:
         users_list = get_users(url, api_key)
@@ -527,10 +535,7 @@ def preview_grouping() -> ResponseReturnValue:
     if not isinstance(data, dict):
         return jsonify({"status": "error", "message": "Request body must be JSON"}), 400
 
-    config_result = _get_jellyfin_config()
-    if len(config_result) == 2 and isinstance(config_result[1], int):
-        return config_result  # type: ignore[return-value]
-    url, api_key = config_result
+    url, api_key = _get_jellyfin_config()
 
     # Validate and normalize "type"
     type_raw = data.get("type")
@@ -741,12 +746,9 @@ def auto_detect_paths() -> ResponseReturnValue:
         ``media_path_in_jellyfin``, ``media_path_on_host``, and
         ``target_path``.
     """
-    config_result = _get_jellyfin_config(
+    url, api_key = _get_jellyfin_config(
         missing_msg="Server settings required for detection"
     )
-    if len(config_result) == 2 and isinstance(config_result[1], int):
-        return config_result  # type: ignore[return-value]
-    url, api_key = config_result
 
     try:
         items = fetch_jellyfin_items(
