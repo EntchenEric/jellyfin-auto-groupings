@@ -90,7 +90,7 @@ def _fetch_id_for_slug(slug: str) -> str | None:
         if tmdb_attr:
             return tmdb_attr.group(1)
 
-    except requests.RequestException:
+    except requests.exceptions.RequestException:
         logger.warning("Failed to fetch Letterboxd film page for '%s'", slug, exc_info=True)
         return None
 
@@ -129,7 +129,7 @@ def fetch_letterboxd_list(list_url: str) -> list[str]:
             if resp.status_code == 404 and page > 1:
                 break
             resp.raise_for_status()
-        except requests.RequestException as exc:
+        except requests.exceptions.RequestException as exc:
             raise RuntimeError(f"Failed to fetch Letterboxd list page {page}: {exc}") from exc
 
         html = resp.text

@@ -102,7 +102,7 @@ def fetch_jellyfin_items(
 
     Raises:
         requests.HTTPError: If the server returns a non-2xx status code.
-        requests.RequestException: For any other network-level error.
+        requests.exceptions.RequestException: For any other network-level error.
     """
     headers = _auth_headers(api_key)
     params: dict[str, str] = {}

@@ -386,7 +386,7 @@ def _fetch_and_resolve(
     try:
         external_ids = fetch_fn()
         logger.info(log_msg_fn(len(external_ids)))
-    except (requests.RequestException, RuntimeError, ValueError) as exc:
+    except (requests.exceptions.RequestException, RuntimeError, ValueError) as exc:
         logger.error("Error fetching %s list for group %r: %s", source_label, group_name, exc)
         return [], f"{source_label} fetch error: {exc!s}", 400
 
@@ -567,7 +567,7 @@ def _fetch_items_for_letterboxd_group(
     try:
         external_ids = fetch_letterboxd_list(source_value)
         logger.info("Letterboxd list %r: %s IDs found", source_value, len(external_ids))
-    except (requests.RequestException, RuntimeError, ValueError) as exc:
+    except (requests.exceptions.RequestException, RuntimeError, ValueError) as exc:
         logger.error("Error fetching Letterboxd items for group %r: %s", group_name, exc)
         return [], f"Letterboxd fetch error: {exc!s}", 400
 
@@ -672,7 +672,7 @@ def _fetch_items_for_recommendations_group(
         # Fetch recommendations based on these items
         tmdb_ids = get_tmdb_recommendations(tmdb_requests, tmdb_api_key)
         logger.info("TMDb recommendations: %s items found", len(tmdb_ids))
-    except (requests.RequestException, RuntimeError, ValueError) as exc:
+    except (requests.exceptions.RequestException, RuntimeError, ValueError) as exc:
         logger.error("Error fetching recommendations for group %r: %s", group_name, exc)
         return [], f"Recommendations fetch error: {exc!s}", 400
 
@@ -987,7 +987,7 @@ def _process_collection_group(
 
         add_to_collection(url, api_key, collection_id, item_ids)
         logger.info("Added %s items to collection %r", len(item_ids), group_name)
-    except (requests.RequestException, RuntimeError, OSError) as exc:
+    except (requests.exceptions.RequestException, RuntimeError, OSError) as exc:
         return {"group": group_name, "links": 0, "error": str(exc)}
 
     result: dict[str, Any] = {"group": group_name, "links": len(item_ids)}
@@ -997,7 +997,7 @@ def _process_collection_group(
         if source_cover and os.path.exists(source_cover):
             try:
                 set_collection_image(url, api_key, collection_id, source_cover)
-            except (requests.RequestException, OSError) as exc:
+            except (requests.exceptions.RequestException, OSError) as exc:
                 logger.error("Failed to set collection image for %r: %s", group_name, exc)
 
     return result
@@ -1218,7 +1218,7 @@ def _process_group(
                 add_virtual_folder(url, api_key, group_name, [lib_path], collection_type="mixed")
                 logger.info("Successfully created library %r with path %r", group_name, lib_path)
                 existing_libraries.append(group_name)  # Prevent double creation in same run
-            except (requests.RequestException, RuntimeError, OSError) as exc:
+            except (requests.exceptions.RequestException, RuntimeError, OSError) as exc:
                 logger.error("Failed to create Jellyfin library %r: %s", group_name, exc)
                 result["library_error"] = str(exc)
 
@@ -1311,7 +1311,7 @@ def run_sync(
         try:
             existing_libraries = get_libraries(url, api_key)
             logger.info("Found %s existing virtual folders in Jellyfin", len(existing_libraries))
-        except (requests.RequestException, RuntimeError, OSError) as exc:
+        except (requests.exceptions.RequestException, RuntimeError, OSError) as exc:
             logger.warning("Warning: Could not fetch existing libraries: %s", exc)
             # We'll continue, but library creation might fail or try to recreate existing ones
             auto_create_libraries = False

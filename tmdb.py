@@ -60,7 +60,7 @@ def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
         try:
             resp = requests.get(url, params=params, timeout=15)
             resp.raise_for_status()
-        except requests.RequestException as exc:
+        except requests.exceptions.RequestException as exc:
             raise RuntimeError(
                 f"Failed to fetch TMDb list page {page}: {exc}"
             ) from exc
