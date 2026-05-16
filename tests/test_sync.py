@@ -1340,12 +1340,14 @@ def test_process_collection_group_auto_cover_off(mock_find, mock_add, tmp_path):
     assert result["links"] == 1
 
 
+@patch('sync.find_collection_by_name')
 @patch('sync.create_collection')
 @patch('sync.add_to_collection')
 @patch('sync._fetch_items_for_metadata_group')
-def test_process_group_create_collection(mock_meta, mock_add, mock_create, tmp_path):
+def test_process_group_create_collection(mock_meta, mock_add, mock_create, mock_find, tmp_path):
     host = tmp_path / "movie.mkv"
     host.write_text("movie")
+    mock_find.return_value = None
     mock_create.return_value = "col123"
     mock_meta.return_value = ([{"Id": "1", "Name": "M1", "Path": str(host)}], None, 200)
     group = {
