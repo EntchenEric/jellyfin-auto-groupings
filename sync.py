@@ -1053,10 +1053,14 @@ def _process_group(
 
     # Clean up and recreate the group directory
     if not dry_run:
-        if os.path.exists(group_dir):
-            logger.info("Cleaning existing directory: %s", group_dir)
-            shutil.rmtree(group_dir)
-        os.makedirs(group_dir, exist_ok=True)
+        try:
+            if os.path.exists(group_dir):
+                logger.info("Cleaning existing directory: %s", group_dir)
+                shutil.rmtree(group_dir)
+            os.makedirs(group_dir, exist_ok=True)
+        except OSError as exc:
+            logger.error("Failed to prepare group directory %r: %s", group_dir, exc)
+            return {"group": group_name, "links": 0, "error": f"Directory error: {exc!s}"}
 
         # Check if there is an auto-generated cover to copy
         source_cover = get_cover_path(group_name, target_base)
