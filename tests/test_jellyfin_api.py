@@ -469,8 +469,8 @@ def test_find_collection_by_name_missing_id(mock_get):
 def test_find_collection_by_name_request_exception(mock_get):
     mock_get.side_effect = requests.exceptions.RequestException("Timeout")
 
-    result = find_collection_by_name("http://localhost:8096", "test_key", "Anything")
-    assert result is None
+    with pytest.raises(requests.exceptions.RequestException):
+        find_collection_by_name("http://localhost:8096", "test_key", "Anything")
 
 
 @patch('requests.get')
