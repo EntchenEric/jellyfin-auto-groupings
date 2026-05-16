@@ -67,6 +67,23 @@ _LIST_ORDER_VALUES: frozenset[str] = frozenset(
     }
 )
 
+# Jellyfin API page size for full-library fetches
+_FULL_LIBRARY_PAGE_SIZE: int = 500
+
+# Maximum items to include in a dry-run preview
+_MAX_PREVIEW_ITEMS: int = 100
+
+# Minimum width for numbered symlink prefixes
+_MIN_PREFIX_WIDTH: int = 4
+
+# Jellyfin filter-parameter mapping for metadata group lookups
+_METADATA_FILTER_MAP: dict[str, str] = {
+    "genre": "Genres",
+    "actor": "Person",
+    "studio": "Studios",
+    "tag": "Tags",
+    "year": "years",
+}
 
 def _translate_path(
     jellyfin_path: str,
@@ -186,7 +203,7 @@ def _fetch_full_library(
     try:
         all_items: list[dict[str, Any]] = []
         start_index = 0
-        page_size = 500
+        page_size = _FULL_LIBRARY_PAGE_SIZE
 
         while True:
             page = fetch_jellyfin_items(
@@ -813,15 +830,8 @@ def _fetch_items_for_metadata_group(
         "IncludeItemTypes": "Movie,Series",
     }
 
-    filter_map: dict[str, str] = {
-        "genre": "Genres",
-        "actor": "Person",
-        "studio": "Studios",
-        "tag": "Tags",
-        "year": "years",
-    }
-    if source_type in filter_map and source_value:
-        params[filter_map[source_type]] = source_value
+    if source_type in _METADATA_FILTER_MAP and source_value:
+        params[_METADATA_FILTER_MAP[source_type]] = source_value
 
     if watch_state == "unwatched":
         params["Filters"] = "IsUnplayed"
@@ -880,7 +890,7 @@ def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
     })
 
     for i in range(1, len(parts), 2):
-        op = parts[i].upper().replace('  ', ' ')
+        op = " ".join(parts[i].upper().split())
         ti, vi = _parse_item(parts[i+1])
         rules.append({
             "operator": op,
@@ -941,7 +951,7 @@ def _process_collection_group(
     if dry_run:
         preview_items = [
             {"Name": item.get("Name", "Unknown"), "Year": item.get("ProductionYear", "")}
-            for item in items[:100]
+            for item in items[:_MAX_PREVIEW_ITEMS]
         ]
         return {"group": group_name, "links": len(item_ids), "items": preview_items}
 
@@ -1123,7 +1133,7 @@ def _process_group(
 
     # --- Create symlinks ---
     use_prefix: bool = bool(sort_order)  # numbered prefix ↔ any sort order
-    width: int = max(len(str(len(items))) if items else 4, 4)
+    width: int = max(len(str(len(items))) if items else _MIN_PREFIX_WIDTH, _MIN_PREFIX_WIDTH)
     links_created: int = 0
     preview_items: list[dict[str, Any]] = []
 

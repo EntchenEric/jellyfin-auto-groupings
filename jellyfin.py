@@ -17,6 +17,12 @@ import requests
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+_COLLECTION_PAGE_LIMIT = 200
+
+# ---------------------------------------------------------------------------
 # Sort-order mapping
 # ---------------------------------------------------------------------------
 
@@ -32,6 +38,11 @@ SORT_MAP: dict[str, tuple[str, str]] = {
     "DateCreated": ("DateCreated", "Descending"),
     "Random": ("Random", "Ascending"),
 }
+
+
+def _auth_headers(api_key: str) -> dict[str, str]:
+    """Return Jellyfin authentication headers for *api_key*."""
+    return {"X-Emby-Token": api_key}
 
 
 def _format_request_error(exc: requests.exceptions.RequestException, prefix: str) -> str:
@@ -93,7 +104,7 @@ def fetch_jellyfin_items(
         requests.HTTPError: If the server returns a non-2xx status code.
         requests.RequestException: For any other network-level error.
     """
-    headers = {"X-Emby-Token": api_key}
+    headers = _auth_headers(api_key)
     params: dict[str, str] = {}
     if extra_params:
         params.update(extra_params)
@@ -200,7 +211,7 @@ def add_virtual_folder(
     # Strategy: Try to create with all info in query string first (most common for simple cases)
     # If it already exists, we skip creation.
 
-    headers = {"X-Emby-Token": api_key}
+    headers = _auth_headers(api_key)
 
     # Step 1: Create the virtual folder shell
     # We omit 'paths' here to avoid the 400 error.
@@ -272,7 +283,7 @@ def delete_virtual_folder(base_url: str, api_key: str, name: str, timeout: int =
         timeout: HTTP request timeout.
     """
     params = {"name": name}
-    headers = {"X-Emby-Token": api_key}
+    headers = _auth_headers(api_key)
     response = requests.delete(
         f"{base_url}/Library/VirtualFolders",
         params=params,
@@ -399,7 +410,7 @@ def create_collection(
     Raises:
         RuntimeError: If the API call fails.
     """
-    headers = {"X-Emby-Token": api_key}
+    headers = _auth_headers(api_key)
     params: dict[str, str] = {"Name": name, "Ids": ",".join(item_ids)}
 
     try:
@@ -436,8 +447,8 @@ def find_collection_by_name(
     Returns:
         The collection ``Id`` if found, ``None`` otherwise.
     """
-    headers = {"X-Emby-Token": api_key}
-    limit = 200
+    headers = _auth_headers(api_key)
+    limit = _COLLECTION_PAGE_LIMIT
     start_index = 0
 
     while True:
@@ -495,7 +506,7 @@ def add_to_collection(
     if not item_ids:
         return
 
-    headers = {"X-Emby-Token": api_key}
+    headers = _auth_headers(api_key)
     params: dict[str, str] = {"Ids": ",".join(item_ids)}
 
     try:
@@ -532,7 +543,7 @@ def remove_from_collection(
     if not item_ids:
         return
 
-    headers = {"X-Emby-Token": api_key}
+    headers = _auth_headers(api_key)
     params: dict[str, str] = {"Ids": ",".join(item_ids)}
 
     try:
@@ -564,7 +575,7 @@ def delete_collection(
     Raises:
         RuntimeError: If the API call fails.
     """
-    headers = {"X-Emby-Token": api_key}
+    headers = _auth_headers(api_key)
 
     try:
         resp = requests.delete(

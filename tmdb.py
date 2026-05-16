@@ -9,12 +9,15 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+from urllib.parse import urlparse
 
 import requests
 
 logger = logging.getLogger(__name__)
 
 _TMDB_API_BASE: str = "https://api.themoviedb.org/3"
+_DEFAULT_TMDB_LANGUAGE: str = "en-US"
+_MAX_TMDB_PAGES: int = 50
 
 
 def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
@@ -40,7 +43,8 @@ def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
 
     # Handle full URL if provided (extracting ID from https://www.themoviedb.org/list/123)
     if "themoviedb.org/list/" in list_id:
-        list_id = list_id.split("/list/")[1].split("?")[0].split("#")[0].strip("/").split("/")[0]
+        parsed = urlparse(list_id)
+        list_id = parsed.path.strip("/").split("/")[-1]
 
     ids: list[str] = []
     page: int = 1
@@ -50,7 +54,7 @@ def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
         params = {
             "api_key": api_key,
             "page": str(page),
-            "language": "en-US"
+            "language": _DEFAULT_TMDB_LANGUAGE
         }
 
         try:
@@ -73,7 +77,7 @@ def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
                 ids.append(str(tmdb_id))
 
         total_pages: int = data.get("total_pages", 1)
-        if page >= total_pages or page >= 50:  # Safety cap
+        if page >= total_pages or page >= _MAX_TMDB_PAGES:  # Safety cap
             break
         page += 1
 
@@ -102,7 +106,7 @@ def get_tmdb_recommendations(items_with_type: list[tuple[str, str]], api_key: st
         url = f"{_TMDB_API_BASE}/{media_type}/{tmdb_id}/recommendations"
         params = {
             "api_key": api_key,
-            "language": "en-US",
+            "language": _DEFAULT_TMDB_LANGUAGE,
             "page": "1"
         }
         try:
