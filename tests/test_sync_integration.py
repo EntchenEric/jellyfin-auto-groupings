@@ -1,6 +1,6 @@
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from sync import run_sync
+
 
 @patch('sync.os.makedirs')
 @patch('sync.os.path.exists')
@@ -24,7 +24,6 @@ def test_run_sync_basic(mock_fetch, mock_symlink, mock_rmtree, mock_exists, mock
             }
         ]
     }
-    
     # Mock items returned by Jellyfin
     mock_fetch.return_value = [
         {
@@ -34,19 +33,17 @@ def test_run_sync_basic(mock_fetch, mock_symlink, mock_rmtree, mock_exists, mock
         }
     ]
     mock_exists.return_value = True
-    
     results = run_sync(config)
-    
     assert len(results) == 1
     assert results[0]["group"] == "Action Movies"
     assert results[0]["links"] == 1
-    
     # Verify symlink was called with correctly translated path
     # and numbered name
     mock_symlink.assert_called_once()
     src, dst = mock_symlink.call_args[0]
     assert src == "/host/movies/Action Film 1/file.mkv"
     assert "0001 - file.mkv" in dst
+
 
 @patch('sync.os.path.exists')
 @patch('sync.fetch_jellyfin_items')
@@ -67,11 +64,8 @@ def test_run_sync_imdb(mock_imdb_fetch, mock_jf_fetch, mock_exists):
             }
         ]
     }
-    
     mock_imdb_fetch.return_value = ([{"Name": "M", "Path": "/p", "Id": "i"}], None, 200)
-    
     # Dry run to avoid filesystem mocks
     results = run_sync(config, dry_run=True)
-    
     assert results[0]["links"] == 1
     mock_imdb_fetch.assert_called_once()

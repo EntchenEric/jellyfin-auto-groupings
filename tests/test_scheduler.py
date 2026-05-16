@@ -1,13 +1,12 @@
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from scheduler import (
     update_scheduler_jobs,
     _run_global_sync_job,
     _run_group_sync_job,
     start_scheduler,
-    _scheduler,
     validate_cron,
 )
+
 
 @patch('scheduler._scheduler')
 @patch('scheduler.load_config')
@@ -15,6 +14,7 @@ def test_update_scheduler_jobs_clear(mock_load, mock_sched):
     mock_load.return_value = {"scheduler": {}, "groups": []}
     update_scheduler_jobs()
     mock_sched.remove_all_jobs.assert_called_once()
+
 
 @patch('scheduler._scheduler')
 @patch('scheduler.load_config')
@@ -35,6 +35,7 @@ def test_update_scheduler_jobs_global(mock_load, mock_sched):
     assert kwargs["id"] == "global_sync"
     assert kwargs["args"] == [["Excluded"]]
 
+
 @patch('scheduler._scheduler')
 @patch('scheduler.load_config')
 def test_update_scheduler_jobs_groups(mock_load, mock_sched):
@@ -54,6 +55,7 @@ def test_update_scheduler_jobs_groups(mock_load, mock_sched):
     assert kwargs["id"] == "group_sync_MyGroup"
     assert kwargs["args"] == ["MyGroup"]
 
+
 @patch('scheduler.run_sync')
 @patch('scheduler.load_config')
 def test_run_global_sync_job(mock_load, mock_sync):
@@ -68,6 +70,7 @@ def test_run_global_sync_job(mock_load, mock_sync):
     _args, kwargs = mock_sync.call_args
     assert kwargs["group_names"] == ["G1"]
 
+
 @patch('scheduler.run_sync')
 @patch('scheduler.load_config')
 def test_run_group_sync_job(mock_load, mock_sync):
@@ -76,6 +79,7 @@ def test_run_group_sync_job(mock_load, mock_sync):
     _args, kwargs = mock_sync.call_args
     assert kwargs["group_names"] == ["G1"]
 
+
 @patch('scheduler.load_config')
 @patch('scheduler._scheduler')
 def test_start_scheduler(mock_sched, mock_load):
@@ -83,6 +87,7 @@ def test_start_scheduler(mock_sched, mock_load):
     mock_sched.running = False
     start_scheduler()
     mock_sched.start.assert_called_once()
+
 
 @patch('scheduler.CronTrigger.from_crontab')
 @patch('scheduler._scheduler')
@@ -100,6 +105,7 @@ def test_update_scheduler_jobs_error(mock_load, mock_sched, mock_cron):
     update_scheduler_jobs()
     mock_sched.add_job.assert_not_called()
 
+
 @patch('scheduler._scheduler')
 @patch('scheduler.load_config')
 def test_update_scheduler_jobs_cleanup(mock_load, mock_sched):
@@ -114,11 +120,10 @@ def test_update_scheduler_jobs_cleanup(mock_load, mock_sched):
     mock_sched.add_job.assert_called_once()
     _args, kwargs = mock_sched.add_job.call_args
     assert kwargs["id"] == "cleanup_sync"
-
-
 # ---------------------------------------------------------------------------
 # validate_cron tests
 # ---------------------------------------------------------------------------
+
 
 def test_validate_cron_valid():
     assert validate_cron("0 0 * * *") is None
@@ -145,4 +150,3 @@ def test_validate_cron_invalid_values():
     assert err is not None
     err = validate_cron("not a cron expr")
     assert err is not None
-

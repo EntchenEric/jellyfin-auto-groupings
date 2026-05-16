@@ -1,7 +1,5 @@
 """Tests for API route handlers with mocked Jellyfin client."""
 
-import json
-import pytest
 from unittest.mock import MagicMock, patch
 import requests as requests_lib
 
@@ -66,7 +64,7 @@ class TestMetadataEndpoints:
     def test_metadata_returns_categories(self, client):
         """Test successful metadata response has expected categories."""
         with patch("routes.load_config") as mock_load, \
-             patch("routes.requests.get") as mock_get:
+                patch("routes.requests.get") as mock_get:
             mock_load.return_value = {
                 "jellyfin_url": "http://localhost:8096",
                 "api_key": "test-key"
@@ -74,7 +72,6 @@ class TestMetadataEndpoints:
 
             def mock_jellyfin(url, **kwargs):
                 m = MagicMock()
-                params = kwargs.get("params", {})
                 if "Genres" in url:
                     m.json.return_value = {"Items": [{"Name": "Action"}, {"Name": "Thriller"}]}
                 elif "Studios" in url:
@@ -111,7 +108,7 @@ class TestPreviewEndpoint:
     def test_preview_with_valid_params(self, client):
         """Preview with genre type returns item count."""
         with patch("routes.load_config") as mock_load, \
-             patch("routes.preview_group") as mock_preview:
+                patch("routes.preview_group") as mock_preview:
             mock_load.return_value = {
                 "jellyfin_url": "http://localhost:8096",
                 "api_key": "test-key"

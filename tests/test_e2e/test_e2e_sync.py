@@ -1,7 +1,6 @@
 """E2E tests for full sync cycle."""
 
-import os
-import json
+
 import pytest
 import requests
 from .conftest import api_post, api_get

@@ -439,13 +439,13 @@ def dashboard():
             <table>
                 <tr><th>Name</th><th>Id</th><th>Type</th><th>Year</th><th>Imdb</th></tr>
                 {''.join(
-                    f"<tr><td>{i.get('Name')}</td>"
-                    f"<td>{i.get('Id')}</td>"
-                    f"<td>{i.get('Type')}</td>"
-                    f"<td>{i.get('ProductionYear')}</td>"
-                    f"<td>{i.get('ProviderIds', {}).get('Imdb', '')}</td></tr>"
-                    for i in data['items']
-                )}
+        f"<tr><td>{i.get('Name')}</td>"
+        f"<td>{i.get('Id')}</td>"
+        f"<td>{i.get('Type')}</td>"
+        f"<td>{i.get('ProductionYear')}</td>"
+        f"<td>{i.get('ProviderIds', {}).get('Imdb', '')}</td></tr>"
+        for i in data['items']
+    )}
             </table>
         </div>
     </body>
