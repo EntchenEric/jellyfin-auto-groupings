@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jellyfin-groupings"
+version = "1.0.0"
+description = "Create virtual Jellyfin libraries by grouping media via symlinks"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.12"
+dependencies = [
+    "flask>=3.0.0",
+    "requests>=2.31.0",
+    "apscheduler>=3.10.4,<4.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["*"]
+exclude = ["tests*", "e2e*", "unraid*"]
+
+[tool.mypy]
+ignore_missing_imports = true
+exclude = [
+    "venv",
+    "__pycache__",
+    "tests",
+    "node_modules",
+]
+warn_redundant_casts = true
+
+[tool.pytest.ini_options]
+markers = [
+    "exhaustive: marks tests as exhaustive/edge-case tests that run against the specifically formatted virtual Jellyfin server (deselect with '-m \"not exhaustive\"')",
+]
