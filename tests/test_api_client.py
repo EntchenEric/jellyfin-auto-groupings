@@ -73,15 +73,15 @@ class TestMetadataEndpoints:
             def mock_jellyfin(url, **kwargs):
                 m = MagicMock()
                 if "Genres" in url:
-                    m.json.return_value = {"Items": [{"Name": "Action"}, {"Name": "Thriller"}]}
+                    m.json.return_value = {"Items": [{"Name": "Action"}, {"Name": "Thriller"}], "TotalRecordCount": 2}
                 elif "Studios" in url:
-                    m.json.return_value = {"Items": [{"Name": "Studio A"}]}
+                    m.json.return_value = {"Items": [{"Name": "Studio A"}], "TotalRecordCount": 1}
                 elif "Persons" in url:
-                    m.json.return_value = {"Items": [{"Name": "Actor One"}]}
+                    m.json.return_value = {"Items": [{"Name": "Actor One"}], "TotalRecordCount": 1}
                 elif "Tags" in url:
-                    m.json.return_value = {"Items": [{"Name": "4K"}]}
+                    m.json.return_value = {"Items": [{"Name": "4K"}], "TotalRecordCount": 1}
                 else:
-                    m.json.return_value = {"Items": []}
+                    m.json.return_value = {"Items": [], "TotalRecordCount": 0}
                 m.raise_for_status = MagicMock()
                 return m
 

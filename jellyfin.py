@@ -82,16 +82,18 @@ def _get_json(
     """GET *url* and return the parsed JSON response.
 
     Raises:
-        requests.exceptions.HTTPError: If the server returns a non-2xx status code.
-        RuntimeError: If the response body is not valid JSON.
+        RuntimeError: If the request fails or the response body is not valid JSON.
     """
     kwargs: dict[str, Any] = {"timeout": timeout}
     if headers is not None:
         kwargs["headers"] = headers
     if params is not None:
         kwargs["params"] = params
-    response = requests.get(url, **kwargs)
-    response.raise_for_status()
+    try:
+        response = requests.get(url, **kwargs)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as exc:
+        _raise_request_error(exc, f"Failed to GET {url}")
     return _parse_json(response)
 
 
@@ -211,8 +213,7 @@ def fetch_jellyfin_items(
         the response contained no ``Items`` key.
 
     Raises:
-        requests.exceptions.HTTPError: If the server returns a non-2xx status code.
-        requests.exceptions.RequestException: For any other network-level error.
+        RuntimeError: If the request fails or the response is not valid JSON.
     """
     headers = _auth_headers(api_key)
     params: dict[str, str] = {}
@@ -531,8 +532,11 @@ def _upload_image(
     headers = _auth_headers(api_key)
     headers["Content-Type"] = mime_type or "application/octet-stream"
     url = f"{base_url}/Items/{item_id}/Images/Primary"
-    response = requests.post(url, data=image_bytes, headers=headers, timeout=timeout)
-    response.raise_for_status()
+    try:
+        response = requests.post(url, data=image_bytes, headers=headers, timeout=timeout)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as exc:
+        _raise_request_error(exc, f"Failed to upload image for item {item_id!r}")
 
 
 def set_virtual_folder_image(
@@ -557,10 +561,8 @@ def set_virtual_folder_image(
             logger.info("Cannot set image: Library %r not found or ID unknown.", name)
             return
         _upload_image(base_url, api_key, library_id, image_path, timeout=timeout)
-    except requests.exceptions.RequestException as exc:
-        logger.info(
-            _format_request_error(exc, f"Failed to set image for library {name!r}")
-        )
+    except RuntimeError as exc:
+        logger.info(str(exc))
     except OSError as exc:
         logger.error("Cannot set image: Failed to read image file %r: %s", image_path, exc)
     else:
@@ -748,12 +750,8 @@ def set_collection_image(
     """
     try:
         _upload_image(base_url, api_key, collection_id, image_path, timeout=timeout)
-    except requests.exceptions.RequestException as exc:
-        logger.info(
-            _format_request_error(
-                exc, f"Failed to set image for collection {collection_id!r}"
-            )
-        )
+    except RuntimeError as exc:
+        logger.info(str(exc))
     except OSError as exc:
         logger.error("Cannot set collection image: Failed to read %r: %s", image_path, exc)
     else:

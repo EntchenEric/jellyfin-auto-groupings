@@ -25,21 +25,23 @@ def jellyfin_url(virtual_jellyfin):
 
 
 def test_401_unauthorized(jellyfin_url):
-    with pytest.raises(requests.exceptions.HTTPError) as excinfo:
+    with pytest.raises(RuntimeError) as excinfo:
         fetch_jellyfin_items(jellyfin_url, "BAD_KEY")
-    assert excinfo.value.response.status_code == 401
+    assert excinfo.value.__cause__.response.status_code == 401
 
 
 def test_timeout(jellyfin_url):
-    with pytest.raises(requests.exceptions.Timeout):
+    with pytest.raises(RuntimeError) as excinfo:
         # The endpoint sleeps for 3s, timeout is 1s
         fetch_jellyfin_items(jellyfin_url, "TIMEOUT_KEY", timeout=1)
+    assert isinstance(excinfo.value.__cause__, requests.exceptions.Timeout)
 
 
 def test_connection_error():
     # Attempt connecting to an invalid port/host
-    with pytest.raises(requests.exceptions.ConnectionError):
+    with pytest.raises(RuntimeError) as excinfo:
         fetch_jellyfin_items("http://localhost:12345", "test_key", timeout=1)
+    assert isinstance(excinfo.value.__cause__, requests.exceptions.ConnectionError)
 
 # 2. fetch_jellyfin_items Exhaustive
 
@@ -68,9 +70,9 @@ def test_fetch_extra_query_params(jellyfin_url):
 
 
 def test_get_libraries_500(jellyfin_url):
-    with pytest.raises(requests.exceptions.HTTPError) as excinfo:
+    with pytest.raises(RuntimeError) as excinfo:
         get_libraries(jellyfin_url, "LIB_GET_500")
-    assert excinfo.value.response.status_code == 500
+    assert excinfo.value.__cause__.response.status_code == 500
 
 
 def test_get_libraries_missing_name(jellyfin_url):
@@ -150,8 +152,9 @@ def test_get_library_id_missing_itemid_key(jellyfin_url):
 
 
 def test_get_library_id_500(jellyfin_url):
-    with pytest.raises(requests.exceptions.HTTPError):
+    with pytest.raises(RuntimeError) as excinfo:
         get_library_id(jellyfin_url, "LIB_GET_500", "Movies")
+    assert excinfo.value.__cause__.response.status_code == 500
 
 # 7. set_virtual_folder_image Exhaustive
 
@@ -193,14 +196,15 @@ def test_set_virtual_folder_image_400(jellyfin_url, tmp_path, caplog):
     finally:
         jellyfin.get_library_id = original_get_id
 
-    assert "Failed to set image" in caplog.text
+    assert "Failed to upload image for item" in caplog.text
 
 # 8. get_users and get_user_recent_items Exhaustive
 
 
 def test_get_users_500(jellyfin_url):
-    with pytest.raises(requests.exceptions.HTTPError):
+    with pytest.raises(RuntimeError) as excinfo:
         get_users(jellyfin_url, "USER_GET_500")
+    assert excinfo.value.__cause__.response.status_code == 500
 
 
 def test_get_user_recent_items_bad_user(jellyfin_url):

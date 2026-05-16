@@ -309,7 +309,7 @@ def _fetch_jellyfin_endpoint(
             base_url, api_key, endpoint, extra_params, limit=_JELLYFIN_PAGE_LIMIT, timeout=timeout
         ):
             items.extend(page)
-    except requests.exceptions.RequestException:
+    except RuntimeError:
         if items:
             return items
         raise
@@ -353,7 +353,7 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
                     result[key] = [
                         item.get("Name", "") for item in items if item.get("Name")
                     ]
-                except (requests.exceptions.RequestException, ValueError):
+                except (RuntimeError, ValueError):
                     logger.warning("Failed to process metadata key %r", key, exc_info=True)
                     result[key] = []
                     failed += 1
@@ -387,7 +387,7 @@ def get_jellyfin_users() -> ResponseReturnValue:
             "",
             users=[{"id": u.get("Id"), "name": u.get("Name")} for u in users_list],
         )
-    except (requests.exceptions.RequestException, RuntimeError) as exc:
+    except RuntimeError as exc:
         return _error(str(exc), 400)
 
 
@@ -544,7 +544,7 @@ def preview_grouping() -> ResponseReturnValue:
         ]
 
         return _success("", count=len(items), preview_items=results)
-    except (ValueError, RuntimeError, requests.exceptions.RequestException) as exc:
+    except (ValueError, RuntimeError) as exc:
         logger.exception("Failed to generate grouping preview")
         return _error(f"Preview failed: {exc!s}", 500)
 
@@ -729,7 +729,7 @@ def auto_detect_paths() -> ResponseReturnValue:
             },
             timeout=_AUTO_DETECT_JELLYFIN_TIMEOUT,
         )
-    except (requests.exceptions.RequestException, RuntimeError) as exc:
+    except RuntimeError as exc:
         return _error(str(exc), 400)
 
     if not items:
