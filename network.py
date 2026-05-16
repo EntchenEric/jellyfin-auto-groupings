@@ -69,7 +69,7 @@ def _reraise_timeout(exc: requests.ConnectionError) -> None:
         raise requests.Timeout("Read timed out.") from reason
 
 
-def _patched_get(url, **kwargs):
+def _patched_get(url, **kwargs) -> requests.Response:
     try:
         return _SESSION.get(url, **kwargs)
     except requests.ConnectionError as exc:
@@ -77,7 +77,7 @@ def _patched_get(url, **kwargs):
         raise
 
 
-def _patched_post(url, **kwargs):
+def _patched_post(url, **kwargs) -> requests.Response:
     try:
         return _SESSION.post(url, **kwargs)
     except requests.ConnectionError as exc:
@@ -85,7 +85,7 @@ def _patched_post(url, **kwargs):
         raise
 
 
-def _patched_delete(url, **kwargs):
+def _patched_delete(url, **kwargs) -> requests.Response:
     try:
         return _SESSION.delete(url, **kwargs)
     except requests.ConnectionError as exc:
