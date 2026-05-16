@@ -305,3 +305,224 @@ def test_update_config_invalid_group_cron(client):
     assert response.status_code == 400
     data = response.get_json()
     assert data["status"] == "error"
+
+
+# ---------------------------------------------------------------------------
+# get_jellyfin_users
+# ---------------------------------------------------------------------------
+
+@pytest.mark.usefixtures("temp_config")
+def test_get_jellyfin_users_no_config(client):
+    response = client.get('/api/jellyfin/users')
+    assert response.status_code == 400
+
+
+@patch('routes.get_users')
+@pytest.mark.usefixtures("temp_config")
+def test_get_jellyfin_users_success(mock_get_users, client):
+    save_config({"jellyfin_url": "http://test", "api_key": "key"})
+    mock_get_users.return_value = [{"Id": "1", "Name": "User A"}]
+    response = client.get('/api/jellyfin/users')
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["status"] == "success"
+    assert data["users"][0]["name"] == "User A"
+
+
+@patch('routes.get_users')
+@pytest.mark.usefixtures("temp_config")
+def test_get_jellyfin_users_exception(mock_get_users, client):
+    save_config({"jellyfin_url": "http://test", "api_key": "key"})
+    mock_get_users.side_effect = Exception("Jellyfin down")
+    response = client.get('/api/jellyfin/users')
+    assert response.status_code == 400
+    assert response.get_json()["status"] == "error"
+
+
+# ---------------------------------------------------------------------------
+# upload_cover edge cases
+# ---------------------------------------------------------------------------
+
+def test_upload_cover_missing_fields(client):
+    response = client.post('/api/upload_cover', json={"group_name": "G"})
+    assert response.status_code == 400
+
+
+def test_upload_cover_invalid_image_data(client):
+    response = client.post('/api/upload_cover', json={"group_name": "G", "image": "plain-text"})
+    assert response.status_code == 400
+
+
+@patch('routes.get_cover_path')
+def test_upload_cover_server_error(mock_get_cover, client):
+    mock_get_cover.side_effect = Exception("Disk full")
+    img_data = (
+        "data:image/png;base64,"
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+    )
+    response = client.post('/api/upload_cover', json={"group_name": "G", "image": img_data})
+    assert response.status_code == 500
+    assert response.get_json()["status"] == "error"
+
+
+# ---------------------------------------------------------------------------
+# get_cleanup_items
+# ---------------------------------------------------------------------------
+
+@pytest.mark.usefixtures("temp_config")
+def test_get_cleanup_items_no_target_path(client):
+    save_config({"target_path": ""})
+    response = client.get('/api/cleanup')
+    assert response.status_code == 200
+    assert response.get_json()["items"] == []
+
+
+@pytest.mark.usefixtures("temp_config")
+def test_get_cleanup_items_with_groups(client, tmp_path):
+    target = tmp_path / "target"
+    target.mkdir()
+    (target / "Action").mkdir()
+    (target / ".hidden").mkdir()
+    save_config({
+        "target_path": str(target),
+        "groups": [{"name": "Action"}]
+    })
+    response = client.get('/api/cleanup')
+    assert response.status_code == 200
+    data = response.get_json()
+    assert len(data["items"]) == 1
+    assert data["items"][0]["name"] == "Action"
+    assert data["items"][0]["is_configured"] is True
+
+
+@patch('os.listdir')
+@pytest.mark.usefixtures("temp_config")
+def test_get_cleanup_items_oserror(mock_listdir, client, tmp_path):
+    target = tmp_path / "target"
+    target.mkdir()
+    save_config({"target_path": str(target)})
+    mock_listdir.side_effect = OSError("Permission denied")
+    response = client.get('/api/cleanup')
+    assert response.status_code == 500
+
+
+# ---------------------------------------------------------------------------
+# perform_cleanup
+# ---------------------------------------------------------------------------
+
+def test_perform_cleanup_invalid_json(client):
+    response = client.post('/api/cleanup', data="not json")
+    assert response.status_code == 400
+
+
+def test_perform_cleanup_folders_not_list(client):
+    response = client.post('/api/cleanup', json={"folders": "bad"})
+    assert response.status_code == 400
+
+
+@pytest.mark.usefixtures("temp_config")
+def test_perform_cleanup_no_target_path(client):
+    response = client.post('/api/cleanup', json={"folders": ["Action"]})
+    assert response.status_code == 404
+
+
+@pytest.mark.usefixtures("temp_config")
+def test_perform_cleanup_invalid_folder_name(client, tmp_path):
+    target = tmp_path / "target"
+    target.mkdir()
+    save_config({"target_path": str(target)})
+    response = client.post('/api/cleanup', json={"folders": ["../etc", 123, ""]})
+    assert response.status_code == 207
+    data = response.get_json()
+    assert data["status"] == "partial_success"
+    assert len(data["errors"]) == 3
+
+
+@pytest.mark.usefixtures("temp_config")
+def test_perform_cleanup_success(client, tmp_path):
+    target = tmp_path / "target"
+    target.mkdir()
+    (target / "Action").mkdir()
+    save_config({"target_path": str(target)})
+    response = client.post('/api/cleanup', json={"folders": ["Action"]})
+    assert response.status_code == 200
+    assert response.get_json()["deleted"] == 1
+
+
+# ---------------------------------------------------------------------------
+# auto_detect_paths error paths
+# ---------------------------------------------------------------------------
+
+@pytest.mark.usefixtures("temp_config")
+def test_auto_detect_paths_no_config(client):
+    response = client.post('/api/jellyfin/auto-detect-paths')
+    assert response.status_code == 400
+
+
+@patch('routes.fetch_jellyfin_items')
+@pytest.mark.usefixtures("temp_config")
+def test_auto_detect_paths_fetch_error(mock_fetch, client):
+    save_config({"jellyfin_url": "http://test", "api_key": "key"})
+    mock_fetch.side_effect = Exception("Connection refused")
+    response = client.post('/api/jellyfin/auto-detect-paths')
+    assert response.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# browse_directory edge cases
+# ---------------------------------------------------------------------------
+
+def test_browse_directory_file_fallback(client):
+    # When path is a file, fall back to its parent directory
+    home = os.path.expanduser("~")
+    response = client.get(f'/api/browse?path={home}/somefile.txt')
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["status"] == "success"
+    assert data["current"] == home
+
+
+@patch('os.listdir')
+def test_browse_directory_permission_error(mock_listdir, client):
+    mock_listdir.side_effect = PermissionError("No access")
+    response = client.get('/api/browse')
+    assert response.status_code == 200
+    assert response.get_json()["dirs"] == []
+
+
+# ---------------------------------------------------------------------------
+# get_test_results
+# ---------------------------------------------------------------------------
+
+def test_get_test_results(client):
+    response = client.get('/api/test/results')
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["status"] == "success"
+    assert "results" in data
+
+
+# ---------------------------------------------------------------------------
+# run_tests
+# ---------------------------------------------------------------------------
+
+def test_run_tests_production_mode(client):
+    response = client.post('/api/test/run')
+    assert response.status_code == 403
+    assert response.get_json()["status"] == "error"
+
+
+# ---------------------------------------------------------------------------
+# index / test_dashboard
+# ---------------------------------------------------------------------------
+
+def test_index_html(client):
+    response = client.get('/')
+    assert response.status_code == 200
+    assert b"html" in response.data.lower()
+
+
+def test_test_dashboard(client):
+    response = client.get('/test')
+    assert response.status_code == 200
+    assert b"html" in response.data.lower()
