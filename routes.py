@@ -414,20 +414,19 @@ def upload_cover() -> ResponseReturnValue:
         return jsonify({"status": "error", "message": f"Server error: {exc!s}"}), 500
 
 
-@bp.route("/api/sync", methods=["POST"])
-def sync_groupings() -> ResponseReturnValue:
-    """Trigger a full synchronisation of all configured groupings.
-
-    Reads the current configuration, delegates to :func:`sync.run_sync`, and
-    returns per-group results.
-
-    Returns:
-        JSON with ``status``, a human-readable ``message``, and a ``results``
-        list (one entry per group).
-    """
+def _run_sync_handler(dry_run: bool = False) -> ResponseReturnValue:
+    """Run sync (or preview) and return a JSON response."""
     try:
         config: dict[str, Any] = load_config()
-        sync_results = run_sync(config)
+        sync_results = run_sync(config, dry_run=dry_run)
+        if dry_run:
+            return jsonify(
+                {
+                    "status": "success",
+                    "message": "Preview generated successfully",
+                    "results": sync_results,
+                }
+            )
         return jsonify(
             {
                 "status": "success",
@@ -438,7 +437,18 @@ def sync_groupings() -> ResponseReturnValue:
     except ValueError as exc:
         return jsonify({"status": "error", "message": f"{exc!s}"}), 400
     except (RuntimeError, OSError) as exc:
-        return jsonify({"status": "error", "message": f"Sync failed: {exc!s}"}), 500
+        prefix = "Sync preview failed" if dry_run else "Sync failed"
+        return jsonify({"status": "error", "message": f"{prefix}: {exc!s}"}), 500
+
+
+@bp.route("/api/sync", methods=["POST"])
+def sync_groupings() -> ResponseReturnValue:
+    """Trigger a full synchronisation of all configured groupings.
+
+    Reads the current configuration, delegates to :func:`sync.run_sync`, and
+    returns per-group results.
+    """
+    return _run_sync_handler(dry_run=False)
 
 
 @bp.route("/api/sync/preview_all", methods=["POST"])
@@ -447,25 +457,8 @@ def preview_all_sync() -> ResponseReturnValue:
 
     Reads the current configuration, delegates to :func:`sync.run_sync` with dry_run=True,
     and returns per-group preview results.
-
-    Returns:
-        JSON with ``status``, a human-readable ``message``, and a ``results``
-        list containing preview items.
     """
-    try:
-        config: dict[str, Any] = load_config()
-        sync_results = run_sync(config, dry_run=True)
-        return jsonify(
-            {
-                "status": "success",
-                "message": "Preview generated successfully",
-                "results": sync_results,
-            }
-        )
-    except ValueError as exc:
-        return jsonify({"status": "error", "message": f"{exc!s}"}), 400
-    except (RuntimeError, OSError) as exc:
-        return jsonify({"status": "error", "message": f"Sync preview failed: {exc!s}"}), 500
+    return _run_sync_handler(dry_run=True)
 
 
 @bp.route("/api/grouping/preview", methods=["POST"])
