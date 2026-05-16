@@ -632,6 +632,75 @@ def perform_cleanup() -> ResponseReturnValue:
 # ---------------------------------------------------------------------------
 
 
+def _search_local_filesystem(
+    filename: str,
+    search_roots: list[str],
+    *,
+    timeout: int = 30,
+    max_files: int = 50_000,
+) -> str | None:
+    """Walk *search_roots* looking for *filename*.
+
+    Prunes mount points (except the root itself), enforces a *timeout* and
+    *max_files* cap, and stops at 6 path-component depth.
+
+    Returns the absolute path of the first match found, or ``None``.
+    """
+    walk_start = time.time()
+    files_scanned = 0
+    for root in search_roots:
+        if not os.path.isdir(root):
+            continue
+        for dirpath, dirnames, filenames in os.walk(root):
+            if os.path.ismount(dirpath) and dirpath != root:
+                dirnames.clear()
+                continue
+            if time.time() - walk_start > timeout:
+                logger.warning(
+                    "auto-detect timed out after %ds, %d files scanned",
+                    timeout,
+                    files_scanned,
+                )
+                dirnames.clear()
+                break
+            files_scanned += len(filenames)
+            if files_scanned > max_files:
+                logger.warning(
+                    "auto-detect hit file limit (%d), stopping scan",
+                    max_files,
+                )
+                dirnames.clear()
+                break
+            if filename in filenames:
+                return os.path.join(dirpath, filename)
+            if len(dirpath.split(os.sep)) > 6:
+                dirnames.clear()
+    return None
+
+
+def _compute_common_root(jellyfin_path: str, host_path: str) -> tuple[str | None, str | None]:
+    """Infer the common root prefixes from a Jellyfin path and its host match.
+
+    Counts matching trailing path components and returns the inferred
+    ``(jellyfin_root, host_root)`` pair.
+    """
+    j_parts = jellyfin_path.split(os.sep)
+    h_parts = host_path.split(os.sep)
+    common_count = 0
+    while (
+        common_count < len(j_parts)
+        and common_count < len(h_parts)
+        and j_parts[-(common_count + 1)] == h_parts[-(common_count + 1)]
+    ):
+        common_count += 1
+
+    if common_count > 0:
+        j_root = os.sep.join(j_parts[:-common_count]) or os.sep
+        h_root = os.sep.join(h_parts[:-common_count]) or os.sep
+        return j_root, h_root
+    return None, None
+
+
 @bp.route("/api/jellyfin/auto-detect-paths", methods=["POST"])
 def auto_detect_paths() -> ResponseReturnValue:
     """Attempt to automatically detect Jellyfin and host media root paths.
@@ -672,81 +741,30 @@ def auto_detect_paths() -> ResponseReturnValue:
     if not items:
         return (
             jsonify(
-                {
-                    "status": "error",
-                    "message": "No media found in Jellyfin to detect paths",
-                }
+                {"status": "error", "message": "No media found in Jellyfin to detect paths"}
             ),
             400,
         )
 
-    # Walk limits: max 30 seconds, max 50 000 files scanned
-    _WALK_TIMEOUT = 30
-    _WALK_MAX_FILES = 50_000
-
-    home_dir: str = os.path.expanduser("~")
+    home_dir = os.path.expanduser("~")
     detected_j_root: str | None = None
     detected_h_root: str | None = None
 
     for item in items:
-        j_path: str | None = item.get("Path")
+        j_path = item.get("Path")
         if not j_path:
             continue
 
-        filename: str = os.path.basename(j_path)
-        search_roots: list[str] = [home_dir, "/media", "/mnt"]
-
-        match_found: str | None = None
-        walk_start = time.time()
-        files_scanned = 0
-        for root in search_roots:
-            if not os.path.isdir(root):
-                continue
-            for dirpath, dirnames, filenames in os.walk(root):
-                # Skip mount points and remote filesystems
-                if os.path.ismount(dirpath) and dirpath != root:
-                    dirnames.clear()
-                    continue
-                # Timeout check
-                if time.time() - walk_start > _WALK_TIMEOUT:
-                    logger.warning("auto-detect timed out after %ds, %d files scanned", _WALK_TIMEOUT, files_scanned)
-                    dirnames.clear()
-                    break
-                # File count limit
-                files_scanned += len(filenames)
-                if files_scanned > _WALK_MAX_FILES:
-                    logger.warning("auto-detect hit file limit (%d), stopping scan", _WALK_MAX_FILES)
-                    dirnames.clear()
-                    break
-
-                if filename in filenames:
-                    match_found = os.path.join(dirpath, filename)
-                    break
-                # Prune traversal deeper than 6 path components
-                if len(dirpath.split(os.sep)) > 6:
-                    dirnames.clear()
-            if match_found:
-                break
-
+        match_found = _search_local_filesystem(
+            os.path.basename(j_path),
+            [home_dir, "/media", "/mnt"],
+        )
         if match_found:
-            j_parts: list[str] = j_path.split(os.sep)
-            h_parts: list[str] = match_found.split(os.sep)
-
-            # Count how many trailing path components are identical
-            common_count: int = 0
-            while (
-                common_count < len(j_parts)
-                and common_count < len(h_parts)
-                and j_parts[-(common_count + 1)] == h_parts[-(common_count + 1)]
-            ):
-                common_count += 1
-
-            if common_count > 0:
-                detected_j_root = os.sep.join(j_parts[:-common_count]) or os.sep
-                detected_h_root = os.sep.join(h_parts[:-common_count]) or os.sep
+            detected_j_root, detected_h_root = _compute_common_root(j_path, match_found)
+            if detected_j_root:
                 break
 
-    suggested_target: str = os.path.join(home_dir, "jellyfin-groupings-virtual")
+    suggested_target = os.path.join(home_dir, "jellyfin-groupings-virtual")
 
     return jsonify(
         {
