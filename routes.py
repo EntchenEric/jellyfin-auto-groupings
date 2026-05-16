@@ -20,7 +20,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 import requests
-from flask import Blueprint, jsonify, request, send_from_directory
+from flask import Blueprint, current_app, jsonify, render_template, request, send_from_directory
 from flask.typing import ResponseReturnValue
 
 from config import load_config, save_config
@@ -35,6 +35,22 @@ bp = Blueprint("main", __name__)
 # Max size for base64 encoded cover image (approx 4MB)
 MAX_B64_SIZE = 4 * 1024 * 1024
 
+# Jellyfin API pagination limit
+_JELLYFIN_PAGE_LIMIT = 200
+
+# Auto-detect filesystem search limits
+_AUTO_DETECT_TIMEOUT = 30
+_AUTO_DETECT_MAX_FILES = 50_000
+_AUTO_DETECT_MAX_DEPTH = 6
+
+# Test result filenames
+_TEST_RESULT_FILENAMES = ("test_results.txt", "current_test_out.txt", "test_api_out.txt")
+
+# Allowed preview metadata types
+_ALLOWED_PREVIEW_TYPES: frozenset[str] = frozenset(
+    {"genre", "studio", "tag", "year", "actor", "general", "complex"}
+)
+
 # ---------------------------------------------------------------------------
 # CSRF protection
 # ---------------------------------------------------------------------------
@@ -44,7 +60,6 @@ MAX_B64_SIZE = 4 * 1024 * 1024
 def _check_csrf() -> ResponseReturnValue | None:
     """Require X-Requested-With header on state-changing requests."""
     if request.method in ("POST", "PUT", "DELETE", "PATCH"):
-        from flask import current_app
         if current_app.testing:
             return None
         if request.headers.get("X-Requested-With") != "XMLHttpRequest":
@@ -55,6 +70,15 @@ def _check_csrf() -> ResponseReturnValue | None:
 # ---------------------------------------------------------------------------
 # Security helpers for the filesystem browser
 # ---------------------------------------------------------------------------
+
+def _is_valid_folder_name(name: str) -> bool:
+    """Return True if *name* is a safe, non-empty folder name without path separators."""
+    if not isinstance(name, str) or not name:
+        return False
+    if name in (".", "..") or "/" in name or "\\" in name:
+        return False
+    return True
+
 
 # Roots that the folder browser is allowed to expose.
 _BROWSE_ROOTS: tuple[str, ...] = tuple(
@@ -260,7 +284,7 @@ def _fetch_jellyfin_endpoint(
     """
     items: list[dict[str, Any]] = []
     start_index = 0
-    limit = 200
+    limit = _JELLYFIN_PAGE_LIMIT
 
     while True:
         params: dict[str, str | int] = {
@@ -514,8 +538,7 @@ def preview_grouping() -> ResponseReturnValue:
         return jsonify({"status": "error", "message": "Missing or invalid 'type'"}), 400
 
     type_name = type_raw.lower().strip()
-    allowed_types = {"genre", "studio", "tag", "year", "actor", "general", "complex"}
-    if not type_name or type_name not in allowed_types:
+    if not type_name or type_name not in _ALLOWED_PREVIEW_TYPES:
         return (
             jsonify({"status": "error", "message": f"Invalid metadata type: {type_raw}"}),
             400,
@@ -602,7 +625,7 @@ def perform_cleanup() -> ResponseReturnValue:
     deleted: int = 0
     errors: list[str] = []
     for name in folders:
-        if not isinstance(name, str) or not name or "/" in name or "\\" in name or name == ".." or name == ".":
+        if not _is_valid_folder_name(name):
             errors.append(f"Invalid folder name: {name}")
             continue
 
@@ -638,13 +661,13 @@ def _search_local_filesystem(
     filename: str,
     search_roots: list[str],
     *,
-    timeout: int = 30,
-    max_files: int = 50_000,
+    timeout: int = _AUTO_DETECT_TIMEOUT,
+    max_files: int = _AUTO_DETECT_MAX_FILES,
 ) -> str | None:
     """Walk *search_roots* looking for *filename*.
 
     Prunes mount points (except the root itself), enforces a *timeout* and
-    *max_files* cap, and stops at 6 path-component depth.
+    *max_files* cap, and stops at _AUTO_DETECT_MAX_DEPTH path-component depth.
 
     Returns the absolute path of the first match found, or ``None``.
     """
@@ -675,7 +698,7 @@ def _search_local_filesystem(
                 break
             if filename in filenames:
                 return os.path.join(dirpath, filename)
-            if len(dirpath.split(os.sep)) > 6:
+            if len(dirpath.split(os.sep)) > _AUTO_DETECT_MAX_DEPTH:
                 dirnames.clear()
     return None
 
@@ -847,7 +870,7 @@ def browse_directory() -> ResponseReturnValue:
 def get_test_results() -> ResponseReturnValue:
     """Return the contents of the latest test output logs."""
     results = {}
-    for filename in ["test_results.txt", "current_test_out.txt", "test_api_out.txt"]:
+    for filename in _TEST_RESULT_FILENAMES:
         if os.path.exists(filename):
             try:
                 with open(filename, "r", encoding="utf-8") as f:
@@ -863,7 +886,6 @@ def get_test_results() -> ResponseReturnValue:
 @bp.route("/api/test/run", methods=["POST"])
 def run_tests() -> ResponseReturnValue:
     """Trigger the test suite programmatically. Only available in debug mode."""
-    from flask import current_app
     if not current_app.debug:
         return jsonify({"status": "error", "message": "Not available in production mode"}), 403
     try:
@@ -886,7 +908,6 @@ def index() -> ResponseReturnValue:
     Returns:
         The rendered ``templates/base.html`` Jinja2 template.
     """
-    from flask import render_template
     return render_template("base.html")
 
 

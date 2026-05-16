@@ -925,7 +925,7 @@ def test_get_test_results_success(mock_open, mock_exists, client):
 
 
 # run_tests production mode (line 838-845)
-@patch('flask.current_app')
+@patch('routes.current_app')
 def test_run_tests_production(mock_app, client):
     mock_app.debug = False
     response = client.post('/api/test/run')
@@ -1024,7 +1024,7 @@ def test_auto_detect_no_common_path(mock_ismount, mock_isdir, mock_walk, mock_fe
 
 
 # run_tests subprocess exception (lines 843-845)
-@patch('flask.current_app')
+@patch('routes.current_app')
 @patch('subprocess.run')
 def test_run_tests_subprocess_exception(mock_subprocess, mock_app, client):
     mock_app.debug = True
