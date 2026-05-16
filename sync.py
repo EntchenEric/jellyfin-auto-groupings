@@ -20,7 +20,7 @@ import logging
 import threading
 import requests
 from datetime import datetime
-from typing import Any
+from typing import Any, Callable
 
 from anilist import fetch_anilist_list
 from imdb import fetch_imdb_list
@@ -310,6 +310,52 @@ def _sort_items_in_memory(
     return sorted(items, key=_key, reverse=reverse)
 
 
+def _fetch_and_resolve(
+    group_name: str,
+    fetch_fn: Callable[[], list[Any]],
+    sort_order: str,
+    url: str,
+    api_key: str,
+    watch_state: str,
+    provider_key: str,
+    list_order_key: str,
+    source_label: str,
+    log_msg_fn: Callable[[int], str],
+) -> tuple[list[dict[str, Any]], str | None, int]:
+    """Fetch external IDs via *fetch_fn*, then match against the Jellyfin library.
+
+    Args:
+        group_name: Human-readable group name.
+        fetch_fn: Callable that returns a list of external IDs.
+        sort_order: Requested sort order key.
+        url: Jellyfin base URL.
+        api_key: Jellyfin API key.
+        watch_state: Optional filter for watch state.
+        provider_key: The Jellyfin ProviderId key.
+        list_order_key: The sort_order value that triggers list-order sorting.
+        source_label: Label used in error messages (e.g. ``"IMDb"``).
+        log_msg_fn: Callable that receives the item count and returns the
+            fully-formatted log message.
+
+    Returns:
+        A ``(items, error, status_code)`` tuple.
+    """
+    try:
+        external_ids = fetch_fn()
+        logger.info(log_msg_fn(len(external_ids)))
+    except Exception as exc:
+        logger.error("Error fetching %s list for group %r: %s", source_label, group_name, exc)
+        return [], f"{source_label} fetch error: {exc!s}", 400
+
+    if not external_ids:
+        logger.info("No items found in %s list for group %r", source_label, group_name)
+        return [], None, 200
+
+    return _match_jellyfin_items_by_provider(
+        external_ids, provider_key, list_order_key, sort_order, url, api_key, group_name, watch_state
+    )
+
+
 def _fetch_items_for_imdb_group(
     group_name: str,
     source_value: str,
@@ -318,34 +364,18 @@ def _fetch_items_for_imdb_group(
     api_key: str,
     watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
-    """Resolve Jellyfin items for an IMDb-list–backed group.
-
-    Args:
-        group_name: Human-readable group name (used for logging).
-        source_value: IMDb list ID or URL.
-        sort_order: Requested sort order key.
-        url: Jellyfin base URL.
-        api_key: Jellyfin API key.
-        watch_state: Optional filter for watch state ("unwatched", "watched").
-
-    Returns:
-        A ``(items, error, status_code)`` tuple.  On success *items* is the resolved list
-        and *error* is ``None``; on failure *items* is ``[]`` and *error* is
-        a descriptive string.
-    """
-    try:
-        imdb_ids = fetch_imdb_list(source_value)
-        logger.info("IMDb list %r: %s IDs found", source_value, len(imdb_ids))
-    except Exception as exc:
-        logger.error("Error fetching IMDb list for group %r: %s", group_name, exc)
-        return [], f"IMDb fetch error: {exc!s}", 400
-
-    if not imdb_ids:
-        logger.info("No IMDb IDs found for group %r", group_name)
-        return [], None, 200
-
-    return _match_jellyfin_items_by_provider(
-        imdb_ids, "Imdb", "imdb_list_order", sort_order, url, api_key, group_name, watch_state
+    """Resolve Jellyfin items for an IMDb-list–backed group."""
+    return _fetch_and_resolve(
+        group_name,
+        lambda: fetch_imdb_list(source_value),
+        sort_order,
+        url,
+        api_key,
+        watch_state,
+        "Imdb",
+        "imdb_list_order",
+        "IMDb",
+        lambda count: f"IMDb list {source_value!r}: {count} IDs found",
     )
 
 
@@ -358,38 +388,23 @@ def _fetch_items_for_trakt_group(
     trakt_client_id: str,
     watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
-    """Resolve Jellyfin items for a Trakt-list–backed group.
-
-    Args:
-        group_name: Human-readable group name (used for logging).
-        source_value: Trakt list URL or ``"username/slug"`` shorthand.
-        sort_order: Requested sort order key.
-        url: Jellyfin base URL.
-        api_key: Jellyfin API key.
-        trakt_client_id: Trakt API Client ID.
-
-    Returns:
-        A ``(items, error, status_code)`` tuple (same semantics as
-        :func:`_fetch_items_for_imdb_group`).
-    """
+    """Resolve Jellyfin items for a Trakt-list–backed group."""
     if not trakt_client_id:
         msg = "Trakt Client ID not set — add trakt_client_id in Server Settings"
         logger.info("No Trakt Client ID configured for group %r", group_name)
         return [], msg, 400
 
-    try:
-        trakt_ids = fetch_trakt_list(source_value, trakt_client_id)
-        logger.info("Trakt list %r: %s IMDb IDs found", source_value, len(trakt_ids))
-    except Exception as exc:
-        logger.error("Error fetching Trakt list for group %r: %s", group_name, exc)
-        return [], f"Trakt fetch error: {exc!s}", 400
-
-    if not trakt_ids:
-        logger.info("No items found in Trakt list for group %r", group_name)
-        return [], None, 200
-
-    return _match_jellyfin_items_by_provider(
-        trakt_ids, "Imdb", "trakt_list_order", sort_order, url, api_key, group_name, watch_state
+    return _fetch_and_resolve(
+        group_name,
+        lambda: fetch_trakt_list(source_value, trakt_client_id),
+        sort_order,
+        url,
+        api_key,
+        watch_state,
+        "Imdb",
+        "trakt_list_order",
+        "Trakt",
+        lambda count: f"Trakt list {source_value!r}: {count} IMDb IDs found",
     )
 
 
@@ -402,38 +417,23 @@ def _fetch_items_for_tmdb_group(
     tmdb_api_key: str,
     watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
-    """Resolve Jellyfin items for a TMDb-list–backed group.
-
-    Args:
-        group_name: Human-readable group name (used for logging).
-        source_value: TMDb list ID or URL.
-        sort_order: Requested sort order key.
-        url: Jellyfin base URL.
-        api_key: Jellyfin API key.
-        tmdb_api_key: TMDb API Key.
-
-    Returns:
-        A ``(items, error, status_code)`` tuple (same semantics as
-        :func:`_fetch_items_for_imdb_group`).
-    """
+    """Resolve Jellyfin items for a TMDb-list–backed group."""
     if not tmdb_api_key:
         msg = "TMDb API Key not set — add tmdb_api_key in Server Settings"
         logger.info("No TMDb API Key configured for group %r", group_name)
         return [], msg, 400
 
-    try:
-        tmdb_ids = fetch_tmdb_list(source_value, tmdb_api_key)
-        logger.info("TMDb list %r: %s items found", source_value, len(tmdb_ids))
-    except Exception as exc:
-        logger.error("Error fetching TMDb list for group %r: %s", group_name, exc)
-        return [], f"TMDb fetch error: {exc!s}", 400
-
-    if not tmdb_ids:
-        logger.info("No items found in TMDb list for group %r", group_name)
-        return [], None, 200
-
-    return _match_jellyfin_items_by_provider(
-        tmdb_ids, "Tmdb", "tmdb_list_order", sort_order, url, api_key, group_name, watch_state
+    return _fetch_and_resolve(
+        group_name,
+        lambda: fetch_tmdb_list(source_value, tmdb_api_key),
+        sort_order,
+        url,
+        api_key,
+        watch_state,
+        "Tmdb",
+        "tmdb_list_order",
+        "TMDb",
+        lambda count: f"TMDb list {source_value!r}: {count} items found",
     )
 
 
@@ -445,40 +445,23 @@ def _fetch_items_for_anilist_group(
     api_key: str,
     watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
-    """Resolve Jellyfin items for an AniList-list–backed group.
-
-    Args:
-        group_name: Human-readable group name (used for logging).
-        source_value: AniList username or ``"username/status"`` shorthand.
-        sort_order: Requested sort order key.
-        url: Jellyfin base URL.
-        api_key: Jellyfin API key.
-        watch_state: Optional filter for watch state ("unwatched", "watched").
-
-    Returns:
-        A ``(items, error, status_code)`` tuple (same semantics as
-        :func:`_fetch_items_for_imdb_group`).
-    """
+    """Resolve Jellyfin items for an AniList-list–backed group."""
     username = source_value
     status = None
     if "/" in source_value:
-        split_val = source_value.split("/", 1)
-        username = split_val[0]
-        status = split_val[1]
+        username, status = source_value.split("/", 1)
 
-    try:
-        anilist_ids = fetch_anilist_list(username, status)
-        logger.info("AniList user %r (status=%r): %s items found", username, status, len(anilist_ids))
-    except Exception as exc:
-        logger.error("Error fetching AniList items for group %r: %s", group_name, exc)
-        return [], f"AniList fetch error: {exc!s}", 400
-
-    if not anilist_ids:
-        logger.info("No items found for AniList user %r", username)
-        return [], None, 200
-
-    return _match_jellyfin_items_by_provider(
-        anilist_ids, "AniList", "anilist_list_order", sort_order, url, api_key, group_name, watch_state
+    return _fetch_and_resolve(
+        group_name,
+        lambda: fetch_anilist_list(username, status),
+        sort_order,
+        url,
+        api_key,
+        watch_state,
+        "AniList",
+        "anilist_list_order",
+        "AniList",
+        lambda count: f"AniList user {username!r} (status={status!r}): {count} items found",
     )
 
 
@@ -491,20 +474,7 @@ def _fetch_items_for_mal_group(
     mal_client_id: str,
     watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
-    """Resolve Jellyfin items for a MyAnimeList-list–backed group.
-
-    Args:
-        group_name: Human-readable group name (used for logging).
-        source_value: MAL username or ``"username/status"`` shorthand.
-        sort_order: Requested sort order key.
-        url: Jellyfin base URL.
-        api_key: Jellyfin API key.
-        mal_client_id: MyAnimeList Client ID.
-
-    Returns:
-        A ``(items, error, status_code)`` tuple (same semantics as
-        :func:`_fetch_items_for_imdb_group`).
-    """
+    """Resolve Jellyfin items for a MyAnimeList-list–backed group."""
     if not mal_client_id:
         msg = "MyAnimeList Client ID not set — add mal_client_id in Server Settings"
         logger.info("No MAL Client ID configured for group %r", group_name)
@@ -513,23 +483,19 @@ def _fetch_items_for_mal_group(
     username = source_value
     status = None
     if "/" in source_value:
-        split_val = source_value.split("/", 1)
-        username = split_val[0]
-        status = split_val[1]
+        username, status = source_value.split("/", 1)
 
-    try:
-        mal_ids = fetch_mal_list(username, mal_client_id, status)
-        logger.info("MyAnimeList user %r (status=%r): %s items found", username, status, len(mal_ids))
-    except Exception as exc:
-        logger.error("Error fetching MyAnimeList items for group %r: %s", group_name, exc)
-        return [], f"MAL fetch error: {exc!s}", 400
-
-    if not mal_ids:
-        logger.info("No items found for MyAnimeList user %r", username)
-        return [], None, 200
-
-    return _match_jellyfin_items_by_provider(
-        mal_ids, "Mal", "mal_list_order", sort_order, url, api_key, group_name, watch_state
+    return _fetch_and_resolve(
+        group_name,
+        lambda: fetch_mal_list(username, mal_client_id, status),
+        sort_order,
+        url,
+        api_key,
+        watch_state,
+        "Mal",
+        "mal_list_order",
+        "MAL",
+        lambda count: f"MyAnimeList user {username!r} (status={status!r}): {count} items found",
     )
 
 
