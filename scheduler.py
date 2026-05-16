@@ -99,10 +99,12 @@ def _run_global_sync_job(exclude_names: list[str]) -> None:
     all_groups = config.get("groups", [])
     
     # Filter out excluded groups
-    sync_names = [
-        g.get("name") for g in all_groups 
-        if isinstance(g, dict) and g.get("name") and g.get("name") not in exclude_names
-    ]
+    sync_names: list[str] = []
+    for g in all_groups:
+        if isinstance(g, dict):
+            name = g.get("name")
+            if isinstance(name, str) and name not in exclude_names:
+                sync_names.append(name)
     
     if sync_names:
         logger.info(f"Background global sync starting for groups: {sync_names}")

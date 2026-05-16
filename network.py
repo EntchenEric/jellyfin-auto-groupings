@@ -93,6 +93,6 @@ def _patched_delete(url, **kwargs):
         raise
 
 
-requests.get = _patched_get         # type: ignore[method-assign]
-requests.post = _patched_post       # type: ignore[method-assign]
-requests.delete = _patched_delete   # type: ignore[method-assign]
+requests.get = _patched_get         # type: ignore[method-assign, assignment]
+requests.post = _patched_post       # type: ignore[method-assign, assignment]
+requests.delete = _patched_delete   # type: ignore[method-assign, assignment]
