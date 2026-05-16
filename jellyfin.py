@@ -33,6 +33,22 @@ SORT_MAP: dict[str, tuple[str, str]] = {
     "Random": ("Random", "Ascending"),
 }
 
+
+def _format_request_error(exc: requests.exceptions.RequestException, prefix: str) -> str:
+    """Build a human-readable error message from *exc* with response details if available."""
+    msg = prefix
+    if hasattr(exc, "response") and exc.response is not None:
+        msg += f" (Status {exc.response.status_code}): {exc.response.text}"
+    else:
+        msg += f": {exc!s}"
+    return msg
+
+
+def _raise_request_error(exc: requests.exceptions.RequestException, prefix: str) -> None:
+    """Format *exc* into a ``RuntimeError`` with response details if available."""
+    raise RuntimeError(_format_request_error(exc, prefix)) from exc
+
+
 # ---------------------------------------------------------------------------
 # Public helpers
 # ---------------------------------------------------------------------------
@@ -196,12 +212,7 @@ def add_virtual_folder(
         if create_resp.status_code != 409:
             create_resp.raise_for_status()
     except requests.exceptions.RequestException as exc:
-        msg = f"Failed to create virtual folder {name!r}"
-        if hasattr(exc, "response") and exc.response is not None:
-            msg += f" (Status {exc.response.status_code}): {exc.response.text}"
-        else:
-            msg += f": {exc!s}"
-        raise RuntimeError(msg) from exc
+        _raise_request_error(exc, f"Failed to create virtual folder {name!r}")
 
     # Step 2: Add each path using strictly a JSON body as recommended
     for path in paths:
@@ -221,12 +232,9 @@ def add_virtual_folder(
             )
             path_resp.raise_for_status()
         except requests.exceptions.RequestException as exc:
-            msg = f"Failed to add path {path!r} to library {name!r}"
-            if hasattr(exc, "response") and exc.response is not None:
-                msg += f" (Status {exc.response.status_code}): {exc.response.text}"
-            else:
-                msg += f": {exc!s}"
-            raise RuntimeError(msg) from exc
+            _raise_request_error(
+                exc, f"Failed to add path {path!r} to library {name!r}"
+            )
 
     # Step 3: Trigger a library refresh if requested
     if refresh_library:
@@ -238,12 +246,9 @@ def add_virtual_folder(
             )
             refresh_resp.raise_for_status()
         except requests.exceptions.RequestException as exc:
-            msg = f"Failed to trigger library refresh for {name!r}"
-            if hasattr(exc, "response") and exc.response is not None:
-                msg += f" (Status {exc.response.status_code}): {exc.response.text}"
-            else:
-                msg += f": {exc!s}"
-            raise RuntimeError(msg) from exc
+            _raise_request_error(
+                exc, f"Failed to trigger library refresh for {name!r}"
+            )
 
 
 def delete_virtual_folder(base_url: str, api_key: str, name: str, timeout: int = 30) -> None:
@@ -346,12 +351,9 @@ def set_virtual_folder_image(
         response.raise_for_status()
         logger.info("Successfully updated cover image for library %r", name)
     except requests.exceptions.RequestException as exc:
-        msg = f"Failed to set image for library {name!r}"
-        if hasattr(exc, "response") and exc.response is not None:
-            msg += f" (Status {exc.response.status_code}): {exc.response.text}"
-        else:
-            msg += f": {exc!s}"
-        logger.info(msg)
+        logger.info(
+            _format_request_error(exc, f"Failed to set image for library {name!r}")
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -398,12 +400,7 @@ def create_collection(
             raise RuntimeError(f"Collection created but no Id returned for {name!r}")
         return collection_id
     except requests.exceptions.RequestException as exc:
-        msg = f"Failed to create collection {name!r}"
-        if hasattr(exc, "response") and exc.response is not None:
-            msg += f" (Status {exc.response.status_code}): {exc.response.text}"
-        else:
-            msg += f": {exc!s}"
-        raise RuntimeError(msg) from exc
+        _raise_request_error(exc, f"Failed to create collection {name!r}")
 
 
 def find_collection_by_name(
@@ -497,12 +494,7 @@ def add_to_collection(
         )
         resp.raise_for_status()
     except requests.exceptions.RequestException as exc:
-        msg = f"Failed to add items to collection {collection_id!r}"
-        if hasattr(exc, "response") and exc.response is not None:
-            msg += f" (Status {exc.response.status_code}): {exc.response.text}"
-        else:
-            msg += f": {exc!s}"
-        raise RuntimeError(msg) from exc
+        _raise_request_error(exc, f"Failed to add items to collection {collection_id!r}")
 
 
 def remove_from_collection(
@@ -539,12 +531,7 @@ def remove_from_collection(
         )
         resp.raise_for_status()
     except requests.exceptions.RequestException as exc:
-        msg = f"Failed to remove items from collection {collection_id!r}"
-        if hasattr(exc, "response") and exc.response is not None:
-            msg += f" (Status {exc.response.status_code}): {exc.response.text}"
-        else:
-            msg += f": {exc!s}"
-        raise RuntimeError(msg) from exc
+        _raise_request_error(exc, f"Failed to remove items from collection {collection_id!r}")
 
 
 def delete_collection(
@@ -574,12 +561,7 @@ def delete_collection(
         )
         resp.raise_for_status()
     except requests.exceptions.RequestException as exc:
-        msg = f"Failed to delete collection {collection_id!r}"
-        if hasattr(exc, "response") and exc.response is not None:
-            msg += f" (Status {exc.response.status_code}): {exc.response.text}"
-        else:
-            msg += f": {exc!s}"
-        raise RuntimeError(msg) from exc
+        _raise_request_error(exc, f"Failed to delete collection {collection_id!r}")
 
 
 def set_collection_image(
@@ -623,9 +605,8 @@ def set_collection_image(
         resp.raise_for_status()
         logger.info("Successfully updated cover image for collection %r", collection_id)
     except requests.exceptions.RequestException as exc:
-        msg = f"Failed to set image for collection {collection_id!r}"
-        if hasattr(exc, "response") and exc.response is not None:
-            msg += f" (Status {exc.response.status_code}): {exc.response.text}"
-        else:
-            msg += f": {exc!s}"
-        logger.info(msg)
+        logger.info(
+            _format_request_error(
+                exc, f"Failed to set image for collection {collection_id!r}"
+            )
+        )
