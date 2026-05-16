@@ -327,7 +327,7 @@ def _fetch_jellyfin_endpoint(
                 timeout=timeout,
             )
             resp.raise_for_status()
-        except requests.RequestException:
+        except requests.exceptions.RequestException:
             if items:
                 break  # partial data is better than nothing
             raise
