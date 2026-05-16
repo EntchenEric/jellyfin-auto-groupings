@@ -29,6 +29,7 @@ from jellyfin import (
     add_to_collection,
     add_virtual_folder,
     create_collection,
+    fetch_all_jellyfin_items,
     fetch_jellyfin_items,
     find_collection_by_name,
     get_libraries,
@@ -223,31 +224,19 @@ def _fetch_full_library(
             return _LIBRARY_CACHE[cache_key].copy(), None, 200
 
     try:
-        all_items: list[dict[str, Any]] = []
-        start_index = 0
-        page_size = _FULL_LIBRARY_PAGE_SIZE
-
-        while True:
-            page = fetch_jellyfin_items(
-                url,
-                api_key,
-                {
-                    "Recursive": "true",
-                    "Fields": _FULL_LIBRARY_FIELDS,
-                    "IncludeItemTypes": "Movie,Series",
-                    "StartIndex": str(start_index),
-                    "Limit": str(page_size),
-                },
-                timeout=_FULL_LIBRARY_TIMEOUT,
-            )
-            all_items.extend(page)
-
-            if len(page) < page_size:
-                break
-            start_index += page_size
-
-        pages_fetched = (start_index // page_size) + 1
-        logger.info("Jellyfin library: %s items fetched for matching (in %s pages)", len(all_items), pages_fetched)
+        all_items = fetch_all_jellyfin_items(
+            url,
+            api_key,
+            {
+                "Recursive": "true",
+                "Fields": _FULL_LIBRARY_FIELDS,
+                "IncludeItemTypes": "Movie,Series",
+            },
+            limit=_FULL_LIBRARY_PAGE_SIZE,
+            timeout=_FULL_LIBRARY_TIMEOUT,
+            _fetch_page=fetch_jellyfin_items,
+        )
+        logger.info("Jellyfin library: %s items fetched for matching", len(all_items))
         with _LIBRARY_CACHE_LOCK:
             _LIBRARY_CACHE[cache_key] = all_items
         return all_items, None, 200

@@ -25,7 +25,7 @@ from flask.typing import ResponseReturnValue
 from werkzeug.exceptions import HTTPException
 
 from config import load_config, save_config
-from jellyfin import delete_virtual_folder, fetch_jellyfin_items, get_users
+from jellyfin import _paginate_jellyfin, delete_virtual_folder, fetch_jellyfin_items, get_users
 from scheduler import update_scheduler_jobs, validate_cron
 from sync import get_cover_path, preview_group, run_sync
 
@@ -298,6 +298,8 @@ def _fetch_jellyfin_endpoint(
     """Fetch all items from a Jellyfin list endpoint (Genres, Studios, etc.).
 
     Handles paginated responses, collecting all items across all pages.
+    If a request fails part-way through, already-fetched items are returned
+    rather than raising (partial data is better than nothing for metadata).
 
     Args:
         base_url: Jellyfin server base URL.
@@ -310,37 +312,15 @@ def _fetch_jellyfin_endpoint(
         A list of all item dictionaries from the endpoint.
     """
     items: list[dict[str, Any]] = []
-    start_index = 0
-    limit = _JELLYFIN_PAGE_LIMIT
-
-    while True:
-        params: dict[str, str | int] = {
-            "StartIndex": start_index,
-            "Limit": limit,
-        }
-        if extra_params:
-            params.update(extra_params)
-        try:
-            resp = requests.get(
-                f"{base_url}/{endpoint}",
-                headers={"X-Emby-Token": api_key},
-                params=params,
-                timeout=timeout,
-            )
-            resp.raise_for_status()
-        except requests.exceptions.RequestException:
-            if items:
-                break  # partial data is better than nothing
-            raise
-
-        data = resp.json()
-        page_items = data.get("Items", [])
-        items.extend(page_items)
-
-        if len(page_items) < limit:
-            break
-        start_index += limit
-
+    try:
+        for page in _paginate_jellyfin(
+            base_url, api_key, endpoint, extra_params, limit=_JELLYFIN_PAGE_LIMIT, timeout=timeout
+        ):
+            items.extend(page)
+    except requests.exceptions.RequestException:
+        if items:
+            return items
+        raise
     return items
 
 
