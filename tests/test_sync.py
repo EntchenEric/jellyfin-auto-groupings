@@ -1150,7 +1150,9 @@ def test_run_sync_seasonal_cleanup(mock_libs, mock_season, mock_process, tmp_pat
 @patch('sync.os.unlink')
 @patch('sync.os.path.exists')
 @patch('sync.os.path.islink')
-def test_cleanup_broken_symlinks_unlink_error(mock_islink, mock_exists, mock_unlink):
+@patch('sync.os.path.isdir')
+def test_cleanup_broken_symlinks_unlink_error(mock_isdir, mock_islink, mock_exists, mock_unlink):
+    mock_isdir.return_value = True
     mock_islink.return_value = True
     mock_exists.return_value = False
     mock_unlink.side_effect = OSError("Permission denied")
@@ -1158,3 +1160,288 @@ def test_cleanup_broken_symlinks_unlink_error(mock_islink, mock_exists, mock_unl
     with patch('sync.os.walk', return_value=[("/target", [], ["link"])]):
         count = run_cleanup_broken_symlinks(config)
     assert count == 0
+
+
+# --- Remaining branch coverage ---
+
+def test_match_jellyfin_items_by_provider_falsy_provider_id():
+    _LIBRARY_CACHE.clear()
+    raw_items = [
+        {"Id": "1", "ProviderIds": {"Imdb": ""}},
+        {"Id": "2", "ProviderIds": {"Imdb": "tt123"}},
+    ]
+    with patch('sync._fetch_full_library', return_value=(raw_items, None, 200)):
+        items, error, code = _match_jellyfin_items_by_provider(
+            ["tt123"], "Imdb", "imdb_list_order", "SortName", "http://jf", "key", "Group"
+        )
+    assert len(items) == 1
+    assert items[0]["Id"] == "2"
+
+
+def test_match_jellyfin_items_by_provider_letterboxd_unmatched():
+    _LIBRARY_CACHE.clear()
+    raw_items = [{"Id": "1", "ProviderIds": {"Imdb": "tt123"}}]
+    with patch('sync._fetch_full_library', return_value=(raw_items, None, 200)):
+        items, error, code = _match_jellyfin_items_by_provider(
+            ["tt999", "456"], "Tmdb", "letterboxd_list_order", "SortName", "http://jf", "key", "Group"
+        )
+    assert items == []
+
+
+def test_match_jellyfin_items_by_provider_letterboxd_watched():
+    _LIBRARY_CACHE.clear()
+    raw_items = [
+        {"Id": "1", "ProviderIds": {"Imdb": "tt111"}, "UserData": {"Played": True}},
+        {"Id": "2", "ProviderIds": {"Imdb": "tt222"}, "UserData": {"Played": False}},
+    ]
+    with patch('sync._fetch_full_library', return_value=(raw_items, None, 200)):
+        items, error, code = _match_jellyfin_items_by_provider(
+            ["tt111", "tt222"], "Imdb", "letterboxd_list_order", "SortName", "http://jf", "key", "Group", watch_state="watched"
+        )
+    assert len(items) == 1
+    assert items[0]["Id"] == "1"
+
+
+@patch('sync.get_tmdb_recommendations')
+@patch('sync.get_user_recent_items')
+def test_fetch_items_recommendations_empty_tmdb_ids(mock_recent, mock_recs):
+    mock_recent.return_value = [{"Id": "1", "Name": "M1"}]
+    mock_recs.return_value = []
+    items, error, code = _fetch_items_for_recommendations_group(
+        "Group", "user1", "SortName", "http://jf", "key", "tmdb_key"
+    )
+    assert items == []
+    assert error is None
+    assert code == 200
+
+
+def test_match_condition_empty_type_or_value():
+    item = {"Genres": ["Action"]}
+    assert _match_condition(item, "", "action") is False
+    assert _match_condition(item, "genre", "") is False
+
+
+def test_match_condition_exception_handling():
+    item = {"Genres": 123}  # non-iterable truthy value triggers TypeError in for-loop
+    assert _match_condition(item, "genre", "action") is False
+
+
+def test_eval_item_empty_rules():
+    item = {"Name": "M1"}
+    assert _eval_item(item, []) is True
+
+
+def test_eval_item_not_operators():
+    item = {"Genres": ["Action"]}
+    rules = [
+        {"operator": "AND NOT", "type": "genre", "value": "comedy"},
+    ]
+    assert _eval_item(item, rules) is True
+
+    rules = [
+        {"operator": "OR NOT", "type": "genre", "value": "action"},
+    ]
+    assert _eval_item(item, rules) is False
+
+    rules = [
+        {"operator": "AND", "type": "genre", "value": "action"},
+        {"operator": "AND NOT", "type": "genre", "value": "comedy"},
+    ]
+    assert _eval_item(item, rules) is True
+
+
+@patch('sync._fetch_full_library')
+def test_complex_group_non_dict_rule(mock_lib):
+    _LIBRARY_CACHE.clear()
+    mock_lib.return_value = ([{"Name": "M1"}], None, 200)
+    items, error, code = _fetch_items_for_complex_group(
+        "Group", [123], "SortName", "http://jf", "key"
+    )
+    assert items == []
+
+
+@patch('sync._fetch_full_library')
+def test_complex_group_empty_type_value(mock_lib):
+    _LIBRARY_CACHE.clear()
+    mock_lib.return_value = ([{"Name": "M1"}], None, 200)
+    items, error, code = _fetch_items_for_complex_group(
+        "Group", [{"type": "", "value": ""}], "SortName", "http://jf", "key"
+    )
+    assert items == []
+
+
+@patch('sync._fetch_full_library')
+def test_complex_group_watched_filter(mock_lib):
+    _LIBRARY_CACHE.clear()
+    mock_lib.return_value = (
+        [
+            {"Name": "Played", "Genres": ["Action"], "UserData": {"Played": True}},
+            {"Name": "Unplayed", "Genres": ["Action"], "UserData": {"Played": False}},
+        ],
+        None,
+        200,
+    )
+    items, error, code = _fetch_items_for_complex_group(
+        "Group",
+        [{"operator": "AND", "type": "genre", "value": "action"}],
+        "SortName",
+        "http://jf",
+        "key",
+        watch_state="watched",
+    )
+    assert len(items) == 1
+    assert items[0]["Name"] == "Played"
+
+
+def test_parse_complex_query_unrecognized_prefix():
+    rules = parse_complex_query("foo:bar", "genre")
+    assert rules == [{"operator": "AND", "type": "genre", "value": "foo:bar"}]
+
+
+@patch('sync.add_to_collection')
+@patch('sync.find_collection_by_name')
+def test_process_collection_group_no_cover(mock_find, mock_add, tmp_path):
+    mock_find.return_value = "col123"
+    items = [{"Id": "1", "Name": "Movie"}]
+    result = _process_collection_group(
+        "Group", items, "http://jf", "key", str(tmp_path), dry_run=False, auto_set_library_covers=True
+    )
+    assert result["links"] == 1
+
+
+@patch('sync.add_to_collection')
+@patch('sync.find_collection_by_name')
+def test_process_collection_group_auto_cover_off(mock_find, mock_add, tmp_path):
+    mock_find.return_value = "col123"
+    items = [{"Id": "1", "Name": "Movie"}]
+    result = _process_collection_group(
+        "Group", items, "http://jf", "key", str(tmp_path), dry_run=False, auto_set_library_covers=False
+    )
+    assert result["links"] == 1
+
+
+@patch('sync.create_collection')
+@patch('sync.add_to_collection')
+@patch('sync._fetch_items_for_metadata_group')
+def test_process_group_create_collection(mock_meta, mock_add, mock_create, tmp_path):
+    host = tmp_path / "movie.mkv"
+    host.write_text("movie")
+    mock_create.return_value = "col123"
+    mock_meta.return_value = ([{"Id": "1", "Name": "M1", "Path": str(host)}], None, 200)
+    group = {
+        "name": "Test",
+        "source_type": "genre",
+        "source_value": "Action",
+        "sort_order": "SortName",
+        "create_as_collection": True,
+    }
+    result = _process_group(
+        group, str(tmp_path), "http://jf", "key", "", "", "", "", "", False, False, False, None, ""
+    )
+    assert result["links"] == 1
+    mock_create.assert_called_once()
+
+
+@patch('sync._fetch_items_for_metadata_group')
+def test_process_group_missing_host_path(mock_meta, tmp_path):
+    mock_meta.return_value = ([{"Id": "1", "Name": "M1", "Path": "/nonexistent/movie.mkv"}], None, 200)
+    group = {
+        "name": "Test",
+        "source_type": "genre",
+        "source_value": "Action",
+        "sort_order": "SortName",
+    }
+    result = _process_group(
+        group, str(tmp_path), "http://jf", "key", "", "", "", "", "", False, False, False, None, ""
+    )
+    assert result["links"] == 0
+
+
+@patch('sync.get_cover_path')
+@patch('sync._fetch_items_for_metadata_group')
+def test_process_group_auto_cover_missing(mock_meta, mock_cover, tmp_path):
+    host = tmp_path / "movie.mkv"
+    host.write_text("movie")
+    mock_meta.return_value = ([{"Id": "1", "Name": "M1", "Path": str(host)}], None, 200)
+    mock_cover.return_value = None
+    group = {
+        "name": "Test",
+        "source_type": "genre",
+        "source_value": "Action",
+        "sort_order": "SortName",
+    }
+    result = _process_group(
+        group,
+        str(tmp_path),
+        "http://jf",
+        "key",
+        "",
+        "",
+        "",
+        "",
+        "",
+        False,
+        False,
+        True,
+        None,
+        "",
+    )
+    assert result["links"] == 1
+
+
+def test_is_in_season_invalid_date():
+    assert _is_in_season("bad", "also-bad") is True
+    assert _is_in_season("01-01", "not-a-date") is True
+
+
+@patch('sync._process_group')
+@patch('sync._is_in_season')
+@patch('sync.get_libraries')
+def test_run_sync_seasonal_dry_run(mock_libs, mock_season, mock_process, tmp_path):
+    mock_libs.return_value = []
+    mock_season.return_value = False
+    mock_process.return_value = {"group": "Test", "links": 0}
+    target = tmp_path / "target"
+    target.mkdir()
+    config = {
+        "jellyfin_url": "http://jf",
+        "api_key": "key",
+        "target_path": str(target),
+        "groups": [
+            {
+                "name": "Test",
+                "seasonal_enabled": True,
+                "seasonal_start": "01-01",
+                "seasonal_end": "01-02",
+            }
+        ],
+    }
+    results = run_sync(config, dry_run=True)
+    assert results[0]["status"] == "out_of_season"
+
+
+@patch('sync._process_group')
+@patch('sync._is_in_season')
+@patch('sync.get_libraries')
+def test_run_sync_seasonal_no_dir(mock_libs, mock_season, mock_process, tmp_path):
+    mock_libs.return_value = []
+    mock_season.return_value = False
+    mock_process.return_value = {"group": "Test", "links": 0}
+    target = tmp_path / "target"
+    target.mkdir()
+    # Do NOT create Test subdirectory
+    config = {
+        "jellyfin_url": "http://jf",
+        "api_key": "key",
+        "target_path": str(target),
+        "groups": [
+            {
+                "name": "Test",
+                "seasonal_enabled": True,
+                "seasonal_start": "01-01",
+                "seasonal_end": "01-02",
+            }
+        ],
+    }
+    results = run_sync(config, dry_run=False)
+    assert results[0]["status"] == "out_of_season"
