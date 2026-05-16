@@ -37,11 +37,10 @@ def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
         raise ValueError("A TMDb List ID is required.")
 
     list_id = list_id.strip()
-    
+
     # Handle full URL if provided (extracting ID from https://www.themoviedb.org/list/123)
     if "themoviedb.org/list/" in list_id:
         list_id = list_id.split("/list/")[1].split("?")[0].split("#")[0].strip("/").split("/")[0]
-
 
     ids: list[str] = []
     page: int = 1
@@ -53,7 +52,7 @@ def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
             "page": str(page),
             "language": "en-US"
         }
-        
+
         try:
             resp = requests.get(url, params=params, timeout=15)
             resp.raise_for_status()
@@ -64,7 +63,7 @@ def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
 
         data: dict[str, Any] = resp.json()
         items: list[dict[str, Any]] = data.get("items", [])
-        
+
         if not items:
             break
 
