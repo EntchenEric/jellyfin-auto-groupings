@@ -85,6 +85,14 @@ _METADATA_FILTER_MAP: dict[str, str] = {
     "year": "years",
 }
 
+# Jellyfin Fields parameter for full-library fetches
+_FULL_LIBRARY_FIELDS: str = (
+    "Path,ProviderIds,Genres,Studios,Tags,People,ProductionYear,CommunityRating,UserData"
+)
+
+# Jellyfin API timeout for full-library fetches (seconds)
+_FULL_LIBRARY_TIMEOUT: int = 30
+
 def _translate_path(
     jellyfin_path: str,
     jellyfin_root: str,
@@ -211,12 +219,12 @@ def _fetch_full_library(
                 api_key,
                 {
                     "Recursive": "true",
-                    "Fields": "Path,ProviderIds,Genres,Studios,Tags,People,ProductionYear,CommunityRating,UserData",
+                    "Fields": _FULL_LIBRARY_FIELDS,
                     "IncludeItemTypes": "Movie,Series",
                     "StartIndex": str(start_index),
                     "Limit": str(page_size),
                 },
-                timeout=30,
+                timeout=_FULL_LIBRARY_TIMEOUT,
             )
             all_items.extend(page)
 
@@ -1160,7 +1168,7 @@ def _process_group(
 
         dest_path: str = os.path.join(group_dir, file_name)
         if dry_run:
-            if len(preview_items) < 100:
+            if len(preview_items) < _MAX_PREVIEW_ITEMS:
                 preview_items.append({
                     "Name": item.get("Name", "Unknown"),
                     "Year": item.get("ProductionYear", ""),

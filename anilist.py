@@ -8,6 +8,9 @@ import requests
 
 ANILIST_API_URL = "https://graphql.anilist.co"
 
+# Request timeout (seconds)
+_REQUEST_TIMEOUT: int = 15
+
 
 def fetch_anilist_list(username: str, status: str | None = None) -> list[int]:
     """
@@ -56,7 +59,7 @@ def fetch_anilist_list(username: str, status: str | None = None) -> list[int]:
     response = requests.post(
         ANILIST_API_URL,
         json={"query": query, "variables": variables},
-        timeout=15
+        timeout=_REQUEST_TIMEOUT
     )
     response.raise_for_status()
 

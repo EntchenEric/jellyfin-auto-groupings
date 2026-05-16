@@ -63,6 +63,22 @@ _ALLOWED_PREVIEW_TYPES: frozenset[str] = frozenset(
     {"genre", "studio", "tag", "year", "actor", "general", "complex"}
 )
 
+# Default filesystem search roots for auto-detect
+_DEFAULT_SEARCH_ROOTS: tuple[str, ...] = (
+    os.path.expanduser("~"),
+    "/media",
+    "/mnt",
+)
+
+# Server connection-test timeout (seconds)
+_TEST_SERVER_TIMEOUT: int = 5
+
+# Auto-detect sample fetch limit
+_AUTO_DETECT_SAMPLE_LIMIT: int = 10
+
+# Auto-detect Jellyfin API timeout (seconds)
+_AUTO_DETECT_JELLYFIN_TIMEOUT: int = 10
+
 # ---------------------------------------------------------------------------
 # CSRF protection
 # ---------------------------------------------------------------------------
@@ -94,8 +110,7 @@ def _is_valid_folder_name(name: str) -> bool:
 
 # Roots that the folder browser is allowed to expose.
 _BROWSE_ROOTS: tuple[str, ...] = tuple(
-    os.path.realpath(r)
-    for r in (os.path.expanduser("~"), "/media", "/mnt")
+    os.path.realpath(r) for r in _DEFAULT_SEARCH_ROOTS
 )
 
 
@@ -249,7 +264,7 @@ def test_server() -> ResponseReturnValue:
         response = requests.get(
             f"{url}/System/Info",
             headers={"X-Emby-Token": api_key},
-            timeout=5,
+            timeout=_TEST_SERVER_TIMEOUT,
         )
         if response.status_code == 200:
             return jsonify({"status": "success", "message": "Connected to Jellyfin successfully!"})
@@ -757,10 +772,10 @@ def auto_detect_paths() -> ResponseReturnValue:
             {
                 "Recursive": "true",
                 "IncludeItemTypes": "Movie",
-                "Limit": "10",
+                "Limit": str(_AUTO_DETECT_SAMPLE_LIMIT),
                 "Fields": "Path",
             },
-            timeout=10,
+            timeout=_AUTO_DETECT_JELLYFIN_TIMEOUT,
         )
     except (requests.exceptions.RequestException, RuntimeError) as exc:
         return jsonify({"status": "error", "message": str(exc)}), 400
@@ -784,7 +799,7 @@ def auto_detect_paths() -> ResponseReturnValue:
 
         match_found = _search_local_filesystem(
             os.path.basename(j_path),
-            [home_dir, "/media", "/mnt"],
+            list(_DEFAULT_SEARCH_ROOTS),
         )
         if match_found:
             detected_j_root, detected_h_root = _compute_common_root(j_path, match_found)
