@@ -992,6 +992,146 @@ def _process_collection_group(
     return result
 
 
+def _auto_create_library(
+    result: dict[str, Any],
+    group_name: str,
+    group_dir: str,
+    url: str,
+    api_key: str,
+    dry_run: bool,
+    auto_create_libraries: bool,
+    links_created: int,
+    existing_libraries: list[str] | None,
+    target_path_in_jellyfin: str,
+) -> dict[str, Any]:
+    """Create a Jellyfin library for the group if configured.
+
+    Mutates *existing_libraries* to prevent double creation in the same run.
+    """
+    if not dry_run and auto_create_libraries and links_created > 0:
+        if existing_libraries is not None and group_name not in existing_libraries:
+            logger.info("Creating Jellyfin library for grouping: %r", group_name)
+            lib_path = os.path.join(target_path_in_jellyfin, group_name) if target_path_in_jellyfin else group_dir
+
+            try:
+                add_virtual_folder(url, api_key, group_name, [lib_path], collection_type="mixed")
+                logger.info("Successfully created library %r with path %r", group_name, lib_path)
+                existing_libraries.append(group_name)
+            except (requests.exceptions.RequestException, RuntimeError, OSError) as exc:
+                logger.error("Failed to create Jellyfin library %r: %s", group_name, exc)
+                result["library_error"] = str(exc)
+    return result
+
+
+def _auto_set_library_cover(
+    group_name: str,
+    source_cover: str | None,
+    url: str,
+    api_key: str,
+    dry_run: bool,
+    auto_set_library_covers: bool,
+) -> None:
+    """Set the library cover image via API if configured."""
+    if not dry_run and auto_set_library_covers and source_cover and os.path.exists(source_cover):
+        logger.info("Setting cover image for library %r via API", group_name)
+        set_virtual_folder_image(url, api_key, group_name, source_cover)
+
+
+def _create_group_symlinks(
+    items: list[dict[str, Any]],
+    group_dir: str,
+    group_name: str,
+    jellyfin_root: str,
+    host_root: str,
+    sort_order: str,
+    dry_run: bool,
+) -> tuple[int, list[dict[str, Any]]]:
+    """Create symlinks (or preview items) for *items* inside *group_dir*.
+
+    Returns:
+        A tuple of ``(links_created, preview_items)``.
+    """
+    use_prefix: bool = bool(sort_order)
+    width: int = max(len(str(len(items))) if items else _MIN_PREFIX_WIDTH, _MIN_PREFIX_WIDTH)
+    links_created: int = 0
+    preview_items: list[dict[str, Any]] = []
+
+    for idx, item in enumerate(items, start=1):
+        if not isinstance(item, dict):
+            continue
+
+        source_path: str | None = item.get("Path")
+        if not source_path or not isinstance(source_path, str):
+            logger.info("Item %s has no valid Path — skipping", item.get('Id'))
+            continue
+
+        host_path = _translate_path(source_path, jellyfin_root, host_root)
+        if host_path != source_path:
+            logger.info("Translated path: %s -> %s", source_path, host_path)
+
+        if not os.path.exists(host_path):
+            logger.info("Skipping (path not found on host): %s", host_path)
+            continue
+
+        file_name: str = os.path.basename(host_path)
+        if use_prefix:
+            file_name = f"{str(idx).zfill(width)} - {file_name}"
+
+        dest_path: str = os.path.join(group_dir, file_name)
+        if dry_run:
+            if len(preview_items) < _MAX_PREVIEW_ITEMS:
+                preview_items.append(_build_preview_item(item, file_name))
+            links_created += 1
+        else:
+            try:
+                os.symlink(host_path, dest_path)
+                logger.info("Created symlink: %s -> %s", dest_path, host_path)
+                links_created += 1
+            except OSError as exc:
+                logger.error("Error creating symlink %s: %s", dest_path, exc)
+
+    if dry_run:
+        logger.info("Would create %s symlinks for %r", links_created, group_name)
+    else:
+        logger.info("Created %s symlinks for %r", links_created, group_name)
+
+    return links_created, preview_items
+
+
+def _prepare_group_directory(
+    group_dir: str,
+    group_name: str,
+    target_base: str,
+    dry_run: bool,
+) -> str | dict[str, Any]:
+    """Clean up and recreate the group directory, copying a cover image if available.
+
+    Returns:
+        The path to the source cover image, or an error dict on failure.
+    """
+    source_cover: str | None = None
+    if not dry_run:
+        try:
+            if os.path.exists(group_dir):
+                logger.info("Cleaning existing directory: %s", group_dir)
+                shutil.rmtree(group_dir)
+            os.makedirs(group_dir, exist_ok=True)
+        except OSError as exc:
+            logger.error("Failed to prepare group directory %r: %s", group_dir, exc)
+            return {"group": group_name, "links": 0, "error": f"Directory error: {exc!s}"}
+
+        source_cover = _get_cover_path(group_name, target_base)
+        if source_cover:
+            poster_dest = os.path.join(group_dir, "poster.jpg")
+            try:
+                shutil.copy2(source_cover, poster_dest)
+                logger.info("Copied cover image from %s to %s", source_cover, poster_dest)
+            except OSError as exc:
+                logger.error("Failed to copy cover image: %s", exc)
+
+    return source_cover or ""
+
+
 def _process_group(
     group: dict[str, Any],
     target_base: str,
@@ -1040,27 +1180,9 @@ def _process_group(
 
     logger.info("Processing group: %r -> %s  (sort_order=%r)", group_name, group_dir, sort_order)
 
-    # Clean up and recreate the group directory
-    if not dry_run:
-        try:
-            if os.path.exists(group_dir):
-                logger.info("Cleaning existing directory: %s", group_dir)
-                shutil.rmtree(group_dir)
-            os.makedirs(group_dir, exist_ok=True)
-        except OSError as exc:
-            logger.error("Failed to prepare group directory %r: %s", group_dir, exc)
-            return {"group": group_name, "links": 0, "error": f"Directory error: {exc!s}"}
-
-        # Check if there is an auto-generated cover to copy
-        source_cover = _get_cover_path(group_name, target_base)
-
-        if source_cover:
-            poster_dest = os.path.join(group_dir, "poster.jpg")
-            try:
-                shutil.copy2(source_cover, poster_dest)
-                logger.info("Copied cover image from %s to %s", source_cover, poster_dest)
-            except OSError as exc:
-                logger.error("Failed to copy cover image: %s", exc)
+    source_cover = _prepare_group_directory(group_dir, group_name, target_base, dry_run)
+    if isinstance(source_cover, dict):
+        return source_cover
 
     # --- Resolve items ---
     error: str | None = None
@@ -1142,80 +1264,20 @@ def _process_group(
         )
 
     # --- Create symlinks ---
-    use_prefix: bool = bool(sort_order)  # numbered prefix ↔ any sort order
-    width: int = max(len(str(len(items))) if items else _MIN_PREFIX_WIDTH, _MIN_PREFIX_WIDTH)
-    links_created: int = 0
-    preview_items: list[dict[str, Any]] = []
-
-    for idx, item in enumerate(items, start=1):
-        if not isinstance(item, dict):
-            continue
-
-        source_path: str | None = item.get("Path")
-        if not source_path or not isinstance(source_path, str):
-            logger.info("Item %s has no valid Path — skipping", item.get('Id'))
-            continue
-
-        host_path = _translate_path(source_path, jellyfin_root, host_root)
-        if host_path != source_path:
-            logger.info("Translated path: %s -> %s", source_path, host_path)
-
-        if not os.path.exists(host_path):
-            logger.info("Skipping (path not found on host): %s", host_path)
-            continue
-
-        file_name: str = os.path.basename(host_path)
-        if use_prefix:
-            file_name = f"{str(idx).zfill(width)} - {file_name}"
-
-        dest_path: str = os.path.join(group_dir, file_name)
-        if dry_run:
-            if len(preview_items) < _MAX_PREVIEW_ITEMS:
-                preview_items.append(_build_preview_item(item, file_name))
-            links_created += 1
-        else:
-            try:
-                os.symlink(host_path, dest_path)
-                logger.info("Created symlink: %s -> %s", dest_path, host_path)
-                links_created += 1
-            except OSError as exc:
-                logger.error("Error creating symlink %s: %s", dest_path, exc)
-
-    if dry_run:
-        logger.info("Would create %s symlinks for %r", links_created, group_name)
-    else:
-        logger.info("Created %s symlinks for %r", links_created, group_name)
+    links_created, preview_items = _create_group_symlinks(
+        items, group_dir, group_name, jellyfin_root, host_root, sort_order, dry_run
+    )
     result: dict[str, Any] = {"group": group_name, "links": links_created}
     if dry_run:
         result["items"] = preview_items
 
-    # --- Automatic Library Creation ---
-    if (
-        not dry_run
-        and auto_create_libraries
-        and links_created > 0
-    ):
-        if existing_libraries is not None and group_name not in existing_libraries:
-            logger.info("Creating Jellyfin library for grouping: %r", group_name)
-            # Resolve the path as Jellyfin sees it
-            if target_path_in_jellyfin:
-                lib_path = os.path.join(target_path_in_jellyfin, group_name)
-            else:
-                lib_path = group_dir
-
-            try:
-                add_virtual_folder(url, api_key, group_name, [lib_path], collection_type="mixed")
-                logger.info("Successfully created library %r with path %r", group_name, lib_path)
-                existing_libraries.append(group_name)  # Prevent double creation in same run
-            except (requests.exceptions.RequestException, RuntimeError, OSError) as exc:
-                logger.error("Failed to create Jellyfin library %r: %s", group_name, exc)
-                result["library_error"] = str(exc)
-
-    # --- Automatic Library Cover ---
-    if not dry_run and auto_set_library_covers:
-        if source_cover and os.path.exists(source_cover):
-            logger.info("Setting cover image for library %r via API", group_name)
-            set_virtual_folder_image(url, api_key, group_name, source_cover)
+    result = _auto_create_library(
+        result, group_name, group_dir, url, api_key,
+        dry_run, auto_create_libraries, links_created, existing_libraries, target_path_in_jellyfin,
+    )
+    _auto_set_library_cover(
+        group_name, source_cover, url, api_key, dry_run, auto_set_library_covers,
+    )
 
     return result
 
