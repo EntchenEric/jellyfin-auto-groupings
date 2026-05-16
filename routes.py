@@ -420,6 +420,8 @@ def upload_cover() -> ResponseReturnValue:
             f.write(decoded)
 
         return jsonify({"status": "success", "message": "Cover saved successfully"})
+    except ValueError:
+        return jsonify({"status": "error", "message": "Malformed image data"}), 400
     except Exception as exc:
         logger.exception("Failed to save cover image")
         return jsonify({"status": "error", "message": f"Server error: {exc!s}"}), 500
