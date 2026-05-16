@@ -912,7 +912,7 @@ def preview_group(
     Returns:
         A ``(items, error, status_code)`` tuple.
     """
-    if re.search(r"\s+(AND NOT|OR NOT|AND|OR)\s+", val, re.IGNORECASE):
+    if _COMPLEX_QUERY_RE.search(val):
         rules = parse_complex_query(val, type_name)
         return _fetch_items_for_complex_group("preview", rules, "", url, api_key, watch_state)
     else:
