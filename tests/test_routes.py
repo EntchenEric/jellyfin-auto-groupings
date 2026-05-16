@@ -3,7 +3,7 @@ import os
 import requests
 from unittest.mock import patch, MagicMock
 from config import save_config
-from routes import _compute_common_root
+from routes import _compute_common_root, _fetch_jellyfin_endpoint, _handle_config_error, MAX_B64_SIZE
 
 
 @pytest.mark.usefixtures("temp_config")
@@ -101,8 +101,8 @@ def test_api_sync(mock_sync, client):
 
 
 def test_upload_cover_security_check(client):
-    # Test with massive payload
-    large_data = "data:image/jpeg;base64," + "a" * (5 * 1024 * 1024)  # 5MB
+    # Test with payload exceeding MAX_B64_SIZE
+    large_data = "data:image/jpeg;base64," + "a" * (MAX_B64_SIZE + 1024 * 1024)
     response = client.post('/api/upload_cover', json={"group_name": "G", "image": large_data})
     assert response.status_code == 413
 
@@ -616,7 +616,6 @@ def test_update_config_invalid_cleanup_cron(client):
 @patch('routes.requests.get')
 @pytest.mark.usefixtures("temp_config")
 def test_fetch_jellyfin_endpoint_partial_data(mock_get, client):
-    from routes import _fetch_jellyfin_endpoint
     resp1 = MagicMock()
     resp1.status_code = 200
     resp1.json.return_value = {"Items": [{"Name": f"G{i}"} for i in range(200)]}
@@ -634,7 +633,6 @@ def test_fetch_jellyfin_endpoint_partial_data(mock_get, client):
 @patch('routes.requests.get')
 @pytest.mark.usefixtures("temp_config")
 def test_fetch_jellyfin_endpoint_pagination(mock_get, client):
-    from routes import _fetch_jellyfin_endpoint
     resp1 = MagicMock()
     resp1.status_code = 200
     resp1.json.return_value = {"Items": [{"Name": f"G{i}"} for i in range(200)]}
@@ -925,7 +923,6 @@ def test_get_test_results_success(mock_open, mock_exists, client):
 
 
 def test_handle_config_error_non_http():
-    from routes import _handle_config_error
     with pytest.raises(Exception, match="not http"):
         _handle_config_error(Exception("not http"))
 
