@@ -924,6 +924,12 @@ def test_get_test_results_success(mock_open, mock_exists, client):
     assert "test output" in data["results"].values()
 
 
+def test_handle_config_error_non_http():
+    from routes import _handle_config_error
+    with pytest.raises(Exception, match="not http"):
+        _handle_config_error(Exception("not http"))
+
+
 # run_tests production mode (line 838-845)
 @patch('routes.current_app')
 def test_run_tests_production(mock_app, client):
