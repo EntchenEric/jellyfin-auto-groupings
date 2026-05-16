@@ -75,8 +75,8 @@ def test_get_libraries_500(jellyfin_url):
 
 def test_get_libraries_missing_name(jellyfin_url):
     libs = get_libraries(jellyfin_url, "LIB_GET_MISSING_NAME")
-    # Missing names should result in empty strings as per get_libraries list comprehension
-    assert libs == [""]
+    # Missing/empty names are filtered out
+    assert libs == []
 
 
 def test_get_libraries_empty(jellyfin_url):
@@ -127,13 +127,13 @@ def test_add_virtual_folder_empty_paths(jellyfin_url):
 
 
 def test_delete_virtual_folder_404(jellyfin_url, caplog):
-    with pytest.raises(requests.exceptions.HTTPError):
+    with pytest.raises(RuntimeError):
         delete_virtual_folder(jellyfin_url, "test_key", "FAIL_DELETE_404")
     assert "Delete Virtual Folder Failed (404)" in caplog.text
 
 
 def test_delete_virtual_folder_500(jellyfin_url):
-    with pytest.raises(requests.exceptions.HTTPError):
+    with pytest.raises(RuntimeError):
         delete_virtual_folder(jellyfin_url, "test_key", "FAIL_DELETE_500")
 
 # 6. get_library_id Exhaustive
