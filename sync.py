@@ -254,8 +254,6 @@ def _match_jellyfin_items_by_provider(
     return items, None, 200
 
 
-
-
 def _sort_items_in_memory(
     items: list[dict[str, Any]],
     sort_order: str,
@@ -634,7 +632,7 @@ def _fetch_items_for_recommendations_group(
     try:
         # Fetch user's recent items from Jellyfin
         recent_items = get_user_recent_items(url, api_key, user_id, limit=20)
-        
+
         # Extract TMDb IDs and Media Type
         tmdb_requests = []
         for item in recent_items:
@@ -643,7 +641,7 @@ def _fetch_items_for_recommendations_group(
             if tmdb_id and item_type in ("Movie", "Series"):
                 media_type = "movie" if item_type == "Movie" else "tv"
                 tmdb_requests.append((str(tmdb_id), media_type))
-                
+
         if not tmdb_requests:
             logger.info(f"No TMDb IDs found in recent items for user {user_id!r}")
             return [], None, 200
@@ -677,20 +675,20 @@ def _match_condition(item: dict[str, Any], r_type: str, r_val: str) -> bool:
     """
     if not r_type or not r_val:
         return False
-        
+
     try:
         if r_type == "genre":
             return any(r_val == str(g).strip().lower() for g in (item.get("Genres") or []))
         elif r_type == "actor":
             return any(
-                r_val == str(p.get("Name", "")).strip().lower() 
-                for p in (item.get("People") or []) 
+                r_val == str(p.get("Name", "")).strip().lower()
+                for p in (item.get("People") or [])
                 if isinstance(p, dict) and p.get("Type") == "Actor"
             )
         elif r_type == "studio":
             return any(
-                r_val == str(s.get("Name", "")).strip().lower() 
-                for s in (item.get("Studios") or []) 
+                r_val == str(s.get("Name", "")).strip().lower()
+                for s in (item.get("Studios") or [])
                 if isinstance(s, dict)
             )
         elif r_type == "tag":
@@ -701,7 +699,7 @@ def _match_condition(item: dict[str, Any], r_type: str, r_val: str) -> bool:
                 return str(val).strip().lower() == r_val
     except (AttributeError, TypeError, ValueError):
         pass
-        
+
     return False
 
 
@@ -721,7 +719,7 @@ def _eval_item(item: dict[str, Any], rules: list[dict[str, Any]]) -> bool:
     first_rule = rules[0]
     # Treat the first rule as initializing the boolean state
     result = _match_condition(item, first_rule["type"], first_rule["value"])
-    
+
     # If the very first rule is NOT, we invert it (so we start with everything else)
     if first_rule["operator"].endswith("NOT"):
         result = not result
@@ -729,7 +727,7 @@ def _eval_item(item: dict[str, Any], rules: list[dict[str, Any]]) -> bool:
     for rule in rules[1:]:
         op = rule["operator"]
         matched = _match_condition(item, rule["type"], rule["value"])
-        
+
         if op == "AND":
             result = result and matched
         elif op == "OR":
@@ -788,7 +786,7 @@ def _fetch_items_for_complex_group(
         return [], None, 200
 
     filtered = [item for item in raw_items if _eval_item(item, valid_rules)]
-    
+
     if watch_state == "unwatched":
         filtered = [i for i in filtered if not i.get("UserData", {}).get("Played")]
     elif watch_state == "watched":
@@ -796,7 +794,7 @@ def _fetch_items_for_complex_group(
 
     # In-memory sorting because this is local filtering
     sorted_items = _sort_items_in_memory(filtered, sort_order)
-    
+
     return sorted_items, None, 200
 
 
@@ -866,6 +864,7 @@ def _fetch_items_for_metadata_group(
         logging.exception("Unexpected error fetching items for group %r", group_name)
         return [], f"Internal error: {exc!s}", 500  # noqa: BLE001
 
+
 def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
     """Parse a complex textual rule query into a list of structured rules.
 
@@ -883,9 +882,9 @@ def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
     # Simple regex to split the logical logic
     pattern = re.compile(r'\s+(AND NOT|OR NOT|AND|OR)\s+', re.IGNORECASE)
     parts = pattern.split(query.strip())
-    
+
     rules = []
-    
+
     def _parse_item(item_str: str) -> tuple[str, str]:
         if ":" in item_str:
             t, v = item_str.split(":", 1)
@@ -900,7 +899,7 @@ def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
         "type": t0,
         "value": v0
     })
-    
+
     for i in range(1, len(parts), 2):
         op = parts[i].upper().replace('  ', ' ')
         ti, vi = _parse_item(parts[i+1])
@@ -909,20 +908,20 @@ def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
             "type": ti,
             "value": vi
         })
-        
+
     return rules
 
 
 def preview_group(
-    type_name: str, 
-    val: str, 
-    url: str, 
+    type_name: str,
+    val: str,
+    url: str,
     api_key: str,
     watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
     """Resolve items for a grouping preview.
 
-    If the *val* contains logical operators (AND, OR, etc.), it is parsed as a 
+    If the *val* contains logical operators (AND, OR, etc.), it is parsed as a
     complex query. Otherwise, it is treated as a simple metadata filter.
 
     Args:
@@ -1099,9 +1098,11 @@ def _process_group(
         )
     else:
         val_str = str(source_value or "")
-        
+
         # Determine if it's a complex textual rule that needs local parsing
-        if source_type in ["genre", "actor", "studio", "tag", "year"] and re.search(r'\s+(AND NOT|OR NOT|AND|OR)\s+', val_str, re.IGNORECASE):
+        if source_type in ["genre", "actor", "studio", "tag", "year"] and re.search(
+            r'\s+(AND NOT|OR NOT|AND|OR)\s+', val_str, re.IGNORECASE
+        ):
             rules = parse_complex_query(val_str, str(source_type))
             items, error, status_code = _fetch_items_for_complex_group(
                 group_name, rules, sort_order, url, api_key, watch_state
@@ -1169,7 +1170,11 @@ def _process_group(
         dest_path: str = os.path.join(group_dir, file_name)
         if dry_run:
             if len(preview_items) < 100:
-                preview_items.append({"Name": item.get("Name", "Unknown"), "Year": item.get("ProductionYear", ""), "FileName": file_name})
+                preview_items.append({
+                    "Name": item.get("Name", "Unknown"),
+                    "Year": item.get("ProductionYear", ""),
+                    "FileName": file_name,
+                })
             links_created += 1
         else:
             try:
@@ -1186,7 +1191,7 @@ def _process_group(
     result: dict[str, Any] = {"group": group_name, "links": links_created}
     if dry_run:
         result["items"] = preview_items
-    
+
     # --- Automatic Library Creation ---
     if (
         not dry_run
@@ -1200,11 +1205,11 @@ def _process_group(
                 lib_path = os.path.join(target_path_in_jellyfin, group_name)
             else:
                 lib_path = group_dir
-                
+
             try:
                 add_virtual_folder(url, api_key, group_name, [lib_path], collection_type="mixed")
                 logger.info(f"Successfully created library {group_name!r} with path {lib_path!r}")
-                existing_libraries.append(group_name) # Prevent double creation in same run
+                existing_libraries.append(group_name)  # Prevent double creation in same run
             except Exception as exc:
                 logger.error(f"Failed to create Jellyfin library {group_name!r}: {exc}")
                 result["library_error"] = str(exc)
@@ -1218,22 +1223,21 @@ def _process_group(
     return result
 
 
-
 def _is_in_season(start_str: Any, end_str: Any) -> bool:
     """Check if the current date is within the seasonal window [start, end).
     Dates are in 'MM-DD' format.
     """
     if not isinstance(start_str, str) or not isinstance(end_str, str):
         return True
-    
+
     try:
         now = datetime.now()
         current_md = now.strftime("%m-%d")
-        
+
         # We know they are strings now
         s: str = start_str
         e: str = end_str
-        
+
         if s <= e:
             # Simple case: window stays within one calendar year (e.g., 06-01 to 08-31)
             return s <= current_md < e
@@ -1242,6 +1246,7 @@ def _is_in_season(start_str: Any, end_str: Any) -> bool:
             return current_md >= s or current_md < e
     except (ValueError, TypeError):
         return True
+
 
 def run_sync(
     config: dict[str, Any], dry_run: bool = False, group_names: list[str] | None = None
@@ -1305,7 +1310,7 @@ def run_sync(
         except Exception as exc:
             logger.warning(f"Warning: Could not fetch existing libraries: {exc}")
             # We'll continue, but library creation might fail or try to recreate existing ones
-            auto_create_libraries = False 
+            auto_create_libraries = False
 
     with _LIBRARY_CACHE_LOCK:
         _LIBRARY_CACHE.clear()
@@ -1315,7 +1320,7 @@ def run_sync(
         if not isinstance(group, dict):
             logger.info(f"Skipping invalid group entry: {group}")
             continue
-        
+
         name = group.get("name", "").strip()
         if group_names is not None:
             if not name or name not in group_names:
@@ -1367,13 +1372,13 @@ def run_cleanup_broken_symlinks(config: dict[str, Any]) -> int:
         The number of broken symlinks deleted.
     """
     target_base: str = str(config.get("target_path", ""))
-    
+
     if not target_base or not os.path.isdir(target_base):
         logger.info(f"Cleanup aborted: invalid target base path '{target_base}'")
         return 0
 
     deleted_count = 0
-    
+
     for root, dirs, files in os.walk(target_base):
         for name in files:
             path = os.path.join(root, name)
@@ -1385,5 +1390,5 @@ def run_cleanup_broken_symlinks(config: dict[str, Any]) -> int:
                     deleted_count += 1
                 except OSError as exc:
                     logger.error(f"Error deleting broken symlink {path}: {exc}")
-                    
+
     return deleted_count
