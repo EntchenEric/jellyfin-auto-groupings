@@ -6,6 +6,7 @@ from mal import fetch_mal_list
 from trakt import fetch_trakt_list
 from anilist import fetch_anilist_list
 from tmdb import fetch_tmdb_list
+from letterboxd import _extract_ids_from_list_page, _fetch_id_for_slug
 
 
 @patch('requests.Session.get')
@@ -184,8 +185,6 @@ def test_fetch_anilist_empty_data(mock_post):
 # ---------------------------------------------------------------------------
 # letterboxd.py edge cases
 # ---------------------------------------------------------------------------
-
-from letterboxd import _extract_ids_from_list_page, _fetch_id_for_slug
 
 
 def test_extract_ids_tmdb_from_list_page():

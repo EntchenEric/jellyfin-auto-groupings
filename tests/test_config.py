@@ -58,8 +58,6 @@ def test_nested_defaults(temp_config):
 # config.py edge cases
 # ---------------------------------------------------------------------------
 
-import pytest
-
 
 def test_load_config_corrupt_file(temp_config):
     """Test that a corrupt config file falls back to defaults."""

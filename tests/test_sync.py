@@ -26,6 +26,8 @@ from sync import (
     _fetch_full_library,
     _fetch_items_for_complex_group,
     _fetch_items_for_metadata_group,
+    _process_group,
+    run_sync,
 )
 
 
@@ -191,7 +193,6 @@ def test_preview_group(mock_jf):
 
 @patch('sync.fetch_jellyfin_items')
 def test_fetch_items_for_metadata_group_with_watch_state(mock_jf):
-    from sync import _fetch_items_for_metadata_group
     mock_jf.return_value = [{"Name": "M1"}]
     # Test 'unwatched' calls fetch with Filters=IsUnplayed
     _fetch_items_for_metadata_group("Group", "genre", "Action", "SortName", "http://jf", "key", "unwatched")
@@ -802,8 +803,6 @@ def test_complex_group_watch_state(mock_lib):
 
 @patch('sync.fetch_jellyfin_items')
 def test_fetch_items_metadata_request_error(mock_fetch):
-    from sync import _fetch_items_for_metadata_group
-
     mock_fetch.side_effect = requests.exceptions.ConnectionError("fail")
     items, error, code = _fetch_items_for_metadata_group(
         "Group", "genre", "Action", "SortName", "http://jf", "key"
@@ -814,8 +813,6 @@ def test_fetch_items_metadata_request_error(mock_fetch):
 
 @patch('sync.fetch_jellyfin_items')
 def test_fetch_items_metadata_unexpected_error(mock_fetch):
-    from sync import _fetch_items_for_metadata_group
-
     mock_fetch.side_effect = TypeError("bad")
     items, error, code = _fetch_items_for_metadata_group(
         "Group", "genre", "Action", "SortName", "http://jf", "key"
@@ -864,8 +861,6 @@ def test_process_collection_group_cover_error(mock_find, mock_add, mock_cover, m
 
 
 # --- _process_group ---
-
-from sync import _process_group
 
 
 def test_process_group_empty_name(tmp_path):
@@ -1013,7 +1008,7 @@ def test_process_group_library_with_jellyfin_path(mock_meta, mock_add, tmp_path)
         "source_value": "Action",
         "sort_order": "SortName",
     }
-    result = _process_group(
+    _ = _process_group(
         group,
         str(tmp_path),
         "http://jf",
@@ -1045,7 +1040,7 @@ def test_process_group_library_already_exists(mock_meta, mock_add, tmp_path):
         "source_value": "Action",
         "sort_order": "SortName",
     }
-    result = _process_group(
+    _ = _process_group(
         group,
         str(tmp_path),
         "http://jf",
@@ -1100,8 +1095,6 @@ def test_process_group_auto_set_library_covers(mock_meta, mock_cover, mock_set, 
 
 
 # --- run_sync ---
-
-from sync import run_sync
 
 
 def test_run_sync_missing_settings():

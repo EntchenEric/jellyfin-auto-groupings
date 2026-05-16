@@ -3,6 +3,7 @@ from scheduler import (
     update_scheduler_jobs,
     _run_global_sync_job,
     _run_group_sync_job,
+    _run_cleanup_job,
     start_scheduler,
     validate_cron,
 )
@@ -155,8 +156,6 @@ def test_validate_cron_invalid_values():
 # ---------------------------------------------------------------------------
 # scheduler.py edge cases
 # ---------------------------------------------------------------------------
-
-from scheduler import _run_cleanup_job
 
 
 @patch('scheduler._scheduler')

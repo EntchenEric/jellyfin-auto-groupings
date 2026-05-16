@@ -68,8 +68,6 @@ def test_fetch_anilist_list(mock_post):
 # imdb.py edge cases
 # ---------------------------------------------------------------------------
 
-from imdb import fetch_imdb_list
-
 
 def test_fetch_imdb_invalid_id():
     with pytest.raises(ValueError, match="Invalid IMDb list ID"):
@@ -109,8 +107,6 @@ def test_fetch_imdb_pagination(mock_get):
 # ---------------------------------------------------------------------------
 # anilist.py edge cases
 # ---------------------------------------------------------------------------
-
-from anilist import fetch_anilist_list
 
 
 @patch('anilist.requests.post')
