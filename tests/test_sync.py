@@ -28,6 +28,7 @@ from sync import (
     _fetch_items_for_metadata_group,
     _process_group,
     run_sync,
+    _filter_by_watch_state,
 )
 
 
@@ -641,6 +642,16 @@ def test_fetch_items_mal_empty(mock_fetch):
 def test_translate_path_valueerror():
     # os.path.commonpath raises ValueError for mixed abs/relative paths
     assert _translate_path("/foo", ".", "/host") == "/foo"
+
+
+def test_filter_by_watch_state():
+    unwatched = {"UserData": {"Played": False}}
+    watched = {"UserData": {"Played": True}}
+    no_data = {}
+
+    assert _filter_by_watch_state([unwatched, watched, no_data], "unwatched") == [unwatched, no_data]
+    assert _filter_by_watch_state([unwatched, watched, no_data], "watched") == [watched]
+    assert _filter_by_watch_state([unwatched, watched, no_data], "all") == [unwatched, watched, no_data]
 
 
 def test_get_cover_path_no_target_base():
