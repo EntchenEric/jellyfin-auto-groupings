@@ -26,6 +26,17 @@ def test_get_libraries(mock_get):
     )
 
 
+@patch('requests.get')
+def test_get_libraries_filters_empty_names(mock_get):
+    mock_response = MagicMock()
+    mock_response.json.return_value = [{"Name": "Movies"}, {"Name": None}, {"Name": ""}, {"Name": "TV Shows"}]
+    mock_response.raise_for_status.return_value = None
+    mock_get.return_value = mock_response
+
+    libs = get_libraries("http://localhost:8096", "test_key")
+    assert libs == ["Movies", "TV Shows"]
+
+
 @patch('requests.post')
 def test_add_virtual_folder_success(mock_post):
     mock_response = MagicMock()
