@@ -1,6 +1,5 @@
 import os
 import hashlib
-import requests
 import pytest
 from unittest.mock import patch
 from sync import (

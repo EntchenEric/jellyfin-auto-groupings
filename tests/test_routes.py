@@ -618,7 +618,7 @@ def test_update_config_invalid_cleanup_cron(client):
 def test_fetch_jellyfin_endpoint_partial_data(mock_get, client):
     resp1 = MagicMock()
     resp1.status_code = 200
-    resp1.json.return_value = {"Items": [{"Name": f"G{i}"} for i in range(200)]}
+    resp1.json.return_value = {"Items": [{"Name": f"G{i}"} for i in range(200)], "TotalRecordCount": 201}
     resp1.raise_for_status = MagicMock()
 
     resp2 = MagicMock()
@@ -635,7 +635,7 @@ def test_fetch_jellyfin_endpoint_partial_data(mock_get, client):
 def test_fetch_jellyfin_endpoint_pagination(mock_get, client):
     resp1 = MagicMock()
     resp1.status_code = 200
-    resp1.json.return_value = {"Items": [{"Name": f"G{i}"} for i in range(200)]}
+    resp1.json.return_value = {"Items": [{"Name": f"G{i}"} for i in range(200)], "TotalRecordCount": 201}
     resp1.raise_for_status = MagicMock()
 
     resp2 = MagicMock()

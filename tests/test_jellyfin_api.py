@@ -210,7 +210,7 @@ def test_get_users(mock_get):
 @patch('requests.get')
 def test_get_user_recent_items(mock_get):
     mock_response = MagicMock()
-    mock_response.json.return_value = {"Items": [{"Name": "Movie 1"}, {"Name": "Show 1"}]}
+    mock_response.json.return_value = {"Items": [{"Name": "Movie 1"}, {"Name": "Show 1"}], "TotalRecordCount": 2}
     mock_response.raise_for_status.return_value = None
     mock_get.return_value = mock_response
 
@@ -698,3 +698,30 @@ def test_set_collection_image_request_exception_no_response(mock_post, mock_open
 
     set_collection_image("http://localhost:8096", "test_key", "col_1", "/path/img.jpg")
     assert "Failed to upload image for item 'col_1': Upload Error" in caplog.text
+
+
+@patch('requests.post')
+def test_post_or_raise_with_data(mock_post):
+    mock_post.return_value = MagicMock()
+    mock_post.return_value.raise_for_status.return_value = None
+    from jellyfin import _post_or_raise
+    _post_or_raise("http://test", headers={"X-Emby-Token": "key"}, data="payload", error_prefix="Test")
+    _args, kwargs = mock_post.call_args
+    assert kwargs["data"] == "payload"
+
+
+def test_request_or_raise_unsupported_method():
+    from jellyfin import _request_or_raise
+    with pytest.raises(ValueError, match="Unsupported HTTP method: PUT"):
+        _request_or_raise("PUT", "http://test")
+
+
+@patch('requests.get')
+def test_paginate_jellyfin_empty_page(mock_get):
+    mock_get.return_value = MagicMock()
+    mock_get.return_value.json.return_value = {"Items": [], "TotalRecordCount": 0}
+    mock_get.return_value.raise_for_status.return_value = None
+    from jellyfin import _paginate_jellyfin
+    pages = list(_paginate_jellyfin("http://test", "key", "Items"))
+    assert pages == [[]]
+

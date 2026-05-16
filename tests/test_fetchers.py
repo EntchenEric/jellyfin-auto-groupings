@@ -11,7 +11,7 @@ from jellyfin import fetch_jellyfin_items
 def test_fetch_jellyfin_items(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 200
-    mock_resp.json.return_value = {"Items": [{"Name": "M1"}]}
+    mock_resp.json.return_value = {"Items": [{"Name": "M1"}], "TotalRecordCount": 1}
     mock_get.return_value = mock_resp
     items = fetch_jellyfin_items("http://jf", "key", {"Type": "Movie"})
     assert items == [{"Name": "M1"}]

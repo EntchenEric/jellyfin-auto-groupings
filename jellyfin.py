@@ -123,14 +123,12 @@ def _request_or_raise(
     if json is not None:
         kwargs["json"] = json
     try:
-        if method == "GET":
-            response = requests.get(url, **kwargs)
-        elif method == "POST":
+        if method == "POST":
             response = requests.post(url, **kwargs)
         elif method == "DELETE":
             response = requests.delete(url, **kwargs)
         else:
-            response = requests.request(method, url, **kwargs)
+            raise ValueError(f"Unsupported HTTP method: {method}")
         response.raise_for_status()
         return response
     except requests.exceptions.RequestException as exc:
