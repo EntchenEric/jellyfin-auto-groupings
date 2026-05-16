@@ -226,15 +226,19 @@ def test_fetch_id_for_slug_request_exception(mock_get):
 def test_letterboxd_404_on_page_two(mock_get):
     resp1 = MagicMock()
     resp1.status_code = 200
-    resp1.text = 'data-film-slug="film1"'
+    resp1.text = 'data-film-slug="film1" class="next"'
 
     resp2 = MagicMock()
-    resp2.status_code = 404
+    resp2.status_code = 200
+    resp2.text = 'href="https://www.imdb.com/title/tt1234567/"'
 
-    mock_get.side_effect = [resp1, resp2]
+    resp3 = MagicMock()
+    resp3.status_code = 404
+
+    mock_get.side_effect = [resp1, resp2, resp3]
 
     ids = fetch_letterboxd_list("https://letterboxd.com/user/list/my-list")
-    assert ids == []
+    assert ids == ["tt1234567"]
 
 
 @patch('requests.Session.get')

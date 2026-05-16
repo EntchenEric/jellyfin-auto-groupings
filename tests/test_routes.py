@@ -1040,3 +1040,17 @@ def test_run_tests_success(mock_run, client, app):
     response = client.post('/api/test/run')
     assert response.status_code == 200
     assert "Tests executed successfully." in response.get_json()["message"]
+
+
+from routes import _compute_common_root
+
+def test_compute_common_root_no_match():
+    assert _compute_common_root("/a/b/c", "/x/y/z") == (None, None)
+
+
+def test_compute_common_root_single_match():
+    assert _compute_common_root("/a/b/c", "/x/b/c") == ("/a", "/x")
+
+
+def test_compute_common_root_full_match():
+    assert _compute_common_root("/a/b/c", "/a/b/c") == (os.sep, os.sep)
