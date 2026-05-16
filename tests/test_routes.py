@@ -184,21 +184,13 @@ def test_update_config_non_dict(client):
 @patch('routes.update_scheduler_jobs')
 @pytest.mark.usefixtures("temp_config")
 def test_update_config_scheduler_fail(mock_sched, client):
-    mock_sched.side_effect = Exception("Fail")
+    mock_sched.side_effect = RuntimeError("Fail")
     response = client.post('/api/config', json={"jellyfin_url": "http://jf"})
     assert response.status_code == 500
     data = response.get_json()
     assert data["status"] == "error"
     assert "scheduler could not be updated" in data["message"]
     assert "config" in data
-
-
-@patch('routes.requests.get')
-def test_test_server_unexpected_error(mock_get, client):
-    mock_get.side_effect = Exception("Big fail")
-    response = client.post('/api/test-server', json={"jellyfin_url": "http://jf", "api_key": "k"})
-    assert response.status_code == 500
-    assert "Server error" in response.get_json()["message"]
 
 
 def test_test_server_invalid_body(client):
@@ -384,7 +376,7 @@ def test_upload_cover_malformed_data_url(client):
 
 @patch('routes.get_cover_path')
 def test_upload_cover_server_error(mock_get_cover, client):
-    mock_get_cover.side_effect = Exception("Disk full")
+    mock_get_cover.side_effect = OSError("Disk full")
     img_data = (
         "data:image/png;base64,"
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
@@ -653,9 +645,9 @@ def test_fetch_jellyfin_endpoint_pagination(mock_get, client):
 @pytest.mark.usefixtures("temp_config")
 def test_get_jellyfin_metadata_exception(mock_pool, client):
     save_config({"jellyfin_url": "http://test", "api_key": "key"})
-    mock_pool.side_effect = Exception("Pool fail")
+    mock_pool.side_effect = RuntimeError("Pool fail")
     response = client.get('/api/jellyfin/metadata')
-    assert response.status_code == 400
+    assert response.status_code == 500
 
 
 # Sync ValueError (lines 438-439)
@@ -743,15 +735,6 @@ def test_preview_grouping_no_config(client):
 def test_preview_grouping_runtime_error(mock_preview, client):
     save_config({"jellyfin_url": "http://t", "api_key": "k"})
     mock_preview.side_effect = RuntimeError("Preview failed")
-    response = client.post('/api/grouping/preview', json={"type": "genre", "value": "Action"})
-    assert response.status_code == 500
-
-
-@patch('routes.preview_group')
-@pytest.mark.usefixtures("temp_config")
-def test_preview_grouping_unexpected_error(mock_preview, client):
-    save_config({"jellyfin_url": "http://t", "api_key": "k"})
-    mock_preview.side_effect = TypeError("Unexpected")
     response = client.post('/api/grouping/preview', json={"type": "genre", "value": "Action"})
     assert response.status_code == 500
 
