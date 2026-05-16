@@ -49,6 +49,17 @@ def _raise_request_error(exc: requests.exceptions.RequestException, prefix: str)
     raise RuntimeError(_format_request_error(exc, prefix)) from exc
 
 
+def _parse_json(response: requests.Response) -> Any:
+    """Safely parse *response* JSON, translating decode failures into ``RuntimeError``."""
+    try:
+        return response.json()
+    except requests.exceptions.JSONDecodeError as exc:
+        snippet = response.text[:200]
+        raise RuntimeError(
+            f"Invalid JSON response (status {response.status_code}): {snippet}"
+        ) from exc
+
+
 # ---------------------------------------------------------------------------
 # Public helpers
 # ---------------------------------------------------------------------------
@@ -89,7 +100,7 @@ def fetch_jellyfin_items(
 
     response = requests.get(f"{base_url}/Items", headers=headers, params=params, timeout=timeout)
     response.raise_for_status()
-    return response.json().get("Items", [])
+    return _parse_json(response).get("Items", [])
 
 
 def get_libraries(base_url: str, api_key: str, timeout: int = 30) -> list[str]:
@@ -109,7 +120,7 @@ def get_libraries(base_url: str, api_key: str, timeout: int = 30) -> list[str]:
         timeout=timeout,
     )
     response.raise_for_status()
-    return [folder.get("Name", "") for folder in response.json()]
+    return [folder.get("Name", "") for folder in _parse_json(response)]
 
 
 def get_users(base_url: str, api_key: str, timeout: int = 30) -> list[dict[str, Any]]:
@@ -129,7 +140,7 @@ def get_users(base_url: str, api_key: str, timeout: int = 30) -> list[dict[str, 
         timeout=timeout,
     )
     response.raise_for_status()
-    return response.json()
+    return _parse_json(response)
 
 
 def get_user_recent_items(
@@ -163,7 +174,7 @@ def get_user_recent_items(
         timeout=timeout,
     )
     response.raise_for_status()
-    return response.json().get("Items", [])
+    return _parse_json(response).get("Items", [])
 
 
 def add_virtual_folder(
@@ -293,7 +304,7 @@ def get_library_id(base_url: str, api_key: str, name: str, timeout: int = 30) ->
         )
         response.raise_for_status()
 
-        for folder in response.json():
+        for folder in _parse_json(response):
             if folder.get("Name") == name:
                 item_id = folder.get("ItemId")
                 if item_id is not None:
@@ -403,7 +414,7 @@ def create_collection(
             timeout=timeout,
         )
         resp.raise_for_status()
-        data = resp.json()
+        data = _parse_json(resp)
         collection_id: str | None = data.get("Id")
         if not collection_id:
             raise RuntimeError(f"Collection created but no Id returned for {name!r}")
@@ -450,7 +461,7 @@ def find_collection_by_name(
                 timeout=timeout,
             )
             resp.raise_for_status()
-            data = resp.json()
+            data = _parse_json(resp)
             items = data.get("Items", [])
 
             for item in items:
