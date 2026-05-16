@@ -150,3 +150,67 @@ def test_validate_cron_invalid_values():
     assert err is not None
     err = validate_cron("not a cron expr")
     assert err is not None
+
+
+# ---------------------------------------------------------------------------
+# scheduler.py edge cases
+# ---------------------------------------------------------------------------
+
+from scheduler import _run_cleanup_job
+
+
+@patch('scheduler._scheduler')
+@patch('scheduler.load_config')
+def test_update_scheduler_jobs_non_dict_group(mock_load, mock_sched):
+    mock_load.return_value = {
+        "scheduler": {"global_enabled": False, "cleanup_enabled": False},
+        "groups": ["not_a_dict"]
+    }
+    update_scheduler_jobs()
+    mock_sched.add_job.assert_not_called()
+
+
+@patch('scheduler._scheduler')
+@patch('scheduler.load_config')
+def test_update_scheduler_jobs_group_no_name(mock_load, mock_sched):
+    mock_load.return_value = {
+        "scheduler": {"global_enabled": False, "cleanup_enabled": False},
+        "groups": [{"schedule_enabled": True, "schedule": "0 12 * * *"}]
+    }
+    update_scheduler_jobs()
+    mock_sched.add_job.assert_not_called()
+
+
+@patch('scheduler.CronTrigger.from_crontab')
+@patch('scheduler._scheduler')
+@patch('scheduler.load_config')
+def test_update_scheduler_jobs_group_error(mock_load, mock_sched, mock_cron):
+    mock_load.return_value = {
+        "scheduler": {"global_enabled": False, "cleanup_enabled": False},
+        "groups": [{"name": "BadGroup", "schedule_enabled": True, "schedule": "bad"}]
+    }
+    mock_cron.side_effect = ValueError("Invalid cron")
+    update_scheduler_jobs()
+    mock_sched.add_job.assert_not_called()
+
+
+@patch('scheduler.run_sync')
+@patch('scheduler.load_config')
+def test_run_global_sync_job_all_excluded(mock_load, mock_sync):
+    mock_load.return_value = {
+        "groups": [
+            {"name": "G1"},
+            {"name": "G2"}
+        ]
+    }
+    _run_global_sync_job(["G1", "G2"])
+    mock_sync.assert_not_called()
+
+
+@patch('scheduler.run_cleanup_broken_symlinks')
+@patch('scheduler.load_config')
+def test_run_cleanup_job(mock_load, mock_cleanup):
+    mock_load.return_value = {"target_path": "/tmp"}
+    mock_cleanup.return_value = 5
+    _run_cleanup_job()
+    mock_cleanup.assert_called_once()
