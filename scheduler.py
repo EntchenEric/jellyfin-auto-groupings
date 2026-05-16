@@ -51,7 +51,7 @@ def update_scheduler_jobs() -> None:
                     name="Global Sync (with exclusions)",
                     args=[excluded_names]
                 )
-                logger.info("Scheduled global sync: %s (excluding: %s)", cron_expr, excluded_names)
+                logger.info(f"Scheduled global sync: {cron_expr} (excluding: {excluded_names})")
             except Exception:
                 logger.exception("Failed to schedule global sync")
 
@@ -74,7 +74,7 @@ def update_scheduler_jobs() -> None:
                     name=f"Sync Group: {group_name}",
                     args=[group_name]
                 )
-                logger.info("Scheduled sync for group '%s': %s", group_name, cron_expr)
+                logger.info(f"Scheduled sync for group '{group_name}': {cron_expr}")
             except Exception:
                 logger.exception(f"Failed to schedule sync for group '{group_name}'")
 
@@ -89,7 +89,7 @@ def update_scheduler_jobs() -> None:
                     id="cleanup_sync",
                     name="Cleanup Broken Symlinks"
                 )
-                logger.info("Scheduled cleanup job: %s", cleanup_cron)
+                logger.info(f"Scheduled cleanup job: {cleanup_cron}")
             except Exception:
                 logger.exception("Failed to schedule cleanup job")
 
@@ -108,7 +108,7 @@ def _run_global_sync_job(exclude_names: list[str]) -> None:
                 sync_names.append(name)
 
     if sync_names:
-        logger.info("Background global sync starting for groups: %s", sync_names)
+        logger.info(f"Background global sync starting for groups: {sync_names}")
         with sync_lock:
             run_sync(config, group_names=sync_names)
     else:
@@ -118,7 +118,7 @@ def _run_global_sync_job(exclude_names: list[str]) -> None:
 def _run_group_sync_job(group_name: str) -> None:
     """Job handler for a single group sync."""
     config = load_config()
-    logger.info("Background sync starting for group: %s", group_name)
+    logger.info(f"Background sync starting for group: {group_name}")
     with sync_lock:
         run_sync(config, group_names=[group_name])
 
@@ -129,7 +129,7 @@ def _run_cleanup_job() -> None:
     logger.info("Background cleanup job starting")
     with sync_lock:
         deleted = run_cleanup_broken_symlinks(config)
-        logger.info("Background cleanup job finished: deleted %s broken symlinks", deleted)
+        logger.info(f"Background cleanup job finished: deleted {deleted} broken symlinks")
 
 
 def validate_cron(expr: str) -> str | None:

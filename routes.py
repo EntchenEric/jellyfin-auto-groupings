@@ -604,7 +604,7 @@ def perform_cleanup() -> ResponseReturnValue:
                         try:
                             delete_virtual_folder(url, api_key, name)
                         except Exception as e:
-                            logger.warning("Failed to delete Jellyfin library '%s': %s", name, e)
+                            logger.warning(f"Failed to delete Jellyfin library '{name}': {e}")
             except OSError as exc:
                 errors.append(f"Failed to delete {name}: {exc}")
 
