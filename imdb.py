@@ -69,7 +69,7 @@ def fetch_imdb_list(list_id: str) -> list[str]:
         try:
             resp = requests.get(page_url, headers=_REQUEST_HEADERS, timeout=_REQUEST_TIMEOUT)
             resp.raise_for_status()
-        except requests.RequestException as exc:
+        except requests.exceptions.RequestException as exc:
             logger.error("HTTP error fetching IMDb list page %d: %s", page, exc)
             raise RuntimeError(f"Failed to fetch IMDb list page {page}: {exc}") from exc
 
