@@ -4,6 +4,7 @@ import requests
 from unittest.mock import patch, MagicMock
 from config import save_config
 from routes import _compute_common_root, _fetch_jellyfin_endpoint, _handle_config_error, MAX_B64_SIZE
+from werkzeug.exceptions import HTTPException
 
 
 @pytest.mark.usefixtures("temp_config")
@@ -908,6 +909,13 @@ def test_get_test_results_success(mock_open, mock_exists, client):
 def test_handle_config_error_non_http():
     with pytest.raises(Exception, match="not http"):
         _handle_config_error(Exception("not http"))
+
+
+def test_handle_config_error_http_none_code():
+    exc = HTTPException()
+    exc.code = None
+    with pytest.raises(HTTPException):
+        _handle_config_error(exc)
 
 
 # run_tests production mode (line 838-845)
