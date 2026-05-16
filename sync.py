@@ -88,7 +88,7 @@ def _translate_path(
             normalized_root = os.path.normpath(jellyfin_root)
             normalized_path = os.path.normpath(jellyfin_path)
             if os.path.commonpath([normalized_path, normalized_root]) == normalized_root:
-                rel = os.path.relpath(jellyfin_path, jellyfin_root)
+                rel = os.path.relpath(normalized_path, normalized_root)
                 return os.path.normpath(os.path.join(host_root, rel))
         except ValueError:
             pass
