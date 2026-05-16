@@ -185,8 +185,11 @@ def test_update_config_non_dict(client):
 def test_update_config_scheduler_fail(mock_sched, client):
     mock_sched.side_effect = Exception("Fail")
     response = client.post('/api/config', json={"jellyfin_url": "http://jf"})
-    assert response.status_code == 200  # Should not fail the whole request
-    assert response.get_json()["status"] == "success"
+    assert response.status_code == 500
+    data = response.get_json()
+    assert data["status"] == "error"
+    assert "scheduler could not be updated" in data["message"]
+    assert "config" in data
 
 
 @patch('routes.requests.get')
