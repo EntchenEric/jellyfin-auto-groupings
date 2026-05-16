@@ -52,7 +52,7 @@ def update_scheduler_jobs() -> None:
                     args=[excluded_names]
                 )
                 logger.info("Scheduled global sync: %s (excluding: %s)", cron_expr, excluded_names)
-            except Exception:
+            except (ValueError, KeyError, OSError):
                 logger.exception("Failed to schedule global sync")
 
     # 2. Per-group Schedulers
@@ -75,7 +75,7 @@ def update_scheduler_jobs() -> None:
                     args=[group_name]
                 )
                 logger.info("Scheduled sync for group '%s': %s", group_name, cron_expr)
-            except Exception:
+            except (ValueError, KeyError, OSError):
                 logger.exception("Failed to schedule sync for group '%s'", group_name)
 
     # 3. Cleanup Scheduler
@@ -90,7 +90,7 @@ def update_scheduler_jobs() -> None:
                     name="Cleanup Broken Symlinks"
                 )
                 logger.info("Scheduled cleanup job: %s", cleanup_cron)
-            except Exception:
+            except (ValueError, KeyError, OSError):
                 logger.exception("Failed to schedule cleanup job")
 
 

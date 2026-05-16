@@ -162,7 +162,7 @@ def fetch_letterboxd_list(list_url: str) -> list[str]:
                     slug = future_map[future]
                     try:
                         slug_results[slug] = future.result()
-                    except Exception:
+                    except (OSError, RuntimeError):
                         logger.debug("Unexpected error for '%s'", slug, exc_info=True)
                         slug_results[slug] = None
 
