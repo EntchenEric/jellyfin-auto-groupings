@@ -1029,7 +1029,7 @@ def _process_group(
         A result dict with keys ``"group"``, ``"links"``, optionally ``"error"``,
         and ``"items"`` (the first 100 matches) if *dry_run* is True.
     """
-    group_name: str = group.get("name", "unnamed").strip()
+    group_name: str = group.get("name", "").strip()
     if not group_name:
         return {"group": "(unnamed)", "links": 0, "error": "Empty group name"}
 
