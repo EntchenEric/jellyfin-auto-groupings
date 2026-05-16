@@ -1,21 +1,56 @@
-# Never bake the local config into the image
-config.json
-
-# Git internals
+# Version control
 .git/
-.github/
+.gitignore
 
-# Python caches
+# Python bytecode
 __pycache__/
 *.py[cod]
+*.pyo
 
-# Dev files
+# Virtual environments
 .venv/
 venv/
-*.md
-docker-compose.yml
-unraid/
+env/
 
-# Tests and E2E
+# Test artifacts
+coverage_report.txt
+test_results.txt
+pytest_verbose.log
+current_test_out.txt
+test_api_out.txt
+pytest.log
+.pytest_cache/
+.coverage
+htmlcov/
 tests/
+test_*
+
+# IDE
+.vscode/
+.idea/
+
+# Local config (contains secrets)
+config.json
+config/
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# CI / GitHub
+.github/
+
+# Node
+node_modules/
+
+# Claude Code sessions
+.claude/
+
+# Misc
+*.egg-info/
+dist/
+build/
+README.md
+unraid/
 e2e/
