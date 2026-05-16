@@ -179,3 +179,229 @@ def test_fetch_anilist_empty_data(mock_post):
     mock_post.return_value = mock_resp
     ids = fetch_anilist_list("u")
     assert ids == []
+
+
+# ---------------------------------------------------------------------------
+# letterboxd.py edge cases
+# ---------------------------------------------------------------------------
+
+from letterboxd import _extract_ids_from_list_page, _fetch_id_for_slug
+
+
+def test_extract_ids_tmdb_from_list_page():
+    html = 'data-film-slug="film1" data-tmdb-id="123"'
+    result = _extract_ids_from_list_page(html)
+    assert result == {"film1": "123"}
+
+
+def test_extract_ids_imdb_from_list_page():
+    html = 'data-film-slug="film1" href="https://www.imdb.com/title/tt456/"'
+    result = _extract_ids_from_list_page(html)
+    assert result == {"film1": "tt456"}
+
+
+def test_extract_ids_themoviedb_from_list_page():
+    html = 'data-film-slug="film1" href="https://www.themoviedb.org/movie/789"'
+    result = _extract_ids_from_list_page(html)
+    assert result == {"film1": "789"}
+
+
+def test_extract_ids_priority_tmdb_over_imdb():
+    # If both tmdb and imdb present, tmdb should win (matches first)
+    html = (
+        'data-film-slug="film1" data-tmdb-id="111" '
+        'href="https://www.imdb.com/title/tt222/"'
+    )
+    result = _extract_ids_from_list_page(html)
+    assert result == {"film1": "111"}
+
+
+@patch('requests.Session.get')
+def test_fetch_id_for_slug_request_exception(mock_get):
+    mock_get.side_effect = requests.exceptions.ConnectionError("Network down")
+    result = _fetch_id_for_slug("some-film")
+    assert result is None
+
+
+@patch('requests.Session.get')
+def test_letterboxd_404_on_page_two(mock_get):
+    resp1 = MagicMock()
+    resp1.status_code = 200
+    resp1.text = 'data-film-slug="film1"'
+
+    resp2 = MagicMock()
+    resp2.status_code = 404
+
+    mock_get.side_effect = [resp1, resp2]
+
+    ids = fetch_letterboxd_list("https://letterboxd.com/user/list/my-list")
+    assert ids == []
+
+
+@patch('requests.Session.get')
+def test_letterboxd_fallback_slug_regex(mock_get):
+    resp = MagicMock()
+    resp.status_code = 200
+    resp.text = '<a href="/film/the-godfather/">Film</a>'
+    mock_get.return_value = resp
+
+    ids = fetch_letterboxd_list("https://letterboxd.com/user/list/my-list")
+    assert ids == []
+
+
+@patch('requests.Session.get')
+def test_letterboxd_no_slugs(mock_get):
+    resp = MagicMock()
+    resp.status_code = 200
+    resp.text = '<html><body>No films here</body></html>'
+    mock_get.return_value = resp
+
+    ids = fetch_letterboxd_list("https://letterboxd.com/user/list/my-list")
+    assert ids == []
+
+
+@patch('letterboxd._fetch_id_for_slug')
+@patch('requests.Session.get')
+def test_letterboxd_threadpool_exception(mock_get, mock_fetch_slug):
+    resp = MagicMock()
+    resp.status_code = 200
+    resp.text = 'data-film-slug="film1"'
+    mock_get.return_value = resp
+
+    mock_fetch_slug.side_effect = Exception("Unexpected")
+
+    ids = fetch_letterboxd_list("https://letterboxd.com/user/list/my-list")
+    assert ids == []
+
+
+# ---------------------------------------------------------------------------
+# mal.py edge cases
+# ---------------------------------------------------------------------------
+
+def test_fetch_mal_no_client_id():
+    with pytest.raises(ValueError, match="MyAnimeList Client ID is required"):
+        fetch_mal_list("user", "")
+
+
+@patch('requests.get')
+def test_fetch_mal_status_current(mock_get):
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"data": [], "paging": {}}
+    mock_get.return_value = mock_resp
+
+    fetch_mal_list("user", "cid", "current")
+    _args, kwargs = mock_get.call_args
+    assert kwargs['params']['status'] == "watching"
+
+
+@patch('requests.get')
+def test_fetch_mal_status_planning(mock_get):
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"data": [], "paging": {}}
+    mock_get.return_value = mock_resp
+
+    fetch_mal_list("user", "cid", "planning")
+    _args, kwargs = mock_get.call_args
+    assert kwargs['params']['status'] == "plan_to_watch"
+
+
+@patch('requests.get')
+def test_fetch_mal_status_paused(mock_get):
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"data": [], "paging": {}}
+    mock_get.return_value = mock_resp
+
+    fetch_mal_list("user", "cid", "paused")
+    _args, kwargs = mock_get.call_args
+    assert kwargs['params']['status'] == "on_hold"
+
+
+@patch('requests.get')
+def test_fetch_mal_status_all(mock_get):
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"data": [], "paging": {}}
+    mock_get.return_value = mock_resp
+
+    fetch_mal_list("user", "cid", "all")
+    _args, kwargs = mock_get.call_args
+    assert 'status' not in kwargs['params']
+
+
+@patch('requests.get')
+def test_fetch_mal_status_unknown(mock_get):
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"data": [], "paging": {}}
+    mock_get.return_value = mock_resp
+
+    fetch_mal_list("user", "cid", "custom_status")
+    _args, kwargs = mock_get.call_args
+    assert kwargs['params']['status'] == "custom_status"
+
+
+# ---------------------------------------------------------------------------
+# trakt.py edge cases
+# ---------------------------------------------------------------------------
+
+def test_fetch_trakt_no_client_id():
+    with pytest.raises(ValueError, match="Trakt API Client ID"):
+        fetch_trakt_list("user/list", "")
+
+
+@patch('requests.get')
+def test_fetch_trakt_full_url(mock_get):
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = [
+        {"type": "movie", "movie": {"ids": {"imdb": "tt111"}}}
+    ]
+    mock_resp.headers = {"X-Pagination-Page-Count": "1"}
+    mock_get.return_value = mock_resp
+
+    ids = fetch_trakt_list("https://trakt.tv/users/jane/lists/my-list", "client_id")
+    assert ids == ["tt111"]
+
+
+def test_fetch_trakt_invalid_url():
+    with pytest.raises(ValueError, match="Invalid Trakt list URL"):
+        fetch_trakt_list("not-a-valid-url", "client_id")
+
+
+@patch('requests.get')
+def test_fetch_trakt_http_error(mock_get):
+    mock_resp = MagicMock()
+    mock_resp.status_code = 500
+    mock_resp.raise_for_status.side_effect = requests.exceptions.HTTPError("Server Error")
+    mock_get.return_value = mock_resp
+    with pytest.raises(RuntimeError, match="Failed to fetch Trakt"):
+        fetch_trakt_list("user/list", "client_id")
+
+
+@patch('requests.get')
+def test_fetch_trakt_empty_items(mock_get):
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = []
+    mock_resp.headers = {"X-Pagination-Page-Count": "1"}
+    mock_get.return_value = mock_resp
+
+    ids = fetch_trakt_list("user/list", "client_id")
+    assert ids == []
+
+
+@patch('requests.get')
+def test_fetch_trakt_bad_pagination_header(mock_get):
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = [
+        {"type": "movie", "movie": {"ids": {"imdb": "tt222"}}}
+    ]
+    mock_resp.headers = {"X-Pagination-Page-Count": "not_a_number"}
+    mock_get.return_value = mock_resp
+
+    ids = fetch_trakt_list("user/list", "client_id")
+    assert ids == ["tt222"]
