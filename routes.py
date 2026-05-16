@@ -410,8 +410,10 @@ def upload_cover() -> ResponseReturnValue:
         target_path = str(cfg.get("target_path", ""))
 
         cover_path = get_cover_path(group_name, target_path, check_exists=False)
-        # get_cover_path with check_exists=False never returns None
-        assert cover_path is not None
+        if cover_path is None:
+            return jsonify(
+                {"status": "error", "message": "Could not resolve cover storage path"}
+            ), 500
 
         os.makedirs(os.path.dirname(cover_path), exist_ok=True)
         with open(cover_path, "wb") as f:
