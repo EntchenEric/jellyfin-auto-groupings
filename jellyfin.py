@@ -304,6 +304,34 @@ def get_library_id(base_url: str, api_key: str, name: str, timeout: int = 30) ->
     return None
 
 
+def _upload_image(
+    base_url: str,
+    api_key: str,
+    item_id: str,
+    image_path: str,
+    timeout: int = 30,
+) -> None:
+    """Upload *image_path* to Jellyfin as the primary image for *item_id*.
+
+    Args:
+        base_url: Jellyfin server base URL.
+        api_key: Jellyfin API key.
+        item_id: Jellyfin item / library / collection ID.
+        image_path: Absolute path to the local image file to upload.
+        timeout: HTTP request timeout.
+    """
+    with open(image_path, "rb") as f:
+        image_bytes = f.read()
+    mime_type, _ = mimetypes.guess_type(image_path)
+    headers = {
+        "X-Emby-Token": api_key,
+        "Content-Type": mime_type or "application/octet-stream",
+    }
+    url = f"{base_url}/Items/{item_id}/Images/Primary"
+    response = requests.post(url, data=image_bytes, headers=headers, timeout=timeout)
+    response.raise_for_status()
+
+
 def set_virtual_folder_image(
     base_url: str,
     api_key: str,
@@ -326,34 +354,15 @@ def set_virtual_folder_image(
         return
 
     try:
-        with open(image_path, "rb") as f:
-            image_bytes = f.read()
-    except OSError as exc:
-        logger.error("Cannot set image: Failed to read image file %r: %s", image_path, exc)
-        return
-
-    mime_type, _ = mimetypes.guess_type(image_path)
-    mime_type = mime_type or "application/octet-stream"
-
-    headers = {
-        "X-Emby-Token": api_key,
-        "Content-Type": mime_type,
-    }
-
-    url = f"{base_url}/Items/{library_id}/Images/Primary"
-    try:
-        response = requests.post(
-            url,
-            data=image_bytes,
-            headers=headers,
-            timeout=timeout,
-        )
-        response.raise_for_status()
-        logger.info("Successfully updated cover image for library %r", name)
+        _upload_image(base_url, api_key, library_id, image_path, timeout=timeout)
     except requests.exceptions.RequestException as exc:
         logger.info(
             _format_request_error(exc, f"Failed to set image for library {name!r}")
         )
+    except OSError as exc:
+        logger.error("Cannot set image: Failed to read image file %r: %s", image_path, exc)
+    else:
+        logger.info("Successfully updated cover image for library %r", name)
 
 
 # ---------------------------------------------------------------------------
@@ -581,32 +590,14 @@ def set_collection_image(
         timeout: HTTP request timeout.
     """
     try:
-        with open(image_path, "rb") as f:
-            image_bytes = f.read()
-    except OSError as exc:
-        logger.error("Cannot set collection image: Failed to read %r: %s", image_path, exc)
-        return
-
-    mime_type, _ = mimetypes.guess_type(image_path)
-    mime_type = mime_type or "application/octet-stream"
-
-    headers = {
-        "X-Emby-Token": api_key,
-        "Content-Type": mime_type,
-    }
-
-    try:
-        resp = requests.post(
-            f"{base_url}/Items/{collection_id}/Images/Primary",
-            data=image_bytes,
-            headers=headers,
-            timeout=timeout,
-        )
-        resp.raise_for_status()
-        logger.info("Successfully updated cover image for collection %r", collection_id)
+        _upload_image(base_url, api_key, collection_id, image_path, timeout=timeout)
     except requests.exceptions.RequestException as exc:
         logger.info(
             _format_request_error(
                 exc, f"Failed to set image for collection {collection_id!r}"
             )
         )
+    except OSError as exc:
+        logger.error("Cannot set collection image: Failed to read %r: %s", image_path, exc)
+    else:
+        logger.info("Successfully updated cover image for collection %r", collection_id)
