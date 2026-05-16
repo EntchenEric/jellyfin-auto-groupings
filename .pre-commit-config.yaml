@@ -9,7 +9,7 @@ repos:
         always_run: true
     -   id: mypy
         name: mypy type checking
-        entry: bash -c "mypy . --ignore-missing-imports --exclude '(venv|__pycache__|tests|node_modules)'"
+        entry: bash -c "mypy ."
         language: system
         pass_filenames: false
         always_run: true
