@@ -526,3 +526,304 @@ def test_test_dashboard(client):
     response = client.get('/test')
     assert response.status_code == 200
     assert b"html" in response.data.lower()
+
+
+# ---------------------------------------------------------------------------
+# routes.py coverage improvements
+# ---------------------------------------------------------------------------
+
+# CSRF check (lines 47-48)
+def test_csrf_protection_non_testing(client):
+    from flask import current_app
+    old_testing = current_app.testing
+    current_app.testing = False
+    try:
+        response = client.post('/api/config', json={"jellyfin_url": "http://test"})
+        assert response.status_code == 403
+        assert "CSRF" in response.get_json()["message"]
+    finally:
+        current_app.testing = old_testing
+
+
+# Cleanup schedule validation (lines 121-123)
+def test_update_config_invalid_cleanup_cron(client):
+    response = client.post('/api/config', json={
+        "scheduler": {"cleanup_enabled": True, "cleanup_schedule": "bad"},
+    })
+    assert response.status_code == 400
+    data = response.get_json()
+    assert "Cleanup schedule" in data["errors"][0]
+
+
+# _fetch_jellyfin_endpoint partial data break (line 250)
+@patch('routes.requests.get')
+@pytest.mark.usefixtures("temp_config")
+def test_fetch_jellyfin_endpoint_partial_data(mock_get, client):
+    from routes import _fetch_jellyfin_endpoint
+    resp1 = MagicMock()
+    resp1.status_code = 200
+    resp1.json.return_value = {"Items": [{"Name": "G1"}]}
+    resp1.raise_for_status = MagicMock()
+
+    resp2 = MagicMock()
+    resp2.raise_for_status.side_effect = requests.exceptions.ConnectionError("fail")
+
+    mock_get.side_effect = [resp1, resp2]
+    result = _fetch_jellyfin_endpoint("http://jf", "key", "Genres")
+    assert len(result) == 1
+
+
+# _fetch_jellyfin_endpoint pagination (line 259)
+@patch('routes.requests.get')
+@pytest.mark.usefixtures("temp_config")
+def test_fetch_jellyfin_endpoint_pagination(mock_get, client):
+    from routes import _fetch_jellyfin_endpoint
+    resp1 = MagicMock()
+    resp1.status_code = 200
+    resp1.json.return_value = {"Items": [{"Name": f"G{i}"} for i in range(200)]}
+    resp1.raise_for_status = MagicMock()
+
+    resp2 = MagicMock()
+    resp2.status_code = 200
+    resp2.json.return_value = {"Items": [{"Name": "G200"}]}
+    resp2.raise_for_status = MagicMock()
+
+    mock_get.side_effect = [resp1, resp2]
+    result = _fetch_jellyfin_endpoint("http://jf", "key", "Genres")
+    assert len(result) == 201
+
+
+# Metadata unexpected exception (lines 318-319)
+@patch('routes.ThreadPoolExecutor')
+@pytest.mark.usefixtures("temp_config")
+def test_get_jellyfin_metadata_exception(mock_pool, client):
+    save_config({"jellyfin_url": "http://test", "api_key": "key"})
+    mock_pool.side_effect = Exception("Pool fail")
+    response = client.get('/api/jellyfin/metadata')
+    assert response.status_code == 400
+
+
+# Sync ValueError (lines 438-439)
+@patch('routes.run_sync')
+@pytest.mark.usefixtures("temp_config")
+def test_api_sync_value_error(mock_sync, client):
+    mock_sync.side_effect = ValueError("Bad config")
+    response = client.post('/api/sync')
+    assert response.status_code == 400
+    assert "Bad config" in response.get_json()["message"]
+
+
+# Sync RuntimeError (lines 440-441)
+@patch('routes.run_sync')
+@pytest.mark.usefixtures("temp_config")
+def test_api_sync_runtime_error(mock_sync, client):
+    mock_sync.side_effect = RuntimeError("Sync failed")
+    response = client.post('/api/sync')
+    assert response.status_code == 500
+    assert "Sync failed" in response.get_json()["message"]
+
+
+# Preview_all ValueError (lines 465-466)
+@patch('routes.run_sync')
+@pytest.mark.usefixtures("temp_config")
+def test_preview_all_value_error(mock_sync, client):
+    mock_sync.side_effect = ValueError("Bad config")
+    response = client.post('/api/sync/preview_all')
+    assert response.status_code == 400
+    assert "Bad config" in response.get_json()["message"]
+
+
+# Preview_all RuntimeError (lines 467-468)
+@patch('routes.run_sync')
+@pytest.mark.usefixtures("temp_config")
+def test_preview_all_runtime_error(mock_sync, client):
+    mock_sync.side_effect = RuntimeError("Sync failed")
+    response = client.post('/api/sync/preview_all')
+    assert response.status_code == 500
+    assert "Sync failed" in response.get_json()["message"]
+
+
+# Preview grouping missing value (lines 485, 510, 514)
+@pytest.mark.usefixtures("temp_config")
+def test_preview_grouping_missing_value(client):
+    save_config({"jellyfin_url": "http://t", "api_key": "k"})
+    response = client.post('/api/grouping/preview', json={"type": "genre"})
+    assert response.status_code == 400
+
+
+@pytest.mark.usefixtures("temp_config")
+def test_preview_grouping_value_not_string(client):
+    save_config({"jellyfin_url": "http://t", "api_key": "k"})
+    response = client.post('/api/grouping/preview', json={"type": "genre", "value": 123})
+    assert response.status_code == 400
+
+
+@pytest.mark.usefixtures("temp_config")
+def test_preview_grouping_empty_value(client):
+    save_config({"jellyfin_url": "http://t", "api_key": "k"})
+    response = client.post('/api/grouping/preview', json={"type": "genre", "value": "   "})
+    assert response.status_code == 400
+
+
+# Preview grouping server not configured (lines 491-492)
+@pytest.mark.usefixtures("temp_config")
+def test_preview_grouping_no_config(client):
+    response = client.post('/api/grouping/preview', json={"type": "genre", "value": "Action"})
+    assert response.status_code == 400
+    assert "Server settings not configured" in response.get_json()["message"]
+
+
+# Preview grouping exceptions (lines 532-537)
+@patch('routes.preview_group')
+@pytest.mark.usefixtures("temp_config")
+def test_preview_grouping_runtime_error(mock_preview, client):
+    save_config({"jellyfin_url": "http://t", "api_key": "k"})
+    mock_preview.side_effect = RuntimeError("Preview failed")
+    response = client.post('/api/grouping/preview', json={"type": "genre", "value": "Action"})
+    assert response.status_code == 500
+
+
+@patch('routes.preview_group')
+@pytest.mark.usefixtures("temp_config")
+def test_preview_grouping_unexpected_error(mock_preview, client):
+    save_config({"jellyfin_url": "http://t", "api_key": "k"})
+    mock_preview.side_effect = TypeError("Unexpected")
+    response = client.post('/api/grouping/preview', json={"type": "genre", "value": "Action"})
+    assert response.status_code == 500
+
+
+# Cleanup with auto_create_libraries (lines 601-609)
+@patch('routes.delete_virtual_folder')
+@patch('routes.os.path.exists')
+@pytest.mark.usefixtures("temp_config")
+def test_perform_cleanup_with_auto_create(mock_exists, mock_delete, client, tmp_path):
+    target = tmp_path / "target"
+    target.mkdir()
+    (target / "Action").mkdir()
+    save_config({
+        "target_path": str(target),
+        "auto_create_libraries": True,
+        "jellyfin_url": "http://jf",
+        "api_key": "key"
+    })
+    mock_exists.return_value = True
+    response = client.post('/api/cleanup', json={"folders": ["Action"]})
+    assert response.status_code == 200
+    mock_delete.assert_called_once()
+
+
+# Auto-detect: item with no Path (line 683)
+@patch('routes.fetch_jellyfin_items')
+@pytest.mark.usefixtures("temp_config")
+def test_auto_detect_no_path(mock_fetch, client):
+    save_config({"jellyfin_url": "http://test", "api_key": "key"})
+    mock_fetch.return_value = [{"Id": "1", "Name": "NoPath"}]
+    response = client.post('/api/jellyfin/auto-detect-paths')
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["detected"]["media_path_in_jellyfin"] is None
+
+
+# Auto-detect: root not a directory (line 693)
+@patch('routes.fetch_jellyfin_items')
+@patch('routes.os.path.isdir')
+@pytest.mark.usefixtures("temp_config")
+def test_auto_detect_root_not_dir(mock_isdir, mock_fetch, client):
+    save_config({"jellyfin_url": "http://test", "api_key": "key"})
+    mock_fetch.return_value = [{"Path": "/media/movies/M1.mkv"}]
+    mock_isdir.return_value = False
+    response = client.post('/api/jellyfin/auto-detect-paths')
+    assert response.status_code == 200
+
+
+# Auto-detect: mount point skip (lines 697-698)
+@patch('routes.fetch_jellyfin_items')
+@patch('routes.os.path.ismount')
+@patch('routes.os.path.isdir')
+@patch('routes.os.walk')
+@pytest.mark.usefixtures("temp_config")
+def test_auto_detect_mount_skip(mock_walk, mock_isdir, mock_ismount, mock_fetch, client):
+    save_config({"jellyfin_url": "http://test", "api_key": "key"})
+    mock_fetch.return_value = [{"Path": "/media/movies/M1.mkv"}]
+    mock_isdir.return_value = True
+    mock_ismount.return_value = True
+    mock_walk.return_value = [("/home", ["sub"], ["M1.mkv"])]
+    response = client.post('/api/jellyfin/auto-detect-paths')
+    assert response.status_code == 200
+
+
+# Auto-detect: timeout (lines 701-703)
+@patch('routes.fetch_jellyfin_items')
+@patch('routes.time.time')
+@patch('routes.os.walk')
+@patch('routes.os.path.isdir')
+@pytest.mark.usefixtures("temp_config")
+def test_auto_detect_timeout(mock_isdir, mock_walk, mock_time, mock_fetch, client):
+    save_config({"jellyfin_url": "http://test", "api_key": "key"})
+    mock_fetch.return_value = [{"Path": "/media/movies/M1.mkv"}]
+    mock_isdir.return_value = True
+    mock_time.side_effect = [0, 0, 100]
+    mock_walk.return_value = [("/home", ["sub"], ["M1.mkv"])]
+    response = client.post('/api/jellyfin/auto-detect-paths')
+    assert response.status_code == 200
+
+
+# Auto-detect: file limit (lines 707-709)
+@patch('routes.fetch_jellyfin_items')
+@patch('routes.os.walk')
+@patch('routes.os.path.isdir')
+@pytest.mark.usefixtures("temp_config")
+def test_auto_detect_file_limit(mock_isdir, mock_walk, mock_fetch, client):
+    save_config({"jellyfin_url": "http://test", "api_key": "key"})
+    mock_fetch.return_value = [{"Path": "/media/movies/M1.mkv"}]
+    mock_isdir.return_value = True
+    mock_walk.return_value = [("/home", ["sub"], ["f"])]
+    response = client.post('/api/jellyfin/auto-detect-paths')
+    assert response.status_code == 200
+
+
+# Auto-detect: depth limit (lines 715-716)
+@patch('routes.fetch_jellyfin_items')
+@patch('routes.os.walk')
+@patch('routes.os.path.isdir')
+@pytest.mark.usefixtures("temp_config")
+def test_auto_detect_depth_limit(mock_isdir, mock_walk, mock_fetch, client):
+    save_config({"jellyfin_url": "http://test", "api_key": "key"})
+    mock_fetch.return_value = [{"Path": "/media/movies/M1.mkv"}]
+    mock_isdir.return_value = True
+    deep_path = "/a/b/c/d/e/f/g"
+    mock_walk.return_value = [(deep_path, [], ["M1.mkv"])]
+    response = client.post('/api/jellyfin/auto-detect-paths')
+    assert response.status_code == 200
+
+
+# Test results file read error (lines 821-825)
+@patch('routes.os.path.exists')
+@patch('builtins.open')
+def test_get_test_results_read_error(mock_open, mock_exists, client):
+    mock_exists.return_value = True
+    mock_open.side_effect = IOError("Read error")
+    response = client.get('/api/test/results')
+    assert response.status_code == 200
+    data = response.get_json()
+    assert "Error reading file." in data["results"].values()
+
+
+# run_tests production mode (line 838-845)
+@patch('flask.current_app')
+def test_run_tests_production(mock_app, client):
+    mock_app.debug = False
+    response = client.post('/api/test/run')
+    assert response.status_code == 403
+    assert "Not available" in response.get_json()["message"]
+
+
+# run_tests subprocess exception (lines 843-845)
+@patch('flask.current_app')
+@patch('subprocess.run')
+def test_run_tests_subprocess_exception(mock_subprocess, mock_app, client):
+    mock_app.debug = True
+    mock_subprocess.side_effect = OSError("Subprocess fail")
+    response = client.post('/api/test/run')
+    assert response.status_code == 500
+    assert "Subprocess fail" in response.get_json()["message"]
