@@ -10,6 +10,7 @@ other modules, and serialise results back to JSON.
 from __future__ import annotations
 
 import base64
+import binascii
 import logging
 import os
 import shutil
@@ -443,7 +444,7 @@ def upload_cover() -> ResponseReturnValue:
             f.write(decoded)
 
         return _success("Cover saved successfully")
-    except ValueError:
+    except (ValueError, binascii.Error):
         return _error("Malformed image data", 400)
     except (OSError, RuntimeError) as exc:
         logger.exception("Failed to save cover image")

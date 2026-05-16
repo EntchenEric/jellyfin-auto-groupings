@@ -229,7 +229,7 @@ def get_libraries(base_url: str, api_key: str, timeout: int = 30) -> list[str]:
         timeout=timeout,
     )
     response.raise_for_status()
-    return [folder.get("Name", "") for folder in _parse_json(response)]
+    return [name for folder in _parse_json(response) if (name := folder.get("Name"))]
 
 
 def get_users(base_url: str, api_key: str, timeout: int = 30) -> list[dict[str, Any]]:

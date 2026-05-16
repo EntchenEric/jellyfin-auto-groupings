@@ -375,6 +375,13 @@ def test_upload_cover_malformed_data_url(client):
     assert "Malformed image data" in response.get_json()["message"]
 
 
+def test_upload_cover_invalid_base64(client):
+    # Invalid base64 characters trigger binascii.Error
+    response = client.post('/api/upload_cover', json={"group_name": "G", "image": "data:image/png;base64,!!!invalid!!!"})
+    assert response.status_code == 400
+    assert "Malformed image data" in response.get_json()["message"]
+
+
 @patch('routes.get_cover_path')
 def test_upload_cover_server_error(mock_get_cover, client):
     mock_get_cover.side_effect = OSError("Disk full")
