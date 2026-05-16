@@ -162,8 +162,18 @@ def update_config() -> ResponseReturnValue:
     # Update background jobs based on new config
     try:
         update_scheduler_jobs()
-    except Exception:
+    except Exception as exc:
         logger.exception("Failed to update scheduler jobs")
+        return (
+            jsonify(
+                {
+                    "status": "error",
+                    "message": f"Config saved but scheduler could not be updated: {exc!s}",
+                    "config": new_config,
+                }
+            ),
+            500,
+        )
 
     return jsonify({"status": "success", "config": new_config})
 
