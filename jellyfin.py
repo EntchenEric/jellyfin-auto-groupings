@@ -95,6 +95,92 @@ def _get_json(
     return _parse_json(response)
 
 
+def _request_or_raise(
+    method: str,
+    url: str,
+    *,
+    headers: dict[str, str] | None = None,
+    params: dict[str, Any] | None = None,
+    data: Any = None,
+    json: Any = None,
+    timeout: int = 30,
+    error_prefix: str = "",
+) -> requests.Response:
+    """Send a *method* request to *url* and return the response, translating errors into ``RuntimeError``.
+
+    Raises:
+        RuntimeError: On any ``RequestException``.
+    """
+    kwargs: dict[str, Any] = {"timeout": timeout}
+    if headers is not None:
+        kwargs["headers"] = headers
+    if params is not None:
+        kwargs["params"] = params
+    if data is not None:
+        kwargs["data"] = data
+    if json is not None:
+        kwargs["json"] = json
+    try:
+        if method == "GET":
+            response = requests.get(url, **kwargs)
+        elif method == "POST":
+            response = requests.post(url, **kwargs)
+        elif method == "DELETE":
+            response = requests.delete(url, **kwargs)
+        else:
+            response = requests.request(method, url, **kwargs)
+        response.raise_for_status()
+        return response
+    except requests.exceptions.RequestException as exc:
+        _raise_request_error(exc, error_prefix)
+
+
+def _post_or_raise(
+    url: str,
+    *,
+    headers: dict[str, str] | None = None,
+    params: dict[str, Any] | None = None,
+    data: Any = None,
+    json: Any = None,
+    timeout: int = 30,
+    error_prefix: str = "",
+) -> requests.Response:
+    """POST to *url* and return the response, translating errors into ``RuntimeError``."""
+    return _request_or_raise(
+        "POST", url, headers=headers, params=params, data=data, json=json, timeout=timeout, error_prefix=error_prefix
+    )
+
+
+def _post_json(
+    url: str,
+    *,
+    headers: dict[str, str] | None = None,
+    params: dict[str, Any] | None = None,
+    data: Any = None,
+    json: Any = None,
+    timeout: int = 30,
+    error_prefix: str = "",
+) -> Any:
+    """POST to *url* and return the parsed JSON response, translating errors into ``RuntimeError``."""
+    return _parse_json(
+        _post_or_raise(url, headers=headers, params=params, data=data, json=json, timeout=timeout, error_prefix=error_prefix)
+    )
+
+
+def _delete_or_raise(
+    url: str,
+    *,
+    headers: dict[str, str] | None = None,
+    params: dict[str, Any] | None = None,
+    timeout: int = 30,
+    error_prefix: str = "",
+) -> requests.Response:
+    """DELETE *url* and return the response, translating errors into ``RuntimeError``."""
+    return _request_or_raise(
+        "DELETE", url, headers=headers, params=params, timeout=timeout, error_prefix=error_prefix
+    )
+
+
 # ---------------------------------------------------------------------------
 # Public helpers
 # ---------------------------------------------------------------------------
@@ -355,39 +441,22 @@ def add_virtual_folder(
 
     # Step 2: Add each path using strictly a JSON body as recommended
     for path in paths:
-        path_url = f"{base_url}/Library/VirtualFolders/Paths"
-        payload = {
-            "Name": name,
-            "Path": path
-        }
-
-        try:
-            # We use json= which automatically sets Content-Type: application/json
-            path_resp = requests.post(
-                path_url,
-                json=payload,
-                headers=headers,
-                timeout=timeout,
-            )
-            path_resp.raise_for_status()
-        except requests.exceptions.RequestException as exc:
-            _raise_request_error(
-                exc, f"Failed to add path {path!r} to library {name!r}"
-            )
+        _post_or_raise(
+            f"{base_url}/Library/VirtualFolders/Paths",
+            headers=headers,
+            json={"Name": name, "Path": path},
+            timeout=timeout,
+            error_prefix=f"Failed to add path {path!r} to library {name!r}",
+        )
 
     # Step 3: Trigger a library refresh if requested
     if refresh_library:
-        try:
-            refresh_resp = requests.post(
-                f"{base_url}/Library/Refresh",
-                headers=headers,
-                timeout=timeout
-            )
-            refresh_resp.raise_for_status()
-        except requests.exceptions.RequestException as exc:
-            _raise_request_error(
-                exc, f"Failed to trigger library refresh for {name!r}"
-            )
+        _post_or_raise(
+            f"{base_url}/Library/Refresh",
+            headers=headers,
+            timeout=timeout,
+            error_prefix=f"Failed to trigger library refresh for {name!r}",
+        )
 
 
 def delete_virtual_folder(base_url: str, api_key: str, name: str, timeout: int = 30) -> None:
@@ -525,24 +594,18 @@ def create_collection(
     Raises:
         RuntimeError: If the API call fails.
     """
-    headers = _auth_headers(api_key)
     params: dict[str, str] = {"Name": name, "Ids": ",".join(item_ids)}
-
-    try:
-        resp = requests.post(
-            f"{base_url}/Collections",
-            params=params,
-            headers=headers,
-            timeout=timeout,
-        )
-        resp.raise_for_status()
-        data = _parse_json(resp)
-        collection_id: str | None = data.get("Id")
-        if not collection_id:
-            raise RuntimeError(f"Collection created but no Id returned for {name!r}")
-        return collection_id
-    except requests.exceptions.RequestException as exc:
-        _raise_request_error(exc, f"Failed to create collection {name!r}")
+    data = _post_json(
+        f"{base_url}/Collections",
+        headers=_auth_headers(api_key),
+        params=params,
+        timeout=timeout,
+        error_prefix=f"Failed to create collection {name!r}",
+    )
+    collection_id: str | None = data.get("Id")
+    if not collection_id:
+        raise RuntimeError(f"Collection created but no Id returned for {name!r}")
+    return collection_id
 
 
 def find_collection_by_name(
@@ -600,19 +663,14 @@ def add_to_collection(
     if not item_ids:
         return
 
-    headers = _auth_headers(api_key)
     params: dict[str, str] = {"Ids": ",".join(item_ids)}
-
-    try:
-        resp = requests.post(
-            f"{base_url}/Collections/{collection_id}/Items",
-            params=params,
-            headers=headers,
-            timeout=timeout,
-        )
-        resp.raise_for_status()
-    except requests.exceptions.RequestException as exc:
-        _raise_request_error(exc, f"Failed to add items to collection {collection_id!r}")
+    _post_or_raise(
+        f"{base_url}/Collections/{collection_id}/Items",
+        headers=_auth_headers(api_key),
+        params=params,
+        timeout=timeout,
+        error_prefix=f"Failed to add items to collection {collection_id!r}",
+    )
 
 
 def remove_from_collection(
@@ -637,19 +695,14 @@ def remove_from_collection(
     if not item_ids:
         return
 
-    headers = _auth_headers(api_key)
     params: dict[str, str] = {"Ids": ",".join(item_ids)}
-
-    try:
-        resp = requests.delete(
-            f"{base_url}/Collections/{collection_id}/Items",
-            params=params,
-            headers=headers,
-            timeout=timeout,
-        )
-        resp.raise_for_status()
-    except requests.exceptions.RequestException as exc:
-        _raise_request_error(exc, f"Failed to remove items from collection {collection_id!r}")
+    _delete_or_raise(
+        f"{base_url}/Collections/{collection_id}/Items",
+        headers=_auth_headers(api_key),
+        params=params,
+        timeout=timeout,
+        error_prefix=f"Failed to remove items from collection {collection_id!r}",
+    )
 
 
 def delete_collection(
@@ -669,17 +722,12 @@ def delete_collection(
     Raises:
         RuntimeError: If the API call fails.
     """
-    headers = _auth_headers(api_key)
-
-    try:
-        resp = requests.delete(
-            f"{base_url}/Items/{collection_id}",
-            headers=headers,
-            timeout=timeout,
-        )
-        resp.raise_for_status()
-    except requests.exceptions.RequestException as exc:
-        _raise_request_error(exc, f"Failed to delete collection {collection_id!r}")
+    _delete_or_raise(
+        f"{base_url}/Items/{collection_id}",
+        headers=_auth_headers(api_key),
+        timeout=timeout,
+        error_prefix=f"Failed to delete collection {collection_id!r}",
+    )
 
 
 def set_collection_image(
