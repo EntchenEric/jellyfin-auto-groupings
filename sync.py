@@ -139,6 +139,26 @@ _LIBRARY_CACHE: dict[tuple[str, str], list[dict[str, Any]]] = {}
 _LIBRARY_CACHE_LOCK = threading.RLock()
 
 
+def _filter_by_watch_state(
+    items: list[dict[str, Any]], watch_state: str
+) -> list[dict[str, Any]]:
+    """Filter *items* by Jellyfin watch state.
+
+    Args:
+        items: Jellyfin item dicts (must contain ``UserData.Played``).
+        watch_state: ``"unwatched"``, ``"watched"``, or any other value
+            (which returns the list unchanged).
+
+    Returns:
+        The filtered list.
+    """
+    if watch_state == "unwatched":
+        return [i for i in items if not i.get("UserData", {}).get("Played")]
+    if watch_state == "watched":
+        return [i for i in items if i.get("UserData", {}).get("Played")]
+    return items
+
+
 def _fetch_full_library(
     url: str,
     api_key: str,
@@ -246,10 +266,7 @@ def _match_jellyfin_items_by_provider(
         matched_ids = {str(eid).lower() if case_insensitive else str(eid) for eid in external_ids}
         items = [v for k, v in jf_by_provider.items() if k in matched_ids]
 
-    if watch_state == "unwatched":
-        items = [i for i in items if not i.get("UserData", {}).get("Played")]
-    elif watch_state == "watched":
-        items = [i for i in items if i.get("UserData", {}).get("Played")]
+    items = _filter_by_watch_state(items, watch_state)
 
     return items, None, 200
 
@@ -589,10 +606,7 @@ def _fetch_items_for_letterboxd_group(
                 items.append(match)
                 seen_jf_ids.add(match["Id"])
 
-    if watch_state == "unwatched":
-        items = [i for i in items if not i.get("UserData", {}).get("Played")]
-    elif watch_state == "watched":
-        items = [i for i in items if i.get("UserData", {}).get("Played")]
+    items = _filter_by_watch_state(items, watch_state)
 
     return items, None, 200
 
@@ -787,10 +801,7 @@ def _fetch_items_for_complex_group(
 
     filtered = [item for item in raw_items if _eval_item(item, valid_rules)]
 
-    if watch_state == "unwatched":
-        filtered = [i for i in filtered if not i.get("UserData", {}).get("Played")]
-    elif watch_state == "watched":
-        filtered = [i for i in filtered if i.get("UserData", {}).get("Played")]
+    filtered = _filter_by_watch_state(filtered, watch_state)
 
     # In-memory sorting because this is local filtering
     sorted_items = _sort_items_in_memory(filtered, sort_order)
