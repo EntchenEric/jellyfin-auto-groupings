@@ -82,7 +82,7 @@ def _get_json(
     """GET *url* and return the parsed JSON response.
 
     Raises:
-        requests.HTTPError: If the server returns a non-2xx status code.
+        requests.exceptions.HTTPError: If the server returns a non-2xx status code.
         RuntimeError: If the response body is not valid JSON.
     """
     kwargs: dict[str, Any] = {"timeout": timeout}
@@ -125,7 +125,7 @@ def fetch_jellyfin_items(
         the response contained no ``Items`` key.
 
     Raises:
-        requests.HTTPError: If the server returns a non-2xx status code.
+        requests.exceptions.HTTPError: If the server returns a non-2xx status code.
         requests.exceptions.RequestException: For any other network-level error.
     """
     headers = _auth_headers(api_key)
