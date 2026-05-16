@@ -605,7 +605,7 @@ def test_update_config_invalid_cleanup_cron(client):
 
 
 # _fetch_jellyfin_endpoint partial data break (line 250)
-@patch('routes.requests.get')
+@patch('jellyfin.requests.get')
 @pytest.mark.usefixtures("temp_config")
 def test_fetch_jellyfin_endpoint_partial_data(mock_get, client):
     resp1 = MagicMock()
@@ -622,7 +622,7 @@ def test_fetch_jellyfin_endpoint_partial_data(mock_get, client):
 
 
 # _fetch_jellyfin_endpoint pagination (line 259)
-@patch('routes.requests.get')
+@patch('jellyfin.requests.get')
 @pytest.mark.usefixtures("temp_config")
 def test_fetch_jellyfin_endpoint_pagination(mock_get, client):
     resp1 = MagicMock()
@@ -632,7 +632,7 @@ def test_fetch_jellyfin_endpoint_pagination(mock_get, client):
 
     resp2 = MagicMock()
     resp2.status_code = 200
-    resp2.json.return_value = {"Items": [{"Name": "G200"}]}
+    resp2.json.return_value = {"Items": [{"Name": "G200"}], "TotalRecordCount": 201}
     resp2.raise_for_status = MagicMock()
 
     mock_get.side_effect = [resp1, resp2]

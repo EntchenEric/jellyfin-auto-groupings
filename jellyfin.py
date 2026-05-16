@@ -9,7 +9,7 @@ Jellyfin ``/Items`` endpoint.
 from __future__ import annotations
 
 from collections.abc import Iterator
-from typing import Any, NoReturn
+from typing import Any, Callable, NoReturn
 
 import mimetypes
 import logging
@@ -122,6 +122,7 @@ def fetch_all_jellyfin_items(
     *,
     limit: int = 200,
     timeout: int = 30,
+    _fetch_page: Callable[..., list[dict[str, Any]]] | None = None,
 ) -> list[dict[str, Any]]:
     """Fetch all items from the Jellyfin ``/Items`` endpoint, handling pagination.
 
@@ -131,10 +132,13 @@ def fetch_all_jellyfin_items(
         extra_params: Additional query-string parameters for every request.
         limit: Number of items to request per page.
         timeout: HTTP request timeout in seconds.
+        _fetch_page: Optional callable used to fetch a single page. Defaults to
+            :func:`fetch_jellyfin_items`.
 
     Returns:
         Concatenated list of all ``Items`` across all pages.
     """
+    fetch_page = _fetch_page or fetch_jellyfin_items
     all_items: list[dict[str, Any]] = []
     start_index = 0
 
@@ -145,7 +149,7 @@ def fetch_all_jellyfin_items(
         }
         if extra_params:
             params.update(extra_params)
-        page = fetch_jellyfin_items(base_url, api_key, params, timeout=timeout)
+        page = fetch_page(base_url, api_key, params, timeout=timeout)
         all_items.extend(page)
         if len(page) < limit:
             break
@@ -202,7 +206,9 @@ def _paginate_jellyfin(
 
         total = data.get("TotalRecordCount", 0)
         start_index += len(page_items)
-        if start_index >= total or not page_items:
+        if not page_items:
+            break
+        if total and start_index >= total:
             break
 
 
