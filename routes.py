@@ -45,6 +45,22 @@ def _handle_config_error(exc: Exception) -> ResponseReturnValue:
     raise exc
 
 
+def _error(message: str, status_code: int = 400, **extra: Any) -> ResponseReturnValue:
+    """Return a JSON error response."""
+    payload: dict[str, Any] = {"status": "error", "message": message}
+    if extra:
+        payload.update(extra)
+    return jsonify(payload), status_code
+
+
+def _success(message: str, status_code: int = 200, **extra: Any) -> ResponseReturnValue:
+    """Return a JSON success response."""
+    payload: dict[str, Any] = {"status": "success", "message": message}
+    if extra:
+        payload.update(extra)
+    return jsonify(payload), status_code
+
+
 # Max size for base64 encoded cover image (approx 4MB)
 MAX_B64_SIZE = 4 * 1024 * 1024
 
@@ -92,7 +108,7 @@ def _check_csrf() -> ResponseReturnValue | None:
         if current_app.testing:
             return None
         if request.headers.get("X-Requested-With") != "XMLHttpRequest":
-            return jsonify({"status": "error", "message": "CSRF validation failed"}), 403
+            return _error("CSRF validation failed", 403)
     return None
 
 
@@ -179,10 +195,7 @@ def update_config() -> ResponseReturnValue:
     """
     new_config = request.get_json(silent=True)
     if not isinstance(new_config, dict):
-        return (
-            jsonify({"status": "error", "message": "Request body must be a JSON object"}),
-            400,
-        )
+        return _error("Request body must be a JSON object", 400)
 
     # Validate cron expressions
     cron_errors = []
@@ -203,36 +216,25 @@ def update_config() -> ResponseReturnValue:
             if err:
                 cron_errors.append(f"Group '{group.get('name', 'unnamed')}': {err}")
     if cron_errors:
-        return (
-            jsonify({"status": "error", "message": "Invalid cron expression(s)", "errors": cron_errors}),
-            400,
-        )
+        return _error("Invalid cron expression(s)", 400, errors=cron_errors)
     try:
         save_config(new_config)
     except OSError as exc:
         logger.exception("Failed to write config file")
-        return (
-            jsonify({"status": "error", "message": f"Config file write failed: {exc}"}),
-            500,
-        )
+        return _error(f"Config file write failed: {exc}", 500)
 
     # Update background jobs based on new config
     try:
         update_scheduler_jobs()
     except (ValueError, KeyError, OSError, RuntimeError) as exc:
         logger.exception("Failed to update scheduler jobs")
-        return (
-            jsonify(
-                {
-                    "status": "error",
-                    "message": f"Config saved but scheduler could not be updated: {exc!s}",
-                    "config": new_config,
-                }
-            ),
+        return _error(
+            f"Config saved but scheduler could not be updated: {exc!s}",
             500,
+            config=new_config,
         )
 
-    return jsonify({"status": "success", "config": new_config})
+    return _success("", config=new_config)
 
 
 # ---------------------------------------------------------------------------
@@ -251,15 +253,12 @@ def test_server() -> ResponseReturnValue:
     """
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
-        return (
-            jsonify({"status": "error", "message": "Request body must be a JSON object"}),
-            400,
-        )
+        return _error("Request body must be a JSON object", 400)
     url: str = str(data.get("jellyfin_url", "")).rstrip("/")
     api_key: str = str(data.get("api_key", ""))
 
     if not url or not api_key:
-        return jsonify({"status": "error", "message": "URL and API Key are required"}), 400
+        return _error("URL and API Key are required", 400)
 
     try:
         response = requests.get(
@@ -268,18 +267,10 @@ def test_server() -> ResponseReturnValue:
             timeout=_TEST_SERVER_TIMEOUT,
         )
         if response.status_code == 200:
-            return jsonify({"status": "success", "message": "Connected to Jellyfin successfully!"})
-        return (
-            jsonify(
-                {
-                    "status": "error",
-                    "message": f"Server returned status {response.status_code}",
-                }
-            ),
-            400,
-        )
+            return _success("Connected to Jellyfin successfully!")
+        return _error(f"Server returned status {response.status_code}", 400)
     except requests.exceptions.RequestException as exc:
-        return jsonify({"status": "error", "message": f"Connection error: {exc!s}"}), 400
+        return _error(f"Connection error: {exc!s}", 400)
 
 
 # ---------------------------------------------------------------------------
@@ -367,12 +358,12 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
                     failed += 1
 
         if failed >= len(futures):
-            return jsonify({"status": "error", "message": "Failed to fetch metadata from Jellyfin"}), 400
+            return _error("Failed to fetch metadata from Jellyfin", 400)
 
-        return jsonify({"status": "success", "metadata": result})
+        return _success("", metadata=result)
     except (RuntimeError, OSError) as exc:
         logger.exception("Unexpected error fetching Jellyfin metadata")
-        return jsonify({"status": "error", "message": str(exc)}), 500
+        return _error(str(exc), 500)
 
 
 # ---------------------------------------------------------------------------
@@ -391,14 +382,12 @@ def get_jellyfin_users() -> ResponseReturnValue:
 
     try:
         users_list = get_users(url, api_key)
-        return jsonify(
-            {
-                "status": "success",
-                "users": [{"id": u.get("Id"), "name": u.get("Name")} for u in users_list],
-            }
+        return _success(
+            "",
+            users=[{"id": u.get("Id"), "name": u.get("Name")} for u in users_list],
         )
     except (requests.exceptions.RequestException, RuntimeError) as exc:
-        return jsonify({"status": "error", "message": str(exc)}), 400
+        return _error(str(exc), 400)
 
 
 # ---------------------------------------------------------------------------
@@ -423,24 +412,21 @@ def upload_cover() -> ResponseReturnValue:
     """
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
-        return jsonify({"status": "error", "message": "Request body must be JSON"}), 400
+        return _error("Request body must be JSON", 400)
 
     group_name = data.get("group_name")
     image_data = data.get("image")
     if not isinstance(group_name, str) or not isinstance(image_data, str):
-        return jsonify({"status": "error", "message": "group_name and image must be strings"}), 400
+        return _error("group_name and image must be strings", 400)
 
     if not image_data.startswith("data:image/"):
-        return jsonify({"status": "error", "message": "Invalid image format"}), 400
+        return _error("Invalid image format", 400)
 
     try:
         _header, encoded = image_data.split(",", 1)
 
         if len(encoded) > MAX_B64_SIZE:
-            return (
-                jsonify({"status": "error", "message": "Payload too large"}),
-                413,
-            )
+            return _error("Payload too large", 413)
 
         decoded = base64.b64decode(encoded)
 
@@ -450,20 +436,18 @@ def upload_cover() -> ResponseReturnValue:
 
         cover_path = get_cover_path(group_name, target_path, check_exists=False)
         if cover_path is None:
-            return jsonify(
-                {"status": "error", "message": "Could not resolve cover storage path"}
-            ), 500
+            return _error("Could not resolve cover storage path", 500)
 
         os.makedirs(os.path.dirname(cover_path), exist_ok=True)
         with open(cover_path, "wb") as f:
             f.write(decoded)
 
-        return jsonify({"status": "success", "message": "Cover saved successfully"})
+        return _success("Cover saved successfully")
     except ValueError:
-        return jsonify({"status": "error", "message": "Malformed image data"}), 400
+        return _error("Malformed image data", 400)
     except (OSError, RuntimeError) as exc:
         logger.exception("Failed to save cover image")
-        return jsonify({"status": "error", "message": f"Server error: {exc!s}"}), 500
+        return _error(f"Server error: {exc!s}", 500)
 
 
 def _run_sync_handler(dry_run: bool = False) -> ResponseReturnValue:
@@ -472,25 +456,19 @@ def _run_sync_handler(dry_run: bool = False) -> ResponseReturnValue:
         config: dict[str, Any] = load_config()
         sync_results = run_sync(config, dry_run=dry_run)
         if dry_run:
-            return jsonify(
-                {
-                    "status": "success",
-                    "message": "Preview generated successfully",
-                    "results": sync_results,
-                }
+            return _success(
+                "Preview generated successfully",
+                results=sync_results,
             )
-        return jsonify(
-            {
-                "status": "success",
-                "message": "Synchronization complete",
-                "results": sync_results,
-            }
+        return _success(
+            "Synchronization complete",
+            results=sync_results,
         )
     except ValueError as exc:
-        return jsonify({"status": "error", "message": f"{exc!s}"}), 400
+        return _error(f"{exc!s}", 400)
     except (RuntimeError, OSError) as exc:
         prefix = "Sync preview failed" if dry_run else "Sync failed"
-        return jsonify({"status": "error", "message": f"{prefix}: {exc!s}"}), 500
+        return _error(f"{prefix}: {exc!s}", 500)
 
 
 @bp.route("/api/sync", methods=["POST"])
@@ -527,30 +505,27 @@ def preview_grouping() -> ResponseReturnValue:
     """
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
-        return jsonify({"status": "error", "message": "Request body must be JSON"}), 400
+        return _error("Request body must be JSON", 400)
 
     url, api_key = _get_jellyfin_config()
 
     # Validate and normalize "type"
     type_raw = data.get("type")
     if not isinstance(type_raw, str):
-        return jsonify({"status": "error", "message": "Missing or invalid 'type'"}), 400
+        return _error("Missing or invalid 'type'", 400)
 
     type_name = type_raw.lower().strip()
     if not type_name or type_name not in _ALLOWED_PREVIEW_TYPES:
-        return (
-            jsonify({"status": "error", "message": f"Invalid metadata type: {type_raw}"}),
-            400,
-        )
+        return _error(f"Invalid metadata type: {type_raw}", 400)
 
     # Validate value
     val_raw = data.get("value")
     if not isinstance(val_raw, str):
-        return jsonify({"status": "error", "message": "Value must be a string"}), 400
+        return _error("Value must be a string", 400)
 
     val = val_raw.strip()
     if not val:
-        return jsonify({"status": "error", "message": "Value cannot be empty"}), 400
+        return _error("Value cannot be empty", 400)
 
     watch_state = data.get("watch_state", "").strip().lower()
 
@@ -559,7 +534,7 @@ def preview_grouping() -> ResponseReturnValue:
         items, error, status_code = preview_group(type_name, val, url, api_key, watch_state)
 
         if error is not None:
-            return jsonify({"status": "error", "message": error}), status_code
+            return _error(error, status_code)
 
         # Return summary count and first few items
         results = [
@@ -567,10 +542,10 @@ def preview_grouping() -> ResponseReturnValue:
             for i in items[:15]
         ]
 
-        return jsonify({"status": "success", "count": len(items), "preview_items": results})
+        return _success("", count=len(items), preview_items=results)
     except (ValueError, RuntimeError, requests.exceptions.RequestException) as exc:
         logger.exception("Failed to generate grouping preview")
-        return jsonify({"status": "error", "message": f"Preview failed: {exc!s}"}), 500
+        return _error(f"Preview failed: {exc!s}", 500)
 
 
 # ---------------------------------------------------------------------------
@@ -584,7 +559,7 @@ def get_cleanup_items() -> ResponseReturnValue:
     config: dict[str, Any] = load_config()
     target_base: str = str(config.get("target_path", ""))
     if not target_base or not os.path.exists(target_base):
-        return jsonify({"status": "success", "items": []})
+        return _success("", items=[])
 
     configured_groups: set[str] = {str(g.get("name")) for g in config.get("groups", []) if g.get("name")}
 
@@ -597,9 +572,9 @@ def get_cleanup_items() -> ResponseReturnValue:
                     "name": name,
                     "is_configured": name in configured_groups
                 })
-        return jsonify({"status": "success", "items": sorted(entries, key=lambda x: str(x["name"]))})
+        return _success("", items=sorted(entries, key=lambda x: str(x["name"])))
     except OSError as exc:
-        return jsonify({"status": "error", "message": str(exc)}), 500
+        return _error(str(exc), 500)
 
 
 @bp.route("/api/cleanup", methods=["POST"])
@@ -607,16 +582,16 @@ def perform_cleanup() -> ResponseReturnValue:
     """Delete the selected folders from the target directory."""
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
-        return jsonify({"status": "error", "message": "Request body must be JSON"}), 400
+        return _error("Request body must be JSON", 400)
 
     folders = data.get("folders", [])
     if not isinstance(folders, list):
-        return jsonify({"status": "error", "message": "'folders' must be a list"}), 400
+        return _error("'folders' must be a list", 400)
 
     config: dict[str, Any] = load_config()
     target_base: str = str(config.get("target_path", ""))
     if not target_base or not os.path.exists(target_base):
-        return jsonify({"status": "error", "message": "Target path not found"}), 404
+        return _error("Target path not found", 404)
 
     deleted: int = 0
     errors: list[str] = []
@@ -645,7 +620,7 @@ def perform_cleanup() -> ResponseReturnValue:
 
     if errors:
         return jsonify({"status": "partial_success", "deleted": deleted, "errors": errors}), 207
-    return jsonify({"status": "success", "deleted": deleted})
+    return _success("", deleted=deleted)
 
 
 # ---------------------------------------------------------------------------
@@ -754,15 +729,10 @@ def auto_detect_paths() -> ResponseReturnValue:
             timeout=_AUTO_DETECT_JELLYFIN_TIMEOUT,
         )
     except (requests.exceptions.RequestException, RuntimeError) as exc:
-        return jsonify({"status": "error", "message": str(exc)}), 400
+        return _error(str(exc), 400)
 
     if not items:
-        return (
-            jsonify(
-                {"status": "error", "message": "No media found in Jellyfin to detect paths"}
-            ),
-            400,
-        )
+        return _error("No media found in Jellyfin to detect paths", 400)
 
     home_dir = os.path.expanduser("~")
     detected_j_root: str | None = None
@@ -784,16 +754,14 @@ def auto_detect_paths() -> ResponseReturnValue:
 
     suggested_target = os.path.join(home_dir, "jellyfin-groupings-virtual")
 
-    return jsonify(
-        {
-            "status": "success",
-            "detected": {
-                "media_path_in_jellyfin": detected_j_root,
-                "media_path_on_host": detected_h_root,
-                "target_path": suggested_target,
-                "target_path_in_jellyfin": suggested_target,
-            },
-        }
+    return _success(
+        "",
+        detected={
+            "media_path_in_jellyfin": detected_j_root,
+            "media_path_on_host": detected_h_root,
+            "target_path": suggested_target,
+            "target_path_in_jellyfin": suggested_target,
+        },
     )
 
 
@@ -826,10 +794,7 @@ def browse_directory() -> ResponseReturnValue:
         path = os.path.dirname(path)
 
     if not _path_is_allowed(path):
-        return (
-            jsonify({"status": "error", "message": "Access to this path is not permitted"}),
-            403,
-        )
+        return _error("Access to this path is not permitted", 403)
 
     try:
         entries: list[str] = sorted(
@@ -840,18 +805,11 @@ def browse_directory() -> ResponseReturnValue:
     except PermissionError:
         entries = []
     except OSError as exc:
-        return jsonify({"status": "error", "message": str(exc)}), 400
+        return _error(str(exc), 400)
 
     parent: str | None = os.path.dirname(path) if path != os.sep else None
 
-    return jsonify(
-        {
-            "status": "success",
-            "current": path,
-            "parent": parent,
-            "dirs": entries,
-        }
-    )
+    return _success("", current=path, parent=parent, dirs=entries)
 
 
 # ---------------------------------------------------------------------------
@@ -873,20 +831,20 @@ def get_test_results() -> ResponseReturnValue:
         else:
             results[filename] = "No output found."
 
-    return jsonify({"status": "success", "results": results})
+    return _success("", results=results)
 
 
 @bp.route("/api/test/run", methods=["POST"])
 def run_tests() -> ResponseReturnValue:
     """Trigger the test suite programmatically. Only available in debug mode."""
     if not current_app.debug:
-        return jsonify({"status": "error", "message": "Not available in production mode"}), 403
+        return _error("Not available in production mode", 403)
     try:
         subprocess.run([sys.executable, "run_tests_to_file.py"], check=False, timeout=130)
-        return jsonify({"status": "success", "message": "Tests executed successfully."})
+        return _success("Tests executed successfully.")
     except (subprocess.TimeoutExpired, OSError) as exc:
         logger.exception("Failed to run test suite")
-        return jsonify({"status": "error", "message": str(exc)}), 500
+        return _error(str(exc), 500)
 
 
 # ---------------------------------------------------------------------------
