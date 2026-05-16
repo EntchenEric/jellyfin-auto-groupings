@@ -139,7 +139,7 @@ def _translate_path(
     return jellyfin_path
 
 
-def get_cover_path(group_name: str, target_base: str, check_exists: bool = True) -> str | None:
+def _get_cover_path(group_name: str, target_base: str, check_exists: bool = True) -> str | None:
     """Compute the expected cover image path for a group, resolving storage priority.
 
     Priority:
@@ -982,7 +982,7 @@ def _process_collection_group(
     result: dict[str, Any] = {"group": group_name, "links": len(item_ids)}
 
     if auto_set_library_covers:
-        source_cover = get_cover_path(group_name, target_base)
+        source_cover = _get_cover_path(group_name, target_base)
         if source_cover and os.path.exists(source_cover):
             try:
                 set_collection_image(url, api_key, collection_id, source_cover)
@@ -1052,7 +1052,7 @@ def _process_group(
             return {"group": group_name, "links": 0, "error": f"Directory error: {exc!s}"}
 
         # Check if there is an auto-generated cover to copy
-        source_cover = get_cover_path(group_name, target_base)
+        source_cover = _get_cover_path(group_name, target_base)
 
         if source_cover:
             poster_dest = os.path.join(group_dir, "poster.jpg")

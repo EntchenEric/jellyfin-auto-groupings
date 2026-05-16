@@ -108,7 +108,7 @@ def test_upload_cover_security_check(client):
     assert response.status_code == 413
 
 
-@patch('routes.get_cover_path')
+@patch('routes._get_cover_path')
 def test_upload_cover_success(mock_get_path, client, tmp_path):
     mock_get_path.return_value = str(tmp_path / "test.jpg")
     # Base64 for a tiny transparent pixel
@@ -382,7 +382,7 @@ def test_upload_cover_invalid_base64(client):
     assert "Malformed image data" in response.get_json()["message"]
 
 
-@patch('routes.get_cover_path')
+@patch('routes._get_cover_path')
 def test_upload_cover_server_error(mock_get_cover, client):
     mock_get_cover.side_effect = OSError("Disk full")
     img_data = (
@@ -394,7 +394,7 @@ def test_upload_cover_server_error(mock_get_cover, client):
     assert response.get_json()["status"] == "error"
 
 
-@patch('routes.get_cover_path')
+@patch('routes._get_cover_path')
 def test_upload_cover_unresolvable_path(mock_get_cover, client):
     mock_get_cover.return_value = None
     img_data = (
