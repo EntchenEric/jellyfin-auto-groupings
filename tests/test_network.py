@@ -159,3 +159,40 @@ def test_patched_delete_timeout_re_raise(monkeypatch):
     monkeypatch.setattr(_SESSION, "delete", _fail)
     with pytest.raises(requests.Timeout):
         _patched_delete("http://example.com/api")
+
+
+# ---------------------------------------------------------------------------
+# network.py edge cases: MaxRetryError with non-read-timeout reason
+# ---------------------------------------------------------------------------
+
+
+def test_patched_post_maxretry_non_readtimeout(monkeypatch):
+    """_patched_post re-raises ConnectionError when MaxRetryError reason is not ReadTimeout."""
+    from network import _patched_post, _SESSION
+
+    connect_err = ConnectTimeoutError("pool", "url", "msg")
+    max_retry = MaxRetryError("pool", "url", reason=connect_err)
+    conn_err = requests.ConnectionError(max_retry)
+
+    def _fail(*a, **kw):
+        raise conn_err
+
+    monkeypatch.setattr(_SESSION, "post", _fail)
+    with pytest.raises(requests.ConnectionError):
+        _patched_post("http://example.com/api")
+
+
+def test_patched_delete_maxretry_non_readtimeout(monkeypatch):
+    """_patched_delete re-raises ConnectionError when MaxRetryError reason is not ReadTimeout."""
+    from network import _patched_delete, _SESSION
+
+    connect_err = ConnectTimeoutError("pool", "url", "msg")
+    max_retry = MaxRetryError("pool", "url", reason=connect_err)
+    conn_err = requests.ConnectionError(max_retry)
+
+    def _fail(*a, **kw):
+        raise conn_err
+
+    monkeypatch.setattr(_SESSION, "delete", _fail)
+    with pytest.raises(requests.ConnectionError):
+        _patched_delete("http://example.com/api")

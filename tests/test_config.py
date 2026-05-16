@@ -52,3 +52,27 @@ def test_nested_defaults(temp_config):
     assert cfg["scheduler"]["global_enabled"] is True
     assert cfg["scheduler"]["global_schedule"] == "0 0 * * *"
     assert cfg["scheduler"]["global_exclude_ids"] == []
+
+
+# ---------------------------------------------------------------------------
+# config.py edge cases
+# ---------------------------------------------------------------------------
+
+import pytest
+
+
+def test_load_config_corrupt_file(temp_config):
+    """Test that a corrupt config file falls back to defaults."""
+    with open(temp_config, "w") as f:
+        f.write("this is not json{{{")
+
+    cfg = load_config()
+    assert cfg["jellyfin_url"] == ""
+    assert cfg["groups"] == []
+
+
+def test_load_config_env_override(temp_config, monkeypatch):
+    """Test that environment variables override config values."""
+    monkeypatch.setenv("JELLYFIN_API_KEY", "env_api_key")
+    cfg = load_config()
+    assert cfg["api_key"] == "env_api_key"
