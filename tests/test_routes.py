@@ -337,7 +337,7 @@ def test_get_jellyfin_users_success(mock_get_users, client):
 @pytest.mark.usefixtures("temp_config")
 def test_get_jellyfin_users_exception(mock_get_users, client):
     save_config({"jellyfin_url": "http://test", "api_key": "key"})
-    mock_get_users.side_effect = Exception("Jellyfin down")
+    mock_get_users.side_effect = requests.exceptions.RequestException("Jellyfin down")
     response = client.get('/api/jellyfin/users')
     assert response.status_code == 400
     assert response.get_json()["status"] == "error"
@@ -520,7 +520,7 @@ def test_auto_detect_paths_no_config(client):
 @pytest.mark.usefixtures("temp_config")
 def test_auto_detect_paths_fetch_error(mock_fetch, client):
     save_config({"jellyfin_url": "http://test", "api_key": "key"})
-    mock_fetch.side_effect = Exception("Connection refused")
+    mock_fetch.side_effect = requests.exceptions.RequestException("Connection refused")
     response = client.post('/api/jellyfin/auto-detect-paths')
     assert response.status_code == 400
 
@@ -793,7 +793,7 @@ def test_perform_cleanup_delete_virtual_folder_error(mock_exists, mock_delete, c
         "api_key": "key"
     })
     mock_exists.return_value = True
-    mock_delete.side_effect = Exception("Jellyfin error")
+    mock_delete.side_effect = requests.exceptions.RequestException("Jellyfin error")
     response = client.post('/api/cleanup', json={"folders": ["Action"]})
     assert response.status_code == 200
     assert response.get_json()["deleted"] == 1
