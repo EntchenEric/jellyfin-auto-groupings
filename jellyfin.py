@@ -382,15 +382,18 @@ def delete_virtual_folder(base_url: str, api_key: str, name: str, timeout: int =
     """
     params = {"name": name}
     headers = _auth_headers(api_key)
-    response = requests.delete(
-        f"{base_url}/Library/VirtualFolders",
-        params=params,
-        headers=headers,
-        timeout=timeout,
-    )
-    if not response.ok:
-        logger.warning("Delete Virtual Folder Failed (%s): %s", response.status_code, response.text)
-    response.raise_for_status()
+    try:
+        response = requests.delete(
+            f"{base_url}/Library/VirtualFolders",
+            params=params,
+            headers=headers,
+            timeout=timeout,
+        )
+        if not response.ok:
+            logger.warning("Delete Virtual Folder Failed (%s): %s", response.status_code, response.text)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as exc:
+        _raise_request_error(exc, f"Failed to delete virtual folder {name!r}")
 
 
 def get_library_id(base_url: str, api_key: str, name: str, timeout: int = 30) -> str | None:
