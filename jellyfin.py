@@ -127,7 +127,7 @@ def get_libraries(base_url: str, api_key: str, timeout: int = 30) -> list[str]:
     """
     response = requests.get(
         f"{base_url}/Library/VirtualFolders",
-        headers={"X-Emby-Token": api_key},
+        headers=_auth_headers(api_key),
         timeout=timeout,
     )
     response.raise_for_status()
@@ -147,7 +147,7 @@ def get_users(base_url: str, api_key: str, timeout: int = 30) -> list[dict[str, 
     """
     response = requests.get(
         f"{base_url}/Users",
-        headers={"X-Emby-Token": api_key},
+        headers=_auth_headers(api_key),
         timeout=timeout,
     )
     response.raise_for_status()
@@ -180,7 +180,7 @@ def get_user_recent_items(
     }
     response = requests.get(
         f"{base_url}/Users/{user_id}/Items",
-        headers={"X-Emby-Token": api_key},
+        headers=_auth_headers(api_key),
         params=params,
         timeout=timeout,
     )
@@ -309,7 +309,7 @@ def get_library_id(base_url: str, api_key: str, name: str, timeout: int = 30) ->
     """
     response = requests.get(
         f"{base_url}/Library/VirtualFolders",
-        headers={"X-Emby-Token": api_key},
+        headers=_auth_headers(api_key),
         timeout=timeout,
     )
     response.raise_for_status()
@@ -342,10 +342,8 @@ def _upload_image(
     with open(image_path, "rb") as f:
         image_bytes = f.read()
     mime_type, _ = mimetypes.guess_type(image_path)
-    headers = {
-        "X-Emby-Token": api_key,
-        "Content-Type": mime_type or "application/octet-stream",
-    }
+    headers = _auth_headers(api_key)
+    headers["Content-Type"] = mime_type or "application/octet-stream"
     url = f"{base_url}/Items/{item_id}/Images/Primary"
     response = requests.post(url, data=image_bytes, headers=headers, timeout=timeout)
     response.raise_for_status()
