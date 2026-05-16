@@ -56,7 +56,7 @@ def test_fetch_missing_items_list(jellyfin_url):
 
 
 def test_fetch_malformed_json(jellyfin_url):
-    with pytest.raises(json.JSONDecodeError):
+    with pytest.raises(RuntimeError, match="Invalid JSON response"):
         fetch_jellyfin_items(jellyfin_url, "MALFORMED_JSON_KEY")
 
 
