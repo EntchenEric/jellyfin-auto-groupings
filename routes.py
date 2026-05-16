@@ -76,6 +76,25 @@ def _path_is_allowed(path: str) -> bool:
     )
 
 
+def _get_jellyfin_config(
+    missing_msg: str = "Server settings not configured",
+) -> tuple[str, str] | tuple[ResponseReturnValue, int]:
+    """Load and validate Jellyfin URL + API key from the active config.
+
+    Returns:
+        ``(url, api_key)`` on success, or a JSON error ``(response, status_code)``
+        tuple when the config is missing or invalid.
+    """
+    config = load_config()
+    if not isinstance(config, dict):
+        return jsonify({"status": "error", "message": "Invalid configuration format"}), 500
+    url = str(config.get("jellyfin_url", "")).rstrip("/")
+    api_key = str(config.get("api_key", ""))
+    if not url or not api_key:
+        return jsonify({"status": "error", "message": missing_msg}), 400
+    return url, api_key
+
+
 # ---------------------------------------------------------------------------
 # Config routes
 # ---------------------------------------------------------------------------
@@ -273,15 +292,10 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
         JSON with ``status`` and a ``metadata`` object containing ``genre``,
         ``studio``, ``tag``, and ``actor`` lists.
     """
-    config: dict[str, Any] = load_config()
-    if not isinstance(config, dict):
-        return jsonify({"status": "error", "message": "Invalid configuration format"}), 500
-
-    url: str = str(config.get("jellyfin_url", "")).rstrip("/")
-    api_key: str = str(config.get("api_key", ""))
-
-    if not url or not api_key:
-        return jsonify({"status": "error", "message": "Server settings not configured"}), 400
+    config_result = _get_jellyfin_config()
+    if len(config_result) == 2 and isinstance(config_result[1], int):
+        return config_result
+    url, api_key = config_result
 
     result: dict[str, list[str]] = {}
     failed = 0
@@ -331,15 +345,10 @@ def get_jellyfin_users() -> ResponseReturnValue:
     Returns:
         JSON with ``status`` and a ``users`` object containing ``id`` and ``name``.
     """
-    config: dict[str, Any] = load_config()
-    if not isinstance(config, dict):
-        return jsonify({"status": "error", "message": "Invalid configuration format"}), 500
-
-    url: str = str(config.get("jellyfin_url", "")).rstrip("/")
-    api_key: str = str(config.get("api_key", ""))
-
-    if not url or not api_key:
-        return jsonify({"status": "error", "message": "Server settings not configured"}), 400
+    config_result = _get_jellyfin_config()
+    if len(config_result) == 2 and isinstance(config_result[1], int):
+        return config_result
+    url, api_key = config_result
 
     try:
         users_list = get_users(url, api_key)
@@ -477,12 +486,10 @@ def preview_grouping() -> ResponseReturnValue:
     if not isinstance(data, dict):
         return jsonify({"status": "error", "message": "Request body must be JSON"}), 400
 
-    config: dict[str, Any] = load_config()
-    url: str = str(config.get("jellyfin_url", "")).rstrip("/")
-    api_key: str = str(config.get("api_key", ""))
-
-    if not url or not api_key:
-        return jsonify({"status": "error", "message": "Server settings not configured"}), 400
+    config_result = _get_jellyfin_config()
+    if len(config_result) == 2 and isinstance(config_result[1], int):
+        return config_result
+    url, api_key = config_result
 
     # Validate and normalize "type"
     type_raw = data.get("type")
@@ -626,15 +633,12 @@ def auto_detect_paths() -> ResponseReturnValue:
         ``media_path_in_jellyfin``, ``media_path_on_host``, and
         ``target_path``.
     """
-    config: dict[str, Any] = load_config()
-    url: str = str(config.get("jellyfin_url", "")).rstrip("/")
-    api_key: str = str(config.get("api_key", ""))
-
-    if not url or not api_key:
-        return (
-            jsonify({"status": "error", "message": "Server settings required for detection"}),
-            400,
-        )
+    config_result = _get_jellyfin_config(
+        missing_msg="Server settings required for detection"
+    )
+    if len(config_result) == 2 and isinstance(config_result[1], int):
+        return config_result
+    url, api_key = config_result
 
     try:
         items = fetch_jellyfin_items(
