@@ -13,6 +13,8 @@ import base64
 import logging
 import os
 import shutil
+import subprocess
+import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
@@ -864,12 +866,10 @@ def run_tests() -> ResponseReturnValue:
     from flask import current_app
     if not current_app.debug:
         return jsonify({"status": "error", "message": "Not available in production mode"}), 403
-    import subprocess
-    import sys
     try:
         subprocess.run([sys.executable, "run_tests_to_file.py"], check=False, timeout=130)
         return jsonify({"status": "success", "message": "Tests executed successfully."})
-    except Exception as exc:
+    except (subprocess.TimeoutExpired, OSError) as exc:
         logger.exception("Failed to run test suite")
         return jsonify({"status": "error", "message": str(exc)}), 500
 
