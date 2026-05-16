@@ -93,6 +93,20 @@ _FULL_LIBRARY_FIELDS: str = (
 # Jellyfin API timeout for full-library fetches (seconds)
 _FULL_LIBRARY_TIMEOUT: int = 30
 
+# Jellyfin API timeout for metadata group fetches (seconds)
+_METADATA_FETCH_TIMEOUT: int = 30
+
+
+def _build_preview_item(item: dict[str, Any], file_name: str | None = None) -> dict[str, Any]:
+    """Build a preview dict from a Jellyfin item."""
+    preview: dict[str, Any] = {
+        "Name": item.get("Name", "Unknown"),
+        "Year": item.get("ProductionYear", ""),
+    }
+    if file_name is not None:
+        preview["FileName"] = file_name
+    return preview
+
 def _translate_path(
     jellyfin_path: str,
     jellyfin_root: str,
@@ -853,7 +867,7 @@ def _fetch_items_for_metadata_group(
         params["SortOrder"] = sort_order_dir
 
     try:
-        items = fetch_jellyfin_items(url, api_key, params, timeout=30)
+        items = fetch_jellyfin_items(url, api_key, params, timeout=_METADATA_FETCH_TIMEOUT)
         logger.info("Found %s potential items for group %r", len(items), group_name)
         return items, None, 200
     except requests.exceptions.RequestException as exc:
@@ -958,7 +972,7 @@ def _process_collection_group(
 
     if dry_run:
         preview_items = [
-            {"Name": item.get("Name", "Unknown"), "Year": item.get("ProductionYear", "")}
+            _build_preview_item(item)
             for item in items[:_MAX_PREVIEW_ITEMS]
         ]
         return {"group": group_name, "links": len(item_ids), "items": preview_items}
@@ -1169,11 +1183,7 @@ def _process_group(
         dest_path: str = os.path.join(group_dir, file_name)
         if dry_run:
             if len(preview_items) < _MAX_PREVIEW_ITEMS:
-                preview_items.append({
-                    "Name": item.get("Name", "Unknown"),
-                    "Year": item.get("ProductionYear", ""),
-                    "FileName": file_name,
-                })
+                preview_items.append(_build_preview_item(item, file_name))
             links_created += 1
         else:
             try:
