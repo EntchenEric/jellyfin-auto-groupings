@@ -15,7 +15,8 @@ def main() -> None:
                 [sys.executable, '-m', 'pytest', '--cov=.', 'tests/'],
                 stdout=f,
                 stderr=subprocess.STDOUT,
-                timeout=120
+                timeout=120,
+                check=False,
             )
         except (subprocess.TimeoutExpired, OSError) as e:
             f.write(f"\nERROR: {e!s}")
