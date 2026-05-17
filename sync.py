@@ -1367,6 +1367,44 @@ def _is_in_season(start_str: Any, end_str: Any) -> bool:
     return current_md >= s or current_md < e
 
 
+def _fetch_existing_libraries(url: str, api_key: str) -> list[str]:
+    """Return existing Jellyfin libraries, logging any fetch errors."""
+    try:
+        libraries = get_libraries(url, api_key)
+        logger.info("Found %s existing virtual folders in Jellyfin", len(libraries))
+    except (RuntimeError, OSError) as exc:
+        logger.warning("Warning: Could not fetch existing libraries: %s", exc)
+        return []
+    else:
+        return libraries
+
+
+def _maybe_handle_seasonal(
+    group: dict[str, Any],
+    name: str,
+    target_base: str,
+    dry_run: bool,
+) -> dict[str, Any] | None:
+    """If the group is seasonal and out of season, clean up and return a result.
+
+    Returns ``None`` when the group should be processed normally.
+    """
+    if not group.get("seasonal_enabled"):
+        return None
+    start = group.get("seasonal_start")
+    end = group.get("seasonal_end")
+    if _is_in_season(start, end):
+        return None
+    if not dry_run and name:
+        group_dir = str(Path(target_base) / name)
+        if Path(group_dir).is_dir():
+            logger.info(
+                "Seasonal group %r is out of season. Deleting directory: %s", name, group_dir,
+            )
+            shutil.rmtree(group_dir)
+    return {"group": name or "(unnamed)", "links": 0, "status": "out_of_season"}
+
+
 def run_sync(
     config: dict[str, Any], dry_run: bool = False, group_names: list[str] | None = None,
 ) -> list[dict[str, Any]]:
@@ -1425,13 +1463,7 @@ def run_sync(
 
     existing_libraries: list[str] = []
     if auto_create_libraries:
-        try:
-            existing_libraries = get_libraries(url, api_key)
-            logger.info("Found %s existing virtual folders in Jellyfin", len(existing_libraries))
-        except (RuntimeError, OSError) as exc:
-            logger.warning("Warning: Could not fetch existing libraries: %s", exc)
-            # We'll continue, but library creation might fail or try to recreate existing ones
-            auto_create_libraries = False
+        existing_libraries = _fetch_existing_libraries(url, api_key)
 
     with _LIBRARY_CACHE_LOCK:
         _LIBRARY_CACHE.clear()
@@ -1446,18 +1478,10 @@ def run_sync(
         if group_names is not None and (not name or name not in group_names):
             continue
 
-        # --- Seasonal Check ---
-        if group.get("seasonal_enabled"):
-            start = group.get("seasonal_start")
-            end = group.get("seasonal_end")
-            if not _is_in_season(start, end):
-                if not dry_run and name:
-                    group_dir = str(Path(target_base) / name)
-                    if Path(group_dir).is_dir():
-                        logger.info("Seasonal group %r is out of season. Deleting directory: %s", name, group_dir)
-                        shutil.rmtree(group_dir)
-                results.append({"group": name or "(unnamed)", "links": 0, "status": "out_of_season"})
-                continue
+        seasonal_result = _maybe_handle_seasonal(group, name, target_base, dry_run)
+        if seasonal_result is not None:
+            results.append(seasonal_result)
+            continue
 
         result = _process_group(
             group,
