@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=61.0", "setuptools_scm>=8", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "jellyfin-groupings"
-version = "1.0.0"
+dynamic = ["version"]
 description = "Create virtual Jellyfin libraries by grouping media via symlinks"
 readme = "README.md"
 license = {text = "MIT"}
@@ -23,7 +23,10 @@ dev = [
     "pytest-mock>=3.12.0",
     "ruff>=0.15.0",
     "types-requests",
+    "mypy>=1.0.0",
 ]
+
+[tool.setuptools_scm]
 
 [tool.setuptools.packages.find]
 where = ["."]
