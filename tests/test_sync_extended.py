@@ -448,7 +448,7 @@ def test_run_sync_with_auto_set_library_covers(
         {"Name": "M1", "Path": "/p1", "ProviderIds": {"Tmdb": "101"}}
     ]
     # Mock cover existence
-    _mock_exists.side_effect = lambda path: True if path == "/target/CoverGroup_cover.jpg" or path == "/p1" else False
+    _mock_exists.side_effect = lambda path: path in ("/target/CoverGroup_cover.jpg", "/p1")
     _mock_isdir.return_value = True
     mock_get_cover.return_value = "/target/CoverGroup_cover.jpg"
     with patch('sync.fetch_tmdb_list', return_value=["101"]):
