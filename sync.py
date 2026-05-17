@@ -1178,6 +1178,63 @@ def _prepare_group_directory(
     return source_cover or ""
 
 
+def _resolve_group_source(
+    group: dict[str, Any],
+    group_name: str,
+    source_type: str | None,
+    source_value: str | None,
+    sort_order: str,
+    url: str,
+    api_key: str,
+    trakt_client_id: str,
+    tmdb_api_key: str,
+    mal_client_id: str,
+    watch_state: str,
+) -> tuple[list[dict[str, Any]], str | None, int]:
+    """Resolve items for a group based on its source configuration."""
+    _source_dispatch: dict[str, Callable[[], tuple[list[dict[str, Any]], str | None, int]]] = {
+        "imdb_list": lambda: _fetch_items_for_imdb_group(
+            group_name, source_value or "", sort_order, url, api_key, watch_state,
+        ),
+        "trakt_list": lambda: _fetch_items_for_trakt_group(
+            group_name, source_value or "", sort_order, url, api_key, trakt_client_id, watch_state,
+        ),
+        "tmdb_list": lambda: _fetch_items_for_tmdb_group(
+            group_name, source_value or "", sort_order, url, api_key, tmdb_api_key, watch_state,
+        ),
+        "anilist_list": lambda: _fetch_items_for_anilist_group(
+            group_name, source_value or "", sort_order, url, api_key, watch_state,
+        ),
+        "mal_list": lambda: _fetch_items_for_mal_group(
+            group_name, source_value or "", sort_order, url, api_key, mal_client_id, watch_state,
+        ),
+        "letterboxd_list": lambda: _fetch_items_for_letterboxd_group(
+            group_name, source_value or "", sort_order, url, api_key, watch_state,
+        ),
+        "recommendations": lambda: _fetch_items_for_recommendations_group(
+            group_name, source_value or "", sort_order, url, api_key, tmdb_api_key, watch_state,
+        ),
+    }
+
+    if source_type in _source_dispatch:
+        return _source_dispatch[source_type]()
+    if isinstance(group.get("rules"), list) and group["rules"]:
+        rules_list = group["rules"]
+        return _fetch_items_for_complex_group(
+            group_name, rules_list, sort_order, url, api_key, watch_state,
+        )
+
+    val_str = str(source_value or "")
+    if source_type in ["genre", "actor", "studio", "tag", "year"] and _COMPLEX_QUERY_RE.search(val_str):
+        rules = parse_complex_query(val_str, str(source_type))
+        return _fetch_items_for_complex_group(
+            group_name, rules, sort_order, url, api_key, watch_state,
+        )
+    return _fetch_items_for_metadata_group(
+        group_name, source_type, source_value, sort_order, url, api_key, watch_state,
+    )
+
+
 def _process_group(
     group: dict[str, Any],
     target_base: str,
@@ -1236,54 +1293,11 @@ def _process_group(
         return source_cover
 
     # --- Resolve items ---
-    error: str | None = None
     watch_state: str = group.get("watch_state", "")
-
-    # Table-driven dispatch for external-list sources
-    _source_dispatch: dict[str, Callable[[], tuple[list[dict[str, Any]], str | None, int]]] = {
-        "imdb_list": lambda: _fetch_items_for_imdb_group(
-            group_name, source_value or "", sort_order, url, api_key, watch_state,
-        ),
-        "trakt_list": lambda: _fetch_items_for_trakt_group(
-            group_name, source_value or "", sort_order, url, api_key, trakt_client_id, watch_state,
-        ),
-        "tmdb_list": lambda: _fetch_items_for_tmdb_group(
-            group_name, source_value or "", sort_order, url, api_key, tmdb_api_key, watch_state,
-        ),
-        "anilist_list": lambda: _fetch_items_for_anilist_group(
-            group_name, source_value or "", sort_order, url, api_key, watch_state,
-        ),
-        "mal_list": lambda: _fetch_items_for_mal_group(
-            group_name, source_value or "", sort_order, url, api_key, mal_client_id, watch_state,
-        ),
-        "letterboxd_list": lambda: _fetch_items_for_letterboxd_group(
-            group_name, source_value or "", sort_order, url, api_key, watch_state,
-        ),
-        "recommendations": lambda: _fetch_items_for_recommendations_group(
-            group_name, source_value or "", sort_order, url, api_key, tmdb_api_key, watch_state,
-        ),
-    }
-
-    if source_type in _source_dispatch:
-        items, error, _status_code = _source_dispatch[source_type]()
-    elif isinstance(group.get("rules"), list) and group["rules"]:
-        rules_list = group["rules"]
-        items, error, _status_code = _fetch_items_for_complex_group(
-            group_name, rules_list, sort_order, url, api_key, watch_state,
-        )
-    else:
-        val_str = str(source_value or "")
-
-        # Determine if it's a complex textual rule that needs local parsing
-        if source_type in ["genre", "actor", "studio", "tag", "year"] and _COMPLEX_QUERY_RE.search(val_str):
-            rules = parse_complex_query(val_str, str(source_type))
-            items, error, _status_code = _fetch_items_for_complex_group(
-                group_name, rules, sort_order, url, api_key, watch_state,
-            )
-        else:
-            items, error, _status_code = _fetch_items_for_metadata_group(
-                group_name, source_type, source_value, sort_order, url, api_key, watch_state,
-            )
+    items, error, _status_code = _resolve_group_source(
+        group, group_name, source_type, source_value, sort_order, url, api_key,
+        trakt_client_id, tmdb_api_key, mal_client_id, watch_state,
+    )
 
     if error is not None:
         return {"group": group_name, "links": 0, "error": error}
