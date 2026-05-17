@@ -22,7 +22,7 @@ def virtual_jellyfin():
     start_time = time.monotonic()
     while time.monotonic() - start_time < timeout:
         try:
-            requests.get(f"{base_url}/Library/VirtualFolders")
+            requests.get(f"{base_url}/Library/VirtualFolders", timeout=1)
             break
         except requests.exceptions.ConnectionError:
             time.sleep(0.1)

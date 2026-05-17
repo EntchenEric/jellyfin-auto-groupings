@@ -96,7 +96,7 @@ def _get_json(
     if params is not None:
         kwargs["params"] = params
     try:
-        response = requests.get(url, **kwargs)
+        response = requests.get(url, **kwargs)  # noqa: S113
         response.raise_for_status()
     except requests.exceptions.RequestException as exc:
         _raise_request_error(exc, f"Failed to GET {url}")
@@ -131,9 +131,9 @@ def _request_or_raise(
         kwargs["json"] = json
     try:
         if method == "POST":
-            response = requests.post(url, **kwargs)
+            response = requests.post(url, **kwargs)  # noqa: S113
         elif method == "DELETE":
-            response = requests.delete(url, **kwargs)
+            response = requests.delete(url, **kwargs)  # noqa: S113
         else:
             raise ValueError(f"Unsupported HTTP method: {method}")
         response.raise_for_status()
