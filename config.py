@@ -1,5 +1,4 @@
-"""
-config.py – Configuration persistence helpers.
+"""config.py - Configuration persistence helpers.
 
 Handles loading and saving the application's ``config.json`` file, including
 backwards-compatible key migration and first-run default creation.

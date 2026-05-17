@@ -1,5 +1,4 @@
-"""
-routes.py – Flask Blueprint containing all HTTP route handlers.
+"""routes.py - Flask Blueprint containing all HTTP route handlers.
 
 Every route is registered on the ``bp`` Blueprint which is imported and
 registered with the Flask application in ``app.py``.  Route handlers are

@@ -1,5 +1,4 @@
-"""
-network.py – Retry-aware HTTP for external API calls.
+"""network.py - Retry-aware HTTP for external API calls.
 
 Importing this module monkey-patches ``requests.get``, ``requests.post``, and
 ``requests.delete`` to use a shared :class:`requests.Session` configured with

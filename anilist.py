@@ -1,6 +1,4 @@
-"""
-anilist.py – AniList API client for fetching user lists.
-"""
+"""anilist.py - AniList API client for fetching user lists."""
 
 from __future__ import annotations
 
@@ -13,8 +11,7 @@ _REQUEST_TIMEOUT: int = 15
 
 
 def fetch_anilist_list(username: str, status: str | None = None) -> list[int]:
-    """
-    Fetch anime IDs from a user's AniList profile.
+    """Fetch anime IDs from a user's AniList profile.
 
     Args:
         username: The AniList username.

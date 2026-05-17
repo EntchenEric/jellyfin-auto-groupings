@@ -1,5 +1,4 @@
-"""
-scheduler.py – Background scheduling for Jellyfin Groupings.
+"""scheduler.py - Background scheduling for Jellyfin Groupings.
 
 Manages a BackgroundScheduler that triggers library synchronisation according
 to either a global schedule (with exclusions) or per-group schedules.
