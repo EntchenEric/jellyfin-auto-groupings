@@ -582,7 +582,7 @@ def set_virtual_folder_image(
     except RuntimeError as exc:
         logger.info(str(exc))
     except OSError as exc:
-        logger.error("Cannot set image: Failed to read image file %r: %s", image_path, exc)
+        logger.exception("Cannot set image: Failed to read image file %r: %s", image_path, exc)
     else:
         logger.info("Successfully updated cover image for library %r", name)
 
@@ -777,6 +777,6 @@ def set_collection_image(
     except RuntimeError as exc:
         logger.info(str(exc))
     except OSError as exc:
-        logger.error("Cannot set collection image: Failed to read %r: %s", image_path, exc)
+        logger.exception("Cannot set collection image: Failed to read %r: %s", image_path, exc)
     else:
         logger.info("Successfully updated cover image for collection %r", collection_id)
