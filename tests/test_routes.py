@@ -10,6 +10,7 @@ from routes import (
     MAX_B64_SIZE,
     _compute_common_root,
     _fetch_jellyfin_endpoint,
+    _get_jellyfin_config,
     _handle_config_error,
 )
 
@@ -1066,3 +1067,11 @@ def test_compute_common_root_single_match():
 
 def test_compute_common_root_full_match():
     assert _compute_common_root("/a/b/c", "/a/b/c") == (os.sep, os.sep)
+
+
+@patch('routes.load_config')
+def test_get_jellyfin_config_null_values(mock_load_config):
+    mock_load_config.return_value = {"jellyfin_url": None, "api_key": None}
+    with pytest.raises(HTTPException) as excinfo:
+        _get_jellyfin_config()
+    assert excinfo.value.code == 400
