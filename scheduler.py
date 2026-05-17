@@ -141,6 +141,7 @@ def validate_cron(expr: str) -> str | None:
 
     Returns:
         ``None`` if valid, otherwise an error message string.
+
     """
     if not expr or not expr.strip():
         return "Cron expression must not be empty"

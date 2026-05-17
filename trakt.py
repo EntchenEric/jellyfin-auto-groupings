@@ -42,6 +42,7 @@ def fetch_trakt_list(list_url: str, client_id: str) -> list[str]:
     Raises:
         ValueError: If *client_id* is empty or *list_url* cannot be parsed.
         RuntimeError: If an HTTP error occurs while fetching a page.
+
     """
     if not client_id:
         raise ValueError(

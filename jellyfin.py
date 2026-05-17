@@ -88,6 +88,7 @@ def _get_json(
 
     Raises:
         RuntimeError: If the request fails or the response body is not valid JSON.
+
     """
     kwargs: dict[str, Any] = {"timeout": timeout}
     if headers is not None:
@@ -117,6 +118,7 @@ def _request_or_raise(
 
     Raises:
         RuntimeError: On any ``RequestException``.
+
     """
     kwargs: dict[str, Any] = {"timeout": timeout}
     if headers is not None:
@@ -217,6 +219,7 @@ def fetch_jellyfin_items(
 
     Raises:
         RuntimeError: If the request fails or the response is not valid JSON.
+
     """
     headers = _auth_headers(api_key)
     params: dict[str, str] = {}
@@ -250,6 +253,7 @@ def fetch_all_jellyfin_items(
 
     Returns:
         Concatenated list of all ``Items`` across all pages.
+
     """
     fetch_page = _fetch_page or fetch_jellyfin_items
     all_items: list[dict[str, Any]] = []
@@ -294,6 +298,7 @@ def _paginate_jellyfin(
 
     Yields:
         Lists of item dictionaries, one per page.
+
     """
     start_index = 0
     headers = _auth_headers(api_key)
@@ -333,6 +338,7 @@ def get_libraries(base_url: str, api_key: str, timeout: int = 30) -> list[str]:
 
     Returns:
         A list of library names.
+
     """
     return [
         name
@@ -355,6 +361,7 @@ def get_users(base_url: str, api_key: str, timeout: int = 30) -> list[dict[str, 
 
     Returns:
         A list of user dictionaries.
+
     """
     return _get_json(
         f"{base_url}/Users",
@@ -377,6 +384,7 @@ def get_user_recent_items(
 
     Returns:
         A list of item dictionaries.
+
     """
     params = {
         "Filters": "IsPlayed",
@@ -414,6 +422,7 @@ def add_virtual_folder(
         collection_type: Type of media (e.g., "movies", "tvshows", "music", "mixed").
         refresh_library: Whether to trigger a library scan after creation.
         timeout: HTTP request timeout.
+
     """
     # Strategy: Try to create with all info in query string first (most common for simple cases)
     # If it already exists, we skip creation.
@@ -471,6 +480,7 @@ def delete_virtual_folder(base_url: str, api_key: str, name: str, timeout: int =
         api_key: Jellyfin API key.
         name: Name of the library to delete.
         timeout: HTTP request timeout.
+
     """
     params = {"name": name}
     headers = _auth_headers(api_key)
@@ -499,6 +509,7 @@ def get_library_id(base_url: str, api_key: str, name: str, timeout: int = 30) ->
 
     Returns:
         The string ItemId of the library if found, else None.
+
     """
     for folder in _get_json(
         f"{base_url}/Library/VirtualFolders",
@@ -528,6 +539,7 @@ def _upload_image(
         item_id: Jellyfin item / library / collection ID.
         image_path: Absolute path to the local image file to upload.
         timeout: HTTP request timeout.
+
     """
     with open(image_path, "rb") as f:
         image_bytes = f.read()
@@ -557,6 +569,7 @@ def set_virtual_folder_image(
         name: Name of the library to update.
         image_path: Absolute path to the local image file to upload.
         timeout: HTTP request timeout.
+
     """
     try:
         library_id = get_library_id(base_url, api_key, name, timeout=timeout)
@@ -598,6 +611,7 @@ def create_collection(
 
     Raises:
         RuntimeError: If the API call fails.
+
     """
     params: dict[str, str] = {"Name": name, "Ids": ",".join(item_ids)}
     data = _post_json(
@@ -629,6 +643,7 @@ def find_collection_by_name(
 
     Returns:
         The collection ``Id`` if found, ``None`` otherwise.
+
     """
     params: dict[str, Any] = {
         "IncludeItemTypes": "BoxSet",
@@ -664,6 +679,7 @@ def add_to_collection(
 
     Raises:
         RuntimeError: If the API call fails.
+
     """
     if not item_ids:
         return
@@ -696,6 +712,7 @@ def remove_from_collection(
 
     Raises:
         RuntimeError: If the API call fails.
+
     """
     if not item_ids:
         return
@@ -726,6 +743,7 @@ def delete_collection(
 
     Raises:
         RuntimeError: If the API call fails.
+
     """
     _delete_or_raise(
         f"{base_url}/Items/{collection_id}",
@@ -750,6 +768,7 @@ def set_collection_image(
         collection_id: ID of the collection.
         image_path: Absolute path to the local image file to upload.
         timeout: HTTP request timeout.
+
     """
     try:
         _upload_image(base_url, api_key, collection_id, image_path, timeout=timeout)

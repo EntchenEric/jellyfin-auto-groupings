@@ -75,6 +75,7 @@ def load_config() -> dict[str, Any]:
 
     Returns:
         The (possibly migrated) configuration dictionary.
+
     """
     cfg: dict[str, Any]
     if not os.path.exists(CONFIG_FILE):
@@ -125,6 +126,7 @@ def save_config(config: dict[str, Any]) -> None:
 
     Args:
         config: The configuration dictionary to write.
+
     """
     os.makedirs(CONFIG_DIR, exist_ok=True)
     with open(CONFIG_FILE, "w", encoding="utf-8") as fh:

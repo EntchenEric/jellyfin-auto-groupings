@@ -32,6 +32,7 @@ def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
     Raises:
         ValueError: If *api_key* or *list_id* is empty.
         RuntimeError: If an HTTP error occurs while fetching a page.
+
     """
     if not api_key:
         raise ValueError("A TMDb API Key is required to fetch TMDb lists.")
@@ -95,6 +96,7 @@ def get_tmdb_recommendations(items_with_type: list[tuple[str, str]], api_key: st
 
     Raises:
         ValueError: If *api_key* is empty.
+
     """
     if not api_key:
         raise ValueError("A TMDb API Key is required to fetch TMDb recommendations.")
