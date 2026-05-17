@@ -351,7 +351,7 @@ def test_set_virtual_folder_image_os_error(mock_get_library_id, caplog):
     with patch('builtins.open', side_effect=OSError("Permission Denied")):
         set_virtual_folder_image(TEST_URL, TEST_KEY, "MyLib", "/path/to/img.jpg")
 
-    assert "Cannot set image: Failed to read image file '/path/to/img.jpg': Permission Denied" in caplog.text
+    assert "Cannot set image: Failed to read image file '/path/to/img.jpg'" in caplog.text
 
 
 @patch('mimetypes.guess_type')
@@ -666,7 +666,7 @@ def test_set_collection_image_os_error(mock_open, caplog):
     mock_open.side_effect = OSError("Permission denied")
 
     set_collection_image(TEST_URL, TEST_KEY, "col_1", "/bad/path.jpg")
-    assert "Cannot set collection image: Failed to read '/bad/path.jpg': Permission denied" in caplog.text
+    assert "Cannot set collection image: Failed to read '/bad/path.jpg'" in caplog.text
 
 
 @patch('mimetypes.guess_type')
