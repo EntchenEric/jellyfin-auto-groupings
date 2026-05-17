@@ -13,8 +13,6 @@ import binascii
 import logging
 import os
 import shutil
-import subprocess
-import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -23,6 +21,7 @@ from typing import TYPE_CHECKING, Any
 import requests
 from flask import (
     Blueprint,
+    Response,
     abort,
     current_app,
     jsonify,
@@ -31,6 +30,8 @@ from flask import (
     send_from_directory,
 )
 from werkzeug.exceptions import HTTPException
+
+import network
 
 if TYPE_CHECKING:
     from flask.typing import ResponseReturnValue
@@ -116,6 +117,35 @@ _AUTO_DETECT_JELLYFIN_TIMEOUT: int = 10
 # ---------------------------------------------------------------------------
 # CSRF protection
 # ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# Authentication
+# ---------------------------------------------------------------------------
+
+_APP_PASSWORD: str = os.environ.get("APP_PASSWORD", "")
+
+
+@bp.before_request
+def _check_auth() -> ResponseReturnValue | None:
+    """Require HTTP Basic Auth when APP_PASSWORD is set."""
+    if not _APP_PASSWORD:
+        return None
+    # Allow unauthenticated access to the main UI and static assets
+    if request.endpoint in ("main.index", "main.test_dashboard"):
+        return None
+    if request.path.startswith("/static/"):
+        return None
+
+    auth = request.authorization
+    if auth and auth.password == _APP_PASSWORD:
+        return None
+
+    return Response(
+        "Authentication required",
+        401,
+        {"WWW-Authenticate": 'Basic realm="Jellyfin Groupings"'},
+    )
 
 
 @bp.before_request
@@ -290,7 +320,7 @@ def test_server() -> ResponseReturnValue:
         return _error("URL and API Key are required", 400)
 
     try:
-        response = requests.get(
+        response = network.get(
             f"{url}/System/Info",
             headers={"X-Emby-Token": api_key},
             timeout=_TEST_SERVER_TIMEOUT,
@@ -887,19 +917,6 @@ def get_test_results() -> ResponseReturnValue:
             results[filename] = "No output found."
 
     return _success("", results=results)
-
-
-@bp.route("/api/test/run", methods=["POST"])
-def run_tests() -> ResponseReturnValue:
-    """Trigger the test suite programmatically. Only available in debug mode."""
-    if not current_app.debug:
-        return _error("Not available in production mode", 403)
-    try:
-        subprocess.run([sys.executable, "run_tests_to_file.py"], check=False, timeout=130)
-        return _success("Tests executed successfully.")
-    except (subprocess.TimeoutExpired, OSError) as exc:
-        logger.exception("Failed to run test suite")
-        return _error(str(exc), 500)
 
 
 # ---------------------------------------------------------------------------

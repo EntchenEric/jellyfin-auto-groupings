@@ -9,7 +9,7 @@ from jellyfin import fetch_jellyfin_items
 from tmdb import fetch_tmdb_list
 
 
-@patch('jellyfin.requests.get')
+@patch('jellyfin.network.get')
 def test_fetch_jellyfin_items(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 200

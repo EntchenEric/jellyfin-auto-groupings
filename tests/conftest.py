@@ -1,3 +1,4 @@
+import logging
 import threading
 import time
 from unittest.mock import patch
@@ -7,6 +8,13 @@ import requests
 
 from app import app as flask_app
 from tests.virtual_jellyfin import app as jelly_mock_app
+
+# Ensure logging is configured for tests so caplog captures INFO-level messages.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 
 @pytest.fixture(scope="session")

@@ -36,7 +36,7 @@ def test_update_config(client):
     assert data["jellyfin_url"] == "http://new-url"
 
 
-@patch('routes.requests.get')
+@patch('routes.network.get')
 def test_test_server_success(mock_get, client):
     mock_response = MagicMock()
     mock_response.status_code = 200
@@ -48,7 +48,7 @@ def test_test_server_success(mock_get, client):
     assert "successfully" in response.get_json()["message"]
 
 
-@patch('routes.requests.get')
+@patch('routes.network.get')
 def test_test_server_failure(mock_get, client):
     mock_response = MagicMock()
     mock_response.status_code = 401
@@ -68,7 +68,7 @@ def test_browse_directory(client):
     assert "dirs" in data
 
 
-@patch('routes.requests.get')
+@patch('routes.network.get')
 @pytest.mark.usefixtures("temp_config")
 def test_get_jellyfin_metadata(mock_get, client):
     save_config({"jellyfin_url": "http://test", "api_key": "key"})
@@ -218,7 +218,7 @@ def test_test_server_null_fields(client):
     assert response.status_code == 400
 
 
-@patch('routes.requests.get')
+@patch('routes.network.get')
 def test_test_server_exception(mock_get, client):
     mock_get.side_effect = requests.exceptions.ConnectionError("Failed")
     response = client.post('/api/test-server', json={"jellyfin_url": "http://test", "api_key": "key"})
@@ -233,7 +233,7 @@ def test_get_jellyfin_metadata_no_config(client):
     assert response.status_code == 400
 
 
-@patch('routes.requests.get')
+@patch('routes.network.get')
 @pytest.mark.usefixtures("temp_config")
 def test_get_jellyfin_metadata_error(mock_get, client):
     save_config({"jellyfin_url": "http://test", "api_key": "key"})
@@ -574,16 +574,6 @@ def test_get_test_results(client):
 
 
 # ---------------------------------------------------------------------------
-# run_tests
-# ---------------------------------------------------------------------------
-
-def test_run_tests_production_mode(client):
-    response = client.post('/api/test/run')
-    assert response.status_code == 403
-    assert response.get_json()["status"] == "error"
-
-
-# ---------------------------------------------------------------------------
 # index / test_dashboard
 # ---------------------------------------------------------------------------
 
@@ -627,7 +617,7 @@ def test_update_config_invalid_cleanup_cron(client):
 
 
 # _fetch_jellyfin_endpoint partial data break (line 250)
-@patch('jellyfin.requests.get')
+@patch('jellyfin.network.get')
 @pytest.mark.usefixtures("temp_config")
 def test_fetch_jellyfin_endpoint_partial_data(mock_get, client):
     resp1 = MagicMock()
@@ -644,7 +634,7 @@ def test_fetch_jellyfin_endpoint_partial_data(mock_get, client):
 
 
 # _fetch_jellyfin_endpoint pagination (line 259)
-@patch('jellyfin.requests.get')
+@patch('jellyfin.network.get')
 @pytest.mark.usefixtures("temp_config")
 def test_fetch_jellyfin_endpoint_pagination(mock_get, client):
     resp1 = MagicMock()
@@ -939,14 +929,6 @@ def test_handle_config_error_http_none_code():
         _handle_config_error(exc)
 
 
-# run_tests production mode (line 838-845)
-@patch('routes.current_app')
-def test_run_tests_production(mock_app, client):
-    mock_app.debug = False
-    response = client.post('/api/test/run')
-    assert response.status_code == 403
-
-
 # --- Remaining branch coverage for routes.py ---
 
 def test_csrf_protection_with_header(client):
@@ -1036,26 +1018,6 @@ def test_auto_detect_no_common_path(mock_ismount, mock_isdir, mock_walk, mock_fe
     data = response.get_json()
     # Basename match means common_count=1, so j_root loses just the basename
     assert data["detected"]["media_path_in_jellyfin"] == "/jf/unique"
-
-
-# run_tests subprocess exception (lines 843-845)
-@patch('routes.current_app')
-@patch('subprocess.run')
-def test_run_tests_subprocess_exception(mock_subprocess, mock_app, client):
-    mock_app.debug = True
-    mock_subprocess.side_effect = OSError("Subprocess fail")
-    response = client.post('/api/test/run')
-    assert response.status_code == 500
-    assert "Subprocess fail" in response.get_json()["message"]
-
-
-# run_tests success (line 842)
-@patch('subprocess.run')
-def test_run_tests_success(mock_run, client, app):
-    app.debug = True
-    response = client.post('/api/test/run')
-    assert response.status_code == 200
-    assert "Tests executed successfully." in response.get_json()["message"]
 
 
 def test_compute_common_root_no_match():
