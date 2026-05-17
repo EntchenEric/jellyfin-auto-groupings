@@ -269,8 +269,8 @@ def test_server() -> ResponseReturnValue:
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return _error("Request body must be a JSON object", 400)
-    url: str = str(data.get("jellyfin_url", "")).rstrip("/")
-    api_key: str = str(data.get("api_key", ""))
+    url: str = str(data.get("jellyfin_url") or "").rstrip("/")
+    api_key: str = str(data.get("api_key") or "")
 
     if not url or not api_key:
         return _error("URL and API Key are required", 400)
