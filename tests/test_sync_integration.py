@@ -6,12 +6,12 @@ TEST_URL = "http://localhost:8096"
 TEST_API_KEY = "test_key"
 
 
-@patch('sync.os.makedirs')
-@patch('sync.os.path.exists')
+@patch('pathlib.Path.mkdir')
+@patch('pathlib.Path.exists')
 @patch('sync.shutil.rmtree')
 @patch('sync.os.symlink')
 @patch('sync.fetch_jellyfin_items')
-def test_run_sync_basic(mock_fetch, mock_symlink, mock_rmtree, mock_exists, mock_makedirs):
+def test_run_sync_basic(mock_fetch, mock_symlink, mock_rmtree, mock_exists, mock_mkdir):
     """Test run_sync with a simple genre-based group."""
     config = {
         "jellyfin_url": TEST_URL,
@@ -44,12 +44,12 @@ def test_run_sync_basic(mock_fetch, mock_symlink, mock_rmtree, mock_exists, mock
     # Verify symlink was called with correctly translated path
     # and numbered name
     mock_symlink.assert_called_once()
-    src, dst = mock_symlink.call_args[0]
-    assert src == "/host/movies/Action Film 1/file.mkv"
-    assert "0001 - file.mkv" in dst
+    args = mock_symlink.call_args[0]
+    assert args[0] == "/host/movies/Action Film 1/file.mkv"
+    assert "0001 - file.mkv" in str(args[1])
 
 
-@patch('sync.os.path.exists')
+@patch('pathlib.Path.exists')
 @patch('sync.fetch_jellyfin_items')
 @patch('sync._fetch_items_for_imdb_group')
 def test_run_sync_imdb(mock_imdb_fetch, mock_jf_fetch, mock_exists):

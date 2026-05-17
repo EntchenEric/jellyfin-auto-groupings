@@ -4,12 +4,12 @@ from sync import preview_group, run_sync
 
 
 @patch('sync.shutil.rmtree')
-@patch('sync.os.makedirs')
-@patch('sync.os.path.exists')
+@patch('pathlib.Path.mkdir')
+@patch('pathlib.Path.exists')
 @patch('sync.os.symlink')
 @patch('sync.fetch_jellyfin_items')
 @patch('sync.fetch_tmdb_list')
-def test_run_sync_tmdb(mock_tmdb, mock_jf_fetch, _mock_symlink, _mock_exists, _mock_makedirs, _mock_rmtree):
+def test_run_sync_tmdb(mock_tmdb, mock_jf_fetch, _mock_symlink, _mock_exists, _mock_mkdir, _mock_rmtree):
     config = {
         "jellyfin_url": "http://jf",
         "api_key": "key",
@@ -36,12 +36,12 @@ def test_run_sync_tmdb(mock_tmdb, mock_jf_fetch, _mock_symlink, _mock_exists, _m
 
 
 @patch('sync.shutil.rmtree')
-@patch('sync.os.makedirs')
-@patch('sync.os.path.exists')
+@patch('pathlib.Path.mkdir')
+@patch('pathlib.Path.exists')
 @patch('sync.os.symlink')
 @patch('sync.fetch_jellyfin_items')
 @patch('sync.fetch_anilist_list')
-def test_run_sync_anilist(mock_anilist, mock_jf_fetch, _mock_symlink, _mock_exists, _mock_makedirs, _mock_rmtree):
+def test_run_sync_anilist(mock_anilist, mock_jf_fetch, _mock_symlink, _mock_exists, _mock_mkdir, _mock_rmtree):
     config = {
         "jellyfin_url": "http://jf",
         "api_key": "key",
@@ -65,14 +65,14 @@ def test_run_sync_anilist(mock_anilist, mock_jf_fetch, _mock_symlink, _mock_exis
 
 
 @patch('sync.shutil.rmtree')
-@patch('sync.os.makedirs')
-@patch('sync.os.path.exists')
-@patch('sync.os.path.isdir')
+@patch('pathlib.Path.mkdir')
+@patch('pathlib.Path.exists')
+@patch('pathlib.Path.is_dir')
 @patch('sync.os.symlink')
 @patch('sync.fetch_jellyfin_items')
 @patch('sync.fetch_trakt_list')
 def test_run_sync_trakt(
-    mock_trakt, mock_jf_fetch, _mock_symlink, _mock_isdir, _mock_exists, _mock_makedirs, _mock_rmtree,
+    mock_trakt, mock_jf_fetch, _mock_symlink, _mock_isdir, _mock_exists, _mock_mkdir, _mock_rmtree,
 ):
     config = {
         "jellyfin_url": "http://jf",
@@ -99,12 +99,12 @@ def test_run_sync_trakt(
 
 
 @patch('sync.shutil.rmtree')
-@patch('sync.os.makedirs')
-@patch('sync.os.path.exists')
+@patch('pathlib.Path.mkdir')
+@patch('pathlib.Path.exists')
 @patch('sync.os.symlink')
 @patch('sync.fetch_jellyfin_items')
 @patch('sync.fetch_mal_list')
-def test_run_sync_mal(mock_mal, mock_jf_fetch, _mock_symlink, _mock_exists, _mock_makedirs, _mock_rmtree):
+def test_run_sync_mal(mock_mal, mock_jf_fetch, _mock_symlink, _mock_exists, _mock_mkdir, _mock_rmtree):
     config = {
         "jellyfin_url": "http://jf",
         "api_key": "key",
@@ -129,12 +129,12 @@ def test_run_sync_mal(mock_mal, mock_jf_fetch, _mock_symlink, _mock_exists, _moc
 
 
 @patch('sync.shutil.rmtree')
-@patch('sync.os.makedirs')
-@patch('sync.os.path.exists')
+@patch('pathlib.Path.mkdir')
+@patch('pathlib.Path.exists')
 @patch('sync.os.symlink')
 @patch('sync.fetch_jellyfin_items')
 @patch('sync.fetch_letterboxd_list')
-def test_run_sync_letterboxd(mock_lb, mock_jf_fetch, _mock_symlink, _mock_exists, _mock_makedirs, _mock_rmtree):
+def test_run_sync_letterboxd(mock_lb, mock_jf_fetch, _mock_symlink, _mock_exists, _mock_mkdir, _mock_rmtree):
     config = {
         "jellyfin_url": "http://jf",
         "api_key": "key",
@@ -165,18 +165,18 @@ def test_run_sync_invalid_group():
         "groups": ["not_a_dict"],
     }
     # Should skip the string and continue
-    with patch('sync.os.path.exists', return_value=True), \
-            patch('sync.os.makedirs'):
+    with patch('pathlib.Path.exists', return_value=True), \
+            patch('pathlib.Path.mkdir'):
         results = run_sync(config)
     assert results == []
 
 
 @patch('sync.shutil.rmtree')
-@patch('sync.os.makedirs')
-@patch('sync.os.path.exists')
+@patch('pathlib.Path.mkdir')
+@patch('pathlib.Path.exists')
 @patch('sync.os.symlink')
 @patch('sync.fetch_jellyfin_items')
-def test_run_sync_complex(mock_jf_fetch, _mock_symlink, _mock_exists, _mock_makedirs, _mock_rmtree):
+def test_run_sync_complex(mock_jf_fetch, _mock_symlink, _mock_exists, _mock_mkdir, _mock_rmtree):
     config = {
         "jellyfin_url": "http://jf",
         "api_key": "key",
@@ -198,11 +198,11 @@ def test_run_sync_complex(mock_jf_fetch, _mock_symlink, _mock_exists, _mock_make
 
 
 @patch('sync.shutil.rmtree')
-@patch('sync.os.makedirs')
-@patch('sync.os.path.exists')
+@patch('pathlib.Path.mkdir')
+@patch('pathlib.Path.exists')
 @patch('sync.os.symlink')
 @patch('sync.fetch_jellyfin_items')
-def test_run_sync_dry_run(mock_jf_fetch, _mock_symlink, _mock_exists, _mock_makedirs, _mock_rmtree):
+def test_run_sync_dry_run(mock_jf_fetch, _mock_symlink, _mock_exists, _mock_mkdir, _mock_rmtree):
     config = {
         "jellyfin_url": "http://jf",
         "api_key": "key",
@@ -222,16 +222,16 @@ def test_run_sync_dry_run(mock_jf_fetch, _mock_symlink, _mock_exists, _mock_make
     results = run_sync(config, dry_run=True)
     assert results[0]["links"] == 1
     _mock_symlink.assert_not_called()
-    _mock_makedirs.assert_not_called()
+    _mock_mkdir.assert_not_called()
     _mock_rmtree.assert_not_called()
 
 
 @patch('sync.shutil.rmtree')
-@patch('sync.os.makedirs')
-@patch('sync.os.path.exists')
+@patch('pathlib.Path.mkdir')
+@patch('pathlib.Path.exists')
 @patch('sync.os.symlink')
 @patch('sync.fetch_jellyfin_items')
-def test_run_sync_selective(mock_jf_fetch, _mock_symlink, _mock_exists, _mock_makedirs, _mock_rmtree):
+def test_run_sync_selective(mock_jf_fetch, _mock_symlink, _mock_exists, _mock_mkdir, _mock_rmtree):
     config = {
         "jellyfin_url": "http://jf",
         "api_key": "key",
@@ -262,9 +262,9 @@ def test_run_sync_missing_group(tmp_path):
 
 
 @patch('sync.shutil.rmtree')
-@patch('sync.os.makedirs')
+@patch('pathlib.Path.mkdir')
 @patch('sync.fetch_tmdb_list')
-def test_run_sync_tmdb_error(mock_tmdb, _mock_makedirs, _mock_rmtree):
+def test_run_sync_tmdb_error(mock_tmdb, _mock_mkdir, _mock_rmtree):
     config = {
         "jellyfin_url": "http://jf",
         "api_key": "key",
@@ -273,7 +273,7 @@ def test_run_sync_tmdb_error(mock_tmdb, _mock_makedirs, _mock_rmtree):
         "groups": [{"name": "G1", "source_type": "tmdb_list", "source_value": "123"}],
     }
     mock_tmdb.side_effect = RuntimeError("TMDB Unavailable")
-    with patch('sync.os.path.exists', return_value=True):
+    with patch('pathlib.Path.exists', return_value=True):
         results = run_sync(config)
     assert results[0]["error"] is not None
 
@@ -370,15 +370,15 @@ def test_fetch_items_trakt_empty(mock_trakt):
 
 
 @patch('sync.shutil.rmtree')
-@patch('sync.os.makedirs')
-@patch('sync.os.path.exists')
-@patch('sync.os.path.isdir')
+@patch('pathlib.Path.mkdir')
+@patch('pathlib.Path.exists')
+@patch('pathlib.Path.is_dir')
 @patch('sync.os.symlink')
 @patch('sync.fetch_jellyfin_items')
 @patch('sync.get_libraries')
 @patch('sync.add_virtual_folder')
 def test_run_sync_with_library_creation(
-    mock_add_lib, mock_get_libs, mock_jf_fetch, _mock_symlink, _mock_isdir, _mock_exists, _mock_makedirs, _mock_rmtree,
+    mock_add_lib, mock_get_libs, mock_jf_fetch, _mock_symlink, _mock_isdir, _mock_exists, _mock_mkdir, _mock_rmtree,
 ):
     config = {
         "jellyfin_url": "http://jf",
@@ -419,13 +419,13 @@ def test_run_sync_with_library_creation(
 @patch('sync.set_virtual_folder_image')
 @patch('sync._get_cover_path')
 @patch('sync.shutil.rmtree')
-@patch('sync.os.makedirs')
-@patch('sync.os.path.exists')
-@patch('sync.os.path.isdir')
+@patch('pathlib.Path.mkdir')
+@patch('pathlib.Path.exists')
+@patch('pathlib.Path.is_dir')
 @patch('sync.os.symlink')
 @patch('sync.fetch_jellyfin_items')
 def test_run_sync_with_auto_set_library_covers(
-    mock_jf_fetch, _mock_symlink, _mock_isdir, _mock_exists, _mock_makedirs, _mock_rmtree,
+    mock_jf_fetch, _mock_symlink, _mock_isdir, _mock_exists, _mock_mkdir, _mock_rmtree,
     mock_get_cover, mock_set_image, mock_copy2,
 ):
     config = {
@@ -447,8 +447,8 @@ def test_run_sync_with_auto_set_library_covers(
     mock_jf_fetch.return_value = [
         {"Name": "M1", "Path": "/p1", "ProviderIds": {"Tmdb": "101"}},
     ]
-    # Mock cover existence
-    _mock_exists.side_effect = lambda path: path in ("/target/CoverGroup_cover.jpg", "/p1")
+    # Mock filesystem existence
+    _mock_exists.return_value = True
     _mock_isdir.return_value = True
     mock_get_cover.return_value = "/target/CoverGroup_cover.jpg"
     with patch('sync.fetch_tmdb_list', return_value=["101"]):
@@ -461,14 +461,14 @@ def test_run_sync_with_auto_set_library_covers(
 
 
 @patch('sync.shutil.rmtree')
-@patch('sync.os.makedirs')
-@patch('sync.os.path.exists')
+@patch('pathlib.Path.mkdir')
+@patch('pathlib.Path.exists')
 @patch('sync.os.symlink')
 @patch('sync.fetch_jellyfin_items')
 @patch('sync.get_tmdb_recommendations')
 @patch('sync.get_user_recent_items')
 def test_run_sync_recommendations(
-    mock_recent, mock_tmdb_rec, mock_jf_fetch, _mock_symlink, _mock_exists, _mock_makedirs, _mock_rmtree,
+    mock_recent, mock_tmdb_rec, mock_jf_fetch, _mock_symlink, _mock_exists, _mock_mkdir, _mock_rmtree,
 ):
     config = {
         "jellyfin_url": "http://jf",
