@@ -62,6 +62,49 @@ def _extract_ids_from_list_page(html: str) -> dict[str, str]:
     return found
 
 
+def _deduplicate_slugs(slugs: list[str]) -> list[str]:
+    """Preserve order while removing duplicate slugs."""
+    seen: set[str] = set()
+    result: list[str] = []
+    for slug in slugs:
+        if slug not in seen:
+            seen.add(slug)
+            result.append(slug)
+    return result
+
+
+def _fetch_ids_for_slugs(slugs: list[str]) -> dict[str, str | None]:
+    """Resolve slugs to IDs in parallel using ThreadPoolExecutor."""
+    results: dict[str, str | None] = {}
+    if not slugs:
+        return results
+    with ThreadPoolExecutor(max_workers=_MAX_WORKERS) as executor:
+        future_map = {executor.submit(_fetch_id_for_slug, slug): slug for slug in slugs}
+        for future in as_completed(future_map):
+            slug = future_map[future]
+            try:
+                results[slug] = future.result()
+            except (OSError, RuntimeError):
+                logger.debug("Unexpected error for '%s'", slug, exc_info=True)
+                results[slug] = None
+    return results
+
+
+def _merge_page_results(
+    unique_slugs: list[str],
+    ids_from_list: dict[str, str],
+    slug_results: dict[str, str | None],
+    ids: list[str],
+    seen_ids: set[str],
+) -> None:
+    """Append newly discovered IDs to *ids* while tracking *seen_ids*."""
+    for slug in unique_slugs:
+        film_id = ids_from_list.get(slug) or slug_results.get(slug)
+        if film_id and film_id not in seen_ids:
+            ids.append(film_id)
+            seen_ids.add(film_id)
+
+
 def _fetch_id_for_slug(slug: str) -> str | None:
     """Fetch the IMDb or TMDb ID from a film's detail page.
 
@@ -141,11 +184,7 @@ def fetch_letterboxd_list(list_url: str) -> list[str]:
         if not slugs:
             slugs = re.findall(r'href="/film/([^/"]+)/"', html)
 
-        unique_slugs: list[str] = []
-        for slug in slugs:
-            if slug not in unique_slugs:
-                unique_slugs.append(slug)
-
+        unique_slugs = _deduplicate_slugs(slugs)
         if not unique_slugs:
             logger.warning("No film slugs found on Letterboxd page %d", page)
             break
@@ -156,26 +195,8 @@ def fetch_letterboxd_list(list_url: str) -> list[str]:
             page, len(unique_slugs), len(ids_from_list), len(slugs_to_fetch),
         )
 
-        slug_results: dict[str, str | None] = {}
-        if slugs_to_fetch:
-            with ThreadPoolExecutor(max_workers=_MAX_WORKERS) as executor:
-                future_map = {
-                    executor.submit(_fetch_id_for_slug, slug): slug
-                    for slug in slugs_to_fetch
-                }
-                for future in as_completed(future_map):
-                    slug = future_map[future]
-                    try:
-                        slug_results[slug] = future.result()
-                    except (OSError, RuntimeError):
-                        logger.debug("Unexpected error for '%s'", slug, exc_info=True)
-                        slug_results[slug] = None
-
-        for slug in unique_slugs:
-            film_id = ids_from_list.get(slug) or slug_results.get(slug)
-            if film_id and film_id not in seen_ids:
-                ids.append(film_id)
-                seen_ids.add(film_id)
+        slug_results = _fetch_ids_for_slugs(slugs_to_fetch)
+        _merge_page_results(unique_slugs, ids_from_list, slug_results, ids, seen_ids)
 
         if 'class="next"' not in html or page >= _MAX_PAGES:
             break
