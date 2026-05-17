@@ -542,7 +542,7 @@ def preview_grouping() -> ResponseReturnValue:
     if not val:
         return _error("Value cannot be empty", 400)
 
-    watch_state = data.get("watch_state", "").strip().lower()
+    watch_state = (data.get("watch_state") or "").strip().lower()
 
     try:
         # Resolve items using the public sync API
