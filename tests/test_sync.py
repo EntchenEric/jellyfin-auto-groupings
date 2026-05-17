@@ -1,5 +1,5 @@
 import hashlib
-import os
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -122,7 +122,7 @@ def test_library_cache():
 def test_get_cover_path(tmp_path):
     # Setup dummy paths
     target_base = str(tmp_path / "target")
-    os.makedirs(os.path.join(target_base, ".covers"), exist_ok=True)
+    (Path(target_base) / ".covers").mkdir(parents=True, exist_ok=True)
     # Mock __file__ to control legacy path? A bit hard.
     # Let's just test the logic for check_exists=False
     path = _get_cover_path("My Group", target_base, check_exists=False)
@@ -131,9 +131,9 @@ def test_get_cover_path(tmp_path):
     # Test non-existent with check_exists=True
     assert _get_cover_path("Missing Group", target_base, check_exists=True) is None
     # Test existent in lib
-    lib_path = os.path.join(target_base, ".covers", hashlib.md5(
-        b"Existent", usedforsecurity=False).hexdigest() + ".jpg")
-    with open(lib_path, "w") as f:
+    lib_path = str(Path(target_base) / ".covers" / (hashlib.md5(
+        b"Existent", usedforsecurity=False).hexdigest() + ".jpg"))
+    with Path(lib_path).open("w") as f:
         f.write("test")
     assert _get_cover_path("Existent", target_base, check_exists=True) == lib_path
 
@@ -660,9 +660,10 @@ def test_get_cover_path_no_target_base():
     assert "config/covers" in path
 
 
-@patch('sync.os.path.exists')
+@patch('pathlib.Path.exists')
 def test_get_cover_path_legacy_exists(mock_exists):
-    mock_exists.side_effect = lambda p: "config/covers" in p
+    # _get_cover_path checks lib path first, then legacy path
+    mock_exists.side_effect = [False, True]
     path = _get_cover_path("LegacyGroup", "/some/target", check_exists=True)
     assert "config/covers" in path
 
@@ -842,7 +843,7 @@ def test_fetch_items_metadata_unexpected_error(mock_fetch):
     assert "Jellyfin connection error" in error
 
 
-@patch('sync.os.path.exists')
+@patch('pathlib.Path.exists')
 @patch('sync.set_collection_image')
 @patch('sync._get_cover_path')
 @patch('sync.add_to_collection')
@@ -864,7 +865,7 @@ def test_process_collection_group_create_and_cover(
     mock_set.assert_called_once()
 
 
-@patch('sync.os.path.exists')
+@patch('pathlib.Path.exists')
 @patch('sync.set_collection_image')
 @patch('sync._get_cover_path')
 @patch('sync.add_to_collection')
@@ -1169,9 +1170,9 @@ def test_run_sync_seasonal_cleanup(mock_libs, mock_season, mock_process, tmp_pat
 # --- run_cleanup_broken_symlinks ---
 
 @patch('sync.os.unlink')
-@patch('sync.os.path.exists')
-@patch('sync.os.path.islink')
-@patch('sync.os.path.isdir')
+@patch('pathlib.Path.exists')
+@patch('pathlib.Path.is_symlink')
+@patch('pathlib.Path.is_dir')
 def test_cleanup_broken_symlinks_unlink_error(mock_isdir, mock_islink, mock_exists, mock_unlink):
     mock_isdir.return_value = True
     mock_islink.return_value = True

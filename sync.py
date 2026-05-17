@@ -19,6 +19,7 @@ import shutil
 import threading
 from collections.abc import Callable
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -136,7 +137,7 @@ def _translate_path(
             normalized_path = os.path.normpath(jellyfin_path)
             if os.path.commonpath([normalized_path, normalized_root]) == normalized_root:
                 rel = os.path.relpath(normalized_path, normalized_root)
-                return os.path.normpath(os.path.join(host_root, rel))
+                return str(Path(host_root) / rel)
         except ValueError:
             pass
     return jellyfin_path
@@ -162,22 +163,22 @@ def _get_cover_path(group_name: str, target_base: str, check_exists: bool = True
     safe_name = hashlib.md5(group_name.encode("utf-8"), usedforsecurity=False).hexdigest()
 
     # Priority 1: Library-local .covers/ directory (new storage location)
-    lib_cover_path = os.path.join(target_base, ".covers", f"{safe_name}.jpg")
+    lib_cover_path = str(Path(target_base) / ".covers" / f"{safe_name}.jpg")
 
     # Priority 2: Internal config/covers/ directory (legacy storage location)
-    legacy_cover_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "config", "covers", f"{safe_name}.jpg",
+    legacy_cover_path = str(
+        Path(__file__).resolve().parent / "config" / "covers" / f"{safe_name}.jpg"
     )
 
     if not check_exists:
         # If we are just resolving where to SAVE, we prefer the library-local path if target_base exists
-        if target_base and os.path.isdir(target_base):
+        if target_base and Path(target_base).is_dir():
             return lib_cover_path
         return legacy_cover_path
 
-    if os.path.exists(lib_cover_path):
+    if Path(lib_cover_path).exists():
         return lib_cover_path
-    if os.path.exists(legacy_cover_path):
+    if Path(legacy_cover_path).exists():
         return legacy_cover_path
 
     return None
@@ -994,7 +995,7 @@ def _process_collection_group(
 
     if auto_set_library_covers:
         source_cover = _get_cover_path(group_name, target_base)
-        if source_cover and os.path.exists(source_cover):
+        if source_cover and Path(source_cover).exists():
             try:
                 set_collection_image(url, api_key, collection_id, source_cover)
             except OSError as exc:
@@ -1021,7 +1022,7 @@ def _auto_create_library(
     """
     if not dry_run and auto_create_libraries and links_created > 0 and existing_libraries is not None and group_name not in existing_libraries:
         logger.info("Creating Jellyfin library for grouping: %r", group_name)
-        lib_path = os.path.join(target_path_in_jellyfin, group_name) if target_path_in_jellyfin else group_dir
+        lib_path = str(Path(target_path_in_jellyfin) / group_name) if target_path_in_jellyfin else group_dir
 
         try:
             add_virtual_folder(url, api_key, group_name, [lib_path], collection_type="mixed")
@@ -1042,7 +1043,7 @@ def _auto_set_library_cover(
     auto_set_library_covers: bool,
 ) -> None:
     """Set the library cover image via API if configured."""
-    if not dry_run and auto_set_library_covers and source_cover and os.path.exists(source_cover):
+    if not dry_run and auto_set_library_covers and source_cover and Path(source_cover).exists():
         logger.info("Setting cover image for library %r via API", group_name)
         set_virtual_folder_image(url, api_key, group_name, source_cover)
 
@@ -1080,22 +1081,22 @@ def _create_group_symlinks(
         if host_path != source_path:
             logger.info("Translated path: %s -> %s", source_path, host_path)
 
-        if not os.path.exists(host_path):
+        if not Path(host_path).exists():
             logger.info("Skipping (path not found on host): %s", host_path)
             continue
 
-        file_name: str = os.path.basename(host_path)
+        file_name: str = Path(host_path).name
         if use_prefix:
             file_name = f"{str(idx).zfill(width)} - {file_name}"
 
-        dest_path: str = os.path.join(group_dir, file_name)
+        dest_path: str = str(Path(group_dir) / file_name)
         if dry_run:
             if len(preview_items) < _MAX_PREVIEW_ITEMS:
                 preview_items.append(_build_preview_item(item, file_name))
             links_created += 1
         else:
             try:
-                os.symlink(host_path, dest_path)
+                Path(dest_path).symlink_to(host_path)
                 logger.info("Created symlink: %s -> %s", dest_path, host_path)
                 links_created += 1
             except OSError as exc:
@@ -1124,17 +1125,17 @@ def _prepare_group_directory(
     source_cover: str | None = None
     if not dry_run:
         try:
-            if os.path.exists(group_dir):
+            if Path(group_dir).exists():
                 logger.info("Cleaning existing directory: %s", group_dir)
                 shutil.rmtree(group_dir)
-            os.makedirs(group_dir, exist_ok=True)
+            Path(group_dir).mkdir(parents=True, exist_ok=True)
         except OSError as exc:
             logger.error("Failed to prepare group directory %r: %s", group_dir, exc)
             return {"group": group_name, "links": 0, "error": f"Directory error: {exc!s}"}
 
         source_cover = _get_cover_path(group_name, target_base)
         if source_cover:
-            poster_dest = os.path.join(group_dir, "poster.jpg")
+            poster_dest = str(Path(group_dir) / "poster.jpg")
             try:
                 shutil.copy2(source_cover, poster_dest)
                 logger.info("Copied cover image from %s to %s", source_cover, poster_dest)
@@ -1190,7 +1191,7 @@ def _process_group(
     if not group_name:
         return {"group": "(unnamed)", "links": 0, "error": "Empty group name"}
 
-    group_dir: str = os.path.join(target_base, group_name)
+    group_dir: str = str(Path(target_base) / group_name)
     sort_order: str = group.get("sort_order", "") or ""
     source_type: str | None = group.get("source_type")
     source_value: str | None = group.get("source_value")
@@ -1368,7 +1369,7 @@ def run_sync(
         raise ValueError("Server settings or target path not configured")
 
     if not dry_run:
-        os.makedirs(target_base, exist_ok=True)
+        Path(target_base).mkdir(parents=True, exist_ok=True)
 
     logger.info("Starting sync to: %s", target_base)
     if jellyfin_root and host_root:
@@ -1403,8 +1404,8 @@ def run_sync(
             end = group.get("seasonal_end")
             if not _is_in_season(start, end):
                 if not dry_run and name:
-                    group_dir = os.path.join(target_base, name)
-                    if os.path.isdir(group_dir):
+                    group_dir = str(Path(target_base) / name)
+                    if Path(group_dir).is_dir():
                         logger.info("Seasonal group %r is out of season. Deleting directory: %s", name, group_dir)
                         shutil.rmtree(group_dir)
                 results.append({"group": name or "(unnamed)", "links": 0, "status": "out_of_season"})
@@ -1445,7 +1446,7 @@ def run_cleanup_broken_symlinks(config: dict[str, Any]) -> int:
     """
     target_base: str = str(config.get("target_path") or "")
 
-    if not target_base or not os.path.isdir(target_base):
+    if not target_base or not Path(target_base).is_dir():
         logger.info("Cleanup aborted: invalid target base path '%s'", target_base)
         return 0
 
@@ -1453,11 +1454,11 @@ def run_cleanup_broken_symlinks(config: dict[str, Any]) -> int:
 
     for root, _dirs, files in os.walk(target_base):
         for name in files:
-            path = os.path.join(root, name)
-            if os.path.islink(path) and not os.path.exists(path):
+            path = Path(root) / name
+            if path.is_symlink() and not path.exists():
                 # The symlink is broken
                 try:
-                    os.unlink(path)
+                    path.unlink()
                     logger.info("Deleted broken symlink: %s", path)
                     deleted_count += 1
                 except OSError as exc:

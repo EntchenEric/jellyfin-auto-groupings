@@ -17,6 +17,7 @@ import subprocess
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -96,7 +97,7 @@ _ALLOWED_PREVIEW_TYPES: frozenset[str] = frozenset(
 
 # Default filesystem search roots for auto-detect
 _DEFAULT_SEARCH_ROOTS: tuple[str, ...] = (
-    os.path.expanduser("~"),
+    str(Path.home()),
     "/media",
     "/mnt",
 )
@@ -463,8 +464,8 @@ def upload_cover() -> ResponseReturnValue:
         if cover_path is None:
             return _error("Could not resolve cover storage path", 500)
 
-        os.makedirs(os.path.dirname(cover_path), exist_ok=True)
-        with open(cover_path, "wb") as f:
+        Path(cover_path).parent.mkdir(parents=True, exist_ok=True)
+        with Path(cover_path).open("wb") as f:
             f.write(decoded)
 
         return _success("Cover saved successfully")
@@ -584,19 +585,18 @@ def get_cleanup_items() -> ResponseReturnValue:
     """Return a list of logical folders in the target directory."""
     config: dict[str, Any] = load_config()
     target_base: str = str(config.get("target_path") or "")
-    if not target_base or not os.path.exists(target_base):
+    if not target_base or not Path(target_base).exists():
         return _success("", items=[])
 
     configured_groups: set[str] = {str(g.get("name")) for g in config.get("groups", []) if g.get("name")}
 
     try:
         entries: list[dict[str, Any]] = []
-        for name in os.listdir(target_base):
-            path = os.path.join(target_base, name)
-            if os.path.isdir(path) and not name.startswith("."):
+        for entry in Path(target_base).iterdir():
+            if entry.is_dir() and not entry.name.startswith("."):
                 entries.append({
-                    "name": name,
-                    "is_configured": name in configured_groups,
+                    "name": entry.name,
+                    "is_configured": entry.name in configured_groups,
                 })
         return _success("", items=sorted(entries, key=lambda x: str(x["name"])))
     except OSError as exc:
@@ -616,7 +616,7 @@ def perform_cleanup() -> ResponseReturnValue:
 
     config: dict[str, Any] = load_config()
     target_base: str = str(config.get("target_path") or "")
-    if not target_base or not os.path.exists(target_base):
+    if not target_base or not Path(target_base).exists():
         return _error("Target path not found", 404)
 
     deleted: int = 0
@@ -626,8 +626,8 @@ def perform_cleanup() -> ResponseReturnValue:
             errors.append(f"Invalid folder name: {name}")
             continue
 
-        path = os.path.join(target_base, name)
-        if os.path.exists(path) and os.path.isdir(path):
+        path = Path(target_base) / name
+        if path.exists() and path.is_dir():
             try:
                 shutil.rmtree(path)
                 deleted += 1
@@ -671,7 +671,7 @@ def _search_local_filesystem(
     walk_start = time.monotonic()
     files_scanned = 0
     for root in search_roots:
-        if not os.path.isdir(root):
+        if not Path(root).is_dir():
             continue
         for dirpath, dirnames, filenames in os.walk(root):
             if os.path.ismount(dirpath) and dirpath != root:
@@ -694,8 +694,8 @@ def _search_local_filesystem(
                 dirnames.clear()
                 break
             if filename in filenames:
-                return os.path.join(dirpath, filename)
-            if len(dirpath.split(os.sep)) > _AUTO_DETECT_MAX_DEPTH:
+                return str(Path(dirpath) / filename)
+            if len(Path(dirpath).parts) > _AUTO_DETECT_MAX_DEPTH:
                 dirnames.clear()
     return None
 
@@ -706,8 +706,8 @@ def _compute_common_root(jellyfin_path: str, host_path: str) -> tuple[str | None
     Counts matching trailing path components and returns the inferred
     ``(jellyfin_root, host_root)`` pair.
     """
-    j_parts = jellyfin_path.split(os.sep)
-    h_parts = host_path.split(os.sep)
+    j_parts = Path(jellyfin_path).parts
+    h_parts = Path(host_path).parts
     common_count = 0
     while (
         common_count < len(j_parts)
@@ -717,8 +717,10 @@ def _compute_common_root(jellyfin_path: str, host_path: str) -> tuple[str | None
         common_count += 1
 
     if common_count > 0:
-        j_root = os.sep.join(j_parts[:-common_count]) or os.sep
-        h_root = os.sep.join(h_parts[:-common_count]) or os.sep
+        j_slice = j_parts[:-common_count]
+        h_slice = h_parts[:-common_count]
+        j_root = str(Path(*j_slice)) if j_slice else os.sep
+        h_root = str(Path(*h_slice)) if h_slice else os.sep
         return j_root, h_root
     return None, None
 
@@ -761,7 +763,7 @@ def auto_detect_paths() -> ResponseReturnValue:
     if not items:
         return _error("No media found in Jellyfin to detect paths", 400)
 
-    home_dir = os.path.expanduser("~")
+    home_dir = str(Path.home())
     detected_j_root: str | None = None
     detected_h_root: str | None = None
 
@@ -771,7 +773,7 @@ def auto_detect_paths() -> ResponseReturnValue:
             continue
 
         match_found = _search_local_filesystem(
-            os.path.basename(j_path),
+            Path(j_path).name,
             list(_DEFAULT_SEARCH_ROOTS),
         )
         if match_found:
@@ -779,7 +781,7 @@ def auto_detect_paths() -> ResponseReturnValue:
             if detected_j_root:
                 break
 
-    suggested_target = os.path.join(home_dir, "jellyfin-groupings-virtual")
+    suggested_target = str(Path(home_dir) / "jellyfin-groupings-virtual")
 
     return _success(
         "",
@@ -815,27 +817,27 @@ def browse_directory() -> ResponseReturnValue:
 
     """
     raw: str = request.args.get("path", "")
-    path: str = os.path.abspath(raw) if raw else os.path.expanduser("~")
+    path: str = str(Path(raw).resolve()) if raw else str(Path.home())
 
     # Fall back to parent if the supplied path resolves to a file
-    if not os.path.isdir(path):
-        path = os.path.dirname(path)
+    if not Path(path).is_dir():
+        path = str(Path(path).parent)
 
     if not _path_is_allowed(path):
         return _error("Access to this path is not permitted", 403)
 
     try:
         entries: list[str] = sorted(
-            name
-            for name in os.listdir(path)
-            if os.path.isdir(os.path.join(path, name)) and not name.startswith(".")
+            entry.name
+            for entry in Path(path).iterdir()
+            if entry.is_dir() and not entry.name.startswith(".")
         )
     except PermissionError:
         entries = []
     except OSError as exc:
         return _error(str(exc), 400)
 
-    parent: str | None = os.path.dirname(path) if path != os.sep else None
+    parent: str | None = str(Path(path).parent) if path != os.sep else None
 
     return _success("", current=path, parent=parent, dirs=entries)
 
@@ -850,9 +852,9 @@ def get_test_results() -> ResponseReturnValue:
     """Return the contents of the latest test output logs."""
     results = {}
     for filename in _TEST_RESULT_FILENAMES:
-        if os.path.exists(filename):
+        if Path(filename).exists():
             try:
-                with open(filename, encoding="utf-8") as f:
+                with Path(filename).open(encoding="utf-8") as f:
                     results[filename] = f.read()
             except (OSError, UnicodeDecodeError):
                 results[filename] = "Error reading file."

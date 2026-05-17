@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -126,7 +127,7 @@ def test_upload_cover_success(mock_get_path, client, tmp_path):
     )
     response = client.post('/api/upload_cover', json={"group_name": "Test Group", "image": img_data})
     assert response.status_code == 200
-    assert os.path.exists(tmp_path / "test.jpg")
+    assert (tmp_path / "test.jpg").exists()
 
 
 @pytest.mark.usefixtures("temp_config")
@@ -291,9 +292,9 @@ def test_auto_detect_no_media(mock_fetch, client):
     assert response.status_code == 400
 
 
-@patch('os.listdir')
-def test_browse_directory_oserror(mock_listdir, client):
-    mock_listdir.side_effect = OSError("IO Error")
+@patch('routes.Path.iterdir')
+def test_browse_directory_oserror(mock_iterdir, client):
+    mock_iterdir.side_effect = OSError("IO Error")
     response = client.get('/api/browse')
     assert response.status_code == 400
 
@@ -449,13 +450,13 @@ def test_get_cleanup_items_with_groups(client, tmp_path):
     assert data["items"][0]["is_configured"] is True
 
 
-@patch('os.listdir')
+@patch('routes.Path.iterdir')
 @pytest.mark.usefixtures("temp_config")
-def test_get_cleanup_items_oserror(mock_listdir, client, tmp_path):
+def test_get_cleanup_items_oserror(mock_iterdir, client, tmp_path):
     target = tmp_path / "target"
     target.mkdir()
     save_config({"target_path": str(target)})
-    mock_listdir.side_effect = OSError("Permission denied")
+    mock_iterdir.side_effect = OSError("Permission denied")
     response = client.get('/api/cleanup')
     assert response.status_code == 500
 
@@ -544,7 +545,7 @@ def test_auto_detect_paths_fetch_error(mock_fetch, client):
 
 def test_browse_directory_file_fallback(client):
     # When path is a file, fall back to its parent directory
-    home = os.path.expanduser("~")
+    home = str(Path("~").expanduser())
     response = client.get(f'/api/browse?path={home}/somefile.txt')
     assert response.status_code == 200
     data = response.get_json()
@@ -552,9 +553,9 @@ def test_browse_directory_file_fallback(client):
     assert data["current"] == home
 
 
-@patch('os.listdir')
-def test_browse_directory_permission_error(mock_listdir, client):
-    mock_listdir.side_effect = PermissionError("No access")
+@patch('routes.Path.iterdir')
+def test_browse_directory_permission_error(mock_iterdir, client):
+    mock_iterdir.side_effect = PermissionError("No access")
     response = client.get('/api/browse')
     assert response.status_code == 200
     assert response.get_json()["dirs"] == []
@@ -900,8 +901,8 @@ def test_auto_detect_depth_limit(mock_ismount, mock_isdir, mock_walk, mock_fetch
 
 
 # Test results file read error (lines 821-825)
-@patch('routes.os.path.exists')
-@patch('builtins.open')
+@patch('routes.Path.exists')
+@patch('routes.Path.open')
 def test_get_test_results_read_error(mock_open, mock_exists, client):
     mock_exists.return_value = True
     mock_open.side_effect = OSError("Read error")
@@ -912,8 +913,8 @@ def test_get_test_results_read_error(mock_open, mock_exists, client):
 
 
 # Test results successful read (line 823)
-@patch('routes.os.path.exists')
-@patch('builtins.open')
+@patch('routes.Path.exists')
+@patch('routes.Path.open')
 def test_get_test_results_success(mock_open, mock_exists, client):
     mock_exists.return_value = True
     mock_file = MagicMock()
