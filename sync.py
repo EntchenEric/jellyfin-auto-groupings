@@ -1165,7 +1165,7 @@ def _process_group(
         A result dict with keys ``"group"``, ``"links"``, optionally ``"error"``,
         and ``"items"`` (the first 100 matches) if *dry_run* is True.
     """
-    group_name: str = group.get("name", "").strip()
+    group_name: str = (group.get("name") or "").strip()
     if not group_name:
         return {"group": "(unnamed)", "links": 0, "error": "Empty group name"}
 
@@ -1372,7 +1372,7 @@ def run_sync(
             logger.info("Skipping invalid group entry: %s", group)
             continue
 
-        name = group.get("name", "").strip()
+        name = (group.get("name") or "").strip()
         if group_names is not None:
             if not name or name not in group_names:
                 continue
