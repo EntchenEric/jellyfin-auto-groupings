@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 
 from flask import Flask
 
@@ -48,7 +49,7 @@ if not app.testing and (not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == 
 
 if __name__ == "__main__":
     # Create a default config file on first run so the UI has something to load
-    if not os.path.exists(CONFIG_FILE):
+    if not Path(CONFIG_FILE).exists():
         save_config(DEFAULT_CONFIG.copy())
 
     port = int(os.environ.get("FLASK_PORT", "5000"))

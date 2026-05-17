@@ -1,12 +1,13 @@
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 
 def main() -> None:
     existing = os.environ.get('PYTHONPATH')
     os.environ['PYTHONPATH'] = f"{existing}:." if existing else "."
-    with open('test_results.txt', 'w', encoding='utf-8') as f:
+    with Path('test_results.txt').open('w', encoding='utf-8') as f:
         try:
             # Running all tests with coverage
             f.write("Starting test run...\n")

@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -25,8 +26,9 @@ _ENV_OVERRIDES: dict[str, str] = {
 # Paths
 # ---------------------------------------------------------------------------
 
-CONFIG_DIR: str = os.path.join(os.path.dirname(__file__), "config")
-CONFIG_FILE: str = os.path.join(CONFIG_DIR, "config.json")
+_CONFIG_PATH = Path(__file__).parent / "config"
+CONFIG_DIR: str = str(_CONFIG_PATH)
+CONFIG_FILE: str = str(_CONFIG_PATH / "config.json")
 
 # ---------------------------------------------------------------------------
 # Defaults
@@ -78,12 +80,12 @@ def load_config() -> dict[str, Any]:
 
     """
     cfg: dict[str, Any]
-    if not os.path.exists(CONFIG_FILE):
+    if not Path(CONFIG_FILE).exists():
         save_config(DEFAULT_CONFIG.copy())
         cfg = DEFAULT_CONFIG.copy()
     else:
         try:
-            with open(CONFIG_FILE, "r", encoding="utf-8") as fh:
+            with Path(CONFIG_FILE).open("r", encoding="utf-8") as fh:
                 cfg = json.load(fh)
 
             # Fill in any keys added after initial creation
@@ -128,6 +130,6 @@ def save_config(config: dict[str, Any]) -> None:
         config: The configuration dictionary to write.
 
     """
-    os.makedirs(CONFIG_DIR, exist_ok=True)
-    with open(CONFIG_FILE, "w", encoding="utf-8") as fh:
+    Path(CONFIG_DIR).mkdir(parents=True, exist_ok=True)
+    with Path(CONFIG_FILE).open("w", encoding="utf-8") as fh:
         json.dump(config, fh, indent=4)

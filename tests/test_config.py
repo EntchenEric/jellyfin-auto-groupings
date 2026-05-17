@@ -1,5 +1,5 @@
 import json
-import os
+from pathlib import Path
 
 from config import DEFAULT_CONFIG, load_config, save_config
 
@@ -11,7 +11,7 @@ def test_load_config_defaults(temp_config):
     cfg = load_config()
     assert cfg["jellyfin_url"] == ""
     assert cfg["groups"] == []
-    assert os.path.exists(temp_config)
+    assert Path(temp_config).exists()
 
 
 def test_save_and_load_config(temp_config):
@@ -31,7 +31,7 @@ def test_config_migration(temp_config):
         "jellyfin_root": "/jellyfin/path",
         "host_root": "/host/path",
     }
-    with open(temp_config, "w") as f:
+    with Path(temp_config).open("w") as f:
         json.dump(legacy_cfg, f)
 
     cfg = load_config()
@@ -48,7 +48,7 @@ def test_nested_defaults(temp_config):
             "global_enabled": True,
         },
     }
-    with open(temp_config, "w") as f:
+    with Path(temp_config).open("w") as f:
         json.dump(partial_cfg, f)
 
     cfg = load_config()
@@ -64,7 +64,7 @@ def test_nested_defaults(temp_config):
 
 def test_load_config_corrupt_file(temp_config):
     """Test that a corrupt config file falls back to defaults."""
-    with open(temp_config, "w") as f:
+    with Path(temp_config).open("w") as f:
         f.write("this is not json{{{")
 
     cfg = load_config()
