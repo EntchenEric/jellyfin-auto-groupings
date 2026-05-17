@@ -21,7 +21,7 @@ from pathlib import Path
 
 from flask import Flask
 
-import network  # noqa: F401 — monkey-patches requests.get/post/delete with retry
+import network  # monkey-patches requests.get/post/delete with retry
 from config import CONFIG_FILE, DEFAULT_CONFIG, save_config
 from routes import bp
 from scheduler import start_scheduler
