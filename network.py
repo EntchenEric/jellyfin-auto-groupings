@@ -29,6 +29,7 @@ _ALLOWED_RETRY_METHODS = frozenset({"GET", "POST", "PUT", "DELETE", "PATCH", "HE
 
 
 def _build_retry_session() -> requests.Session:
+    """Create a :class:`requests.Session` with retry logic configured."""
     retry = Retry(
         total=_RETRY_TOTAL,
         connect=_RETRY_TOTAL,
@@ -72,6 +73,7 @@ def _reraise_timeout(exc: requests.ConnectionError) -> None:
 
 
 def _patched_get(url, **kwargs) -> requests.Response:
+    """GET *url* through the retry-enabled session."""
     try:
         return _SESSION.get(url, **kwargs)
     except requests.ConnectionError as exc:
@@ -80,6 +82,7 @@ def _patched_get(url, **kwargs) -> requests.Response:
 
 
 def _patched_post(url, **kwargs) -> requests.Response:
+    """POST to *url* through the retry-enabled session."""
     try:
         return _SESSION.post(url, **kwargs)
     except requests.ConnectionError as exc:
@@ -88,6 +91,7 @@ def _patched_post(url, **kwargs) -> requests.Response:
 
 
 def _patched_delete(url, **kwargs) -> requests.Response:
+    """DELETE *url* through the retry-enabled session."""
     try:
         return _SESSION.delete(url, **kwargs)
     except requests.ConnectionError as exc:
