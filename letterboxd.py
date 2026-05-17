@@ -159,7 +159,8 @@ def fetch_letterboxd_list(list_url: str) -> list[str]:
     """
     list_url = list_url.rstrip("/")
     if "letterboxd.com" not in list_url:
-        raise ValueError(f"Invalid Letterboxd URL: {list_url!r}")
+        msg = f"Invalid Letterboxd URL: {list_url!r}"
+        raise ValueError(msg)
 
     ids: list[str] = []
     seen_ids: set[str] = set()
@@ -174,7 +175,8 @@ def fetch_letterboxd_list(list_url: str) -> list[str]:
                 break
             resp.raise_for_status()
         except requests.exceptions.RequestException as exc:
-            raise RuntimeError(f"Failed to fetch Letterboxd list page {page}: {exc}") from exc
+            msg = f"Failed to fetch Letterboxd list page {page}: {exc}"
+            raise RuntimeError(msg) from exc
 
         html = resp.text
 

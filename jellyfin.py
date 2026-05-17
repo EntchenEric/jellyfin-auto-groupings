@@ -137,7 +137,8 @@ def _request_or_raise(
         elif method == "DELETE":
             response = requests.delete(url, **kwargs)
         else:
-            raise ValueError(f"Unsupported HTTP method: {method}")
+            msg = f"Unsupported HTTP method: {method}"
+            raise ValueError(msg)
         response.raise_for_status()
     except requests.exceptions.RequestException as exc:
         _raise_request_error(exc, error_prefix)
@@ -626,7 +627,8 @@ def create_collection(
     )
     collection_id: str | None = data.get("Id")
     if not collection_id:
-        raise RuntimeError(f"Collection created but no Id returned for {name!r}")
+        msg = f"Collection created but no Id returned for {name!r}"
+        raise RuntimeError(msg)
     return collection_id
 
 
