@@ -1,5 +1,7 @@
 from unittest.mock import patch
 
+import pytest
+
 from scheduler import (
     _run_cleanup_job,
     _run_global_sync_job,
@@ -157,31 +159,27 @@ def test_update_scheduler_jobs_cleanup(mock_load, mock_sched):
 # ---------------------------------------------------------------------------
 
 
-def test_validate_cron_valid():
-    assert validate_cron("0 0 * * *") is None
-    assert validate_cron("*/5 * * * *") is None
-    assert validate_cron("30 14 1 1 0") is None
-
-
-def test_validate_cron_empty():
-    assert validate_cron("") is not None
-    assert validate_cron("   ") is not None
-
-
-def test_validate_cron_wrong_field_count():
-    err = validate_cron("* * * * * *")
-    assert err is not None
-    assert "5 fields" in err
-    err = validate_cron("* * * *")
-    assert err is not None
-    assert "5 fields" in err
-
-
-def test_validate_cron_invalid_values():
-    err = validate_cron("60 0 * * *")
-    assert err is not None
-    err = validate_cron("not a cron expr")
-    assert err is not None
+@pytest.mark.parametrize(
+    ("expr", "expected_error"),
+    [
+        ("0 0 * * *", None),
+        ("*/5 * * * *", None),
+        ("30 14 1 1 0", None),
+        ("", "must not be empty"),
+        ("   ", "must not be empty"),
+        ("* * * * * *", "5 fields"),
+        ("* * * *", "5 fields"),
+        ("60 0 * * *", "Invalid cron"),
+        ("not a cron expr", "5 fields"),
+    ],
+)
+def test_validate_cron(expr, expected_error):
+    result = validate_cron(expr)
+    if expected_error is None:
+        assert result is None
+    else:
+        assert result is not None
+        assert expected_error in result
 
 
 # ---------------------------------------------------------------------------
