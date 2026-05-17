@@ -49,6 +49,8 @@ from sync import _get_cover_path, preview_group, run_sync
 
 logger = logging.getLogger(__name__)
 
+__all__ = ["bp"]
+
 bp = Blueprint("main", __name__)
 
 
