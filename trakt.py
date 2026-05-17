@@ -45,9 +45,10 @@ def fetch_trakt_list(list_url: str, client_id: str) -> list[str]:
 
     """
     if not client_id:
-        raise ValueError(
-            "A Trakt API Client ID (trakt_client_id) is required to fetch Trakt lists.",
+        msg = (
+            "A Trakt API Client ID (trakt_client_id) is required to fetch Trakt lists."
         )
+        raise ValueError(msg)
 
     list_url = list_url.strip()
 
@@ -63,10 +64,11 @@ def fetch_trakt_list(list_url: str, client_id: str) -> list[str]:
     elif "/" in list_url and not list_url.startswith("http"):
         username, list_slug = list_url.split("/", 1)
     else:
-        raise ValueError(
+        msg = (
             f"Invalid Trakt list URL: {list_url!r}. "
-            "Expected format: https://trakt.tv/users/username/lists/list-slug",
+            "Expected format: https://trakt.tv/users/username/lists/list-slug"
         )
+        raise ValueError(msg)
 
     headers: dict[str, str] = {
         "trakt-api-key": client_id,
@@ -86,9 +88,8 @@ def fetch_trakt_list(list_url: str, client_id: str) -> list[str]:
             resp = requests.get(url, headers=headers, timeout=_REQUEST_TIMEOUT)
             resp.raise_for_status()
         except requests.exceptions.RequestException as exc:
-            raise RuntimeError(
-                f"Failed to fetch Trakt list page {page}: {exc}",
-            ) from exc
+            msg = f"Failed to fetch Trakt list page {page}: {exc}"
+            raise RuntimeError(msg) from exc
 
         items: list[dict[str, Any]] = resp.json()
         if not items:

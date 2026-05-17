@@ -35,9 +35,11 @@ def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
 
     """
     if not api_key:
-        raise ValueError("A TMDb API Key is required to fetch TMDb lists.")
+        msg = "A TMDb API Key is required to fetch TMDb lists."
+        raise ValueError(msg)
     if not list_id:
-        raise ValueError("A TMDb List ID is required.")
+        msg = "A TMDb List ID is required."
+        raise ValueError(msg)
 
     list_id = list_id.strip()
 
@@ -61,9 +63,8 @@ def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
             resp = requests.get(url, params=params, timeout=15)
             resp.raise_for_status()
         except requests.exceptions.RequestException as exc:
-            raise RuntimeError(
-                f"Failed to fetch TMDb list page {page}: {exc}",
-            ) from exc
+            msg = f"Failed to fetch TMDb list page {page}: {exc}"
+            raise RuntimeError(msg) from exc
 
         data: dict[str, Any] = resp.json()
         items: list[dict[str, Any]] = data.get("items", [])

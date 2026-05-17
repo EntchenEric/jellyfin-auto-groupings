@@ -67,7 +67,8 @@ def _reraise_timeout(exc: requests.ConnectionError) -> None:
 
     reason = getattr(inner, "reason", None)
     if isinstance(reason, ReadTimeoutError):
-        raise requests.Timeout("Read timed out.") from reason
+        msg = "Read timed out."
+        raise requests.Timeout(msg) from reason
 
 
 def _patched_get(url, **kwargs) -> requests.Response:
