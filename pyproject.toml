@@ -41,7 +41,7 @@ exclude = [
 warn_redundant_casts = true
 
 [tool.ruff.lint]
-extend-select = ["I", "PTH"]
+extend-select = ["I", "PTH", "B", "SIM", "C4", "RET"]
 
 [tool.pytest.ini_options]
 markers = [
