@@ -26,7 +26,7 @@ from flask.typing import ResponseReturnValue
 from werkzeug.exceptions import HTTPException
 
 from config import load_config, save_config
-from jellyfin import _paginate_jellyfin, delete_virtual_folder, fetch_jellyfin_items, get_users
+from jellyfin import RECURSIVE_TRUE, _paginate_jellyfin, delete_virtual_folder, fetch_jellyfin_items, get_users
 from scheduler import update_scheduler_jobs, validate_cron
 from sync import _get_cover_path, preview_group, run_sync
 
@@ -722,7 +722,7 @@ def auto_detect_paths() -> ResponseReturnValue:
             url,
             api_key,
             {
-                "Recursive": "true",
+                "Recursive": RECURSIVE_TRUE,
                 "IncludeItemTypes": "Movie",
                 "Limit": str(_AUTO_DETECT_SAMPLE_LIMIT),
                 "Fields": "Path",
