@@ -837,7 +837,7 @@ def test_auto_detect_mount_skip(mock_walk, mock_isdir, mock_ismount, mock_fetch,
 
 # Auto-detect: timeout (lines 701-703)
 @patch('routes.fetch_jellyfin_items')
-@patch('routes.time.time')
+@patch('routes.time.monotonic')
 @patch('routes.os.walk')
 @patch('routes.os.path.isdir')
 @patch('routes.os.path.ismount')
