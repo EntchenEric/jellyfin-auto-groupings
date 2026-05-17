@@ -248,10 +248,11 @@ def _fetch_full_library(
         logger.info("Jellyfin library: %s items fetched for matching", len(all_items))
         with _LIBRARY_CACHE_LOCK:
             _LIBRARY_CACHE[cache_key] = all_items
-        return all_items, None, 200
     except (RuntimeError, OSError, ValueError) as exc:
         logger.exception("Infrastructure error fetching Jellyfin library for group %r: %s", group_name, exc)
         return [], f"Jellyfin connection error: {exc!s}", 500
+    else:
+        return all_items, None, 200
 
 
 def _match_jellyfin_items_by_provider(
@@ -873,10 +874,11 @@ def _fetch_items_for_metadata_group(
     try:
         items = fetch_jellyfin_items(url, api_key, params, timeout=_METADATA_FETCH_TIMEOUT)
         logger.info("Found %s potential items for group %r", len(items), group_name)
-        return items, None, 200
     except (RuntimeError, OSError, ValueError) as exc:
         logger.exception("Infrastructure error fetching items for group %r: %s", group_name, exc)
         return [], f"Jellyfin connection error: {exc!s}", 500
+    else:
+        return items, None, 200
 
 
 def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:

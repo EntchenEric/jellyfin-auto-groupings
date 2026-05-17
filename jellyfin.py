@@ -139,9 +139,10 @@ def _request_or_raise(
         else:
             raise ValueError(f"Unsupported HTTP method: {method}")
         response.raise_for_status()
-        return response
     except requests.exceptions.RequestException as exc:
         _raise_request_error(exc, error_prefix)
+    else:
+        return response
 
 
 def _post_or_raise(
