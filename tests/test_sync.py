@@ -1543,7 +1543,8 @@ def test_fetch_items_complex_group_malformed_rule(mock_lib):
     # Create a dict whose operator value raises AttributeError during str()
     class BadStr:
         def __str__(self):
-            raise AttributeError("boom")
+            err = "boom"
+            raise AttributeError(err)
 
     class BadRule(dict):
         def get(self, key, default=None):

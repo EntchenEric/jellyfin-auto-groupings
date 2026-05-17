@@ -1370,7 +1370,8 @@ def run_sync(
     target_path_in_jellyfin: str = str(config.get("target_path_in_jellyfin") or "").strip()
 
     if not url or not api_key or not target_base:
-        raise ValueError("Server settings or target path not configured")
+        msg = "Server settings or target path not configured"
+        raise ValueError(msg)
 
     if not dry_run:
         Path(target_base).mkdir(parents=True, exist_ok=True)

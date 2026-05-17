@@ -74,9 +74,8 @@ def _parse_json(response: requests.Response) -> Any:
         return response.json()
     except requests.exceptions.JSONDecodeError as exc:
         snippet = response.text[:200]
-        raise RuntimeError(
-            f"Invalid JSON response (status {response.status_code}): {snippet}",
-        ) from exc
+        msg = f"Invalid JSON response (status {response.status_code}): {snippet}"
+        raise RuntimeError(msg) from exc
 
 
 def _get_json(

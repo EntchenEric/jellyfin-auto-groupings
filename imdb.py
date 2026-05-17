@@ -54,9 +54,10 @@ def fetch_imdb_list(list_id: str) -> list[str]:
         list_id = url_match.group(0)
 
     if not list_id.startswith("ls"):
-        raise ValueError(
-            f"Invalid IMDb list ID: {list_id!r}. Expected format: ls000024390",
+        msg = (
+            f"Invalid IMDb list ID: {list_id!r}. Expected format: ls000024390"
         )
+        raise ValueError(msg)
 
     ids: list[str] = []
     page: int = 1
@@ -75,7 +76,8 @@ def fetch_imdb_list(list_id: str) -> list[str]:
             resp.raise_for_status()
         except requests.exceptions.RequestException as exc:
             logger.exception("HTTP error fetching IMDb list page %d: %s", page, exc)
-            raise RuntimeError(f"Failed to fetch IMDb list page {page}: {exc}") from exc
+            msg = f"Failed to fetch IMDb list page {page}: {exc}"
+            raise RuntimeError(msg) from exc
 
         html: str = resp.text
 

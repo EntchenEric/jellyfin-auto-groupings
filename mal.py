@@ -44,7 +44,8 @@ def fetch_mal_list(username: str, client_id: str, status: str | None = None) -> 
 
     """
     if not client_id:
-        raise ValueError("MyAnimeList Client ID is required.")
+        msg = "MyAnimeList Client ID is required."
+        raise ValueError(msg)
 
     normalized_status = _normalize_mal_status(status)
 
