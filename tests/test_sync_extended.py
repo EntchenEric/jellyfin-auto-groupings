@@ -165,7 +165,8 @@ def test_run_sync_invalid_group():
         "groups": ["not_a_dict"]
     }
     # Should skip the string and continue
-    with patch('sync.os.path.exists', return_value=True):
+    with patch('sync.os.path.exists', return_value=True), \
+            patch('sync.os.makedirs'):
         results = run_sync(config)
     assert results == []
 
