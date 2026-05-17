@@ -837,6 +837,8 @@ def auto_detect_paths() -> ResponseReturnValue:
                 break
 
     suggested_target = str(Path(home_dir) / "jellyfin-groupings-virtual")
+    if not os.access(home_dir, os.W_OK):
+        suggested_target = str(Path.cwd() / "jellyfin-groupings-virtual")
 
     return _success(
         "",
