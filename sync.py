@@ -1052,6 +1052,33 @@ def _auto_set_library_cover(
         set_virtual_folder_image(url, api_key, group_name, source_cover)
 
 
+def _create_or_preview_link(
+    item: dict[str, Any],
+    host_path: str,
+    dest_path: str,
+    file_name: str,
+    dry_run: bool,
+    preview_items: list[dict[str, Any]],
+) -> bool:
+    """Create a symlink or append a preview item.
+
+    Returns:
+        True if the link was (or would be) created successfully.
+    """
+    if dry_run:
+        if len(preview_items) < _MAX_PREVIEW_ITEMS:
+            preview_items.append(_build_preview_item(item, file_name))
+        return True
+    try:
+        Path(dest_path).symlink_to(host_path)
+        logger.info("Created symlink: %s -> %s", dest_path, host_path)
+    except OSError:
+        logger.exception("Error creating symlink %s", dest_path)
+        return False
+    else:
+        return True
+
+
 def _create_group_symlinks(
     items: list[dict[str, Any]],
     group_dir: str,
@@ -1094,22 +1121,11 @@ def _create_group_symlinks(
             file_name = f"{str(idx).zfill(width)} - {file_name}"
 
         dest_path: str = str(Path(group_dir) / file_name)
-        if dry_run:
-            if len(preview_items) < _MAX_PREVIEW_ITEMS:
-                preview_items.append(_build_preview_item(item, file_name))
+        if _create_or_preview_link(item, host_path, dest_path, file_name, dry_run, preview_items):
             links_created += 1
-        else:
-            try:
-                Path(dest_path).symlink_to(host_path)
-                logger.info("Created symlink: %s -> %s", dest_path, host_path)
-                links_created += 1
-            except OSError:
-                logger.exception("Error creating symlink %s", dest_path)
 
-    if dry_run:
-        logger.info("Would create %s symlinks for %r", links_created, group_name)
-    else:
-        logger.info("Created %s symlinks for %r", links_created, group_name)
+    action = "Would create" if dry_run else "Created"
+    logger.info("%s %s symlinks for %r", action, links_created, group_name)
 
     return links_created, preview_items
 
