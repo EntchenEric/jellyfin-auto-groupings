@@ -27,6 +27,7 @@ dev = [
 ]
 
 [tool.setuptools_scm]
+fallback_version = "1.0.0"
 
 [tool.setuptools.packages.find]
 where = ["."]
