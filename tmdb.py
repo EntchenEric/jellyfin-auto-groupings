@@ -1,5 +1,4 @@
-"""
-tmdb.py – TMDb API list fetching utilities.
+"""tmdb.py - TMDb API list fetching utilities.
 
 Provides a single public function for fetching TMDb IDs from a
 TMDb v3 list.

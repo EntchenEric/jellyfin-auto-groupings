@@ -1,5 +1,4 @@
-"""
-letterboxd.py – Letterboxd list scraping utilities.
+"""letterboxd.py - Letterboxd list scraping utilities.
 
 Provides a single public function for fetching ordered IMDb or TMDb IDs from a
 Letterboxd list by parsing the HTML.

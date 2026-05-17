@@ -1,6 +1,4 @@
-"""
-mal.py – MyAnimeList API client for fetching user lists.
-"""
+"""mal.py - MyAnimeList API client for fetching user lists."""
 
 from __future__ import annotations
 
@@ -15,8 +13,7 @@ _REQUEST_TIMEOUT: int = 15
 
 
 def fetch_mal_list(username: str, client_id: str, status: str | None = None) -> list[int]:
-    """
-    Fetch anime IDs from a user's MyAnimeList profile.
+    """Fetch anime IDs from a user's MyAnimeList profile.
 
     Args:
         username: The MAL username.

@@ -1,5 +1,4 @@
-"""
-trakt.py – Trakt API list fetching utilities.
+"""trakt.py - Trakt API list fetching utilities.
 
 Provides a single public function for fetching ordered IMDb IDs from a
 Trakt list via the official Trakt v2 API.

@@ -1,5 +1,4 @@
-"""
-sync.py – Core synchronisation logic for Jellyfin Groupings.
+"""sync.py - Core synchronisation logic for Jellyfin Groupings.
 
 This module contains :func:`run_sync`, which drives the per-group loop
 responsible for:
@@ -326,7 +325,7 @@ def _sort_items_in_memory(
     reverse = sort_dir_str.split(",")[0] == "Descending"
 
     def _key(item: dict[str, Any]) -> tuple[int, Any]:
-        """Sorting key – pushes items missing the field to the end.
+        """Sorting key - pushes items missing the field to the end.
 
         The *missing* component is set so that tuples for absent values are
         always larger than tuples for present values, regardless of whether
@@ -395,7 +394,7 @@ def _fetch_items_for_imdb_group(
     api_key: str,
     watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
-    """Resolve Jellyfin items for an IMDb-list–backed group."""
+    """Resolve Jellyfin items for an IMDb-list-backed group."""
     return _fetch_and_resolve(
         group_name,
         lambda: fetch_imdb_list(source_value),
@@ -419,7 +418,7 @@ def _fetch_items_for_trakt_group(
     trakt_client_id: str,
     watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
-    """Resolve Jellyfin items for a Trakt-list–backed group."""
+    """Resolve Jellyfin items for a Trakt-list-backed group."""
     if not trakt_client_id:
         msg = "Trakt Client ID not set — add trakt_client_id in Server Settings"
         logger.info("No Trakt Client ID configured for group %r", group_name)
@@ -448,7 +447,7 @@ def _fetch_items_for_tmdb_group(
     tmdb_api_key: str,
     watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
-    """Resolve Jellyfin items for a TMDb-list–backed group."""
+    """Resolve Jellyfin items for a TMDb-list-backed group."""
     if not tmdb_api_key:
         msg = "TMDb API Key not set — add tmdb_api_key in Server Settings"
         logger.info("No TMDb API Key configured for group %r", group_name)
@@ -476,7 +475,7 @@ def _fetch_items_for_anilist_group(
     api_key: str,
     watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
-    """Resolve Jellyfin items for an AniList-list–backed group."""
+    """Resolve Jellyfin items for an AniList-list-backed group."""
     username = source_value
     status = None
     if "/" in source_value:
@@ -505,7 +504,7 @@ def _fetch_items_for_mal_group(
     mal_client_id: str,
     watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
-    """Resolve Jellyfin items for a MyAnimeList-list–backed group."""
+    """Resolve Jellyfin items for a MyAnimeList-list-backed group."""
     if not mal_client_id:
         msg = "MyAnimeList Client ID not set — add mal_client_id in Server Settings"
         logger.info("No MAL Client ID configured for group %r", group_name)
@@ -538,7 +537,7 @@ def _fetch_items_for_letterboxd_group(
     api_key: str,
     watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
-    """Resolve Jellyfin items for a Letterboxd-list–backed group.
+    """Resolve Jellyfin items for a Letterboxd-list-backed group.
 
     Args:
         group_name: Human-readable group name (used for logging).
@@ -815,7 +814,7 @@ def _fetch_items_for_metadata_group(
     api_key: str,
     watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
-    """Resolve Jellyfin items for a metadata-filter–backed group.
+    """Resolve Jellyfin items for a metadata-filter-backed group.
 
     Handles ``genre``, ``actor``, ``studio``, ``tag``, and unfiltered
     (general) groups.  Sorting is applied server-side via Jellyfin query

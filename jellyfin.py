@@ -1,5 +1,4 @@
-"""
-jellyfin.py – Jellyfin API client helpers.
+"""jellyfin.py - Jellyfin API client helpers.
 
 Contains the sort-order mapping used across the application and a thin
 convenience wrapper around ``requests.get`` for fetching items from the

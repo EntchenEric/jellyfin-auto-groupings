@@ -1,6 +1,4 @@
-"""
-parse_test.py - Unit tests for complex query parsing.
-"""
+"""parse_test.py - Unit tests for complex query parsing."""
 
 import logging
 
