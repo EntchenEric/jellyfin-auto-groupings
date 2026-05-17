@@ -1180,7 +1180,6 @@ def _process_group(
 
     # --- Resolve items ---
     error: str | None = None
-    status_code: int = 200
     watch_state: str = group.get("watch_state", "")
 
     # Table-driven dispatch for external-list sources
@@ -1209,10 +1208,10 @@ def _process_group(
     }
 
     if source_type in _source_dispatch:
-        items, error, status_code = _source_dispatch[source_type]()
+        items, error, _status_code = _source_dispatch[source_type]()
     elif isinstance(group.get("rules"), list) and group["rules"]:
         rules_list = group["rules"]
-        items, error, status_code = _fetch_items_for_complex_group(
+        items, error, _status_code = _fetch_items_for_complex_group(
             group_name, rules_list, sort_order, url, api_key, watch_state
         )
     else:
@@ -1221,11 +1220,11 @@ def _process_group(
         # Determine if it's a complex textual rule that needs local parsing
         if source_type in ["genre", "actor", "studio", "tag", "year"] and _COMPLEX_QUERY_RE.search(val_str):
             rules = parse_complex_query(val_str, str(source_type))
-            items, error, status_code = _fetch_items_for_complex_group(
+            items, error, _status_code = _fetch_items_for_complex_group(
                 group_name, rules, sort_order, url, api_key, watch_state
             )
         else:
-            items, error, status_code = _fetch_items_for_metadata_group(
+            items, error, _status_code = _fetch_items_for_metadata_group(
                 group_name, source_type, source_value, sort_order, url, api_key, watch_state
             )
 
