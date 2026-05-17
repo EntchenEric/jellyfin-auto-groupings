@@ -2,6 +2,9 @@ from unittest.mock import patch
 
 from sync import run_sync
 
+TEST_URL = "http://localhost:8096"
+TEST_API_KEY = "test_key"
+
 
 @patch('sync.os.makedirs')
 @patch('sync.os.path.exists')
@@ -11,8 +14,8 @@ from sync import run_sync
 def test_run_sync_basic(mock_fetch, mock_symlink, mock_rmtree, mock_exists, mock_makedirs):
     """Test run_sync with a simple genre-based group."""
     config = {
-        "jellyfin_url": "http://localhost:8096",
-        "api_key": "test_key",
+        "jellyfin_url": TEST_URL,
+        "api_key": TEST_API_KEY,
         "target_path": "/host/target",
         "media_path_in_jellyfin": "/jf",
         "media_path_on_host": "/host",
@@ -53,8 +56,8 @@ def test_run_sync_imdb(mock_imdb_fetch, mock_jf_fetch, mock_exists):
     """Test run_sync with an IMDb-list group."""
     mock_exists.return_value = True
     config = {
-        "jellyfin_url": "http://localhost:8096",
-        "api_key": "test_key",
+        "jellyfin_url": TEST_URL,
+        "api_key": TEST_API_KEY,
         "target_path": "/host/target",
         "groups": [
             {
