@@ -37,6 +37,7 @@ if TYPE_CHECKING:
 
 from config import load_config, save_config
 from jellyfin import (
+    _PAGE_LIMIT,
     RECURSIVE_TRUE,
     _paginate_jellyfin,
     delete_virtual_folder,
@@ -80,9 +81,6 @@ def _success(message: str, status_code: int = 200, **extra: Any) -> ResponseRetu
 
 # Max size for base64 encoded cover image (approx 4MB)
 MAX_B64_SIZE = 4 * 1024 * 1024
-
-# Jellyfin API pagination limit
-_JELLYFIN_PAGE_LIMIT = 200
 
 # Auto-detect filesystem search limits
 _AUTO_DETECT_TIMEOUT = 30
@@ -335,7 +333,7 @@ def _fetch_jellyfin_endpoint(
     items: list[dict[str, Any]] = []
     try:
         for page in _paginate_jellyfin(
-            base_url, api_key, endpoint, extra_params, limit=_JELLYFIN_PAGE_LIMIT, timeout=timeout,
+            base_url, api_key, endpoint, extra_params, limit=_PAGE_LIMIT, timeout=timeout,
         ):
             items.extend(page)
     except RuntimeError:

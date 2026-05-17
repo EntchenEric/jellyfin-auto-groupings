@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # Constants
 # ---------------------------------------------------------------------------
 
-_COLLECTION_PAGE_LIMIT = 200
+_PAGE_LIMIT: int = 200
 
 # Default Jellyfin item types used across the application.
 DEFAULT_ITEM_TYPES = "Movie,Series"
@@ -242,7 +242,7 @@ def fetch_all_jellyfin_items(
     api_key: str,
     extra_params: dict[str, str] | None = None,
     *,
-    limit: int = 200,
+    limit: int = _PAGE_LIMIT,
     timeout: int = _DEFAULT_TIMEOUT,
     _fetch_page: Callable[..., list[dict[str, Any]]] | None = None,
 ) -> list[dict[str, Any]]:
@@ -287,7 +287,7 @@ def _paginate_jellyfin(
     endpoint: str,
     params: dict[str, Any] | None = None,
     *,
-    limit: int = 200,
+    limit: int = _PAGE_LIMIT,
     timeout: int = _DEFAULT_TIMEOUT,
 ) -> Iterator[list[dict[str, Any]]]:
     """Yield pages of items from a Jellyfin endpoint.
@@ -658,7 +658,7 @@ def find_collection_by_name(
         "SearchTerm": name,
     }
     for page in _paginate_jellyfin(
-        base_url, api_key, "Items", params, limit=_COLLECTION_PAGE_LIMIT, timeout=timeout,
+        base_url, api_key, "Items", params, limit=_PAGE_LIMIT, timeout=timeout,
     ):
         for item in page:
             if item.get("Name") == name:
