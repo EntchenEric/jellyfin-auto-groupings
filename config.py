@@ -62,6 +62,31 @@ DEFAULT_CONFIG: dict[str, Any] = {
 # ---------------------------------------------------------------------------
 
 
+def _fill_defaults(cfg: dict[str, Any], defaults: dict[str, Any]) -> None:
+    """Fill missing keys in *cfg* from *defaults*, including nested dicts."""
+    for key, default_value in defaults.items():
+        cfg.setdefault(key, default_value)
+        if isinstance(default_value, dict) and isinstance(cfg.get(key), dict):
+            for sub_key, sub_val in default_value.items():
+                cfg[key].setdefault(sub_key, sub_val)
+
+
+def _migrate_legacy_keys(cfg: dict[str, Any]) -> bool:
+    """Migrate legacy keys to their new names. Returns True if any changes were made."""
+    migrated = False
+    if cfg.get("jellyfin_root") and not cfg.get("media_path_in_jellyfin"):
+        cfg["media_path_in_jellyfin"] = cfg["jellyfin_root"]
+        migrated = True
+    if cfg.get("host_root") and not cfg.get("media_path_on_host"):
+        cfg["media_path_on_host"] = cfg["host_root"]
+        migrated = True
+    if migrated:
+        cfg.pop("jellyfin_root", None)
+        cfg.pop("host_root", None)
+        save_config(cfg)
+    return migrated
+
+
 def load_config() -> dict[str, Any]:
     """Load configuration from disk.
 
@@ -87,28 +112,8 @@ def load_config() -> dict[str, Any]:
         try:
             with Path(CONFIG_FILE).open("r", encoding="utf-8") as fh:
                 cfg = json.load(fh)
-
-            # Fill in any keys added after initial creation
-            for key, default_value in DEFAULT_CONFIG.items():
-                cfg.setdefault(key, default_value)
-                # Ensure nested dictionaries (like scheduler) also have defaults
-                if isinstance(default_value, dict) and isinstance(cfg[key], dict):
-                    for sub_key, sub_val in default_value.items():
-                        cfg[key].setdefault(sub_key, sub_val)
-
-            # Migrate renamed keys
-            migrated = False
-            if cfg.get("jellyfin_root") and not cfg.get("media_path_in_jellyfin"):
-                cfg["media_path_in_jellyfin"] = cfg["jellyfin_root"]
-                migrated = True
-            if cfg.get("host_root") and not cfg.get("media_path_on_host"):
-                cfg["media_path_on_host"] = cfg["host_root"]
-                migrated = True
-            if migrated:
-                cfg.pop("jellyfin_root", None)
-                cfg.pop("host_root", None)
-                save_config(cfg)
-
+            _fill_defaults(cfg, DEFAULT_CONFIG)
+            _migrate_legacy_keys(cfg)
         except (json.JSONDecodeError, OSError):
             # If the file is corrupt or unreadable, fall back to safe defaults
             logger.warning("Could not read config file, falling back to defaults", exc_info=True)
