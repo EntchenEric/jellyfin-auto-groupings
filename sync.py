@@ -25,6 +25,8 @@ from typing import Any, Callable
 from anilist import fetch_anilist_list
 from imdb import fetch_imdb_list
 from jellyfin import (
+    DEFAULT_ITEM_TYPES,
+    RECURSIVE_TRUE,
     SORT_MAP,
     add_to_collection,
     add_virtual_folder,
@@ -228,9 +230,9 @@ def _fetch_full_library(
             url,
             api_key,
             {
-                "Recursive": "true",
+                "Recursive": RECURSIVE_TRUE,
                 "Fields": _FULL_LIBRARY_FIELDS,
-                "IncludeItemTypes": "Movie,Series",
+                "IncludeItemTypes": DEFAULT_ITEM_TYPES,
             },
             limit=_FULL_LIBRARY_PAGE_SIZE,
             timeout=_FULL_LIBRARY_TIMEOUT,
@@ -833,9 +835,9 @@ def _fetch_items_for_metadata_group(
         A ``(items, error, status_code)`` tuple.
     """
     params: dict[str, str] = {
-        "Recursive": "true",
+        "Recursive": RECURSIVE_TRUE,
         "Fields": "Path",
-        "IncludeItemTypes": "Movie,Series",
+        "IncludeItemTypes": DEFAULT_ITEM_TYPES,
     }
 
     if source_type in _METADATA_FILTER_MAP and source_value:

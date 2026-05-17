@@ -23,6 +23,12 @@ logger = logging.getLogger(__name__)
 
 _COLLECTION_PAGE_LIMIT = 200
 
+# Default Jellyfin item types used across the application.
+DEFAULT_ITEM_TYPES = "Movie,Series"
+
+# String boolean values expected by the Jellyfin query API.
+RECURSIVE_TRUE = "true"
+
 # ---------------------------------------------------------------------------
 # Sort-order mapping
 # ---------------------------------------------------------------------------
@@ -377,8 +383,8 @@ def get_user_recent_items(
         "Filters": "IsPlayed",
         "SortBy": "DatePlayed",
         "SortOrder": "Descending",
-        "IncludeItemTypes": "Movie,Series",
-        "Recursive": "true",
+        "IncludeItemTypes": DEFAULT_ITEM_TYPES,
+        "Recursive": RECURSIVE_TRUE,
         "Limit": str(limit),
         "Fields": "ProviderIds",
     }
@@ -627,7 +633,7 @@ def find_collection_by_name(
     """
     params: dict[str, Any] = {
         "IncludeItemTypes": "BoxSet",
-        "Recursive": "true",
+        "Recursive": RECURSIVE_TRUE,
         "SearchTerm": name,
     }
     for page in _paginate_jellyfin(
