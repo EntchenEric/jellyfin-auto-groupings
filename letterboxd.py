@@ -70,6 +70,7 @@ def _fetch_id_for_slug(slug: str) -> str | None:
 
     Returns:
         The extracted ID as a string, or ``None`` if no ID was found.
+
     """
     film_url = f"https://letterboxd.com/film/{slug}/"
     try:
@@ -111,6 +112,7 @@ def fetch_letterboxd_list(list_url: str) -> list[str]:
     Raises:
         ValueError: If *list_url* is invalid.
         RuntimeError: If an HTTP error occurs while fetching a list page.
+
     """
     list_url = list_url.rstrip("/")
     if "letterboxd.com" not in list_url:

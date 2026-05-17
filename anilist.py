@@ -20,6 +20,7 @@ def fetch_anilist_list(username: str, status: str | None = None) -> list[int]:
 
     Returns:
         A list of AniList anime IDs (integers).
+
     """
     query = """
     query ($userName: String, $status: MediaListStatus) {

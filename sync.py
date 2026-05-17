@@ -127,6 +127,7 @@ def _translate_path(
 
     Returns:
         The host-side absolute path.
+
     """
     if jellyfin_root and host_root:
         try:
@@ -155,6 +156,7 @@ def _get_cover_path(group_name: str, target_base: str, check_exists: bool = True
 
     Returns:
         The absolute path to the cover image, or None if not found/possible.
+
     """
     safe_name = hashlib.md5(group_name.encode("utf-8"), usedforsecurity=False).hexdigest()
 
@@ -196,6 +198,7 @@ def _filter_by_watch_state(
 
     Returns:
         The filtered list.
+
     """
     if watch_state == "unwatched":
         return [i for i in items if not i.get("UserData", {}).get("Played")]
@@ -218,6 +221,7 @@ def _fetch_full_library(
 
     Returns:
         A (raw_items, error, status_code) tuple.
+
     """
     cache_key = (url, api_key)
     with _LIBRARY_CACHE_LOCK:
@@ -270,6 +274,7 @@ def _match_jellyfin_items_by_provider(
 
     Returns:
         A (items, error, status_code) tuple.
+
     """
     raw_items, error, status_code = _fetch_full_library(url, api_key, group_name)
     if error is not None:
@@ -316,6 +321,7 @@ def _sort_items_in_memory(
 
     Returns:
         A new list sorted according to *sort_order*.
+
     """
     if sort_order not in SORT_MAP:
         return items
@@ -369,6 +375,7 @@ def _fetch_and_resolve(
 
     Returns:
         A ``(items, error, status_code)`` tuple.
+
     """
     try:
         external_ids = fetch_fn()
@@ -550,6 +557,7 @@ def _fetch_items_for_letterboxd_group(
     Returns:
         A ``(items, error, status_code)`` tuple (same semantics as
         :func:`_fetch_items_for_imdb_group`).
+
     """
     try:
         external_ids = fetch_letterboxd_list(source_value)
@@ -629,6 +637,7 @@ def _fetch_items_for_recommendations_group(
 
     Returns:
         A ``(items, error, status_code)`` tuple.
+
     """
     if not tmdb_api_key:
         msg = "TMDb API Key not set — add tmdb_api_key in Server Settings"
@@ -682,6 +691,7 @@ def _match_condition(item: dict[str, Any], r_type: str, r_val: str) -> bool:
 
     Returns:
         True if the item matches the condition, False otherwise.
+
     """
     if not r_type or not r_val:
         return False
@@ -722,6 +732,7 @@ def _eval_item(item: dict[str, Any], rules: list[dict[str, Any]]) -> bool:
 
     Returns:
         True if the item passes the entire rule set, False otherwise.
+
     """
     if not rules:
         return True
@@ -770,6 +781,7 @@ def _fetch_items_for_complex_group(
 
     Returns:
         A ``(items, error, status_code)`` tuple.
+
     """
     raw_items, error, status_code = _fetch_full_library(url, api_key, group_name)
     if error is not None:
@@ -832,6 +844,7 @@ def _fetch_items_for_metadata_group(
 
     Returns:
         A ``(items, error, status_code)`` tuple.
+
     """
     params: dict[str, str] = {
         "Recursive": RECURSIVE_TRUE,
@@ -875,6 +888,7 @@ def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
 
     Returns:
         A list of rule dictionaries suitable for _fetch_items_for_complex_group.
+
     """
     parts = _COMPLEX_QUERY_RE.split(query.strip())
 
@@ -927,6 +941,7 @@ def preview_group(
 
     Returns:
         A ``(items, error, status_code)`` tuple.
+
     """
     if _COMPLEX_QUERY_RE.search(val):
         rules = parse_complex_query(val, type_name)
@@ -1043,6 +1058,7 @@ def _create_group_symlinks(
 
     Returns:
         A tuple of ``(links_created, preview_items)``.
+
     """
     use_prefix: bool = bool(sort_order)
     width: int = max(len(str(len(items))) if items else _MIN_PREFIX_WIDTH, _MIN_PREFIX_WIDTH)
@@ -1101,6 +1117,7 @@ def _prepare_group_directory(
 
     Returns:
         The path to the source cover image, or an error dict on failure.
+
     """
     source_cover: str | None = None
     if not dry_run:
@@ -1161,6 +1178,7 @@ def _process_group(
     Returns:
         A result dict with keys ``"group"``, ``"links"``, optionally ``"error"``,
         and ``"items"`` (the first 100 matches) if *dry_run* is True.
+
     """
     group_name: str = (group.get("name") or "").strip()
     if not group_name:
@@ -1319,6 +1337,7 @@ def run_sync(
     Raises:
         ValueError: If the required config keys are missing or the target
             directory cannot be created.
+
     """
     url: str = str(config.get("jellyfin_url") or "").rstrip("/")
     api_key: str = str(config.get("api_key") or "")
@@ -1415,6 +1434,7 @@ def run_cleanup_broken_symlinks(config: dict[str, Any]) -> int:
 
     Returns:
         The number of broken symlinks deleted.
+
     """
     target_base: str = str(config.get("target_path") or "")
 

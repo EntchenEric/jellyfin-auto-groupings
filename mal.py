@@ -23,6 +23,7 @@ def fetch_mal_list(username: str, client_id: str, status: str | None = None) -> 
 
     Returns:
         A list of MyAnimeList anime IDs (integers).
+
     """
     if not client_id:
         raise ValueError("MyAnimeList Client ID is required.")

@@ -44,6 +44,7 @@ def fetch_imdb_list(list_id: str) -> list[str]:
     Raises:
         ValueError: If *list_id* cannot be parsed as a valid IMDb list ID.
         RuntimeError: If an HTTP error occurs while fetching a page.
+
     """
     list_id = list_id.strip()
 

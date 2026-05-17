@@ -155,6 +155,7 @@ def _path_is_allowed(path: str) -> bool:
 
     Returns:
         ``True`` if access should be permitted, ``False`` otherwise.
+
     """
     real = os.path.realpath(path)
     return any(
@@ -173,6 +174,7 @@ def _get_jellyfin_config(
 
     Returns:
         ``(url, api_key)`` on success.
+
     """
     config = load_config()
     if not isinstance(config, dict):
@@ -195,6 +197,7 @@ def get_config() -> ResponseReturnValue:
 
     Returns:
         JSON-serialised configuration dictionary.
+
     """
     return jsonify(load_config())
 
@@ -208,6 +211,7 @@ def update_config() -> ResponseReturnValue:
     Returns:
         JSON with ``status`` and the saved ``config``, or a 500 error if the
         config file could not be written.
+
     """
     new_config = request.get_json(silent=True)
     if not isinstance(new_config, dict):
@@ -266,6 +270,7 @@ def test_server() -> ResponseReturnValue:
 
     Returns:
         JSON with ``status`` and a human-readable ``message``.
+
     """
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
@@ -317,6 +322,7 @@ def _fetch_jellyfin_endpoint(
 
     Returns:
         A list of all item dictionaries from the endpoint.
+
     """
     items: list[dict[str, Any]] = []
     try:
@@ -342,6 +348,7 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
     Returns:
         JSON with ``status`` and a ``metadata`` object containing ``genre``,
         ``studio``, ``tag``, and ``actor`` lists.
+
     """
     url, api_key = _get_jellyfin_config()
 
@@ -393,6 +400,7 @@ def get_jellyfin_users() -> ResponseReturnValue:
 
     Returns:
         JSON with ``status`` and a ``users`` object containing ``id`` and ``name``.
+
     """
     url, api_key = _get_jellyfin_config()
 
@@ -425,6 +433,7 @@ def upload_cover() -> ResponseReturnValue:
 
     Returns:
         JSON with ``status`` and ``message``.
+
     """
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
@@ -518,6 +527,7 @@ def preview_grouping() -> ResponseReturnValue:
     Returns:
         JSON with 'status', 'count' of matched items, and 'preview_items'
         (a list of the first 15 matched titles).
+
     """
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
@@ -727,6 +737,7 @@ def auto_detect_paths() -> ResponseReturnValue:
         JSON with ``status`` and a ``detected`` object containing
         ``media_path_in_jellyfin``, ``media_path_on_host``, and
         ``target_path``.
+
     """
     url, api_key = _get_jellyfin_config(
         missing_msg="Server settings required for detection"
@@ -801,6 +812,7 @@ def browse_directory() -> ResponseReturnValue:
     Returns:
         JSON with ``status``, ``current`` path, nullable ``parent`` path, and
         ``dirs`` (sorted list of subdirectory names).
+
     """
     raw: str = request.args.get("path", "")
     path: str = os.path.abspath(raw) if raw else os.path.expanduser("~")
@@ -874,6 +886,7 @@ def index() -> ResponseReturnValue:
 
     Returns:
         The rendered ``templates/base.html`` Jinja2 template.
+
     """
     return render_template("base.html")
 
@@ -884,5 +897,6 @@ def test_dashboard() -> ResponseReturnValue:
 
     Returns:
         The ``test.html`` file located next to ``app.py``.
+
     """
     return send_from_directory(".", "test.html")
