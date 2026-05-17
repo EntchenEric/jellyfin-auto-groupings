@@ -657,7 +657,7 @@ def _search_local_filesystem(
 
     Returns the absolute path of the first match found, or ``None``.
     """
-    walk_start = time.time()
+    walk_start = time.monotonic()
     files_scanned = 0
     for root in search_roots:
         if not os.path.isdir(root):
@@ -666,7 +666,7 @@ def _search_local_filesystem(
             if os.path.ismount(dirpath) and dirpath != root:
                 dirnames.clear()
                 continue
-            if time.time() - walk_start > timeout:
+            if time.monotonic() - walk_start > timeout:
                 logger.warning(
                     "auto-detect timed out after %ds, %d files scanned",
                     timeout,
