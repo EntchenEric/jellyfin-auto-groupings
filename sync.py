@@ -541,6 +541,17 @@ def _fetch_items_for_mal_group(
     )
 
 
+def _match_letterboxd_id(
+    eid: str,
+    items_by_imdb: dict[str, dict[str, Any]],
+    items_by_tmdb: dict[str, dict[str, Any]],
+) -> dict[str, Any] | None:
+    """Return the Jellyfin item matching a single Letterboxd external ID."""
+    if str(eid).startswith("tt"):
+        return items_by_imdb.get(str(eid).lower())
+    return items_by_tmdb.get(str(eid))
+
+
 def _fetch_items_for_letterboxd_group(
     group_name: str,
     source_value: str,
@@ -593,31 +604,33 @@ def _fetch_items_for_letterboxd_group(
         if tmdb_v:
             items_by_tmdb[str(tmdb_v)] = item
 
-    items = []
-    if sort_order == "letterboxd_list_order":
-        for eid in external_ids:
-            match = None
-            if str(eid).startswith("tt"):
-                match = items_by_imdb.get(str(eid).lower())
-            else:
-                match = items_by_tmdb.get(str(eid))
-            if match:
-                items.append(match)
-    else:
-        seen_jf_ids = set()
-        for eid in external_ids:
-            match = None
-            if str(eid).startswith("tt"):
-                match = items_by_imdb.get(str(eid).lower())
-            else:
-                match = items_by_tmdb.get(str(eid))
-            if match and match["Id"] not in seen_jf_ids:
-                items.append(match)
-                seen_jf_ids.add(match["Id"])
-
+    items = _build_letterboxd_items(external_ids, items_by_imdb, items_by_tmdb, sort_order)
     items = _filter_by_watch_state(items, watch_state)
 
     return items, None, 200
+
+
+def _build_letterboxd_items(
+    external_ids: list[str],
+    items_by_imdb: dict[str, dict[str, Any]],
+    items_by_tmdb: dict[str, dict[str, Any]],
+    sort_order: str,
+) -> list[dict[str, Any]]:
+    """Map external Letterboxd IDs to Jellyfin items, respecting sort order."""
+    items: list[dict[str, Any]] = []
+    if sort_order == "letterboxd_list_order":
+        for eid in external_ids:
+            match = _match_letterboxd_id(eid, items_by_imdb, items_by_tmdb)
+            if match:
+                items.append(match)
+    else:
+        seen_jf_ids: set[str] = set()
+        for eid in external_ids:
+            match = _match_letterboxd_id(eid, items_by_imdb, items_by_tmdb)
+            if match and match["Id"] not in seen_jf_ids:
+                items.append(match)
+                seen_jf_ids.add(match["Id"])
+    return items
 
 
 def _fetch_items_for_recommendations_group(
