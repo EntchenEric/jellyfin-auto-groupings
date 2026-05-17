@@ -211,6 +211,11 @@ def test_test_server_missing_fields(client):
     assert response.status_code == 400
 
 
+def test_test_server_null_fields(client):
+    response = client.post('/api/test-server', json={"jellyfin_url": None, "api_key": None})
+    assert response.status_code == 400
+
+
 @patch('routes.requests.get')
 def test_test_server_exception(mock_get, client):
     mock_get.side_effect = requests.exceptions.ConnectionError("Failed")
