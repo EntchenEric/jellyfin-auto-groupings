@@ -17,8 +17,9 @@ import os
 import re
 import shutil
 import threading
-from datetime import datetime
-from typing import Any, Callable
+from collections.abc import Callable
+from datetime import datetime, timezone
+from typing import Any
 
 import requests
 
@@ -1305,7 +1306,7 @@ def _is_in_season(start_str: Any, end_str: Any) -> bool:
     if not isinstance(start_str, str) or not isinstance(end_str, str):
         return True
 
-    now = datetime.now()
+    now = datetime.now(tz=timezone.utc)
     current_md = now.strftime("%m-%d")
 
     s: str = start_str

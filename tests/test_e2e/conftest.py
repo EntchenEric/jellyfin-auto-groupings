@@ -92,7 +92,7 @@ def e2e_session(e2e_app_url, e2e_jellyfin_url, e2e_api_key):
     }
     resp = requests.post(f"{e2e_app_url}/api/config", json=config, timeout=10)
     assert resp.status_code == 200
-    yield {
+    return {
         "app_url": e2e_app_url,
         "jellyfin_url": e2e_jellyfin_url,
         "jellyfin_url_internal": E2E_JELLYFIN_URL_INTERNAL,

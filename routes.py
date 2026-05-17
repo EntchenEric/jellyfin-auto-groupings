@@ -852,7 +852,7 @@ def get_test_results() -> ResponseReturnValue:
     for filename in _TEST_RESULT_FILENAMES:
         if os.path.exists(filename):
             try:
-                with open(filename, "r", encoding="utf-8") as f:
+                with open(filename, encoding="utf-8") as f:
                     results[filename] = f.read()
             except (OSError, UnicodeDecodeError):
                 results[filename] = "Error reading file."

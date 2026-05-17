@@ -904,7 +904,7 @@ def test_auto_detect_depth_limit(mock_ismount, mock_isdir, mock_walk, mock_fetch
 @patch('builtins.open')
 def test_get_test_results_read_error(mock_open, mock_exists, client):
     mock_exists.return_value = True
-    mock_open.side_effect = IOError("Read error")
+    mock_open.side_effect = OSError("Read error")
     response = client.get('/api/test/results')
     assert response.status_code == 200
     data = response.get_json()
