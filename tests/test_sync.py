@@ -321,7 +321,7 @@ def test_sort_items_missing_values_logic():
         {"SortName": "A"},
         {"SortName": None},
     ]
-    # Ascending (SortName)
+    # Test ascending sort on SortName
     res_asc = _sort_items_in_memory(items, "SortName")
     assert res_asc[0]["SortName"] == "A"
     assert res_asc[1]["SortName"] is None
@@ -329,7 +329,7 @@ def test_sort_items_missing_values_logic():
         {"ProductionYear": 2020},
         {"ProductionYear": None},
     ]
-    # Descending (ProductionYear)
+    # Test descending sort on ProductionYear
     res_desc = _sort_items_in_memory(items_year, "ProductionYear")
     assert res_desc[0]["ProductionYear"] == 2020
     assert res_desc[1]["ProductionYear"] is None

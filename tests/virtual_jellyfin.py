@@ -250,7 +250,7 @@ def get_items():
     if not api_key or api_key == "BAD_KEY":
         return "Unauthorized", 401
 
-    # MAGIC: Timeout
+    # Simulate a timeout response
     if api_key == "TIMEOUT_KEY":
         import time
         time.sleep(3)
