@@ -1,4 +1,5 @@
 """Tests for metadata rule parsing used in grouping filters.
+
 The JS frontend parses filter strings like "Horror AND Action AND NOT Comedy".
 These tests verify the Python-side logic for parsing and filtering rules.
 """

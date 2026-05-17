@@ -938,6 +938,7 @@ def preview_group(
         val: The filter value or complex query string.
         url: Jellyfin base URL.
         api_key: Jellyfin API key.
+        watch_state: Optional watch-state filter (watched, unwatched).
 
     Returns:
         A ``(items, error, status_code)`` tuple.
@@ -1174,6 +1175,10 @@ def _process_group(
         tmdb_api_key: TMDb API Key (may be empty).
         mal_client_id: MyAnimeList Client ID (may be empty).
         dry_run: If True, do not create directories or symlinks; return matches.
+        auto_create_libraries: Whether to auto-create Jellyfin libraries.
+        auto_set_library_covers: Whether to set library cover images.
+        existing_libraries: List of libraries already created this run.
+        target_path_in_jellyfin: Path prefix for Jellyfin library paths.
 
     Returns:
         A result dict with keys ``"group"``, ``"links"``, optionally ``"error"``,
@@ -1294,6 +1299,7 @@ def _process_group(
 
 def _is_in_season(start_str: Any, end_str: Any) -> bool:
     """Check if the current date is within the seasonal window [start, end).
+
     Dates are in 'MM-DD' format.
     """
     if not isinstance(start_str, str) or not isinstance(end_str, str):
