@@ -52,7 +52,7 @@ _COMPLEX_QUERY_RE = re.compile(r"\s+(AND NOT|OR NOT|AND|OR)\s+", re.IGNORECASE)
 # Source types that come from external lists (IMDb / Trakt / TMDb / AniList / MyAnimeList / Letterboxd) rather than
 # from a Jellyfin metadata filter.
 _LIST_SOURCES: frozenset[str] = frozenset(
-    {"imdb_list", "trakt_list", "tmdb_list", "anilist_list", "mal_list", "letterboxd_list", "recommendations"}
+    {"imdb_list", "trakt_list", "tmdb_list", "anilist_list", "mal_list", "letterboxd_list", "recommendations"},
 )
 
 # ``sort_order`` values that mean "keep the order from the external list"
@@ -66,7 +66,7 @@ _LIST_ORDER_VALUES: frozenset[str] = frozenset(
         "mal_list_order",
         "letterboxd_list_order",
         "recommendations_list_order",
-    }
+    },
 )
 
 # Jellyfin API page size for full-library fetches
@@ -165,7 +165,7 @@ def _get_cover_path(group_name: str, target_base: str, check_exists: bool = True
 
     # Priority 2: Internal config/covers/ directory (legacy storage location)
     legacy_cover_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "config", "covers", f"{safe_name}.jpg"
+        os.path.dirname(os.path.abspath(__file__)), "config", "covers", f"{safe_name}.jpg",
     )
 
     if not check_exists:
@@ -187,7 +187,7 @@ _LIBRARY_CACHE_LOCK = threading.RLock()
 
 
 def _filter_by_watch_state(
-    items: list[dict[str, Any]], watch_state: str
+    items: list[dict[str, Any]], watch_state: str,
 ) -> list[dict[str, Any]]:
     """Filter *items* by Jellyfin watch state.
 
@@ -389,7 +389,7 @@ def _fetch_and_resolve(
         return [], None, 200
 
     return _match_jellyfin_items_by_provider(
-        external_ids, provider_key, list_order_key, sort_order, url, api_key, group_name, watch_state
+        external_ids, provider_key, list_order_key, sort_order, url, api_key, group_name, watch_state,
     )
 
 
@@ -677,7 +677,7 @@ def _fetch_items_for_recommendations_group(
         return [], None, 200
 
     return _match_jellyfin_items_by_provider(
-        tmdb_ids, "Tmdb", "recommendations_list_order", sort_order, url, api_key, group_name, watch_state
+        tmdb_ids, "Tmdb", "recommendations_list_order", sort_order, url, api_key, group_name, watch_state,
     )
 
 
@@ -906,7 +906,7 @@ def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
     rules.append({
         "operator": "AND",
         "type": t0,
-        "value": v0
+        "value": v0,
     })
 
     for i in range(1, len(parts), 2):
@@ -915,7 +915,7 @@ def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
         rules.append({
             "operator": op,
             "type": ti,
-            "value": vi
+            "value": vi,
         })
 
     return rules
@@ -1202,25 +1202,25 @@ def _process_group(
     # Table-driven dispatch for external-list sources
     _source_dispatch: dict[str, Callable[[], tuple[list[dict[str, Any]], str | None, int]]] = {
         "imdb_list": lambda: _fetch_items_for_imdb_group(
-            group_name, source_value or "", sort_order, url, api_key, watch_state
+            group_name, source_value or "", sort_order, url, api_key, watch_state,
         ),
         "trakt_list": lambda: _fetch_items_for_trakt_group(
-            group_name, source_value or "", sort_order, url, api_key, trakt_client_id, watch_state
+            group_name, source_value or "", sort_order, url, api_key, trakt_client_id, watch_state,
         ),
         "tmdb_list": lambda: _fetch_items_for_tmdb_group(
-            group_name, source_value or "", sort_order, url, api_key, tmdb_api_key, watch_state
+            group_name, source_value or "", sort_order, url, api_key, tmdb_api_key, watch_state,
         ),
         "anilist_list": lambda: _fetch_items_for_anilist_group(
-            group_name, source_value or "", sort_order, url, api_key, watch_state
+            group_name, source_value or "", sort_order, url, api_key, watch_state,
         ),
         "mal_list": lambda: _fetch_items_for_mal_group(
-            group_name, source_value or "", sort_order, url, api_key, mal_client_id, watch_state
+            group_name, source_value or "", sort_order, url, api_key, mal_client_id, watch_state,
         ),
         "letterboxd_list": lambda: _fetch_items_for_letterboxd_group(
-            group_name, source_value or "", sort_order, url, api_key, watch_state
+            group_name, source_value or "", sort_order, url, api_key, watch_state,
         ),
         "recommendations": lambda: _fetch_items_for_recommendations_group(
-            group_name, source_value or "", sort_order, url, api_key, tmdb_api_key, watch_state
+            group_name, source_value or "", sort_order, url, api_key, tmdb_api_key, watch_state,
         ),
     }
 
@@ -1229,7 +1229,7 @@ def _process_group(
     elif isinstance(group.get("rules"), list) and group["rules"]:
         rules_list = group["rules"]
         items, error, _status_code = _fetch_items_for_complex_group(
-            group_name, rules_list, sort_order, url, api_key, watch_state
+            group_name, rules_list, sort_order, url, api_key, watch_state,
         )
     else:
         val_str = str(source_value or "")
@@ -1238,11 +1238,11 @@ def _process_group(
         if source_type in ["genre", "actor", "studio", "tag", "year"] and _COMPLEX_QUERY_RE.search(val_str):
             rules = parse_complex_query(val_str, str(source_type))
             items, error, _status_code = _fetch_items_for_complex_group(
-                group_name, rules, sort_order, url, api_key, watch_state
+                group_name, rules, sort_order, url, api_key, watch_state,
             )
         else:
             items, error, _status_code = _fetch_items_for_metadata_group(
-                group_name, source_type, source_value, sort_order, url, api_key, watch_state
+                group_name, source_type, source_value, sort_order, url, api_key, watch_state,
             )
 
     if error is not None:
@@ -1275,7 +1275,7 @@ def _process_group(
 
     # --- Create symlinks ---
     links_created, preview_items = _create_group_symlinks(
-        items, group_dir, group_name, jellyfin_root, host_root, sort_order, dry_run
+        items, group_dir, group_name, jellyfin_root, host_root, sort_order, dry_run,
     )
     result: dict[str, Any] = {"group": group_name, "links": links_created}
     if dry_run:
@@ -1313,7 +1313,7 @@ def _is_in_season(start_str: Any, end_str: Any) -> bool:
 
 
 def run_sync(
-    config: dict[str, Any], dry_run: bool = False, group_names: list[str] | None = None
+    config: dict[str, Any], dry_run: bool = False, group_names: list[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Run the synchronisation process for configured groups.
 
@@ -1345,10 +1345,10 @@ def run_sync(
     groups: list[dict[str, Any]] = config.get("groups", [])
 
     jellyfin_root: str = str(
-        config.get("media_path_in_jellyfin") or config.get("jellyfin_root", "")
+        config.get("media_path_in_jellyfin") or config.get("jellyfin_root", ""),
     ).strip()
     host_root: str = str(
-        config.get("media_path_on_host") or config.get("host_root", "")
+        config.get("media_path_on_host") or config.get("host_root", ""),
     ).strip()
     trakt_client_id: str = str(config.get("trakt_client_id") or "").strip()
     tmdb_api_key: str = str(config.get("tmdb_api_key") or "").strip()

@@ -108,7 +108,7 @@ class TestParseMetadataValue:
 
     def test_four_terms_chain(self):
         result = parse_metadata_value(
-            "Action AND Sci-Fi OR NOT Romance AND Comedy"
+            "Action AND Sci-Fi OR NOT Romance AND Comedy",
         )
         assert len(result) == 4
         assert result[0]["value"] == "Action"

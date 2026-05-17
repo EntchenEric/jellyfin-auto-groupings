@@ -91,7 +91,7 @@ _TEST_RESULT_FILENAMES = ("test_results.txt", "current_test_out.txt", "test_api_
 
 # Allowed preview metadata types
 _ALLOWED_PREVIEW_TYPES: frozenset[str] = frozenset(
-    {"genre", "studio", "tag", "year", "actor", "general", "complex"}
+    {"genre", "studio", "tag", "year", "actor", "general", "complex"},
 )
 
 # Default filesystem search roots for auto-detect
@@ -327,7 +327,7 @@ def _fetch_jellyfin_endpoint(
     items: list[dict[str, Any]] = []
     try:
         for page in _paginate_jellyfin(
-            base_url, api_key, endpoint, extra_params, limit=_JELLYFIN_PAGE_LIMIT, timeout=timeout
+            base_url, api_key, endpoint, extra_params, limit=_JELLYFIN_PAGE_LIMIT, timeout=timeout,
         ):
             items.extend(page)
     except RuntimeError:
@@ -596,7 +596,7 @@ def get_cleanup_items() -> ResponseReturnValue:
             if os.path.isdir(path) and not name.startswith("."):
                 entries.append({
                     "name": name,
-                    "is_configured": name in configured_groups
+                    "is_configured": name in configured_groups,
                 })
         return _success("", items=sorted(entries, key=lambda x: str(x["name"])))
     except OSError as exc:
@@ -740,7 +740,7 @@ def auto_detect_paths() -> ResponseReturnValue:
 
     """
     url, api_key = _get_jellyfin_config(
-        missing_msg="Server settings required for detection"
+        missing_msg="Server settings required for detection",
     )
 
     try:

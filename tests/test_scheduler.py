@@ -26,9 +26,9 @@ def test_update_scheduler_jobs_global(mock_load, mock_sched):
             "global_enabled": True,
             "global_schedule": "0 0 * * *",
             "global_exclude_ids": ["Excluded"],
-            "cleanup_enabled": False
+            "cleanup_enabled": False,
         },
-        "groups": []
+        "groups": [],
     }
     update_scheduler_jobs()
     # Check if add_job was called for global sync
@@ -47,9 +47,9 @@ def test_update_scheduler_jobs_groups(mock_load, mock_sched):
             {
                 "name": "MyGroup",
                 "schedule_enabled": True,
-                "schedule": "0 12 * * *"
-            }
-        ]
+                "schedule": "0 12 * * *",
+            },
+        ],
     }
     update_scheduler_jobs()
     mock_sched.add_job.assert_called_once()
@@ -64,8 +64,8 @@ def test_run_global_sync_job(mock_load, mock_sync):
     mock_load.return_value = {
         "groups": [
             {"name": "G1"},
-            {"name": "Excluded"}
-        ]
+            {"name": "Excluded"},
+        ],
     }
     _run_global_sync_job(["Excluded"])
     mock_sync.assert_called_once()
@@ -98,9 +98,9 @@ def test_update_scheduler_jobs_error(mock_load, mock_sched, mock_cron):
     mock_load.return_value = {
         "scheduler": {
             "global_enabled": True,
-            "global_schedule": "invalid_cron"
+            "global_schedule": "invalid_cron",
         },
-        "groups": []
+        "groups": [],
     }
     mock_cron.side_effect = ValueError("Invalid cron")
     # Should log and continue, not raise
@@ -114,9 +114,9 @@ def test_update_scheduler_jobs_cleanup(mock_load, mock_sched):
     mock_load.return_value = {
         "scheduler": {
             "cleanup_enabled": True,
-            "cleanup_schedule": "0 * * * *"
+            "cleanup_schedule": "0 * * * *",
         },
-        "groups": []
+        "groups": [],
     }
     update_scheduler_jobs()
     mock_sched.add_job.assert_called_once()
@@ -164,7 +164,7 @@ def test_validate_cron_invalid_values():
 def test_update_scheduler_jobs_non_dict_group(mock_load, mock_sched):
     mock_load.return_value = {
         "scheduler": {"global_enabled": False, "cleanup_enabled": False},
-        "groups": ["not_a_dict"]
+        "groups": ["not_a_dict"],
     }
     update_scheduler_jobs()
     mock_sched.add_job.assert_not_called()
@@ -175,7 +175,7 @@ def test_update_scheduler_jobs_non_dict_group(mock_load, mock_sched):
 def test_update_scheduler_jobs_group_no_name(mock_load, mock_sched):
     mock_load.return_value = {
         "scheduler": {"global_enabled": False, "cleanup_enabled": False},
-        "groups": [{"schedule_enabled": True, "schedule": "0 12 * * *"}]
+        "groups": [{"schedule_enabled": True, "schedule": "0 12 * * *"}],
     }
     update_scheduler_jobs()
     mock_sched.add_job.assert_not_called()
@@ -187,7 +187,7 @@ def test_update_scheduler_jobs_group_no_name(mock_load, mock_sched):
 def test_update_scheduler_jobs_group_error(mock_load, mock_sched, mock_cron):
     mock_load.return_value = {
         "scheduler": {"global_enabled": False, "cleanup_enabled": False},
-        "groups": [{"name": "BadGroup", "schedule_enabled": True, "schedule": "bad"}]
+        "groups": [{"name": "BadGroup", "schedule_enabled": True, "schedule": "bad"}],
     }
     mock_cron.side_effect = ValueError("Invalid cron")
     update_scheduler_jobs()
@@ -200,8 +200,8 @@ def test_run_global_sync_job_all_excluded(mock_load, mock_sync):
     mock_load.return_value = {
         "groups": [
             {"name": "G1"},
-            {"name": "G2"}
-        ]
+            {"name": "G2"},
+        ],
     }
     _run_global_sync_job(["G1", "G2"])
     mock_sync.assert_not_called()

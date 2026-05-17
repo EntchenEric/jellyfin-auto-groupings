@@ -41,19 +41,19 @@ def _extract_ids_from_list_page(html: str) -> dict[str, str]:
     found: dict[str, str] = {}
 
     for match in re.finditer(
-        r'data-film-slug="([^"]+)".*?data-tmdb-id="(\d+)"', html, re.DOTALL
+        r'data-film-slug="([^"]+)".*?data-tmdb-id="(\d+)"', html, re.DOTALL,
     ):
         found[match.group(1)] = match.group(2)
 
     for match in re.finditer(
-        r'data-film-slug="([^"]+)".*?imdb\.com/title/(tt\d+)', html, re.DOTALL
+        r'data-film-slug="([^"]+)".*?imdb\.com/title/(tt\d+)', html, re.DOTALL,
     ):
         slug = match.group(1)
         if slug not in found:
             found[slug] = match.group(2)
 
     for match in re.finditer(
-        r'data-film-slug="([^"]+)".*?themoviedb\.org/movie/(\d+)', html, re.DOTALL
+        r'data-film-slug="([^"]+)".*?themoviedb\.org/movie/(\d+)', html, re.DOTALL,
     ):
         slug = match.group(1)
         if slug not in found:

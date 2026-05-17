@@ -38,9 +38,9 @@ def test_fetch_tmdb_list(mock_get):
     mock_response.json.return_value = {
         "items": [
             {"media_type": "movie", "id": 101},
-            {"media_type": "tv", "id": 202}
+            {"media_type": "tv", "id": 202},
         ],
-        "total_pages": 1
+        "total_pages": 1,
     }
     mock_get.return_value = mock_response
     ids = fetch_tmdb_list("123", "api_key")
@@ -54,10 +54,10 @@ def test_fetch_anilist_list(mock_post):
         "data": {
             "MediaListCollection": {
                 "lists": [
-                    {"entries": [{"mediaId": 12345}]}
-                ]
-            }
-        }
+                    {"entries": [{"mediaId": 12345}]},
+                ],
+            },
+        },
     }
     mock_post.return_value = mock_response
     ids = fetch_anilist_list("username", "completed")

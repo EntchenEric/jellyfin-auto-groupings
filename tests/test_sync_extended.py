@@ -20,13 +20,13 @@ def test_run_sync_tmdb(mock_tmdb, mock_jf_fetch, _mock_symlink, _mock_exists, _m
                 "name": "TMDB List",
                 "source_type": "tmdb_list",
                 "source_value": "123",
-                "sort_order": "tmdb_list_order"
-            }
-        ]
+                "sort_order": "tmdb_list_order",
+            },
+        ],
     }
     mock_tmdb.return_value = ["101"]
     mock_jf_fetch.return_value = [
-        {"Name": "M1", "Path": "/p1", "ProviderIds": {"Tmdb": "101"}}
+        {"Name": "M1", "Path": "/p1", "ProviderIds": {"Tmdb": "101"}},
     ]
     _mock_exists.return_value = True  # Host path exists
     results = run_sync(config)
@@ -51,13 +51,13 @@ def test_run_sync_anilist(mock_anilist, mock_jf_fetch, _mock_symlink, _mock_exis
                 "name": "AniList",
                 "source_type": "anilist_list",
                 "source_value": "user/completed",
-                "sort_order": "anilist_list_order"
-            }
-        ]
+                "sort_order": "anilist_list_order",
+            },
+        ],
     }
     mock_anilist.return_value = [12345]
     mock_jf_fetch.return_value = [
-        {"Name": "A1", "Path": "/p1", "ProviderIds": {"AniList": "12345"}}
+        {"Name": "A1", "Path": "/p1", "ProviderIds": {"AniList": "12345"}},
     ]
     _mock_exists.return_value = True
     results = run_sync(config)
@@ -72,7 +72,7 @@ def test_run_sync_anilist(mock_anilist, mock_jf_fetch, _mock_symlink, _mock_exis
 @patch('sync.fetch_jellyfin_items')
 @patch('sync.fetch_trakt_list')
 def test_run_sync_trakt(
-    mock_trakt, mock_jf_fetch, _mock_symlink, _mock_isdir, _mock_exists, _mock_makedirs, _mock_rmtree
+    mock_trakt, mock_jf_fetch, _mock_symlink, _mock_isdir, _mock_exists, _mock_makedirs, _mock_rmtree,
 ):
     config = {
         "jellyfin_url": "http://jf",
@@ -84,13 +84,13 @@ def test_run_sync_trakt(
                 "name": "Trakt",
                 "source_type": "trakt_list",
                 "source_value": "user/list",
-                "sort_order": "trakt_list_order"
-            }
-        ]
+                "sort_order": "trakt_list_order",
+            },
+        ],
     }
     mock_trakt.return_value = ["tt123"]
     mock_jf_fetch.return_value = [
-        {"Name": "T1", "Path": "/p1", "ProviderIds": {"Imdb": "tt123"}}
+        {"Name": "T1", "Path": "/p1", "ProviderIds": {"Imdb": "tt123"}},
     ]
     _mock_exists.return_value = True
     _mock_isdir.return_value = True
@@ -115,13 +115,13 @@ def test_run_sync_mal(mock_mal, mock_jf_fetch, _mock_symlink, _mock_exists, _moc
                 "name": "MAL",
                 "source_type": "mal_list",
                 "source_value": "user",
-                "sort_order": "mal_list_order"
-            }
-        ]
+                "sort_order": "mal_list_order",
+            },
+        ],
     }
     mock_mal.return_value = [54321]
     mock_jf_fetch.return_value = [
-        {"Name": "M1", "Path": "/p1", "ProviderIds": {"Mal": "54321"}}
+        {"Name": "M1", "Path": "/p1", "ProviderIds": {"Mal": "54321"}},
     ]
     _mock_exists.return_value = True
     results = run_sync(config)
@@ -144,13 +144,13 @@ def test_run_sync_letterboxd(mock_lb, mock_jf_fetch, _mock_symlink, _mock_exists
                 "name": "LB",
                 "source_type": "letterboxd_list",
                 "source_value": "https://letterboxd.com/user/list/my-list",
-                "sort_order": "letterboxd_list_order"
-            }
-        ]
+                "sort_order": "letterboxd_list_order",
+            },
+        ],
     }
     mock_lb.return_value = ["tt111"]
     mock_jf_fetch.return_value = [
-        {"Name": "L1", "Path": "/p1", "ProviderIds": {"Imdb": "tt111"}}
+        {"Name": "L1", "Path": "/p1", "ProviderIds": {"Imdb": "tt111"}},
     ]
     _mock_exists.return_value = True
     results = run_sync(config)
@@ -162,7 +162,7 @@ def test_run_sync_invalid_group():
         "jellyfin_url": "http://jf",
         "api_key": "key",
         "target_path": "/target",
-        "groups": ["not_a_dict"]
+        "groups": ["not_a_dict"],
     }
     # Should skip the string and continue
     with patch('sync.os.path.exists', return_value=True), \
@@ -185,12 +185,12 @@ def test_run_sync_complex(mock_jf_fetch, _mock_symlink, _mock_exists, _mock_make
             {
                 "name": "Complex",
                 "source_type": "complex",
-                "rules": [{"operator": "AND", "type": "genre", "value": "Action"}]
-            }
-        ]
+                "rules": [{"operator": "AND", "type": "genre", "value": "Action"}],
+            },
+        ],
     }
     mock_jf_fetch.return_value = [
-        {"Name": "C1", "Path": "/p1", "Genres": ["Action"]}
+        {"Name": "C1", "Path": "/p1", "Genres": ["Action"]},
     ]
     _mock_exists.return_value = True
     results = run_sync(config)
@@ -211,12 +211,12 @@ def test_run_sync_dry_run(mock_jf_fetch, _mock_symlink, _mock_exists, _mock_make
             {
                 "name": "G1",
                 "source_type": "genre",
-                "source_value": "Action"
-            }
-        ]
+                "source_value": "Action",
+            },
+        ],
     }
     mock_jf_fetch.return_value = [
-        {"Name": "M1", "Path": "/p1", "Genres": ["Action"]}
+        {"Name": "M1", "Path": "/p1", "Genres": ["Action"]},
     ]
     _mock_exists.return_value = True
     results = run_sync(config, dry_run=True)
@@ -238,8 +238,8 @@ def test_run_sync_selective(mock_jf_fetch, _mock_symlink, _mock_exists, _mock_ma
         "target_path": "/target",
         "groups": [
             {"name": "G1", "source_type": "genre", "source_value": "Action"},
-            {"name": "G2", "source_type": "genre", "source_value": "Comedy"}
-        ]
+            {"name": "G2", "source_type": "genre", "source_value": "Comedy"},
+        ],
     }
     mock_jf_fetch.return_value = [{"Name": "M1", "Path": "/p1", "Genres": ["Action"]}]
     _mock_exists.return_value = True
@@ -255,7 +255,7 @@ def test_run_sync_missing_group(tmp_path):
         "jellyfin_url": "http://jf",
         "api_key": "key",
         "target_path": str(target),
-        "groups": [{"name": "G1"}]
+        "groups": [{"name": "G1"}],
     }
     results = run_sync(config, group_names=["NonExistent"])
     assert results == []
@@ -270,7 +270,7 @@ def test_run_sync_tmdb_error(mock_tmdb, _mock_makedirs, _mock_rmtree):
         "api_key": "key",
         "target_path": "/target",
         "tmdb_api_key": "tmdb_key",
-        "groups": [{"name": "G1", "source_type": "tmdb_list", "source_value": "123"}]
+        "groups": [{"name": "G1", "source_type": "tmdb_list", "source_value": "123"}],
     }
     mock_tmdb.side_effect = RuntimeError("TMDB Unavailable")
     with patch('sync.os.path.exists', return_value=True):
@@ -378,7 +378,7 @@ def test_fetch_items_trakt_empty(mock_trakt):
 @patch('sync.get_libraries')
 @patch('sync.add_virtual_folder')
 def test_run_sync_with_library_creation(
-    mock_add_lib, mock_get_libs, mock_jf_fetch, _mock_symlink, _mock_isdir, _mock_exists, _mock_makedirs, _mock_rmtree
+    mock_add_lib, mock_get_libs, mock_jf_fetch, _mock_symlink, _mock_isdir, _mock_exists, _mock_makedirs, _mock_rmtree,
 ):
     config = {
         "jellyfin_url": "http://jf",
@@ -392,14 +392,14 @@ def test_run_sync_with_library_creation(
                 "name": "NewGroup",
                 "source_type": "tmdb_list",
                 "source_value": "1",
-                "sort_order": "SortName"
-            }
-        ]
+                "sort_order": "SortName",
+            },
+        ],
     }
     # Mock items to sync
     mock_get_libs.return_value = []  # No libraries yet
     mock_jf_fetch.return_value = [
-        {"Name": "M1", "Path": "/p1", "ProviderIds": {"Tmdb": "101"}}
+        {"Name": "M1", "Path": "/p1", "ProviderIds": {"Tmdb": "101"}},
     ]
     _mock_exists.return_value = True
     _mock_isdir.return_value = True
@@ -411,7 +411,7 @@ def test_run_sync_with_library_creation(
     # Verify library creation was called
     mock_get_libs.assert_called_once()
     mock_add_lib.assert_called_once_with(
-        "http://jf", "key", "NewGroup", ["/virtual/NewGroup"], collection_type="mixed"
+        "http://jf", "key", "NewGroup", ["/virtual/NewGroup"], collection_type="mixed",
     )
 
 
@@ -426,7 +426,7 @@ def test_run_sync_with_library_creation(
 @patch('sync.fetch_jellyfin_items')
 def test_run_sync_with_auto_set_library_covers(
     mock_jf_fetch, _mock_symlink, _mock_isdir, _mock_exists, _mock_makedirs, _mock_rmtree,
-    mock_get_cover, mock_set_image, mock_copy2
+    mock_get_cover, mock_set_image, mock_copy2,
 ):
     config = {
         "jellyfin_url": "http://jf",
@@ -439,13 +439,13 @@ def test_run_sync_with_auto_set_library_covers(
                 "name": "CoverGroup",
                 "source_type": "tmdb_list",
                 "source_value": "1",
-                "sort_order": "SortName"
-            }
-        ]
+                "sort_order": "SortName",
+            },
+        ],
     }
     # Mock items to sync
     mock_jf_fetch.return_value = [
-        {"Name": "M1", "Path": "/p1", "ProviderIds": {"Tmdb": "101"}}
+        {"Name": "M1", "Path": "/p1", "ProviderIds": {"Tmdb": "101"}},
     ]
     # Mock cover existence
     _mock_exists.side_effect = lambda path: path in ("/target/CoverGroup_cover.jpg", "/p1")
@@ -468,7 +468,7 @@ def test_run_sync_with_auto_set_library_covers(
 @patch('sync.get_tmdb_recommendations')
 @patch('sync.get_user_recent_items')
 def test_run_sync_recommendations(
-    mock_recent, mock_tmdb_rec, mock_jf_fetch, _mock_symlink, _mock_exists, _mock_makedirs, _mock_rmtree
+    mock_recent, mock_tmdb_rec, mock_jf_fetch, _mock_symlink, _mock_exists, _mock_makedirs, _mock_rmtree,
 ):
     config = {
         "jellyfin_url": "http://jf",
@@ -479,14 +479,14 @@ def test_run_sync_recommendations(
             {
                 "name": "User Recommends",
                 "source_type": "recommendations",
-                "source_value": "user123"
-            }
-        ]
+                "source_value": "user123",
+            },
+        ],
     }
     mock_recent.return_value = [{"ProviderIds": {"Tmdb": "100"}, "Type": "Movie"}]
     mock_tmdb_rec.return_value = ["101"]
     mock_jf_fetch.return_value = [
-        {"Name": "R1", "Path": "/p1", "ProviderIds": {"Tmdb": "101"}}
+        {"Name": "R1", "Path": "/p1", "ProviderIds": {"Tmdb": "101"}},
     ]
     _mock_exists.return_value = True  # Host path exists
     results = run_sync(config)

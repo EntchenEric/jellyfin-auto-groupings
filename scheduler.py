@@ -50,7 +50,7 @@ def update_scheduler_jobs() -> None:
                     CronTrigger.from_crontab(cron_expr),
                     id="global_sync",
                     name="Global Sync (with exclusions)",
-                    args=[excluded_names]
+                    args=[excluded_names],
                 )
                 logger.info("Scheduled global sync: %s (excluding: %s)", cron_expr, excluded_names)
             except (ValueError, KeyError, OSError):
@@ -73,7 +73,7 @@ def update_scheduler_jobs() -> None:
                     CronTrigger.from_crontab(cron_expr),
                     id=f"group_sync_{group_name}",
                     name=f"Sync Group: {group_name}",
-                    args=[group_name]
+                    args=[group_name],
                 )
                 logger.info("Scheduled sync for group '%s': %s", group_name, cron_expr)
             except (ValueError, KeyError, OSError):
@@ -88,7 +88,7 @@ def update_scheduler_jobs() -> None:
                     _run_cleanup_job,
                     CronTrigger.from_crontab(cleanup_cron),
                     id="cleanup_sync",
-                    name="Cleanup Broken Symlinks"
+                    name="Cleanup Broken Symlinks",
                 )
                 logger.info("Scheduled cleanup job: %s", cleanup_cron)
             except (ValueError, KeyError, OSError):

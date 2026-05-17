@@ -12,7 +12,7 @@ def test_parse_complex_query():
     expected = [
         {"operator": "AND", "type": "genre", "value": "Horror"},
         {"operator": "AND", "type": "genre", "value": "animation"},
-        {"operator": "AND NOT", "type": "genre", "value": "comedy"}
+        {"operator": "AND NOT", "type": "genre", "value": "comedy"},
     ]
     result = parse_complex_query("Horror AND animation AND NOT comedy", "genre")
     assert result == expected

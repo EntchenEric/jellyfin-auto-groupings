@@ -10,12 +10,12 @@ data = {
         {"Name": "Movies", "ItemId": "movies_id", "CollectionType": "movies"},
         {"Name": "TV Shows", "ItemId": "tvshows_id", "CollectionType": "tvshows"},
         {"Name": "Anime", "ItemId": "anime_id", "CollectionType": "tvshows"},
-        {"Name": "Documentaries", "ItemId": "docs_id", "CollectionType": "movies"}
+        {"Name": "Documentaries", "ItemId": "docs_id", "CollectionType": "movies"},
     ],
     "users": [
         {"Name": "Admin", "Id": "admin_id"},
         {"Name": "User1", "Id": "user1_id"},
-        {"Name": "Guest", "Id": "guest_id"}
+        {"Name": "Guest", "Id": "guest_id"},
     ],
     "items": [
         # --- Movies (1-50) ---
@@ -235,10 +235,10 @@ data = {
         dict([("Id", "chaos_7"), ("Name", "Mixed Case ID"), ("Id", "ChAoS_7"),
               ("Type", "Movie"), ("ProductionYear", 2020), ("Path", "/media/chaos7.mkv")]),
         {"Id": "chaos_8", "Name": "RTL and LTR Mixed: Hello שלום World", "Type": "Movie", "ProductionYear": 2023,
-            "Path": "/media/movies/chaos8.mkv"}
+            "Path": "/media/movies/chaos8.mkv"},
     ],
     "library_paths": {},
-    "images": {}
+    "images": {},
 }
 
 
@@ -288,7 +288,7 @@ def get_system_info():
         "LocalAddress": "http://127.0.0.1:8096",
         "ServerName": "Virtual-Jellyfin-Mock",
         "Version": "10.8.10",
-        "Id": "mock-server-id"
+        "Id": "mock-server-id",
     })
 
 
@@ -324,7 +324,7 @@ def add_virtual_folder():
     new_lib = {
         "Name": name,
         "ItemId": str(uuid.uuid4()),
-        "CollectionType": collection_type
+        "CollectionType": collection_type,
     }
     data["libraries"].append(new_lib)
     return "", 204

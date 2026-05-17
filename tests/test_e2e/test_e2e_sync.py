@@ -19,7 +19,7 @@ class TestE2ESync:
         requests.post(
             f"{e2e_session['app_url']}/api/config",
             json=config,
-            timeout=10
+            timeout=10,
         )
         yield
         # Cleanup after test
@@ -28,7 +28,7 @@ class TestE2ESync:
         requests.post(
             f"{e2e_session['app_url']}/api/config",
             json=config,
-            timeout=10
+            timeout=10,
         )
 
     def test_sync_with_single_genre_group(self, e2e_session):
@@ -44,12 +44,12 @@ class TestE2ESync:
             "schedule_enabled": False,
             "schedule": "",
             "seasonal_enabled": False,
-            "watch_state": ""
+            "watch_state": "",
         }]
         resp = requests.post(
             f"{e2e_session['app_url']}/api/config",
             json=config,
-            timeout=10
+            timeout=10,
         )
         assert resp.status_code == 200
 
@@ -72,12 +72,12 @@ class TestE2ESync:
             "schedule_enabled": False,
             "schedule": "",
             "seasonal_enabled": False,
-            "watch_state": ""
+            "watch_state": "",
         }]
         requests.post(
             f"{e2e_session['app_url']}/api/config",
             json=config,
-            timeout=10
+            timeout=10,
         )
 
         result = api_post(e2e_session, "/api/sync/preview_all")

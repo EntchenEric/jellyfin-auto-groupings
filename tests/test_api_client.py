@@ -20,7 +20,7 @@ class TestServerConnection:
 
             resp = client.post("/api/test-server", json={
                 "jellyfin_url": TEST_URL,
-                "api_key": TEST_API_KEY
+                "api_key": TEST_API_KEY,
             })
             data = resp.get_json()
             assert resp.status_code == 200
@@ -43,7 +43,7 @@ class TestServerConnection:
 
             resp = client.post("/api/test-server", json={
                 "jellyfin_url": TEST_URL,
-                "api_key": "bad-key"
+                "api_key": "bad-key",
             })
             data = resp.get_json()
             assert data["status"] == "error"
@@ -66,7 +66,7 @@ class TestMetadataEndpoints:
                 patch("routes.requests.get") as mock_get:
             mock_load.return_value = {
                 "jellyfin_url": TEST_URL,
-                "api_key": TEST_API_KEY
+                "api_key": TEST_API_KEY,
             }
 
             def mock_jellyfin(url, **kwargs):
@@ -110,7 +110,7 @@ class TestPreviewEndpoint:
                 patch("routes.preview_group") as mock_preview:
             mock_load.return_value = {
                 "jellyfin_url": TEST_URL,
-                "api_key": TEST_API_KEY
+                "api_key": TEST_API_KEY,
             }
             mock_preview.return_value = (
                 [
@@ -124,7 +124,7 @@ class TestPreviewEndpoint:
             resp = client.post("/api/grouping/preview", json={
                 "type": "genre",
                 "value": "Action",
-                "watch_state": ""
+                "watch_state": "",
             })
             data = resp.get_json()
             assert data["status"] == "success"

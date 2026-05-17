@@ -10,7 +10,7 @@ def test_default_config_has_required_keys():
     required = [
         "jellyfin_url", "api_key", "target_path",
         "media_path_in_jellyfin", "media_path_on_host",
-        "groups", "scheduler", "setup_done"
+        "groups", "scheduler", "setup_done",
     ]
     for key in required:
         assert key in DEFAULT_CONFIG, f"Missing required key: {key}"

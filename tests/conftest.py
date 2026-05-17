@@ -95,7 +95,7 @@ def mock_jellyfin_items():
             "ProductionYear": 2020,
             "Genres": ["Action"],
             "ProviderIds": {"Imdb": "tt1234567"},
-            "People": [{"Name": "Actor A", "Type": "Actor"}]
+            "People": [{"Name": "Actor A", "Type": "Actor"}],
         },
         {
             "Id": "2",
@@ -104,6 +104,6 @@ def mock_jellyfin_items():
             "ProductionYear": 2021,
             "Genres": ["Comedy"],
             "ProviderIds": {"Imdb": "tt7654321"},
-            "People": [{"Name": "Actor B", "Type": "Actor"}]
-        }
+            "People": [{"Name": "Actor B", "Type": "Actor"}],
+        },
     ]
