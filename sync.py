@@ -1078,7 +1078,7 @@ def _create_group_symlinks(
 
         source_path: str | None = item.get("Path")
         if not source_path or not isinstance(source_path, str):
-            logger.info("Item %s has no valid Path — skipping", item.get('Id'))
+            logger.info("Item %s has no valid Path — skipping", item.get("Id"))
             continue
 
         host_path = _translate_path(source_path, jellyfin_root, host_root)
