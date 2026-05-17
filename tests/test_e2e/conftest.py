@@ -18,8 +18,8 @@ E2E_API_KEY = os.environ.get("JELLYFIN_API_KEY", "")
 
 def wait_for_app(timeout=30):
     """Wait for the app server to be ready."""
-    deadline = time.time() + timeout
-    while time.time() < deadline:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
         try:
             resp = requests.get(f"{E2E_APP_URL}/api/config", timeout=3)
             if resp.status_code == 200:
@@ -32,8 +32,8 @@ def wait_for_app(timeout=30):
 
 def wait_for_jellyfin(timeout=30):
     """Wait for Jellyfin to be healthy."""
-    deadline = time.time() + timeout
-    while time.time() < deadline:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
         try:
             resp = requests.get(f"{E2E_JELLYFIN_URL}/health", timeout=3)
             if resp.status_code == 200:
