@@ -572,7 +572,7 @@ def preview_grouping() -> ResponseReturnValue:
 def get_cleanup_items() -> ResponseReturnValue:
     """Return a list of logical folders in the target directory."""
     config: dict[str, Any] = load_config()
-    target_base: str = str(config.get("target_path", ""))
+    target_base: str = str(config.get("target_path") or "")
     if not target_base or not os.path.exists(target_base):
         return _success("", items=[])
 
@@ -604,7 +604,7 @@ def perform_cleanup() -> ResponseReturnValue:
         return _error("'folders' must be a list", 400)
 
     config: dict[str, Any] = load_config()
-    target_base: str = str(config.get("target_path", ""))
+    target_base: str = str(config.get("target_path") or "")
     if not target_base or not os.path.exists(target_base):
         return _error("Target path not found", 404)
 
@@ -623,8 +623,8 @@ def perform_cleanup() -> ResponseReturnValue:
 
                 # Also delete from Jellyfin if configured
                 if config.get("auto_create_libraries"):
-                    url = str(config.get("jellyfin_url", "")).rstrip("/")
-                    api_key = str(config.get("api_key", ""))
+                    url = str(config.get("jellyfin_url") or "").rstrip("/")
+                    api_key = str(config.get("api_key") or "")
                     if url and api_key:
                         try:
                             delete_virtual_folder(url, api_key, name)

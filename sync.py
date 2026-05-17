@@ -1325,9 +1325,9 @@ def run_sync(
         ValueError: If the required config keys are missing or the target
             directory cannot be created.
     """
-    url: str = str(config.get("jellyfin_url", "")).rstrip("/")
-    api_key: str = str(config.get("api_key", ""))
-    target_base: str = str(config.get("target_path", ""))
+    url: str = str(config.get("jellyfin_url") or "").rstrip("/")
+    api_key: str = str(config.get("api_key") or "")
+    target_base: str = str(config.get("target_path") or "")
     groups: list[dict[str, Any]] = config.get("groups", [])
 
     jellyfin_root: str = str(
@@ -1336,12 +1336,12 @@ def run_sync(
     host_root: str = str(
         config.get("media_path_on_host") or config.get("host_root", "")
     ).strip()
-    trakt_client_id: str = str(config.get("trakt_client_id", "")).strip()
-    tmdb_api_key: str = str(config.get("tmdb_api_key", "")).strip()
-    mal_client_id: str = str(config.get("mal_client_id", "")).strip()
+    trakt_client_id: str = str(config.get("trakt_client_id") or "").strip()
+    tmdb_api_key: str = str(config.get("tmdb_api_key") or "").strip()
+    mal_client_id: str = str(config.get("mal_client_id") or "").strip()
     auto_create_libraries: bool = bool(config.get("auto_create_libraries", False))
     auto_set_library_covers: bool = bool(config.get("auto_set_library_covers", False))
-    target_path_in_jellyfin: str = str(config.get("target_path_in_jellyfin", "")).strip()
+    target_path_in_jellyfin: str = str(config.get("target_path_in_jellyfin") or "").strip()
 
     if not url or not api_key or not target_base:
         raise ValueError("Server settings or target path not configured")
@@ -1422,7 +1422,7 @@ def run_cleanup_broken_symlinks(config: dict[str, Any]) -> int:
     Returns:
         The number of broken symlinks deleted.
     """
-    target_base: str = str(config.get("target_path", ""))
+    target_base: str = str(config.get("target_path") or "")
 
     if not target_base or not os.path.isdir(target_base):
         logger.info("Cleanup aborted: invalid target base path '%s'", target_base)
