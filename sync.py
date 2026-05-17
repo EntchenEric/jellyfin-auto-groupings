@@ -767,14 +767,15 @@ def _eval_item(item: dict[str, Any], rules: list[dict[str, Any]]) -> bool:
         op = rule["operator"]
         matched = _match_condition(item, rule["type"], rule["value"])
 
-        if op == "AND":
-            result = result and matched
-        elif op == "OR":
-            result = result or matched
-        elif op in ("AND NOT", "NOT"):
-            result = result and not matched
-        elif op == "OR NOT":
-            result = result or not matched
+        match op:
+            case "AND":
+                result = result and matched
+            case "OR":
+                result = result or matched
+            case "AND NOT" | "NOT":
+                result = result and not matched
+            case "OR NOT":
+                result = result or not matched
 
     return result
 
