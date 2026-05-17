@@ -1004,18 +1004,17 @@ def _auto_create_library(
 
     Mutates *existing_libraries* to prevent double creation in the same run.
     """
-    if not dry_run and auto_create_libraries and links_created > 0:
-        if existing_libraries is not None and group_name not in existing_libraries:
-            logger.info("Creating Jellyfin library for grouping: %r", group_name)
-            lib_path = os.path.join(target_path_in_jellyfin, group_name) if target_path_in_jellyfin else group_dir
+    if not dry_run and auto_create_libraries and links_created > 0 and existing_libraries is not None and group_name not in existing_libraries:
+        logger.info("Creating Jellyfin library for grouping: %r", group_name)
+        lib_path = os.path.join(target_path_in_jellyfin, group_name) if target_path_in_jellyfin else group_dir
 
-            try:
-                add_virtual_folder(url, api_key, group_name, [lib_path], collection_type="mixed")
-                logger.info("Successfully created library %r with path %r", group_name, lib_path)
-                existing_libraries.append(group_name)
-            except (RuntimeError, OSError) as exc:
-                logger.error("Failed to create Jellyfin library %r: %s", group_name, exc)
-                result["library_error"] = str(exc)
+        try:
+            add_virtual_folder(url, api_key, group_name, [lib_path], collection_type="mixed")
+            logger.info("Successfully created library %r with path %r", group_name, lib_path)
+            existing_libraries.append(group_name)
+        except (RuntimeError, OSError) as exc:
+            logger.error("Failed to create Jellyfin library %r: %s", group_name, exc)
+            result["library_error"] = str(exc)
     return result
 
 
@@ -1373,9 +1372,8 @@ def run_sync(
             continue
 
         name = (group.get("name") or "").strip()
-        if group_names is not None:
-            if not name or name not in group_names:
-                continue
+        if group_names is not None and (not name or name not in group_names):
+            continue
 
         # --- Seasonal Check ---
         if group.get("seasonal_enabled"):
@@ -1430,7 +1428,7 @@ def run_cleanup_broken_symlinks(config: dict[str, Any]) -> int:
 
     deleted_count = 0
 
-    for root, dirs, files in os.walk(target_base):
+    for root, _dirs, files in os.walk(target_base):
         for name in files:
             path = os.path.join(root, name)
             if os.path.islink(path) and not os.path.exists(path):

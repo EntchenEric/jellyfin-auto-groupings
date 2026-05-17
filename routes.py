@@ -133,11 +133,13 @@ def _check_csrf() -> ResponseReturnValue | None:
 
 def _is_valid_folder_name(name: str) -> bool:
     """Return True if *name* is a safe, non-empty folder name without path separators."""
-    if not isinstance(name, str) or not name:
-        return False
-    if name in (".", "..") or "/" in name or "\\" in name:
-        return False
-    return True
+    return (
+        isinstance(name, str)
+        and bool(name)
+        and name not in (".", "..")
+        and "/" not in name
+        and "\\" not in name
+    )
 
 
 # Roots that the folder browser is allowed to expose.
