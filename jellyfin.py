@@ -18,6 +18,24 @@ import requests
 
 logger = logging.getLogger(__name__)
 
+__all__ = [
+    "RECURSIVE_TRUE",
+    "add_to_collection",
+    "create_collection",
+    "delete_collection",
+    "delete_virtual_folder",
+    "fetch_all_jellyfin_items",
+    "fetch_jellyfin_items",
+    "find_collection_by_name",
+    "get_libraries",
+    "get_library_id",
+    "get_user_recent_items",
+    "get_users",
+    "remove_from_collection",
+    "set_collection_image",
+    "set_virtual_folder_image",
+]
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
