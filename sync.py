@@ -169,7 +169,7 @@ def _get_cover_path(group_name: str, target_base: str, check_exists: bool = True
 
     # Priority 2: Internal config/covers/ directory (legacy storage location)
     legacy_cover_path = str(
-        Path(__file__).resolve().parent / "config" / "covers" / f"{safe_name}.jpg"
+        Path(__file__).resolve().parent / "config" / "covers" / f"{safe_name}.jpg",
     )
 
     if not check_exists:
@@ -250,7 +250,7 @@ def _fetch_full_library(
             _LIBRARY_CACHE[cache_key] = all_items
         return all_items, None, 200
     except (RuntimeError, OSError, ValueError) as exc:
-        logger.error("Infrastructure error fetching Jellyfin library for group %r: %s", group_name, exc)
+        logger.exception("Infrastructure error fetching Jellyfin library for group %r: %s", group_name, exc)
         return [], f"Jellyfin connection error: {exc!s}", 500
 
 
@@ -385,7 +385,7 @@ def _fetch_and_resolve(
         external_ids = fetch_fn()
         logger.info(log_msg_fn(len(external_ids)))
     except (requests.exceptions.RequestException, RuntimeError, ValueError) as exc:
-        logger.error("Error fetching %s list for group %r: %s", source_label, group_name, exc)
+        logger.exception("Error fetching %s list for group %r: %s", source_label, group_name, exc)
         return [], f"{source_label} fetch error: {exc!s}", 400
 
     if not external_ids:
@@ -567,7 +567,7 @@ def _fetch_items_for_letterboxd_group(
         external_ids = fetch_letterboxd_list(source_value)
         logger.info("Letterboxd list %r: %s IDs found", source_value, len(external_ids))
     except (requests.exceptions.RequestException, RuntimeError, ValueError) as exc:
-        logger.error("Error fetching Letterboxd items for group %r: %s", group_name, exc)
+        logger.exception("Error fetching Letterboxd items for group %r: %s", group_name, exc)
         return [], f"Letterboxd fetch error: {exc!s}", 400
 
     if not external_ids:
@@ -673,7 +673,7 @@ def _fetch_items_for_recommendations_group(
         tmdb_ids = get_tmdb_recommendations(tmdb_requests, tmdb_api_key)
         logger.info("TMDb recommendations: %s items found", len(tmdb_ids))
     except (requests.exceptions.RequestException, RuntimeError, ValueError) as exc:
-        logger.error("Error fetching recommendations for group %r: %s", group_name, exc)
+        logger.exception("Error fetching recommendations for group %r: %s", group_name, exc)
         return [], f"Recommendations fetch error: {exc!s}", 400
 
     if not tmdb_ids:
@@ -875,7 +875,7 @@ def _fetch_items_for_metadata_group(
         logger.info("Found %s potential items for group %r", len(items), group_name)
         return items, None, 200
     except (RuntimeError, OSError, ValueError) as exc:
-        logger.error("Infrastructure error fetching items for group %r: %s", group_name, exc)
+        logger.exception("Infrastructure error fetching items for group %r: %s", group_name, exc)
         return [], f"Jellyfin connection error: {exc!s}", 500
 
 
@@ -1001,7 +1001,7 @@ def _process_collection_group(
             try:
                 set_collection_image(url, api_key, collection_id, source_cover)
             except OSError as exc:
-                logger.error("Failed to set collection image for %r: %s", group_name, exc)
+                logger.exception("Failed to set collection image for %r: %s", group_name, exc)
 
     return result
 
@@ -1031,7 +1031,7 @@ def _auto_create_library(
             logger.info("Successfully created library %r with path %r", group_name, lib_path)
             existing_libraries.append(group_name)
         except (RuntimeError, OSError) as exc:
-            logger.error("Failed to create Jellyfin library %r: %s", group_name, exc)
+            logger.exception("Failed to create Jellyfin library %r: %s", group_name, exc)
             result["library_error"] = str(exc)
     return result
 
@@ -1102,7 +1102,7 @@ def _create_group_symlinks(
                 logger.info("Created symlink: %s -> %s", dest_path, host_path)
                 links_created += 1
             except OSError as exc:
-                logger.error("Error creating symlink %s: %s", dest_path, exc)
+                logger.exception("Error creating symlink %s: %s", dest_path, exc)
 
     if dry_run:
         logger.info("Would create %s symlinks for %r", links_created, group_name)
@@ -1132,7 +1132,7 @@ def _prepare_group_directory(
                 shutil.rmtree(group_dir)
             Path(group_dir).mkdir(parents=True, exist_ok=True)
         except OSError as exc:
-            logger.error("Failed to prepare group directory %r: %s", group_dir, exc)
+            logger.exception("Failed to prepare group directory %r: %s", group_dir, exc)
             return {"group": group_name, "links": 0, "error": f"Directory error: {exc!s}"}
 
         source_cover = _get_cover_path(group_name, target_base)
@@ -1142,7 +1142,7 @@ def _prepare_group_directory(
                 shutil.copy2(source_cover, poster_dest)
                 logger.info("Copied cover image from %s to %s", source_cover, poster_dest)
             except OSError as exc:
-                logger.error("Failed to copy cover image: %s", exc)
+                logger.exception("Failed to copy cover image: %s", exc)
 
     return source_cover or ""
 
@@ -1464,6 +1464,6 @@ def run_cleanup_broken_symlinks(config: dict[str, Any]) -> int:
                     logger.info("Deleted broken symlink: %s", path)
                     deleted_count += 1
                 except OSError as exc:
-                    logger.error("Error deleting broken symlink %s: %s", path, exc)
+                    logger.exception("Error deleting broken symlink %s: %s", path, exc)
 
     return deleted_count
