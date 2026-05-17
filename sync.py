@@ -914,6 +914,7 @@ def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
     rules = []
 
     def _parse_item(item_str: str) -> tuple[str, str]:
+        """Parse a single query fragment into ``(type, value)``."""
         if ":" in item_str:
             t, v = item_str.split(":", 1)
             t = t.strip().lower()
