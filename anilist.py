@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import requests
 
+__all__ = ["fetch_anilist_list"]
+
 ANILIST_API_URL = "https://graphql.anilist.co"
 
 # Request timeout (seconds)
