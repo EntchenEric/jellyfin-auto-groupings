@@ -71,10 +71,9 @@ def fetch_anilist_list(username: str, status: str | None = None) -> list[int]:
     if not collection:
         return []
 
-    ids = []
-    for user_list in collection.get("lists", []):
-        for entry in user_list.get("entries", []):
-            if entry.get("mediaId"):
-                ids.append(entry["mediaId"])
-
-    return ids
+    return [
+        entry["mediaId"]
+        for user_list in collection.get("lists", [])
+        for entry in user_list.get("entries", [])
+        if entry.get("mediaId")
+    ]
