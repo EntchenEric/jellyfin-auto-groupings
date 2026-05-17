@@ -19,8 +19,6 @@ import logging
 import os
 from pathlib import Path
 
-import network  # noqa: F401 — monkey-patches requests.get/post/delete with retry
-
 from flask import Flask
 
 import network  # noqa: F401 — monkey-patches requests.get/post/delete with retry

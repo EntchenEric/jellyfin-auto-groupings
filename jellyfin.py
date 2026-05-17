@@ -1,5 +1,4 @@
-"""
-jellyfin.py – Jellyfin API client helpers.
+"""jellyfin.py - Jellyfin API client helpers.
 
 Contains the sort-order mapping used across the application and a thin
 convenience wrapper around ``requests.get`` for fetching items from the
@@ -8,13 +7,51 @@ Jellyfin ``/Items`` endpoint.
 
 from __future__ import annotations
 
-from typing import Any
-
-import mimetypes
 import logging
+import mimetypes
+from typing import TYPE_CHECKING, Any, NoReturn
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator
+
 import requests
 
+import network
+
 logger = logging.getLogger(__name__)
+
+__all__ = [
+    "RECURSIVE_TRUE",
+    "add_to_collection",
+    "create_collection",
+    "delete_collection",
+    "delete_virtual_folder",
+    "fetch_all_jellyfin_items",
+    "fetch_jellyfin_items",
+    "find_collection_by_name",
+    "get_libraries",
+    "get_library_id",
+    "get_user_recent_items",
+    "get_users",
+    "remove_from_collection",
+    "set_collection_image",
+    "set_virtual_folder_image",
+]
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+_PAGE_LIMIT: int = 200
+
+# Default Jellyfin item types used across the application.
+DEFAULT_ITEM_TYPES = "Movie,Series"
+
+# String boolean values expected by the Jellyfin query API.
+RECURSIVE_TRUE = "true"
+
+# Default HTTP request timeout (seconds) used by all Jellyfin API helpers.
+_DEFAULT_TIMEOUT: int = 30
 
 # ---------------------------------------------------------------------------
 # Sort-order mapping
@@ -33,6 +70,150 @@ SORT_MAP: dict[str, tuple[str, str]] = {
     "Random": ("Random", "Ascending"),
 }
 
+
+def _auth_headers(api_key: str) -> dict[str, str]:
+    """Return Jellyfin authentication headers for *api_key*."""
+    return {"X-Emby-Token": api_key}
+
+
+def _format_request_error(exc: requests.exceptions.RequestException, prefix: str) -> str:
+    """Build a human-readable error message from *exc* with response details if available."""
+    msg = prefix
+    if hasattr(exc, "response") and exc.response is not None:
+        msg += f" (Status {exc.response.status_code}): {exc.response.text}"
+    else:
+        msg += f": {exc!s}"
+    return msg
+
+
+def _raise_request_error(exc: requests.exceptions.RequestException, prefix: str) -> NoReturn:
+    """Format *exc* into a ``RuntimeError`` with response details if available."""
+    raise RuntimeError(_format_request_error(exc, prefix)) from exc
+
+
+def _parse_json(response: requests.Response) -> Any:
+    """Safely parse *response* JSON, translating decode failures into ``RuntimeError``."""
+    try:
+        return response.json()
+    except requests.exceptions.JSONDecodeError as exc:
+        snippet = response.text[:200]
+        msg = f"Invalid JSON response (status {response.status_code}): {snippet}"
+        raise RuntimeError(msg) from exc
+
+
+def _get_json(
+    url: str,
+    *,
+    headers: dict[str, str] | None = None,
+    params: dict[str, Any] | None = None,
+    timeout: int = _DEFAULT_TIMEOUT,
+) -> Any:
+    """GET *url* and return the parsed JSON response.
+
+    Raises:
+        RuntimeError: If the request fails or the response body is not valid JSON.
+
+    """
+    kwargs: dict[str, Any] = {}
+    if headers is not None:
+        kwargs["headers"] = headers
+    if params is not None:
+        kwargs["params"] = params
+    try:
+        response = network.get(url, timeout=timeout, **kwargs)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as exc:
+        _raise_request_error(exc, f"Failed to GET {url}")
+    return _parse_json(response)
+
+
+def _request_or_raise(
+    method: str,
+    url: str,
+    *,
+    headers: dict[str, str] | None = None,
+    params: dict[str, Any] | None = None,
+    data: Any = None,
+    json: Any = None,
+    timeout: int = _DEFAULT_TIMEOUT,
+    error_prefix: str = "",
+) -> requests.Response:
+    """Send a *method* request to *url* and return the response, translating errors into ``RuntimeError``.
+
+    Raises:
+        RuntimeError: On any ``RequestException``.
+
+    """
+    kwargs: dict[str, Any] = {}
+    if headers is not None:
+        kwargs["headers"] = headers
+    if params is not None:
+        kwargs["params"] = params
+    if data is not None:
+        kwargs["data"] = data
+    if json is not None:
+        kwargs["json"] = json
+    try:
+        if method == "POST":
+            response = network.post(url, timeout=timeout, **kwargs)
+        elif method == "DELETE":
+            response = network.delete(url, timeout=timeout, **kwargs)
+        else:
+            msg = f"Unsupported HTTP method: {method}"
+            raise ValueError(msg)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as exc:
+        _raise_request_error(exc, error_prefix)
+    else:
+        return response
+
+
+def _post_or_raise(
+    url: str,
+    *,
+    headers: dict[str, str] | None = None,
+    params: dict[str, Any] | None = None,
+    data: Any = None,
+    json: Any = None,
+    timeout: int = _DEFAULT_TIMEOUT,
+    error_prefix: str = "",
+) -> requests.Response:
+    """POST to *url* and return the response, translating errors into ``RuntimeError``."""
+    return _request_or_raise(
+        "POST", url, headers=headers, params=params, data=data, json=json, timeout=timeout, error_prefix=error_prefix,
+    )
+
+
+def _post_json(
+    url: str,
+    *,
+    headers: dict[str, str] | None = None,
+    params: dict[str, Any] | None = None,
+    data: Any = None,
+    json: Any = None,
+    timeout: int = _DEFAULT_TIMEOUT,
+    error_prefix: str = "",
+) -> Any:
+    """POST to *url* and return the parsed JSON response, translating errors into ``RuntimeError``."""
+    return _parse_json(
+        _post_or_raise(url, headers=headers, params=params, data=data, json=json, timeout=timeout, error_prefix=error_prefix),
+    )
+
+
+def _delete_or_raise(
+    url: str,
+    *,
+    headers: dict[str, str] | None = None,
+    params: dict[str, Any] | None = None,
+    timeout: int = _DEFAULT_TIMEOUT,
+    error_prefix: str = "",
+) -> requests.Response:
+    """DELETE *url* and return the response, translating errors into ``RuntimeError``."""
+    return _request_or_raise(
+        "DELETE", url, headers=headers, params=params, timeout=timeout, error_prefix=error_prefix,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Public helpers
 # ---------------------------------------------------------------------------
@@ -43,7 +224,7 @@ def fetch_jellyfin_items(
     api_key: str,
     extra_params: dict[str, str] | None = None,
     *,
-    timeout: int = 30,
+    timeout: int = _DEFAULT_TIMEOUT,
 ) -> list[dict[str, Any]]:
     """Fetch the ``Items`` list from the Jellyfin ``/Items`` endpoint.
 
@@ -63,17 +244,114 @@ def fetch_jellyfin_items(
         the response contained no ``Items`` key.
 
     Raises:
-        requests.HTTPError: If the server returns a non-2xx status code.
-        requests.RequestException: For any other network-level error.
+        RuntimeError: If the request fails or the response is not valid JSON.
+
     """
-    headers = {"X-Emby-Token": api_key}
+    headers = _auth_headers(api_key)
     params: dict[str, str] = {}
     if extra_params:
         params.update(extra_params)
 
-    response = requests.get(f"{base_url}/Items", headers=headers, params=params, timeout=timeout)
-    response.raise_for_status()
-    return response.json().get("Items", [])
+    return _get_json(
+        f"{base_url}/Items", headers=headers, params=params, timeout=timeout,
+    ).get("Items", [])
+
+
+def fetch_all_jellyfin_items(
+    base_url: str,
+    api_key: str,
+    extra_params: dict[str, str] | None = None,
+    *,
+    limit: int = _PAGE_LIMIT,
+    timeout: int = _DEFAULT_TIMEOUT,
+    _fetch_page: Callable[..., list[dict[str, Any]]] | None = None,
+) -> list[dict[str, Any]]:
+    """Fetch all items from the Jellyfin ``/Items`` endpoint, handling pagination.
+
+    Args:
+        base_url: Jellyfin server base URL.
+        api_key: Jellyfin API key.
+        extra_params: Additional query-string parameters for every request.
+        limit: Number of items to request per page.
+        timeout: HTTP request timeout in seconds.
+        _fetch_page: Optional callable used to fetch a single page. Defaults to
+            :func:`fetch_jellyfin_items`.
+
+    Returns:
+        Concatenated list of all ``Items`` across all pages.
+
+    """
+    fetch_page = _fetch_page or fetch_jellyfin_items
+    all_items: list[dict[str, Any]] = []
+    start_index = 0
+
+    while True:
+        params: dict[str, str] = {
+            "StartIndex": str(start_index),
+            "Limit": str(limit),
+        }
+        if extra_params:
+            params.update(extra_params)
+        page = fetch_page(base_url, api_key, params, timeout=timeout)
+        all_items.extend(page)
+        if len(page) < limit:
+            break
+        start_index += limit
+
+    return all_items
+
+
+def _paginate_jellyfin(
+    base_url: str,
+    api_key: str,
+    endpoint: str,
+    params: dict[str, Any] | None = None,
+    *,
+    limit: int = _PAGE_LIMIT,
+    timeout: int = _DEFAULT_TIMEOUT,
+) -> Iterator[list[dict[str, Any]]]:
+    """Yield pages of items from a Jellyfin endpoint.
+
+    Handles ``StartIndex`` / ``Limit`` pagination automatically.
+
+    Args:
+        base_url: Jellyfin server base URL.
+        api_key: Jellyfin API key.
+        endpoint: API endpoint path (e.g. ``"Items"``, ``"Genres"``).
+        params: Additional query-string parameters for every request.
+        limit: Number of items to request per page.
+        timeout: HTTP request timeout in seconds.
+
+    Yields:
+        Lists of item dictionaries, one per page.
+
+    """
+    start_index = 0
+    headers = _auth_headers(api_key)
+
+    while True:
+        page_params: dict[str, Any] = {
+            "StartIndex": start_index,
+            "Limit": limit,
+        }
+        if params:
+            page_params.update(params)
+
+        data = _get_json(
+            f"{base_url}/{endpoint}",
+            headers=headers,
+            params=page_params,
+            timeout=timeout,
+        )
+        page_items = data.get("Items", [])
+        yield page_items
+
+        total = data.get("TotalRecordCount", 0)
+        start_index += len(page_items)
+        if not page_items:
+            break
+        if total and start_index >= total:
+            break
 
 
 def get_libraries(base_url: str, api_key: str, timeout: int = 30) -> list[str]:
@@ -86,14 +364,17 @@ def get_libraries(base_url: str, api_key: str, timeout: int = 30) -> list[str]:
 
     Returns:
         A list of library names.
+
     """
-    response = requests.get(
-        f"{base_url}/Library/VirtualFolders",
-        headers={"X-Emby-Token": api_key},
-        timeout=timeout,
-    )
-    response.raise_for_status()
-    return [folder.get("Name", "") for folder in response.json()]
+    return [
+        name
+        for folder in _get_json(
+            f"{base_url}/Library/VirtualFolders",
+            headers=_auth_headers(api_key),
+            timeout=timeout,
+        )
+        if (name := folder.get("Name"))
+    ]
 
 
 def get_users(base_url: str, api_key: str, timeout: int = 30) -> list[dict[str, Any]]:
@@ -106,18 +387,17 @@ def get_users(base_url: str, api_key: str, timeout: int = 30) -> list[dict[str, 
 
     Returns:
         A list of user dictionaries.
+
     """
-    response = requests.get(
+    return _get_json(
         f"{base_url}/Users",
-        headers={"X-Emby-Token": api_key},
+        headers=_auth_headers(api_key),
         timeout=timeout,
     )
-    response.raise_for_status()
-    return response.json()
 
 
 def get_user_recent_items(
-    base_url: str, api_key: str, user_id: str, limit: int = 20, timeout: int = 30
+    base_url: str, api_key: str, user_id: str, limit: int = 20, timeout: int = _DEFAULT_TIMEOUT,
 ) -> list[dict[str, Any]]:
     """Fetch a user's recently played movies and shows.
 
@@ -130,24 +410,23 @@ def get_user_recent_items(
 
     Returns:
         A list of item dictionaries.
+
     """
     params = {
         "Filters": "IsPlayed",
         "SortBy": "DatePlayed",
         "SortOrder": "Descending",
-        "IncludeItemTypes": "Movie,Series",
-        "Recursive": "true",
+        "IncludeItemTypes": DEFAULT_ITEM_TYPES,
+        "Recursive": RECURSIVE_TRUE,
         "Limit": str(limit),
         "Fields": "ProviderIds",
     }
-    response = requests.get(
+    return _get_json(
         f"{base_url}/Users/{user_id}/Items",
-        headers={"X-Emby-Token": api_key},
+        headers=_auth_headers(api_key),
         params=params,
         timeout=timeout,
-    )
-    response.raise_for_status()
-    return response.json().get("Items", [])
+    ).get("Items", [])
 
 
 def add_virtual_folder(
@@ -157,7 +436,7 @@ def add_virtual_folder(
     paths: list[str],
     collection_type: str = "movies",
     refresh_library: bool = True,
-    timeout: int = 30,
+    timeout: int = _DEFAULT_TIMEOUT,
 ) -> None:
     """Create a new virtual folder (library) in Jellyfin.
 
@@ -169,12 +448,13 @@ def add_virtual_folder(
         collection_type: Type of media (e.g., "movies", "tvshows", "music", "mixed").
         refresh_library: Whether to trigger a library scan after creation.
         timeout: HTTP request timeout.
+
     """
     # Strategy: Try to create with all info in query string first (most common for simple cases)
     # If it already exists, we skip creation.
-    
-    headers = {"X-Emby-Token": api_key}
-    
+
+    headers = _auth_headers(api_key)
+
     # Step 1: Create the virtual folder shell
     # We omit 'paths' here to avoid the 400 error.
     create_params = {
@@ -183,10 +463,10 @@ def add_virtual_folder(
     }
     if collection_type != "mixed":
         create_params["collectionType"] = collection_type
-    
+
     try:
         # data="" ensures non-JSON POST works for creation if needed
-        create_resp = requests.post(
+        create_resp = network.post(
             f"{base_url}/Library/VirtualFolders",
             params=create_params,
             headers=headers,
@@ -196,54 +476,26 @@ def add_virtual_folder(
         if create_resp.status_code != 409:
             create_resp.raise_for_status()
     except requests.exceptions.RequestException as exc:
-        msg = f"Failed to create virtual folder {name!r}"
-        if hasattr(exc, "response") and exc.response is not None:
-            msg += f" (Status {exc.response.status_code}): {exc.response.text}"
-        else:
-            msg += f": {exc!s}"
-        raise RuntimeError(msg) from exc
+        _raise_request_error(exc, f"Failed to create virtual folder {name!r}")
 
     # Step 2: Add each path using strictly a JSON body as recommended
     for path in paths:
-        path_url = f"{base_url}/Library/VirtualFolders/Paths"
-        payload = {
-            "Name": name,
-            "Path": path
-        }
-        
-        try:
-            # We use json= which automatically sets Content-Type: application/json
-            path_resp = requests.post(
-                path_url,
-                json=payload,
-                headers=headers,
-                timeout=timeout,
-            )
-            path_resp.raise_for_status()
-        except requests.exceptions.RequestException as exc:
-            msg = f"Failed to add path {path!r} to library {name!r}"
-            if hasattr(exc, "response") and exc.response is not None:
-                msg += f" (Status {exc.response.status_code}): {exc.response.text}"
-            else:
-                msg += f": {exc!s}"
-            raise RuntimeError(msg) from exc
-            
+        _post_or_raise(
+            f"{base_url}/Library/VirtualFolders/Paths",
+            headers=headers,
+            json={"Name": name, "Path": path},
+            timeout=timeout,
+            error_prefix=f"Failed to add path {path!r} to library {name!r}",
+        )
+
     # Step 3: Trigger a library refresh if requested
     if refresh_library:
-        try:
-            refresh_resp = requests.post(
-                f"{base_url}/Library/Refresh",
-                headers=headers,
-                timeout=timeout
-            )
-            refresh_resp.raise_for_status()
-        except requests.exceptions.RequestException as exc:
-            msg = f"Failed to trigger library refresh for {name!r}"
-            if hasattr(exc, "response") and exc.response is not None:
-                msg += f" (Status {exc.response.status_code}): {exc.response.text}"
-            else:
-                msg += f": {exc!s}"
-            raise RuntimeError(msg) from exc
+        _post_or_raise(
+            f"{base_url}/Library/Refresh",
+            headers=headers,
+            timeout=timeout,
+            error_prefix=f"Failed to trigger library refresh for {name!r}",
+        )
 
 
 def delete_virtual_folder(base_url: str, api_key: str, name: str, timeout: int = 30) -> None:
@@ -254,18 +506,22 @@ def delete_virtual_folder(base_url: str, api_key: str, name: str, timeout: int =
         api_key: Jellyfin API key.
         name: Name of the library to delete.
         timeout: HTTP request timeout.
+
     """
     params = {"name": name}
-    headers = {"X-Emby-Token": api_key}
-    response = requests.delete(
-        f"{base_url}/Library/VirtualFolders",
-        params=params,
-        headers=headers,
-        timeout=timeout,
-    )
-    if not response.ok:
-        logger.warning("Delete Virtual Folder Failed (%s): %s", response.status_code, response.text)
-    response.raise_for_status()
+    headers = _auth_headers(api_key)
+    try:
+        response = network.delete(
+            f"{base_url}/Library/VirtualFolders",
+            params=params,
+            headers=headers,
+            timeout=timeout,
+        )
+        if not response.ok:
+            logger.warning("Delete Virtual Folder Failed (%s): %s", response.status_code, response.text)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as exc:
+        _raise_request_error(exc, f"Failed to delete virtual folder {name!r}")
 
 
 def get_library_id(base_url: str, api_key: str, name: str, timeout: int = 30) -> str | None:
@@ -279,24 +535,49 @@ def get_library_id(base_url: str, api_key: str, name: str, timeout: int = 30) ->
 
     Returns:
         The string ItemId of the library if found, else None.
+
     """
-    try:
-        response = requests.get(
-            f"{base_url}/Library/VirtualFolders",
-            headers={"X-Emby-Token": api_key},
-            timeout=timeout,
-        )
-        response.raise_for_status()
-        
-        for folder in response.json():
-            if folder.get("Name") == name:
-                item_id = folder.get("ItemId")
-                if item_id is not None:
-                    return str(item_id)
-    except requests.exceptions.RequestException as exc:
-        logger.error(f"Failed to get library ID for {name!r}: {exc}")
-    
+    for folder in _get_json(
+        f"{base_url}/Library/VirtualFolders",
+        headers=_auth_headers(api_key),
+        timeout=timeout,
+    ):
+        if folder.get("Name") == name:
+            item_id = folder.get("ItemId")
+            if item_id is not None:
+                return str(item_id)
+
     return None
+
+
+def _upload_image(
+    base_url: str,
+    api_key: str,
+    item_id: str,
+    image_path: str,
+    timeout: int = _DEFAULT_TIMEOUT,
+) -> None:
+    """Upload *image_path* to Jellyfin as the primary image for *item_id*.
+
+    Args:
+        base_url: Jellyfin server base URL.
+        api_key: Jellyfin API key.
+        item_id: Jellyfin item / library / collection ID.
+        image_path: Absolute path to the local image file to upload.
+        timeout: HTTP request timeout.
+
+    """
+    with open(image_path, "rb") as f:  # noqa: PTH123
+        image_bytes = f.read()
+    mime_type, _ = mimetypes.guess_type(image_path)
+    headers = _auth_headers(api_key)
+    headers["Content-Type"] = mime_type or "application/octet-stream"
+    url = f"{base_url}/Items/{item_id}/Images/Primary"
+    try:
+        response = network.post(url, data=image_bytes, headers=headers, timeout=timeout)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as exc:
+        _raise_request_error(exc, f"Failed to upload image for item {item_id!r}")
 
 
 def set_virtual_folder_image(
@@ -304,7 +585,7 @@ def set_virtual_folder_image(
     api_key: str,
     name: str,
     image_path: str,
-    timeout: int = 30,
+    timeout: int = _DEFAULT_TIMEOUT,
 ) -> None:
     """Set the primary image for a virtual folder (library) in Jellyfin.
 
@@ -314,44 +595,20 @@ def set_virtual_folder_image(
         name: Name of the library to update.
         image_path: Absolute path to the local image file to upload.
         timeout: HTTP request timeout.
+
     """
-    library_id = get_library_id(base_url, api_key, name, timeout=timeout)
-    if not library_id:
-        logger.info(f"Cannot set image: Library {name!r} not found or ID unknown.")
-        return
-
     try:
-        with open(image_path, "rb") as f:
-            image_bytes = f.read()
-    except OSError as exc:
-        logger.error(f"Cannot set image: Failed to read image file {image_path!r}: {exc}")
-        return
-
-    mime_type, _ = mimetypes.guess_type(image_path)
-    mime_type = mime_type or "application/octet-stream"
-
-    headers = {
-        "X-Emby-Token": api_key,
-        "Content-Type": mime_type,
-    }
-    
-    url = f"{base_url}/Items/{library_id}/Images/Primary"
-    try:
-        response = requests.post(
-            url,
-            data=image_bytes,
-            headers=headers,
-            timeout=timeout,
-        )
-        response.raise_for_status()
-        logger.info(f"Successfully updated cover image for library {name!r}")
-    except requests.exceptions.RequestException as exc:
-        msg = f"Failed to set image for library {name!r}"
-        if hasattr(exc, "response") and exc.response is not None:
-            msg += f" (Status {exc.response.status_code}): {exc.response.text}"
-        else:
-            msg += f": {exc!s}"
-        logger.info(msg)
+        library_id = get_library_id(base_url, api_key, name, timeout=timeout)
+        if not library_id:
+            logger.info("Cannot set image: Library %r not found or ID unknown.", name)
+            return
+        _upload_image(base_url, api_key, library_id, image_path, timeout=timeout)
+    except RuntimeError as exc:
+        logger.info(str(exc))
+    except OSError:
+        logger.exception("Cannot set image: Failed to read image file %r", image_path)
+    else:
+        logger.info("Successfully updated cover image for library %r", name)
 
 
 # ---------------------------------------------------------------------------
@@ -364,7 +621,7 @@ def create_collection(
     api_key: str,
     name: str,
     item_ids: list[str],
-    timeout: int = 30,
+    timeout: int = _DEFAULT_TIMEOUT,
 ) -> str:
     """Create a new Jellyfin Collection (Boxset) with the given items.
 
@@ -380,37 +637,28 @@ def create_collection(
 
     Raises:
         RuntimeError: If the API call fails.
-    """
-    headers = {"X-Emby-Token": api_key}
-    params: dict[str, str] = {"Name": name, "Ids": ",".join(item_ids)}
 
-    try:
-        resp = requests.post(
-            f"{base_url}/Collections",
-            params=params,
-            headers=headers,
-            timeout=timeout,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        collection_id: str | None = data.get("Id")
-        if not collection_id:
-            raise RuntimeError(f"Collection created but no Id returned for {name!r}")
-        return collection_id
-    except requests.exceptions.RequestException as exc:
-        msg = f"Failed to create collection {name!r}"
-        if hasattr(exc, "response") and exc.response is not None:
-            msg += f" (Status {exc.response.status_code}): {exc.response.text}"
-        else:
-            msg += f": {exc!s}"
-        raise RuntimeError(msg) from exc
+    """
+    params: dict[str, str] = {"Name": name, "Ids": ",".join(item_ids)}
+    data = _post_json(
+        f"{base_url}/Collections",
+        headers=_auth_headers(api_key),
+        params=params,
+        timeout=timeout,
+        error_prefix=f"Failed to create collection {name!r}",
+    )
+    collection_id: str | None = data.get("Id")
+    if not collection_id:
+        msg = f"Collection created but no Id returned for {name!r}"
+        raise RuntimeError(msg)
+    return collection_id
 
 
 def find_collection_by_name(
     base_url: str,
     api_key: str,
     name: str,
-    timeout: int = 30,
+    timeout: int = _DEFAULT_TIMEOUT,
 ) -> str | None:
     """Find an existing Jellyfin Collection (Boxset) by name.
 
@@ -422,45 +670,22 @@ def find_collection_by_name(
 
     Returns:
         The collection ``Id`` if found, ``None`` otherwise.
+
     """
-    headers = {"X-Emby-Token": api_key}
-    limit = 200
-    start_index = 0
-
-    try:
-        while True:
-            params: dict[str, str | int] = {
-                "IncludeItemTypes": "BoxSet",
-                "Recursive": "true",
-                "SearchTerm": name,
-                "Limit": limit,
-                "StartIndex": start_index,
-            }
-
-            resp = requests.get(
-                f"{base_url}/Items",
-                params=params,
-                headers=headers,
-                timeout=timeout,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            items = data.get("Items", [])
-
-            for item in items:
-                if item.get("Name") == name:
-                    item_id: str | None = item.get("Id")
-                    if item_id:
-                        return item_id
-
-            total = data.get("TotalRecordCount", 0)
-            start_index += len(items)
-            if start_index >= total or not items:
-                break
-
-        return None
-    except requests.exceptions.RequestException:
-        return None
+    params: dict[str, Any] = {
+        "IncludeItemTypes": "BoxSet",
+        "Recursive": RECURSIVE_TRUE,
+        "SearchTerm": name,
+    }
+    for page in _paginate_jellyfin(
+        base_url, api_key, "Items", params, limit=_PAGE_LIMIT, timeout=timeout,
+    ):
+        for item in page:
+            if item.get("Name") == name:
+                item_id: str | None = item.get("Id")
+                if item_id:
+                    return item_id
+    return None
 
 
 def add_to_collection(
@@ -468,7 +693,7 @@ def add_to_collection(
     api_key: str,
     collection_id: str,
     item_ids: list[str],
-    timeout: int = 30,
+    timeout: int = _DEFAULT_TIMEOUT,
 ) -> None:
     """Add items to an existing Jellyfin Collection.
 
@@ -481,28 +706,19 @@ def add_to_collection(
 
     Raises:
         RuntimeError: If the API call fails.
+
     """
     if not item_ids:
         return
 
-    headers = {"X-Emby-Token": api_key}
     params: dict[str, str] = {"Ids": ",".join(item_ids)}
-
-    try:
-        resp = requests.post(
-            f"{base_url}/Collections/{collection_id}/Items",
-            params=params,
-            headers=headers,
-            timeout=timeout,
-        )
-        resp.raise_for_status()
-    except requests.exceptions.RequestException as exc:
-        msg = f"Failed to add items to collection {collection_id!r}"
-        if hasattr(exc, "response") and exc.response is not None:
-            msg += f" (Status {exc.response.status_code}): {exc.response.text}"
-        else:
-            msg += f": {exc!s}"
-        raise RuntimeError(msg) from exc
+    _post_or_raise(
+        f"{base_url}/Collections/{collection_id}/Items",
+        headers=_auth_headers(api_key),
+        params=params,
+        timeout=timeout,
+        error_prefix=f"Failed to add items to collection {collection_id!r}",
+    )
 
 
 def remove_from_collection(
@@ -510,7 +726,7 @@ def remove_from_collection(
     api_key: str,
     collection_id: str,
     item_ids: list[str],
-    timeout: int = 30,
+    timeout: int = _DEFAULT_TIMEOUT,
 ) -> None:
     """Remove items from a Jellyfin Collection.
 
@@ -523,35 +739,26 @@ def remove_from_collection(
 
     Raises:
         RuntimeError: If the API call fails.
+
     """
     if not item_ids:
         return
 
-    headers = {"X-Emby-Token": api_key}
     params: dict[str, str] = {"Ids": ",".join(item_ids)}
-
-    try:
-        resp = requests.delete(
-            f"{base_url}/Collections/{collection_id}/Items",
-            params=params,
-            headers=headers,
-            timeout=timeout,
-        )
-        resp.raise_for_status()
-    except requests.exceptions.RequestException as exc:
-        msg = f"Failed to remove items from collection {collection_id!r}"
-        if hasattr(exc, "response") and exc.response is not None:
-            msg += f" (Status {exc.response.status_code}): {exc.response.text}"
-        else:
-            msg += f": {exc!s}"
-        raise RuntimeError(msg) from exc
+    _delete_or_raise(
+        f"{base_url}/Collections/{collection_id}/Items",
+        headers=_auth_headers(api_key),
+        params=params,
+        timeout=timeout,
+        error_prefix=f"Failed to remove items from collection {collection_id!r}",
+    )
 
 
 def delete_collection(
     base_url: str,
     api_key: str,
     collection_id: str,
-    timeout: int = 30,
+    timeout: int = _DEFAULT_TIMEOUT,
 ) -> None:
     """Delete a Jellyfin Collection (Boxset) by ID.
 
@@ -563,23 +770,14 @@ def delete_collection(
 
     Raises:
         RuntimeError: If the API call fails.
-    """
-    headers = {"X-Emby-Token": api_key}
 
-    try:
-        resp = requests.delete(
-            f"{base_url}/Items/{collection_id}",
-            headers=headers,
-            timeout=timeout,
-        )
-        resp.raise_for_status()
-    except requests.exceptions.RequestException as exc:
-        msg = f"Failed to delete collection {collection_id!r}"
-        if hasattr(exc, "response") and exc.response is not None:
-            msg += f" (Status {exc.response.status_code}): {exc.response.text}"
-        else:
-            msg += f": {exc!s}"
-        raise RuntimeError(msg) from exc
+    """
+    _delete_or_raise(
+        f"{base_url}/Items/{collection_id}",
+        headers=_auth_headers(api_key),
+        timeout=timeout,
+        error_prefix=f"Failed to delete collection {collection_id!r}",
+    )
 
 
 def set_collection_image(
@@ -587,7 +785,7 @@ def set_collection_image(
     api_key: str,
     collection_id: str,
     image_path: str,
-    timeout: int = 30,
+    timeout: int = _DEFAULT_TIMEOUT,
 ) -> None:
     """Set the primary image for a Jellyfin Collection.
 
@@ -597,35 +795,13 @@ def set_collection_image(
         collection_id: ID of the collection.
         image_path: Absolute path to the local image file to upload.
         timeout: HTTP request timeout.
+
     """
     try:
-        with open(image_path, "rb") as f:
-            image_bytes = f.read()
-    except OSError as exc:
-        logger.error(f"Cannot set collection image: Failed to read {image_path!r}: {exc}")
-        return
-
-    mime_type, _ = mimetypes.guess_type(image_path)
-    mime_type = mime_type or "application/octet-stream"
-
-    headers = {
-        "X-Emby-Token": api_key,
-        "Content-Type": mime_type,
-    }
-
-    try:
-        resp = requests.post(
-            f"{base_url}/Items/{collection_id}/Images/Primary",
-            data=image_bytes,
-            headers=headers,
-            timeout=timeout,
-        )
-        resp.raise_for_status()
-        logger.info(f"Successfully updated cover image for collection {collection_id!r}")
-    except requests.exceptions.RequestException as exc:
-        msg = f"Failed to set image for collection {collection_id!r}"
-        if hasattr(exc, "response") and exc.response is not None:
-            msg += f" (Status {exc.response.status_code}): {exc.response.text}"
-        else:
-            msg += f": {exc!s}"
-        logger.info(msg)
+        _upload_image(base_url, api_key, collection_id, image_path, timeout=timeout)
+    except RuntimeError as exc:
+        logger.info(str(exc))
+    except OSError:
+        logger.exception("Cannot set collection image: Failed to read %r", image_path)
+    else:
+        logger.info("Successfully updated cover image for collection %r", collection_id)
