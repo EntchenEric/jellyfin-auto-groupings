@@ -4,6 +4,8 @@
 Provides a dashboard at http://localhost:8096.
 """
 
+from __future__ import annotations
+
 import logging
 import os
 

@@ -4,6 +4,8 @@ Sets PYTHONPATH and invokes pytest with coverage, writing all output to
 ``test_results.txt`` for offline review.
 """
 
+from __future__ import annotations
+
 import os
 import subprocess
 import sys
