@@ -690,21 +690,21 @@ def _match_condition(item: dict[str, Any], r_type: str, r_val: str) -> bool:
     try:
         if r_type == "genre":
             return any(r_val == str(g).strip().lower() for g in (item.get("Genres") or []))
-        elif r_type == "actor":
+        if r_type == "actor":
             return any(
                 r_val == str(p.get("Name", "")).strip().lower()
                 for p in (item.get("People") or [])
                 if isinstance(p, dict) and p.get("Type") == "Actor"
             )
-        elif r_type == "studio":
+        if r_type == "studio":
             return any(
                 r_val == str(s.get("Name", "")).strip().lower()
                 for s in (item.get("Studios") or [])
                 if isinstance(s, dict)
             )
-        elif r_type == "tag":
+        if r_type == "tag":
             return any(r_val == str(t).strip().lower() for t in (item.get("Tags") or []))
-        elif r_type == "year":
+        if r_type == "year":
             val = item.get("ProductionYear")
             if val is not None:
                 return str(val).strip().lower() == r_val
@@ -932,8 +932,7 @@ def preview_group(
     if _COMPLEX_QUERY_RE.search(val):
         rules = parse_complex_query(val, type_name)
         return _fetch_items_for_complex_group("preview", rules, "", url, api_key, watch_state)
-    else:
-        return _fetch_items_for_metadata_group("preview", type_name, val, "", url, api_key, watch_state)
+    return _fetch_items_for_metadata_group("preview", type_name, val, "", url, api_key, watch_state)
 
 
 def _process_collection_group(
@@ -1293,9 +1292,8 @@ def _is_in_season(start_str: Any, end_str: Any) -> bool:
     if s <= e:
         # Simple case: window stays within one calendar year (e.g., 06-01 to 08-31)
         return s <= current_md < e
-    else:
-        # Over-year case: window spans across Jan 1st (e.g., 12-01 to 01-01)
-        return current_md >= s or current_md < e
+    # Over-year case: window spans across Jan 1st (e.g., 12-01 to 01-01)
+    return current_md >= s or current_md < e
 
 
 def run_sync(

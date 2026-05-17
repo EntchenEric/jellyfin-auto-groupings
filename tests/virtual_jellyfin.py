@@ -402,7 +402,7 @@ def set_item_image(item_id):
 
 @app.route('/', methods=['GET'])
 def dashboard():
-    html = f"""
+    return f"""
     <!DOCTYPE html>
     <html>
     <head>
@@ -452,7 +452,6 @@ def dashboard():
     </body>
     </html>
     """
-    return html
 
 
 if __name__ == '__main__':
