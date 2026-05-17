@@ -30,6 +30,9 @@ DEFAULT_ITEM_TYPES = "Movie,Series"
 # String boolean values expected by the Jellyfin query API.
 RECURSIVE_TRUE = "true"
 
+# Default HTTP request timeout (seconds) used by all Jellyfin API helpers.
+_DEFAULT_TIMEOUT: int = 30
+
 # ---------------------------------------------------------------------------
 # Sort-order mapping
 # ---------------------------------------------------------------------------
@@ -83,7 +86,7 @@ def _get_json(
     *,
     headers: dict[str, str] | None = None,
     params: dict[str, Any] | None = None,
-    timeout: int = 30,
+    timeout: int = _DEFAULT_TIMEOUT,
 ) -> Any:
     """GET *url* and return the parsed JSON response.
 
@@ -112,7 +115,7 @@ def _request_or_raise(
     params: dict[str, Any] | None = None,
     data: Any = None,
     json: Any = None,
-    timeout: int = 30,
+    timeout: int = _DEFAULT_TIMEOUT,
     error_prefix: str = "",
 ) -> requests.Response:
     """Send a *method* request to *url* and return the response, translating errors into ``RuntimeError``.
@@ -152,7 +155,7 @@ def _post_or_raise(
     params: dict[str, Any] | None = None,
     data: Any = None,
     json: Any = None,
-    timeout: int = 30,
+    timeout: int = _DEFAULT_TIMEOUT,
     error_prefix: str = "",
 ) -> requests.Response:
     """POST to *url* and return the response, translating errors into ``RuntimeError``."""
@@ -168,7 +171,7 @@ def _post_json(
     params: dict[str, Any] | None = None,
     data: Any = None,
     json: Any = None,
-    timeout: int = 30,
+    timeout: int = _DEFAULT_TIMEOUT,
     error_prefix: str = "",
 ) -> Any:
     """POST to *url* and return the parsed JSON response, translating errors into ``RuntimeError``."""
@@ -182,7 +185,7 @@ def _delete_or_raise(
     *,
     headers: dict[str, str] | None = None,
     params: dict[str, Any] | None = None,
-    timeout: int = 30,
+    timeout: int = _DEFAULT_TIMEOUT,
     error_prefix: str = "",
 ) -> requests.Response:
     """DELETE *url* and return the response, translating errors into ``RuntimeError``."""
@@ -201,7 +204,7 @@ def fetch_jellyfin_items(
     api_key: str,
     extra_params: dict[str, str] | None = None,
     *,
-    timeout: int = 30,
+    timeout: int = _DEFAULT_TIMEOUT,
 ) -> list[dict[str, Any]]:
     """Fetch the ``Items`` list from the Jellyfin ``/Items`` endpoint.
 
@@ -240,7 +243,7 @@ def fetch_all_jellyfin_items(
     extra_params: dict[str, str] | None = None,
     *,
     limit: int = 200,
-    timeout: int = 30,
+    timeout: int = _DEFAULT_TIMEOUT,
     _fetch_page: Callable[..., list[dict[str, Any]]] | None = None,
 ) -> list[dict[str, Any]]:
     """Fetch all items from the Jellyfin ``/Items`` endpoint, handling pagination.
@@ -285,7 +288,7 @@ def _paginate_jellyfin(
     params: dict[str, Any] | None = None,
     *,
     limit: int = 200,
-    timeout: int = 30,
+    timeout: int = _DEFAULT_TIMEOUT,
 ) -> Iterator[list[dict[str, Any]]]:
     """Yield pages of items from a Jellyfin endpoint.
 
@@ -374,7 +377,7 @@ def get_users(base_url: str, api_key: str, timeout: int = 30) -> list[dict[str, 
 
 
 def get_user_recent_items(
-    base_url: str, api_key: str, user_id: str, limit: int = 20, timeout: int = 30,
+    base_url: str, api_key: str, user_id: str, limit: int = 20, timeout: int = _DEFAULT_TIMEOUT,
 ) -> list[dict[str, Any]]:
     """Fetch a user's recently played movies and shows.
 
@@ -413,7 +416,7 @@ def add_virtual_folder(
     paths: list[str],
     collection_type: str = "movies",
     refresh_library: bool = True,
-    timeout: int = 30,
+    timeout: int = _DEFAULT_TIMEOUT,
 ) -> None:
     """Create a new virtual folder (library) in Jellyfin.
 
@@ -532,7 +535,7 @@ def _upload_image(
     api_key: str,
     item_id: str,
     image_path: str,
-    timeout: int = 30,
+    timeout: int = _DEFAULT_TIMEOUT,
 ) -> None:
     """Upload *image_path* to Jellyfin as the primary image for *item_id*.
 
@@ -562,7 +565,7 @@ def set_virtual_folder_image(
     api_key: str,
     name: str,
     image_path: str,
-    timeout: int = 30,
+    timeout: int = _DEFAULT_TIMEOUT,
 ) -> None:
     """Set the primary image for a virtual folder (library) in Jellyfin.
 
@@ -598,7 +601,7 @@ def create_collection(
     api_key: str,
     name: str,
     item_ids: list[str],
-    timeout: int = 30,
+    timeout: int = _DEFAULT_TIMEOUT,
 ) -> str:
     """Create a new Jellyfin Collection (Boxset) with the given items.
 
@@ -635,7 +638,7 @@ def find_collection_by_name(
     base_url: str,
     api_key: str,
     name: str,
-    timeout: int = 30,
+    timeout: int = _DEFAULT_TIMEOUT,
 ) -> str | None:
     """Find an existing Jellyfin Collection (Boxset) by name.
 
@@ -670,7 +673,7 @@ def add_to_collection(
     api_key: str,
     collection_id: str,
     item_ids: list[str],
-    timeout: int = 30,
+    timeout: int = _DEFAULT_TIMEOUT,
 ) -> None:
     """Add items to an existing Jellyfin Collection.
 
@@ -703,7 +706,7 @@ def remove_from_collection(
     api_key: str,
     collection_id: str,
     item_ids: list[str],
-    timeout: int = 30,
+    timeout: int = _DEFAULT_TIMEOUT,
 ) -> None:
     """Remove items from a Jellyfin Collection.
 
@@ -735,7 +738,7 @@ def delete_collection(
     base_url: str,
     api_key: str,
     collection_id: str,
-    timeout: int = 30,
+    timeout: int = _DEFAULT_TIMEOUT,
 ) -> None:
     """Delete a Jellyfin Collection (Boxset) by ID.
 
@@ -762,7 +765,7 @@ def set_collection_image(
     api_key: str,
     collection_id: str,
     image_path: str,
-    timeout: int = 30,
+    timeout: int = _DEFAULT_TIMEOUT,
 ) -> None:
     """Set the primary image for a Jellyfin Collection.
 
