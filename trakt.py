@@ -32,7 +32,8 @@ def _parse_trakt_list_url(list_url: str) -> tuple[str, str]:
     if full_url_match:
         return full_url_match.group(1), full_url_match.group(2)
     if "/" in list_url and not list_url.startswith("http"):
-        return list_url.split("/", 1)
+        parts = list_url.split("/", 1)
+        return parts[0], parts[1]
     msg = (
         f"Invalid Trakt list URL: {list_url!r}. "
         "Expected format: https://trakt.tv/users/username/lists/list-slug"
