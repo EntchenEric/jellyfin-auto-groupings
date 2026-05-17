@@ -1464,7 +1464,11 @@ def run_sync(
         raise ValueError(msg)
 
     if not dry_run:
-        Path(target_base).mkdir(parents=True, exist_ok=True)
+        try:
+            Path(target_base).mkdir(parents=True, exist_ok=True)
+        except PermissionError as exc:
+            msg = f"Cannot create target directory '{target_base}' (permission denied). Please choose a path the application can write to."
+            raise ValueError(msg) from exc
 
     logger.info("Starting sync to: %s", target_base)
     if jellyfin_root and host_root:

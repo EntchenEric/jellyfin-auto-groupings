@@ -2,7 +2,7 @@
 
 import { state } from '../core/state.js';
 import { testServer } from '../core/api.js';
-import { showToast, setLoading, getEl } from '../core/ui.js';
+import { showToast, showErrorDialog, setLoading, getEl } from '../core/ui.js';
 import { updateSourceTypeOptions, refreshMetadata } from './metadata.js';
 import { autoDetectIfEmpty } from './path-picker.js';
 import { saveAllConfig } from './config.js';
@@ -74,7 +74,7 @@ export async function testConnectionFromSidebar() {
         await refreshMetadata();
         await autoDetectIfEmpty();
     } else {
-        showToast(result.message, 'error');
+        showErrorDialog(result.message);
         updateValidationUI(false);
     }
     setLoading(testBtn, false);

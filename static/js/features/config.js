@@ -2,7 +2,7 @@
 
 import { state, sourceOptions, setState } from '../core/state.js';
 import { apiGet, apiPost, loadConfig as apiLoadConfig, saveConfig as apiSaveConfig, fetchMetadata } from '../core/api.js';
-import { showToast, setLoading, showModal, hideModal, getEl, showLoadingOverlay, updateLoadingStatus, hideLoadingOverlay } from '../core/ui.js';
+import { showToast, showErrorDialog, setLoading, showModal, hideModal, getEl, showLoadingOverlay, updateLoadingStatus, hideLoadingOverlay } from '../core/ui.js';
 import { updateSourceTypeOptions, updateSourceValueUI, refreshMetadata } from './metadata.js';
 import { renderGroups } from './groupings.js';
 import { updateValidationUI } from './test-connection.js';
@@ -59,7 +59,7 @@ export async function loadConfig() {
             await performSilentTest();
         }
     } catch (err) {
-        showToast('Failed to load configuration', 'error');
+        showErrorDialog('Failed to load configuration');
     }
 }
 
@@ -80,16 +80,16 @@ export async function saveAllConfig() {
     // Client-side cron validation
     if (state.currentConfig.scheduler.global_enabled) {
         const err = validateCronField(state.currentConfig.scheduler.global_schedule);
-        if (err) { showToast(`Global schedule: ${err}`, 'error'); return; }
+        if (err) { showErrorDialog(`Global schedule: ${err}`); return; }
     }
     if (state.currentConfig.scheduler.cleanup_enabled) {
         const err = validateCronField(state.currentConfig.scheduler.cleanup_schedule);
-        if (err) { showToast(`Cleanup schedule: ${err}`, 'error'); return; }
+        if (err) { showErrorDialog(`Cleanup schedule: ${err}`); return; }
     }
     for (const g of state.currentConfig.groups) {
         if (g.schedule_enabled && g.schedule) {
             const err = validateCronField(g.schedule);
-            if (err) { showToast(`Group '${g.name}': ${err}`, 'error'); return; }
+            if (err) { showErrorDialog(`Group '${g.name}': ${err}`); return; }
         }
     }
 

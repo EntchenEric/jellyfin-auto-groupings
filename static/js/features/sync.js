@@ -2,7 +2,7 @@
 
 import { state } from '../core/state.js';
 import { apiPost } from '../core/api.js';
-import { showToast, getEl } from '../core/ui.js';
+import { showToast, showErrorDialog, getEl } from '../core/ui.js';
 
 export async function syncAll() {
     const result = await apiPost('/api/sync');
@@ -24,7 +24,7 @@ export async function syncAll() {
             resultsPanel.style.display = 'block';
         }
     } else {
-        showToast(result.message || 'Sync failed', 'error');
+        showErrorDialog(result.message || 'Sync failed');
     }
 }
 
@@ -83,14 +83,14 @@ export async function previewSyncAll() {
 
         getEl('preview-sync-modal').style.display = 'flex';
     } else {
-        showToast(result.message || 'Preview failed', 'error');
+        showErrorDialog(result.message || 'Preview failed');
     }
 }
 
 export function showConfirmSyncDialog() {
     const groupCount = state.currentConfig.groups.length;
     if (groupCount === 0) {
-        showToast('No groups to sync.', 'error');
+        showErrorDialog('No groups to sync.');
         return;
     }
     const countEl = getEl('confirm-sync-group-count');

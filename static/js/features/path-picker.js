@@ -2,7 +2,7 @@
 
 import { state } from '../core/state.js';
 import { autoDetectPaths as apiAutoDetect } from '../core/api.js';
-import { showToast, getEl } from '../core/ui.js';
+import { showToast, showErrorDialog, getEl } from '../core/ui.js';
 
 let _pickerTargetId = null;
 let _pickerCurrentPath = null;
@@ -102,12 +102,12 @@ export async function autoDetectPaths() {
             state.currentConfig.target_path_in_jellyfin = result.detected.target_path_in_jellyfin;
             showToast('Paths auto-detected! Remember to Save.', 'success');
         } else if (result.status === 'success') {
-            showToast('Auto-detection finished but could not find matching host paths.', 'error');
+            showErrorDialog('Auto-detection finished but could not find matching host paths.');
         } else {
-            showToast(result.message || 'Auto-detection failed', 'error');
+            showErrorDialog(result.message || 'Auto-detection failed');
         }
     } catch (err) {
-        showToast('Auto-detection failed - API unreachable', 'error');
+        showErrorDialog('Auto-detection failed - API unreachable');
     } finally {
         detectBtn.classList.remove('btn-loading');
     }
