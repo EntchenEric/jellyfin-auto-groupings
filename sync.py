@@ -18,7 +18,7 @@ import re
 import shutil
 import threading
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -1307,7 +1307,7 @@ def _is_in_season(start_str: Any, end_str: Any) -> bool:
     if not isinstance(start_str, str) or not isinstance(end_str, str):
         return True
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     current_md = now.strftime("%m-%d")
 
     s: str = start_str
