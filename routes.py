@@ -21,12 +21,26 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 import requests
-from flask import Blueprint, abort, current_app, jsonify, render_template, request, send_from_directory
+from flask import (
+    Blueprint,
+    abort,
+    current_app,
+    jsonify,
+    render_template,
+    request,
+    send_from_directory,
+)
 from flask.typing import ResponseReturnValue
 from werkzeug.exceptions import HTTPException
 
 from config import load_config, save_config
-from jellyfin import RECURSIVE_TRUE, _paginate_jellyfin, delete_virtual_folder, fetch_jellyfin_items, get_users
+from jellyfin import (
+    RECURSIVE_TRUE,
+    _paginate_jellyfin,
+    delete_virtual_folder,
+    fetch_jellyfin_items,
+    get_users,
+)
 from scheduler import update_scheduler_jobs, validate_cron
 from sync import _get_cover_path, preview_group, run_sync
 

@@ -2,7 +2,7 @@
 
 import pytest
 import requests
-from urllib3.exceptions import MaxRetryError, ReadTimeoutError, ConnectTimeoutError
+from urllib3.exceptions import ConnectTimeoutError, MaxRetryError, ReadTimeoutError
 
 
 def test_reraise_timeout_read():
@@ -46,7 +46,7 @@ def test_reraise_timeout_empty_args():
 
 def test_patched_get_success(monkeypatch):
     """_patched_get delegates to session and returns response."""
-    from network import _patched_get, _SESSION
+    from network import _SESSION, _patched_get
 
     class FakeResp:
         status_code = 200
@@ -64,7 +64,7 @@ def test_patched_get_success(monkeypatch):
 
 def test_patched_get_timeout_re_raise(monkeypatch):
     """_patched_get re-raises ReadTimeout as requests.Timeout."""
-    from network import _patched_get, _SESSION
+    from network import _SESSION, _patched_get
 
     read_err = ReadTimeoutError("pool", "url", "msg")
     max_retry = MaxRetryError("pool", "url", reason=read_err)
@@ -80,7 +80,7 @@ def test_patched_get_timeout_re_raise(monkeypatch):
 
 def test_patched_get_connection_error(monkeypatch):
     """_patched_get re-raises ConnectionError that is not a read timeout."""
-    from network import _patched_get, _SESSION
+    from network import _SESSION, _patched_get
 
     conn_err = requests.ConnectionError("genuine connection refused")
 
@@ -95,7 +95,7 @@ def test_patched_get_connection_error(monkeypatch):
 
 def test_patched_post_success(monkeypatch):
     """_patched_post delegates to session."""
-    from network import _patched_post, _SESSION
+    from network import _SESSION, _patched_post
 
     class FakeResp:
         status_code = 201
@@ -113,7 +113,7 @@ def test_patched_post_success(monkeypatch):
 
 def test_patched_post_timeout_re_raise(monkeypatch):
     """_patched_post re-raises ReadTimeout as requests.Timeout."""
-    from network import _patched_post, _SESSION
+    from network import _SESSION, _patched_post
 
     read_err = ReadTimeoutError("pool", "url", "msg")
     max_retry = MaxRetryError("pool", "url", reason=read_err)
@@ -129,7 +129,7 @@ def test_patched_post_timeout_re_raise(monkeypatch):
 
 def test_patched_delete_success(monkeypatch):
     """_patched_delete delegates to session."""
-    from network import _patched_delete, _SESSION
+    from network import _SESSION, _patched_delete
 
     class FakeResp:
         status_code = 204
@@ -147,7 +147,7 @@ def test_patched_delete_success(monkeypatch):
 
 def test_patched_delete_timeout_re_raise(monkeypatch):
     """_patched_delete re-raises ReadTimeout as requests.Timeout."""
-    from network import _patched_delete, _SESSION
+    from network import _SESSION, _patched_delete
 
     read_err = ReadTimeoutError("pool", "url", "msg")
     max_retry = MaxRetryError("pool", "url", reason=read_err)
@@ -168,7 +168,7 @@ def test_patched_delete_timeout_re_raise(monkeypatch):
 
 def test_patched_post_maxretry_non_readtimeout(monkeypatch):
     """_patched_post re-raises ConnectionError when MaxRetryError reason is not ReadTimeout."""
-    from network import _patched_post, _SESSION
+    from network import _SESSION, _patched_post
 
     connect_err = ConnectTimeoutError("pool", "url", "msg")
     max_retry = MaxRetryError("pool", "url", reason=connect_err)
@@ -184,7 +184,7 @@ def test_patched_post_maxretry_non_readtimeout(monkeypatch):
 
 def test_patched_delete_maxretry_non_readtimeout(monkeypatch):
     """_patched_delete re-raises ConnectionError when MaxRetryError reason is not ReadTimeout."""
-    from network import _patched_delete, _SESSION
+    from network import _SESSION, _patched_delete
 
     connect_err = ConnectTimeoutError("pool", "url", "msg")
     max_retry = MaxRetryError("pool", "url", reason=connect_err)

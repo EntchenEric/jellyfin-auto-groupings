@@ -1,33 +1,35 @@
-import os
 import hashlib
-import pytest
+import os
 from unittest.mock import patch
+
+import pytest
+
 from sync import (
-    _translate_path,
-    _get_cover_path,
-    parse_complex_query,
-    _match_condition,
-    _eval_item,
-    _sort_items_in_memory,
-    _match_jellyfin_items_by_provider,
-    preview_group,
     _LIBRARY_CACHE,
-    _is_in_season,
-    run_cleanup_broken_symlinks,
-    _fetch_items_for_recommendations_group,
-    _process_collection_group,
-    _fetch_items_for_letterboxd_group,
-    _fetch_items_for_imdb_group,
-    _fetch_items_for_trakt_group,
-    _fetch_items_for_tmdb_group,
-    _fetch_items_for_anilist_group,
-    _fetch_items_for_mal_group,
+    _eval_item,
     _fetch_full_library,
+    _fetch_items_for_anilist_group,
     _fetch_items_for_complex_group,
+    _fetch_items_for_imdb_group,
+    _fetch_items_for_letterboxd_group,
+    _fetch_items_for_mal_group,
     _fetch_items_for_metadata_group,
-    _process_group,
-    run_sync,
+    _fetch_items_for_recommendations_group,
+    _fetch_items_for_tmdb_group,
+    _fetch_items_for_trakt_group,
     _filter_by_watch_state,
+    _get_cover_path,
+    _is_in_season,
+    _match_condition,
+    _match_jellyfin_items_by_provider,
+    _process_collection_group,
+    _process_group,
+    _sort_items_in_memory,
+    _translate_path,
+    parse_complex_query,
+    preview_group,
+    run_cleanup_broken_symlinks,
+    run_sync,
 )
 
 

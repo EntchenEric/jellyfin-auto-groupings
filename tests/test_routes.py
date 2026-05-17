@@ -1,10 +1,17 @@
-import pytest
 import os
+from unittest.mock import MagicMock, patch
+
+import pytest
 import requests
-from unittest.mock import patch, MagicMock
-from config import save_config
-from routes import _compute_common_root, _fetch_jellyfin_endpoint, _handle_config_error, MAX_B64_SIZE
 from werkzeug.exceptions import HTTPException
+
+from config import save_config
+from routes import (
+    MAX_B64_SIZE,
+    _compute_common_root,
+    _fetch_jellyfin_endpoint,
+    _handle_config_error,
+)
 
 
 @pytest.mark.usefixtures("temp_config")

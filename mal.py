@@ -4,8 +4,9 @@ mal.py – MyAnimeList API client for fetching user lists.
 
 from __future__ import annotations
 
-import requests
 from typing import Any
+
+import requests
 
 MAL_API_BASE_URL = "https://api.myanimelist.net/v2"
 

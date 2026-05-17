@@ -1,7 +1,9 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
-from tmdb import fetch_tmdb_list, get_tmdb_recommendations
 import requests
+
+from tmdb import fetch_tmdb_list, get_tmdb_recommendations
 
 
 def test_fetch_tmdb_list_missing_args():

@@ -1,9 +1,11 @@
-from app import app as flask_app
 import threading
 import time
-import requests
-import pytest
 from unittest.mock import patch
+
+import pytest
+import requests
+
+from app import app as flask_app
 from tests.virtual_jellyfin import app as jelly_mock_app
 
 

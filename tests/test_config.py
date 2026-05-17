@@ -1,7 +1,7 @@
-import os
 import json
-from config import load_config, save_config, DEFAULT_CONFIG
+import os
 
+from config import DEFAULT_CONFIG, load_config, save_config
 
 TEST_URL = "http://localhost:8096"
 

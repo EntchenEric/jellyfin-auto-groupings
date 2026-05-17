@@ -12,15 +12,16 @@ responsible for:
 
 from __future__ import annotations
 
+import hashlib
+import logging
 import os
 import re
 import shutil
-import hashlib
-import logging
 import threading
-import requests
 from datetime import datetime
 from typing import Any, Callable
+
+import requests
 
 from anilist import fetch_anilist_list
 from imdb import fetch_imdb_list
@@ -43,7 +44,6 @@ from letterboxd import fetch_letterboxd_list
 from mal import fetch_mal_list
 from tmdb import fetch_tmdb_list, get_tmdb_recommendations
 from trakt import fetch_trakt_list
-
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,7 @@
 """Tests for configuration state management."""
 
 import json
+
 from config import DEFAULT_CONFIG, load_config, save_config
 
 

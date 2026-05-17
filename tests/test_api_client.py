@@ -1,6 +1,7 @@
 """Tests for API route handlers with mocked Jellyfin client."""
 
 from unittest.mock import MagicMock, patch
+
 import requests as requests_lib
 
 TEST_URL = "http://localhost:8096"

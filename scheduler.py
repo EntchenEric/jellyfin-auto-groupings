@@ -8,13 +8,15 @@ to either a global schedule (with exclusions) or per-group schedules.
 from __future__ import annotations
 
 import logging
+import threading
 
-from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore[import-untyped]
+from apscheduler.schedulers.background import (
+    BackgroundScheduler,  # type: ignore[import-untyped]
+)
 from apscheduler.triggers.cron import CronTrigger  # type: ignore[import-untyped]
 
-import threading
 from config import load_config
-from sync import run_sync, run_cleanup_broken_symlinks
+from sync import run_cleanup_broken_symlinks, run_sync
 
 # Initialize the scheduler
 _scheduler = BackgroundScheduler()

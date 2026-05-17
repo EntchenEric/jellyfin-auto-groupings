@@ -1,6 +1,7 @@
 """E2E tests for grouping preview functionality."""
 
 import pytest
+
 from .conftest import api_post
 
 
