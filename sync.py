@@ -50,6 +50,13 @@ from trakt import fetch_trakt_list
 
 logger = logging.getLogger(__name__)
 
+__all__ = [
+    "parse_complex_query",
+    "preview_group",
+    "run_cleanup_broken_symlinks",
+    "run_sync",
+]
+
 # Pre-compiled regex for splitting complex query logical operators.
 _COMPLEX_QUERY_RE = re.compile(r"\s+(AND NOT|OR NOT|AND|OR)\s+", re.IGNORECASE)
 
