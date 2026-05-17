@@ -18,7 +18,7 @@ def mock_filesystem():
 
 def test_mock_server_up(virtual_jellyfin):
     """Verify the mock server is actually reachable."""
-    response = requests.get(f"{virtual_jellyfin}/System/Info")
+    response = requests.get(f"{virtual_jellyfin}/System/Info", timeout=5)
     assert response.status_code == 200
     assert response.json()["ServerName"] == "Virtual-Jellyfin-Mock"
 
