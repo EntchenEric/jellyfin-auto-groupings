@@ -1,6 +1,7 @@
 """Tests for configuration state management."""
 
 import json
+from pathlib import Path
 
 from config import DEFAULT_CONFIG, load_config, save_config
 
@@ -54,7 +55,7 @@ def test_save_config_preserves_structure(temp_config):
     cfg["api_key"] = "test-key-123"
     save_config(cfg)
 
-    with open(temp_config, "r") as f:
+    with Path(temp_config).open("r") as f:
         saved = json.load(f)
 
     assert saved["jellyfin_url"] == "http://example.com:8096"
@@ -66,7 +67,7 @@ def test_save_config_preserves_structure(temp_config):
 def test_load_config_fills_missing_nested_keys(temp_config):
     """When a stored config is missing nested keys, defaults should fill in."""
     minimal = {"jellyfin_url": "http://srv"}
-    with open(temp_config, "w") as f:
+    with Path(temp_config).open("w") as f:
         json.dump(minimal, f)
 
     cfg = load_config()
@@ -79,7 +80,7 @@ def test_load_config_fills_missing_nested_keys(temp_config):
 def test_load_config_does_not_lose_extra_keys(temp_config):
     """Unknown keys in saved config should survive a load/save round-trip."""
     extra = {"jellyfin_url": "", "custom_field": "keep-me"}
-    with open(temp_config, "w") as f:
+    with Path(temp_config).open("w") as f:
         json.dump(extra, f)
 
     cfg = load_config()

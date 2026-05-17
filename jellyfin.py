@@ -541,7 +541,7 @@ def _upload_image(
         timeout: HTTP request timeout.
 
     """
-    with open(image_path, "rb") as f:
+    with open(image_path, "rb") as f:  # noqa: PTH123
         image_bytes = f.read()
     mime_type, _ = mimetypes.guess_type(image_path)
     headers = _auth_headers(api_key)
