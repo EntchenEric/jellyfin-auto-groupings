@@ -46,7 +46,7 @@ def test_fetch_tmdb_list_url_parsing(mock_get):
 
     ids = fetch_tmdb_list("https://www.themoviedb.org/list/456?language=en-US", "test_key")
     assert ids == ["101"]
-    args, kwargs = mock_get.call_args
+    args, _kwargs = mock_get.call_args
     assert "/list/456" in args[0]
 
 

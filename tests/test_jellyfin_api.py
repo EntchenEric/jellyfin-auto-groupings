@@ -152,7 +152,7 @@ def test_add_virtual_folder_mixed(mock_post):
     add_virtual_folder(TEST_URL, TEST_KEY, "MixedLib", ["/path1"], collection_type="mixed")
 
     # Check the first call (creation) parameters
-    args, kwargs = mock_post.call_args_list[0]
+    _args, kwargs = mock_post.call_args_list[0]
     params = kwargs.get('params', {})
 
     assert "collectionType" not in params
