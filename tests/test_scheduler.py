@@ -40,6 +40,36 @@ def test_update_scheduler_jobs_global(mock_load, mock_sched):
 
 @patch('scheduler._scheduler')
 @patch('scheduler.load_config')
+def test_update_scheduler_jobs_global_empty_schedule(mock_load, mock_sched):
+    mock_load.return_value = {
+        "scheduler": {
+            "global_enabled": True,
+            "global_schedule": "",
+            "cleanup_enabled": False,
+        },
+        "groups": [],
+    }
+    update_scheduler_jobs()
+    mock_sched.add_job.assert_not_called()
+
+
+@patch('scheduler._scheduler')
+@patch('scheduler.load_config')
+def test_update_scheduler_jobs_cleanup_empty_schedule(mock_load, mock_sched):
+    mock_load.return_value = {
+        "scheduler": {
+            "global_enabled": False,
+            "cleanup_enabled": True,
+            "cleanup_schedule": "",
+        },
+        "groups": [],
+    }
+    update_scheduler_jobs()
+    mock_sched.add_job.assert_not_called()
+
+
+@patch('scheduler._scheduler')
+@patch('scheduler.load_config')
 def test_update_scheduler_jobs_groups(mock_load, mock_sched):
     mock_load.return_value = {
         "scheduler": {"global_enabled": False, "cleanup_enabled": False},
