@@ -1,6 +1,7 @@
 """E2E tests for server connection."""
 
 import pytest
+
 from .conftest import api_post
 
 

@@ -1,12 +1,23 @@
-import requests
 import logging
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 import pytest
+import requests
+
 from jellyfin import (
-    get_libraries, add_virtual_folder, delete_virtual_folder,
-    get_library_id, set_virtual_folder_image, get_users, get_user_recent_items,
-    create_collection, find_collection_by_name, add_to_collection,
-    remove_from_collection, delete_collection, set_collection_image,
+    add_to_collection,
+    add_virtual_folder,
+    create_collection,
+    delete_collection,
+    delete_virtual_folder,
+    find_collection_by_name,
+    get_libraries,
+    get_library_id,
+    get_user_recent_items,
+    get_users,
+    remove_from_collection,
+    set_collection_image,
+    set_virtual_folder_image,
 )
 
 TEST_URL = "http://localhost:8096"

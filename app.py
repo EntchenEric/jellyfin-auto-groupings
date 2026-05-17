@@ -19,11 +19,10 @@ from __future__ import annotations
 import logging
 import os
 
-import network  # noqa: F401 — monkey-patches requests.get/post/delete with retry
-
 from flask import Flask
 
-from config import DEFAULT_CONFIG, CONFIG_FILE, save_config
+import network  # noqa: F401 — monkey-patches requests.get/post/delete with retry
+from config import CONFIG_FILE, DEFAULT_CONFIG, save_config
 from routes import bp
 from scheduler import start_scheduler
 

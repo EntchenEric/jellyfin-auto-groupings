@@ -1,17 +1,17 @@
 import logging
 
-
 import pytest
 import requests
+
 from jellyfin import (
-    fetch_jellyfin_items,
-    get_libraries,
     add_virtual_folder,
     delete_virtual_folder,
+    fetch_jellyfin_items,
+    get_libraries,
     get_library_id,
-    set_virtual_folder_image,
+    get_user_recent_items,
     get_users,
-    get_user_recent_items
+    set_virtual_folder_image,
 )
 
 pytestmark = pytest.mark.exhaustive

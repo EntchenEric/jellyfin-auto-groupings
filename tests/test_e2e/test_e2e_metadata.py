@@ -1,6 +1,7 @@
 """E2E tests for metadata retrieval from real Jellyfin."""
 
 import pytest
+
 from .conftest import api_get
 
 

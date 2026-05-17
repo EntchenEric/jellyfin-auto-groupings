@@ -1,10 +1,11 @@
 from unittest.mock import patch
+
 from scheduler import (
-    update_scheduler_jobs,
+    _run_cleanup_job,
     _run_global_sync_job,
     _run_group_sync_job,
-    _run_cleanup_job,
     start_scheduler,
+    update_scheduler_jobs,
     validate_cron,
 )
 

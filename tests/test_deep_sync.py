@@ -1,7 +1,9 @@
+from unittest.mock import patch
+
 import pytest
 import requests
+
 from sync import run_sync
-from unittest.mock import patch
 
 
 @pytest.fixture(autouse=True)

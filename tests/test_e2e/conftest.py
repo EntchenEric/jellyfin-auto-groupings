@@ -5,11 +5,10 @@ Run with: pytest tests/test_e2e/ -v -m e2e
 """
 
 import os
-
 import time
+
 import pytest
 import requests
-
 
 E2E_APP_URL = os.environ.get("E2E_APP_URL", "http://localhost:5005")
 E2E_JELLYFIN_URL = os.environ.get("E2E_JELLYFIN_URL", "http://localhost:8096")

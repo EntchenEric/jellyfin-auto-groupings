@@ -1,12 +1,17 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
 import requests
-from unittest.mock import patch, MagicMock
-from letterboxd import fetch_letterboxd_list
-from mal import fetch_mal_list
-from trakt import fetch_trakt_list
+
 from anilist import fetch_anilist_list
+from letterboxd import (
+    _extract_ids_from_list_page,
+    _fetch_id_for_slug,
+    fetch_letterboxd_list,
+)
+from mal import fetch_mal_list
 from tmdb import fetch_tmdb_list
-from letterboxd import _extract_ids_from_list_page, _fetch_id_for_slug
+from trakt import fetch_trakt_list
 
 
 @patch('requests.Session.get')

@@ -1,6 +1,7 @@
-import subprocess
 import os
+import subprocess
 import sys
+
 
 def main() -> None:
     existing = os.environ.get('PYTHONPATH')

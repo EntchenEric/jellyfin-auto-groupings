@@ -1,10 +1,12 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
 import requests
-from unittest.mock import patch, MagicMock
-from imdb import fetch_imdb_list
-from tmdb import fetch_tmdb_list
+
 from anilist import fetch_anilist_list
+from imdb import fetch_imdb_list
 from jellyfin import fetch_jellyfin_items
+from tmdb import fetch_tmdb_list
 
 
 @patch('jellyfin.requests.get')

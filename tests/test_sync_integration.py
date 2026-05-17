@@ -1,4 +1,5 @@
 from unittest.mock import patch
+
 from sync import run_sync
 
 

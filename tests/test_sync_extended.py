@@ -1,5 +1,6 @@
 from unittest.mock import patch
-from sync import run_sync, preview_group
+
+from sync import preview_group, run_sync
 
 
 @patch('sync.shutil.rmtree')
