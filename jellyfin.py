@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import logging
 import mimetypes
-from collections.abc import Callable, Iterator
-from typing import Any, NoReturn
+from typing import TYPE_CHECKING, Any, NoReturn
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator
 
 import requests
 
