@@ -591,13 +591,11 @@ def get_cleanup_items() -> ResponseReturnValue:
     configured_groups: set[str] = {str(g.get("name")) for g in config.get("groups", []) if g.get("name")}
 
     try:
-        entries: list[dict[str, Any]] = []
-        for entry in Path(target_base).iterdir():
-            if entry.is_dir() and not entry.name.startswith("."):
-                entries.append({
-                    "name": entry.name,
-                    "is_configured": entry.name in configured_groups,
-                })
+        entries = [
+            {"name": entry.name, "is_configured": entry.name in configured_groups}
+            for entry in Path(target_base).iterdir()
+            if entry.is_dir() and not entry.name.startswith(".")
+        ]
         return _success("", items=sorted(entries, key=lambda x: str(x["name"])))
     except OSError as exc:
         return _error(str(exc), 500)
