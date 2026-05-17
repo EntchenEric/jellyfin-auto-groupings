@@ -1180,7 +1180,6 @@ def _process_group(
 
     # --- Resolve items ---
     error: str | None = None
-    status_code: int = 200
     watch_state: str = group.get("watch_state", "")
 
     # Table-driven dispatch for external-list sources
