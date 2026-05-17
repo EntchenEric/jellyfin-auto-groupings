@@ -99,7 +99,8 @@ def get_tmdb_recommendations(items_with_type: list[tuple[str, str]], api_key: st
 
     """
     if not api_key:
-        raise ValueError("A TMDb API Key is required to fetch TMDb recommendations.")
+        msg = "A TMDb API Key is required to fetch TMDb recommendations."
+        raise ValueError(msg)
 
     recommendation_counts: dict[str, float] = {}
 
