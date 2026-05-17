@@ -1,0 +1,21 @@
+<!-- Error Dialog Modal -->
+<div id="error-dialog-modal" class="modal" role="dialog" aria-label="Error" aria-modal="true">
+    <div class="modal-content" style="border-top: 4px solid var(--error-color);">
+        <div class="modal-header">
+            <h3 class="modal-title" style="display: flex; align-items: center; gap: 0.5rem;">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style="flex-shrink: 0;">
+                    <circle cx="10" cy="10" r="10" fill="var(--error-color)"/>
+                    <path d="M6 6L14 14M14 6L6 14" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <span>Error</span>
+            </h3>
+            <button class="close-btn close-modal-btn" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="error-dialog-message" style="color: var(--text-secondary); font-size: 0.95rem; line-height: 1.5;"></p>
+        </div>
+        <div class="modal-footer">
+            <button class="secondary-btn close-modal-btn" style="margin:0; background: var(--error-color); color: white; border-color: var(--error-color);">OK</button>
+        </div>
+    </div>
+</div>

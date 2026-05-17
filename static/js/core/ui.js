@@ -73,6 +73,17 @@ export function getEl(id) {
     return document.getElementById(id);
 }
 
+export function showErrorDialog(msg) {
+    const modal = getEl('error-dialog-modal');
+    const msgEl = getEl('error-dialog-message');
+    if (!modal || !msgEl) {
+        showToast(msg, 'error');
+        return;
+    }
+    msgEl.textContent = msg;
+    showModal('error-dialog-modal');
+}
+
 let _progressTotal = 0;
 let _progressStep = 0;
 let _progressStartTime = 0;

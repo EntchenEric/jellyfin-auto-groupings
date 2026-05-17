@@ -2,7 +2,7 @@
 
 import { state } from '../core/state.js';
 import { saveConfig } from '../core/api.js';
-import { showToast, getEl } from '../core/ui.js';
+import { showToast, showErrorDialog, getEl } from '../core/ui.js';
 import { loadConfig } from './config.js';
 import { renderGroups } from './groupings.js';
 
@@ -93,7 +93,7 @@ export function handleFileSelected(event) {
             state.pendingImportData = data;
             setupImportStep2(data);
         } catch (err) {
-            showToast('Invalid JSON file', 'error');
+            showErrorDialog('Invalid JSON file');
         }
     };
     reader.readAsText(file);
@@ -152,7 +152,7 @@ function setupImportStep2(data) {
         });
         confirmBtn.onclick = () => performImport('groups', groups);
     } else {
-        showToast('Incompatible file structure', 'error');
+        showErrorDialog('Incompatible file structure');
         getEl('import-modal').style.display = 'none';
     }
 }

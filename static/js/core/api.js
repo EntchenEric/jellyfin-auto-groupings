@@ -1,6 +1,6 @@
 // api.js – Centralised API client with error handling
 
-import { showToast } from './ui.js';
+import { showToast, showErrorDialog } from './ui.js';
 
 const DEFAULT_TIMEOUT_MS = 60000;
 
@@ -24,13 +24,13 @@ async function apiRequest(url, options = {}, timeoutMs = DEFAULT_TIMEOUT_MS) {
         return res.json();
     } catch (err) {
         if (err.name === 'AbortError') {
-            showToast('Request timed out — server did not respond in time', 'error');
+            showErrorDialog('Request timed out — server did not respond in time');
         } else if (err instanceof ApiError) {
-            showToast(err.message, 'error');
+            showErrorDialog(err.message);
         } else if (err instanceof TypeError) {
-            showToast('Network error — check your connection', 'error');
+            showErrorDialog('Network error — check your connection');
         } else {
-            showToast('Unexpected error occurred', 'error');
+            showErrorDialog('Unexpected error occurred');
         }
         throw err;
     } finally {

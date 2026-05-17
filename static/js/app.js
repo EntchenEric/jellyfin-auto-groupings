@@ -1,7 +1,7 @@
 // app.js – Application entry point
 
 import { state, metadataTypes } from './core/state.js';
-import { getEl, showToast, setLoading, showLoadingOverlay, updateLoadingStatus, hideLoadingOverlay } from './core/ui.js';
+import { getEl, showToast, showErrorDialog, setLoading, showLoadingOverlay, updateLoadingStatus, hideLoadingOverlay } from './core/ui.js';
 
 import { initConfig, loadConfig, saveAllConfig, toggleGlobalScheduler, toggleCleanupScheduler } from './features/config.js';
 import { initWizard, openWizardManual } from './features/wizard.js';
@@ -141,7 +141,7 @@ async function bootstrap() {
         const val = getFilterValue();
 
         if (!val) {
-            showToast('Please enter or select a filter value', 'error');
+            showErrorDialog('Please enter or select a filter value');
             return;
         }
 
@@ -210,7 +210,7 @@ async function bootstrap() {
                     state.cachedUsers = data.users;
                 }
             } catch (err) {
-                showToast('Failed to load data from Jellyfin', 'error');
+                showErrorDialog('Failed to load data from Jellyfin');
             } finally {
                 hideLoadingOverlay();
             }

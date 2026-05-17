@@ -2,7 +2,7 @@
 
 import { state } from '../core/state.js';
 import { saveConfig, uploadCover } from '../core/api.js';
-import { showToast, getEl } from '../core/ui.js';
+import { showToast, showErrorDialog, getEl } from '../core/ui.js';
 
 let activeCoverIndex = -1;
 
@@ -494,7 +494,7 @@ export async function applyCover() {
         getEl('cover-generator-modal').style.display = 'none';
         document.dispatchEvent(new CustomEvent('groups-changed'));
     } catch (err) {
-        showToast('Network error while saving cover.', 'error');
+        showErrorDialog('Network error while saving cover.');
     }
 }
 

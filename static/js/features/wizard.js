@@ -3,7 +3,7 @@
 import { state } from '../core/state.js';
 import { apiPost, autoDetectPaths } from '../core/api.js';
 import { testConnection } from './test-connection.js';
-import { showToast, setLoading, showModal, hideModal, getEl } from '../core/ui.js';
+import { showToast, showErrorDialog, setLoading, showModal, hideModal, getEl } from '../core/ui.js';
 import { saveAllConfig } from './config.js';
 
 let wizardStep = 1;
@@ -111,10 +111,10 @@ export async function runWizardAutoDetect() {
             if (d.target_path) { getEl('wizard_target_path').value = d.target_path; getEl('badge-t-path').style.display = 'inline-flex'; }
             showToast('Paths detected!', 'success');
         } else {
-            showToast(res.message || 'Detection failed', 'error');
+            showErrorDialog(res.message || 'Detection failed');
         }
     } catch (err) {
-        showToast('Auto-detect failed - network error', 'error');
+        showErrorDialog('Auto-detect failed - network error');
     } finally {
         setLoading(btn, false);
     }
@@ -128,7 +128,7 @@ async function finishWizard() {
     const tPath = getEl('wizard_target_path').value.trim();
 
     if (!url || !key || !jPath || !hPath || !tPath) {
-        showToast('All fields are required to complete the setup.', 'error');
+        showErrorDialog('All fields are required to complete the setup.');
         if (!url) getEl('wizard_jellyfin_url').focus();
         else if (!key) getEl('wizard_api_key').focus();
         else if (!jPath) getEl('wizard_media_path_in_jellyfin').focus();
@@ -151,7 +151,7 @@ async function finishWizard() {
         hideModal('setup-wizard-modal');
         window.location.reload();
     } catch (err) {
-        showToast('Failed to finalise setup', 'error');
+        showErrorDialog('Failed to finalise setup');
     } finally {
         setLoading(nextBtn, false);
     }
