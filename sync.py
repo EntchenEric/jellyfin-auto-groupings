@@ -1346,7 +1346,7 @@ def run_sync(
     if not url or not api_key or not target_base:
         raise ValueError("Server settings or target path not configured")
 
-    if not dry_run and not os.path.exists(target_base):
+    if not dry_run:
         os.makedirs(target_base, exist_ok=True)
 
     logger.info("Starting sync to: %s", target_base)
