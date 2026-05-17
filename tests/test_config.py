@@ -3,6 +3,9 @@ import json
 from config import load_config, save_config, DEFAULT_CONFIG
 
 
+TEST_URL = "http://localhost:8096"
+
+
 def test_load_config_defaults(temp_config):
     """Test that loading a non-existent config returns defaults."""
     cfg = load_config()
@@ -15,11 +18,11 @@ def test_save_and_load_config(temp_config):
     """Test saving and then loading configuration."""
     import copy
     new_cfg = copy.deepcopy(DEFAULT_CONFIG)
-    new_cfg["jellyfin_url"] = "http://localhost:8096"
+    new_cfg["jellyfin_url"] = TEST_URL
     save_config(new_cfg)
 
     loaded_cfg = load_config()
-    assert loaded_cfg["jellyfin_url"] == "http://localhost:8096"
+    assert loaded_cfg["jellyfin_url"] == TEST_URL
 
 
 def test_config_migration(temp_config):

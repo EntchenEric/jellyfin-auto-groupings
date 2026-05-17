@@ -3,10 +3,8 @@
 from unittest.mock import MagicMock, patch
 import requests as requests_lib
 
-
-def _make_app():
-    from app import app as flask_app
-    return flask_app
+TEST_URL = "http://localhost:8096"
+TEST_API_KEY = "test-key"
 
 
 class TestServerConnection:
@@ -20,8 +18,8 @@ class TestServerConnection:
             mock_get.return_value = mock_resp
 
             resp = client.post("/api/test-server", json={
-                "jellyfin_url": "http://localhost:8096",
-                "api_key": "test-key"
+                "jellyfin_url": TEST_URL,
+                "api_key": TEST_API_KEY
             })
             data = resp.get_json()
             assert resp.status_code == 200
@@ -43,7 +41,7 @@ class TestServerConnection:
             mock_get.side_effect = requests_lib.exceptions.RequestException("Unauthorized")
 
             resp = client.post("/api/test-server", json={
-                "jellyfin_url": "http://localhost:8096",
+                "jellyfin_url": TEST_URL,
                 "api_key": "bad-key"
             })
             data = resp.get_json()
@@ -66,8 +64,8 @@ class TestMetadataEndpoints:
         with patch("routes.load_config") as mock_load, \
                 patch("routes.requests.get") as mock_get:
             mock_load.return_value = {
-                "jellyfin_url": "http://localhost:8096",
-                "api_key": "test-key"
+                "jellyfin_url": TEST_URL,
+                "api_key": TEST_API_KEY
             }
 
             def mock_jellyfin(url, **kwargs):
@@ -110,8 +108,8 @@ class TestPreviewEndpoint:
         with patch("routes.load_config") as mock_load, \
                 patch("routes.preview_group") as mock_preview:
             mock_load.return_value = {
-                "jellyfin_url": "http://localhost:8096",
-                "api_key": "test-key"
+                "jellyfin_url": TEST_URL,
+                "api_key": TEST_API_KEY
             }
             mock_preview.return_value = (
                 [
