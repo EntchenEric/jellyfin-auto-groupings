@@ -1471,6 +1471,34 @@ def test_run_sync_seasonal_no_dir(mock_libs, mock_season, mock_process, tmp_path
     assert results[0]["status"] == "out_of_season"
 
 
+@patch('sync._process_group')
+@patch('sync._is_in_season')
+@patch('sync.get_libraries')
+def test_run_sync_seasonal_in_season(mock_libs, mock_season, mock_process, tmp_path):
+    """Cover line 1398: seasonal group that is in season returns None and is processed normally."""
+    mock_libs.return_value = []
+    mock_season.return_value = True
+    mock_process.return_value = {"group": "Test", "links": 1}
+    target = tmp_path / "target"
+    target.mkdir()
+    config = {
+        "jellyfin_url": "http://jf",
+        "api_key": "key",
+        "target_path": str(target),
+        "groups": [
+            {
+                "name": "Test",
+                "seasonal_enabled": True,
+                "seasonal_start": "01-01",
+                "seasonal_end": "12-31",
+            },
+        ],
+    }
+    results = run_sync(config, dry_run=False)
+    assert results[0]["links"] == 1
+    mock_process.assert_called_once()
+
+
 # ---------------------------------------------------------------------------
 # Remaining branch coverage for sync.py
 # ---------------------------------------------------------------------------

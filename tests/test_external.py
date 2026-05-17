@@ -7,6 +7,7 @@ from anilist import fetch_anilist_list
 from letterboxd import (
     _extract_ids_from_list_page,
     _fetch_id_for_slug,
+    _fetch_ids_for_slugs,
     fetch_letterboxd_list,
 )
 from mal import fetch_mal_list
@@ -280,6 +281,11 @@ def test_letterboxd_threadpool_exception(mock_get, mock_fetch_slug):
 
     ids = fetch_letterboxd_list("https://letterboxd.com/user/list/my-list")
     assert ids == []
+
+
+def test_fetch_ids_for_slugs_empty():
+    """Cover letterboxd.py:80 — early return when slugs list is empty."""
+    assert _fetch_ids_for_slugs([]) == {}
 
 
 # ---------------------------------------------------------------------------
