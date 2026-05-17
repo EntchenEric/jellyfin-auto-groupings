@@ -582,8 +582,8 @@ def set_virtual_folder_image(
         _upload_image(base_url, api_key, library_id, image_path, timeout=timeout)
     except RuntimeError as exc:
         logger.info(str(exc))
-    except OSError as exc:
-        logger.exception("Cannot set image: Failed to read image file %r: %s", image_path, exc)
+    except OSError:
+        logger.exception("Cannot set image: Failed to read image file %r", image_path)
     else:
         logger.info("Successfully updated cover image for library %r", name)
 
@@ -778,7 +778,7 @@ def set_collection_image(
         _upload_image(base_url, api_key, collection_id, image_path, timeout=timeout)
     except RuntimeError as exc:
         logger.info(str(exc))
-    except OSError as exc:
-        logger.exception("Cannot set collection image: Failed to read %r: %s", image_path, exc)
+    except OSError:
+        logger.exception("Cannot set collection image: Failed to read %r", image_path)
     else:
         logger.info("Successfully updated cover image for collection %r", collection_id)

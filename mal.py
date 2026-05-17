@@ -27,7 +27,7 @@ def _normalize_mal_status(status: str | None) -> str | None:
         "paused": "on_hold",
         "all": None,
     }
-    return mapping.get(s, s if s in _VALID_MAL_STATUSES else s)
+    return mapping.get(s, s)
 
 
 def fetch_mal_list(username: str, client_id: str, status: str | None = None) -> list[int]:
