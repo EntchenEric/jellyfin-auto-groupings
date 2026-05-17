@@ -19,8 +19,8 @@ def virtual_jellyfin():
     # Wait for server to be ready
     base_url = "http://localhost:8096"
     timeout = 5
-    start_time = time.time()
-    while time.time() - start_time < timeout:
+    start_time = time.monotonic()
+    while time.monotonic() - start_time < timeout:
         try:
             requests.get(f"{base_url}/Library/VirtualFolders")
             break
