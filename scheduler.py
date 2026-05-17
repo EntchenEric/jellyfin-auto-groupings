@@ -23,6 +23,12 @@ _scheduler = BackgroundScheduler()
 sync_lock = threading.Lock()
 logger = logging.getLogger(__name__)
 
+__all__ = [
+    "start_scheduler",
+    "update_scheduler_jobs",
+    "validate_cron",
+]
+
 
 def start_scheduler() -> None:
     """Start the background scheduler and load jobs from config."""

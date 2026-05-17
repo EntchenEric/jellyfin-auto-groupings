@@ -14,6 +14,14 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+__all__ = [
+    "CONFIG_DIR",
+    "CONFIG_FILE",
+    "DEFAULT_CONFIG",
+    "load_config",
+    "save_config",
+]
+
 # Environment-variable overrides for sensitive config keys
 _ENV_OVERRIDES: dict[str, str] = {
     "api_key": "JELLYFIN_API_KEY",
