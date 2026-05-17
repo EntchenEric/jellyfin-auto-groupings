@@ -91,13 +91,13 @@ def _get_json(
         RuntimeError: If the request fails or the response body is not valid JSON.
 
     """
-    kwargs: dict[str, Any] = {"timeout": timeout}
+    kwargs: dict[str, Any] = {}
     if headers is not None:
         kwargs["headers"] = headers
     if params is not None:
         kwargs["params"] = params
     try:
-        response = requests.get(url, **kwargs)
+        response = requests.get(url, timeout=timeout, **kwargs)
         response.raise_for_status()
     except requests.exceptions.RequestException as exc:
         _raise_request_error(exc, f"Failed to GET {url}")
@@ -121,7 +121,7 @@ def _request_or_raise(
         RuntimeError: On any ``RequestException``.
 
     """
-    kwargs: dict[str, Any] = {"timeout": timeout}
+    kwargs: dict[str, Any] = {}
     if headers is not None:
         kwargs["headers"] = headers
     if params is not None:
@@ -132,9 +132,9 @@ def _request_or_raise(
         kwargs["json"] = json
     try:
         if method == "POST":
-            response = requests.post(url, **kwargs)
+            response = requests.post(url, timeout=timeout, **kwargs)
         elif method == "DELETE":
-            response = requests.delete(url, **kwargs)
+            response = requests.delete(url, timeout=timeout, **kwargs)
         else:
             msg = f"Unsupported HTTP method: {method}"
             raise ValueError(msg)
