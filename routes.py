@@ -205,23 +205,9 @@ def get_config() -> ResponseReturnValue:
     return jsonify(load_config())
 
 
-@bp.route("/api/config", methods=["POST"])
-def update_config() -> ResponseReturnValue:
-    """Persist a new application configuration supplied in the request body.
-
-    The entire configuration object is replaced with the POSTed JSON.
-
-    Returns:
-        JSON with ``status`` and the saved ``config``, or a 500 error if the
-        config file could not be written.
-
-    """
-    new_config = request.get_json(silent=True)
-    if not isinstance(new_config, dict):
-        return _error("Request body must be a JSON object", 400)
-
-    # Validate cron expressions
-    cron_errors = []
+def _validate_cron_expressions(new_config: dict[str, Any]) -> list[str]:
+    """Validate all cron expressions in *new_config*, returning a list of errors."""
+    cron_errors: list[str] = []
     sched_cfg = new_config.get("scheduler", {})
     if sched_cfg.get("global_enabled"):
         global_sched = sched_cfg.get("global_schedule", "")
@@ -238,15 +224,34 @@ def update_config() -> ResponseReturnValue:
             err = validate_cron(group["schedule"])
             if err:
                 cron_errors.append(f"Group '{group.get('name', 'unnamed')}': {err}")
+    return cron_errors
+
+
+@bp.route("/api/config", methods=["POST"])
+def update_config() -> ResponseReturnValue:
+    """Persist a new application configuration supplied in the request body.
+
+    The entire configuration object is replaced with the POSTed JSON.
+
+    Returns:
+        JSON with ``status`` and the saved ``config``, or a 500 error if the
+        config file could not be written.
+
+    """
+    new_config = request.get_json(silent=True)
+    if not isinstance(new_config, dict):
+        return _error("Request body must be a JSON object", 400)
+
+    cron_errors = _validate_cron_expressions(new_config)
     if cron_errors:
         return _error("Invalid cron expression(s)", 400, errors=cron_errors)
+
     try:
         save_config(new_config)
     except OSError as exc:
         logger.exception("Failed to write config file")
         return _error(f"Config file write failed: {exc}", 500)
 
-    # Update background jobs based on new config
     try:
         update_scheduler_jobs()
     except (ValueError, KeyError, OSError, RuntimeError) as exc:
@@ -603,6 +608,35 @@ def get_cleanup_items() -> ResponseReturnValue:
         return _error(str(exc), 500)
 
 
+def _delete_folder(
+    name: str,
+    target_base: str,
+    auto_create_libraries: bool,
+    url: str,
+    api_key: str,
+) -> tuple[bool, str | None]:
+    """Delete a single folder and optionally its Jellyfin library.
+
+    Returns:
+        ``(deleted, error_message)`` where *deleted* is True if the folder
+        was removed successfully.
+    """
+    path = Path(target_base) / name
+    if not path.exists() or not path.is_dir():
+        return False, None
+    try:
+        shutil.rmtree(path)
+        if auto_create_libraries and url and api_key:
+            try:
+                delete_virtual_folder(url, api_key, name)
+            except (RuntimeError, OSError) as e:
+                logger.warning("Failed to delete Jellyfin library '%s': %s", name, e)
+    except OSError as exc:
+        return False, f"Failed to delete {name}: {exc}"
+    else:
+        return True, None
+
+
 @bp.route("/api/cleanup", methods=["POST"])
 def perform_cleanup() -> ResponseReturnValue:
     """Delete the selected folders from the target directory."""
@@ -619,30 +653,21 @@ def perform_cleanup() -> ResponseReturnValue:
     if not target_base or not Path(target_base).exists():
         return _error("Target path not found", 404)
 
+    auto_create_libraries: bool = bool(config.get("auto_create_libraries"))
+    url: str = str(config.get("jellyfin_url") or "").rstrip("/")
+    api_key: str = str(config.get("api_key") or "")
+
     deleted: int = 0
     errors: list[str] = []
     for name in folders:
         if not _is_valid_folder_name(name):
             errors.append(f"Invalid folder name: {name}")
             continue
-
-        path = Path(target_base) / name
-        if path.exists() and path.is_dir():
-            try:
-                shutil.rmtree(path)
-                deleted += 1
-
-                # Also delete from Jellyfin if configured
-                if config.get("auto_create_libraries"):
-                    url = str(config.get("jellyfin_url") or "").rstrip("/")
-                    api_key = str(config.get("api_key") or "")
-                    if url and api_key:
-                        try:
-                            delete_virtual_folder(url, api_key, name)
-                        except (RuntimeError, OSError) as e:
-                            logger.warning("Failed to delete Jellyfin library '%s': %s", name, e)
-            except OSError as exc:
-                errors.append(f"Failed to delete {name}: {exc}")
+        removed, err = _delete_folder(name, target_base, auto_create_libraries, url, api_key)
+        if removed:
+            deleted += 1
+        elif err:
+            errors.append(err)
 
     if errors:
         return jsonify({"status": "partial_success", "deleted": deleted, "errors": errors}), 207
