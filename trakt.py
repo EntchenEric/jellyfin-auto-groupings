@@ -24,6 +24,22 @@ _PAGE_LIMIT: int = 1_000
 _TRAKT_API_BASE: str = "https://api.trakt.tv"
 
 
+def _parse_trakt_list_url(list_url: str) -> tuple[str, str]:
+    """Parse username and list slug from a Trakt URL or shorthand."""
+    full_url_match = re.search(
+        r"trakt\.tv/users/([^/]+)/lists/([^/?#]+)", list_url,
+    )
+    if full_url_match:
+        return full_url_match.group(1), full_url_match.group(2)
+    if "/" in list_url and not list_url.startswith("http"):
+        return list_url.split("/", 1)
+    msg = (
+        f"Invalid Trakt list URL: {list_url!r}. "
+        "Expected format: https://trakt.tv/users/username/lists/list-slug"
+    )
+    raise ValueError(msg)
+
+
 def fetch_trakt_list(list_url: str, client_id: str) -> list[str]:
     """Fetch a Trakt list and return its items as IMDb title IDs in list order.
 
@@ -51,24 +67,7 @@ def fetch_trakt_list(list_url: str, client_id: str) -> list[str]:
         raise ValueError(msg)
 
     list_url = list_url.strip()
-
-    # Parse username + slug from full URL or shorthand
-    username: str
-    list_slug: str
-    full_url_match = re.search(
-        r"trakt\.tv/users/([^/]+)/lists/([^/?#]+)", list_url,
-    )
-    if full_url_match:
-        username = full_url_match.group(1)
-        list_slug = full_url_match.group(2)
-    elif "/" in list_url and not list_url.startswith("http"):
-        username, list_slug = list_url.split("/", 1)
-    else:
-        msg = (
-            f"Invalid Trakt list URL: {list_url!r}. "
-            "Expected format: https://trakt.tv/users/username/lists/list-slug"
-        )
-        raise ValueError(msg)
+    username, list_slug = _parse_trakt_list_url(list_url)
 
     headers: dict[str, str] = {
         "trakt-api-key": client_id,
