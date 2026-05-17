@@ -739,3 +739,20 @@ def test_paginate_jellyfin_empty_page(mock_get):
     pages = list(_paginate_jellyfin("http://test", "key", "Items"))
     assert pages == [[]]
 
+
+def test_parse_json_decode_error():
+    from jellyfin import _parse_json
+    mock_response = MagicMock()
+    mock_response.status_code = 500
+    mock_response.text = "not json"
+    mock_response.json.side_effect = requests.exceptions.JSONDecodeError("test", "not json", 0)
+    with pytest.raises(RuntimeError, match="Invalid JSON response"):
+        _parse_json(mock_response)
+
+
+@patch('requests.delete')
+def test_delete_virtual_folder_request_exception(mock_delete):
+    mock_delete.side_effect = requests.exceptions.RequestException("Network down")
+    with pytest.raises(RuntimeError, match="Failed to delete virtual folder"):
+        delete_virtual_folder(TEST_URL, TEST_KEY, "FailFolder")
+
