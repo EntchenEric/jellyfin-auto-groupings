@@ -14,6 +14,7 @@ replaces the monkey-patched function, not the underlying session.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -72,7 +73,7 @@ def _reraise_timeout(exc: requests.ConnectionError) -> None:
         raise requests.Timeout(msg) from reason
 
 
-def _patched_get(url, **kwargs) -> requests.Response:
+def _patched_get(url: str, **kwargs: Any) -> requests.Response:
     """GET *url* through the retry-enabled session."""
     try:
         return _SESSION.get(url, **kwargs)
@@ -81,7 +82,7 @@ def _patched_get(url, **kwargs) -> requests.Response:
         raise
 
 
-def _patched_post(url, **kwargs) -> requests.Response:
+def _patched_post(url: str, **kwargs: Any) -> requests.Response:
     """POST to *url* through the retry-enabled session."""
     try:
         return _SESSION.post(url, **kwargs)
@@ -90,7 +91,7 @@ def _patched_post(url, **kwargs) -> requests.Response:
         raise
 
 
-def _patched_delete(url, **kwargs) -> requests.Response:
+def _patched_delete(url: str, **kwargs: Any) -> requests.Response:
     """DELETE *url* through the retry-enabled session."""
     try:
         return _SESSION.delete(url, **kwargs)
