@@ -1,5 +1,4 @@
-"""
-imdb.py – IMDb list scraping utilities.
+"""imdb.py - IMDb list scraping utilities.
 
 Provides a single public function for fetching ordered IMDb IDs from a
 public IMDb list page via regex extraction over the rendered HTML.
@@ -12,7 +11,12 @@ import re
 
 import requests
 
+__all__ = ["fetch_imdb_list"]
+
 logger = logging.getLogger(__name__)
+
+# Request timeout (seconds)
+_REQUEST_TIMEOUT: int = 15
 
 # Maximum number of pages to scrape (safety guard, ~2 000 items at 100/page)
 _MAX_PAGES: int = 20
@@ -27,7 +31,7 @@ _REQUEST_HEADERS: dict[str, str] = {
 
 
 def fetch_imdb_list(list_id: str) -> list[str]:
-    """Fetch an IMDb list and return its IMDb title IDs in list order.
+    r"""Fetch an IMDb list and return its IMDb title IDs in list order.
 
     *list_id* may be a full URL (e.g. ``https://www.imdb.com/list/ls000024390/``)
     or a bare list ID (e.g. ``ls000024390``).  The function paginates
@@ -42,18 +46,20 @@ def fetch_imdb_list(list_id: str) -> list[str]:
     Raises:
         ValueError: If *list_id* cannot be parsed as a valid IMDb list ID.
         RuntimeError: If an HTTP error occurs while fetching a page.
+
     """
     list_id = list_id.strip()
 
-    # Accept full URLs – extract just the ls-ID
+    # Accept full URLs - extract just the ls-ID
     url_match = re.search(r"ls\d+", list_id)
     if url_match:
         list_id = url_match.group(0)
 
     if not list_id.startswith("ls"):
-        raise ValueError(
+        msg = (
             f"Invalid IMDb list ID: {list_id!r}. Expected format: ls000024390"
         )
+        raise ValueError(msg)
 
     ids: list[str] = []
     page: int = 1
@@ -64,11 +70,16 @@ def fetch_imdb_list(list_id: str) -> list[str]:
             f"?sort=list_order,asc&st_dt=&mode=detail&page={page}"
         )
         try:
-            resp = requests.get(page_url, headers=_REQUEST_HEADERS, timeout=15)
+            resp = requests.get(
+                page_url,
+                headers=_REQUEST_HEADERS,
+                timeout=_REQUEST_TIMEOUT,
+            )
             resp.raise_for_status()
-        except requests.RequestException as exc:
-            logger.error("HTTP error fetching IMDb list page %d: %s", page, exc)
-            raise RuntimeError(f"Failed to fetch IMDb list page {page}: {exc}") from exc
+        except requests.exceptions.RequestException as exc:
+            logger.exception("HTTP error fetching IMDb list page %d", page)
+            msg = f"Failed to fetch IMDb list page {page}: {exc}"
+            raise RuntimeError(msg) from exc
 
         html: str = resp.text
 
@@ -83,7 +94,7 @@ def fetch_imdb_list(list_id: str) -> list[str]:
 
         # Stop when there is no pagination link pointing to the next page
         has_next = re.search(r'class="[^"]*next-page[^"]*"', html) or re.search(
-            r'rel="next"', html
+            r'rel="next"', html,
         )
         if not has_next or page >= _MAX_PAGES:
             break

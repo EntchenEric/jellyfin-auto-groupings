@@ -28,3 +28,18 @@ pytest.log
 .coverage
 e2e/test_media/
 e2e/test_output/
+
+# IDE
+.vscode/
+.idea/
+
+# Claude Code sessions
+.claude/
+
+# Node
+node_modules/
+
+# Build artifacts
+*.egg-info/
+dist/
+build/

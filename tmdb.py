@@ -1,5 +1,4 @@
-"""
-tmdb.py – TMDb API list fetching utilities.
+"""tmdb.py - TMDb API list fetching utilities.
 
 Provides a single public function for fetching TMDb IDs from a
 TMDb v3 list.
@@ -9,12 +8,17 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+from urllib.parse import urlparse
 
 import requests
+
+__all__ = ["fetch_tmdb_list", "get_tmdb_recommendations"]
 
 logger = logging.getLogger(__name__)
 
 _TMDB_API_BASE: str = "https://api.themoviedb.org/3"
+_DEFAULT_TMDB_LANGUAGE: str = "en-US"
+_MAX_TMDB_PAGES: int = 50
 
 
 def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
@@ -30,18 +34,21 @@ def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
     Raises:
         ValueError: If *api_key* or *list_id* is empty.
         RuntimeError: If an HTTP error occurs while fetching a page.
+
     """
     if not api_key:
-        raise ValueError("A TMDb API Key is required to fetch TMDb lists.")
+        msg = "A TMDb API Key is required to fetch TMDb lists."
+        raise ValueError(msg)
     if not list_id:
-        raise ValueError("A TMDb List ID is required.")
+        msg = "A TMDb List ID is required."
+        raise ValueError(msg)
 
     list_id = list_id.strip()
-    
+
     # Handle full URL if provided (extracting ID from https://www.themoviedb.org/list/123)
     if "themoviedb.org/list/" in list_id:
-        list_id = list_id.split("/list/")[1].split("?")[0].split("#")[0].strip("/").split("/")[0]
-
+        parsed = urlparse(list_id)
+        list_id = parsed.path.strip("/").split("/")[-1]
 
     ids: list[str] = []
     page: int = 1
@@ -51,20 +58,19 @@ def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
         params = {
             "api_key": api_key,
             "page": str(page),
-            "language": "en-US"
+            "language": _DEFAULT_TMDB_LANGUAGE,
         }
-        
+
         try:
             resp = requests.get(url, params=params, timeout=15)
             resp.raise_for_status()
-        except requests.RequestException as exc:
-            raise RuntimeError(
-                f"Failed to fetch TMDb list page {page}: {exc}"
-            ) from exc
+        except requests.exceptions.RequestException as exc:
+            msg = f"Failed to fetch TMDb list page {page}: {exc}"
+            raise RuntimeError(msg) from exc
 
         data: dict[str, Any] = resp.json()
         items: list[dict[str, Any]] = data.get("items", [])
-        
+
         if not items:
             break
 
@@ -74,7 +80,7 @@ def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
                 ids.append(str(tmdb_id))
 
         total_pages: int = data.get("total_pages", 1)
-        if page >= total_pages or page >= 50:  # Safety cap
+        if page >= total_pages or page >= _MAX_TMDB_PAGES:  # Safety cap
             break
         page += 1
 
@@ -93,9 +99,11 @@ def get_tmdb_recommendations(items_with_type: list[tuple[str, str]], api_key: st
 
     Raises:
         ValueError: If *api_key* is empty.
+
     """
     if not api_key:
-        raise ValueError("A TMDb API Key is required to fetch TMDb recommendations.")
+        msg = "A TMDb API Key is required to fetch TMDb recommendations."
+        raise ValueError(msg)
 
     recommendation_counts: dict[str, float] = {}
 
@@ -103,8 +111,8 @@ def get_tmdb_recommendations(items_with_type: list[tuple[str, str]], api_key: st
         url = f"{_TMDB_API_BASE}/{media_type}/{tmdb_id}/recommendations"
         params = {
             "api_key": api_key,
-            "language": "en-US",
-            "page": "1"
+            "language": _DEFAULT_TMDB_LANGUAGE,
+            "page": "1",
         }
         try:
             resp = requests.get(url, params=params, timeout=10)
@@ -114,7 +122,7 @@ def get_tmdb_recommendations(items_with_type: list[tuple[str, str]], api_key: st
                     rec_id = str(rec.get("id"))
                     score = 1.0 / (i + 1)  # Higher weight for top recommendations
                     recommendation_counts[rec_id] = recommendation_counts.get(rec_id, 0.0) + score
-        except Exception:
+        except (requests.exceptions.RequestException, ValueError):
             logger.debug("Skipping failed recommendation item", exc_info=True)
 
     # Sort items by their accumulated score

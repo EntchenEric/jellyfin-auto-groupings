@@ -1,5 +1,4 @@
-"""
-config.py – Configuration persistence helpers.
+"""config.py - Configuration persistence helpers.
 
 Handles loading and saving the application's ``config.json`` file, including
 backwards-compatible key migration and first-run default creation.
@@ -10,14 +9,34 @@ from __future__ import annotations
 import json
 import logging
 import os
+from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
+
+__all__ = [
+    "CONFIG_DIR",
+    "CONFIG_FILE",
+    "DEFAULT_CONFIG",
+    "load_config",
+    "save_config",
+]
+
+# Environment-variable overrides for sensitive config keys
+_ENV_OVERRIDES: dict[str, str] = {
+    "api_key": "JELLYFIN_API_KEY",
+    "trakt_client_id": "TRAKT_CLIENT_ID",
+    "tmdb_api_key": "TMDB_API_KEY",
+    "mal_client_id": "MAL_CLIENT_ID",
+}
 
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
 
-CONFIG_DIR: str = os.path.join(os.path.dirname(__file__), "config")
-CONFIG_FILE: str = os.path.join(CONFIG_DIR, "config.json")
+_CONFIG_PATH = Path(__file__).parent / "config"
+CONFIG_DIR: str = str(_CONFIG_PATH)
+CONFIG_FILE: str = str(_CONFIG_PATH / "config.json")
 
 # ---------------------------------------------------------------------------
 # Defaults
@@ -38,17 +57,42 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "global_schedule": "0 0 * * *",
         "global_exclude_ids": [],
         "cleanup_enabled": True,
-        "cleanup_schedule": "0 * * * *"
+        "cleanup_schedule": "0 * * * *",
     },
     "auto_create_libraries": False,
     "auto_set_library_covers": False,
     "target_path_in_jellyfin": "",
-    "setup_done": False
+    "setup_done": False,
 }
 
 # ---------------------------------------------------------------------------
 # Public helpers
 # ---------------------------------------------------------------------------
+
+
+def _fill_defaults(cfg: dict[str, Any], defaults: dict[str, Any]) -> None:
+    """Fill missing keys in *cfg* from *defaults*, including nested dicts."""
+    for key, default_value in defaults.items():
+        cfg.setdefault(key, default_value)
+        if isinstance(default_value, dict) and isinstance(cfg.get(key), dict):
+            for sub_key, sub_val in default_value.items():
+                cfg[key].setdefault(sub_key, sub_val)
+
+
+def _migrate_legacy_keys(cfg: dict[str, Any]) -> bool:
+    """Migrate legacy keys to their new names. Returns True if any changes were made."""
+    migrated = False
+    if cfg.get("jellyfin_root") and not cfg.get("media_path_in_jellyfin"):
+        cfg["media_path_in_jellyfin"] = cfg["jellyfin_root"]
+        migrated = True
+    if cfg.get("host_root") and not cfg.get("media_path_on_host"):
+        cfg["media_path_on_host"] = cfg["host_root"]
+        migrated = True
+    if migrated:
+        cfg.pop("jellyfin_root", None)
+        cfg.pop("host_root", None)
+        save_config(cfg)
+    return migrated
 
 
 def load_config() -> dict[str, Any]:
@@ -66,50 +110,28 @@ def load_config() -> dict[str, Any]:
 
     Returns:
         The (possibly migrated) configuration dictionary.
-    """
-    _env_overrides = {
-        "api_key": "JELLYFIN_API_KEY",
-        "trakt_client_id": "TRAKT_CLIENT_ID",
-        "tmdb_api_key": "TMDB_API_KEY",
-        "mal_client_id": "MAL_CLIENT_ID",
-    }
 
-    if not os.path.exists(CONFIG_FILE):
+    """
+    cfg: dict[str, Any]
+    if not Path(CONFIG_FILE).exists():
         save_config(DEFAULT_CONFIG.copy())
         cfg = DEFAULT_CONFIG.copy()
     else:
         try:
-            with open(CONFIG_FILE, "r") as fh:
-                cfg: dict[str, Any] = json.load(fh)
-
-            # Fill in any keys added after initial creation
-            for key, default_value in DEFAULT_CONFIG.items():
-                cfg.setdefault(key, default_value)
-                # Ensure nested dictionaries (like scheduler) also have defaults
-                if isinstance(default_value, dict) and isinstance(cfg[key], dict):
-                    for sub_key, sub_val in default_value.items():
-                        cfg[key].setdefault(sub_key, sub_val)
-
-            # Migrate renamed keys
-            migrated = False
-            if cfg.get("jellyfin_root") and not cfg.get("media_path_in_jellyfin"):
-                cfg["media_path_in_jellyfin"] = cfg["jellyfin_root"]
-                migrated = True
-            if cfg.get("host_root") and not cfg.get("media_path_on_host"):
-                cfg["media_path_on_host"] = cfg["host_root"]
-                migrated = True
-            if migrated:
-                cfg.pop("jellyfin_root", None)
-                cfg.pop("host_root", None)
-                save_config(cfg)
-
+            with Path(CONFIG_FILE).open("r", encoding="utf-8") as fh:
+                cfg = json.load(fh)
+            _fill_defaults(cfg, DEFAULT_CONFIG)
+            _migrate_legacy_keys(cfg)
         except (json.JSONDecodeError, OSError):
             # If the file is corrupt or unreadable, fall back to safe defaults
-            logging.warning("Could not read config file, falling back to defaults", exc_info=True)
+            logger.warning(
+                "Could not read config file, falling back to defaults",
+                exc_info=True,
+            )
             cfg = DEFAULT_CONFIG.copy()
 
     # Apply environment-variable overrides (additive, never persisted)
-    for cfg_key, env_var in _env_overrides.items():
+    for cfg_key, env_var in _ENV_OVERRIDES.items():
         env_val = os.environ.get(env_var)
         if env_val:
             cfg[cfg_key] = env_val
@@ -122,7 +144,8 @@ def save_config(config: dict[str, Any]) -> None:
 
     Args:
         config: The configuration dictionary to write.
+
     """
-    os.makedirs(CONFIG_DIR, exist_ok=True)
-    with open(CONFIG_FILE, "w") as fh:
+    Path(CONFIG_DIR).mkdir(parents=True, exist_ok=True)
+    with Path(CONFIG_FILE).open("w", encoding="utf-8") as fh:
         json.dump(config, fh, indent=4)

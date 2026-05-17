@@ -4,8 +4,8 @@ omit =
     venv/*
     .venv/*
     run_tests_to_file.py
-    parse_test.py
     app.py
+    start_virtual_jellyfin.py
 
 [report]
 show_missing = True

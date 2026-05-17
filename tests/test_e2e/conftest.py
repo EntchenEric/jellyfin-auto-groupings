@@ -5,11 +5,10 @@ Run with: pytest tests/test_e2e/ -v -m e2e
 """
 
 import os
-import json
 import time
+
 import pytest
 import requests
-
 
 E2E_APP_URL = os.environ.get("E2E_APP_URL", "http://localhost:5005")
 E2E_JELLYFIN_URL = os.environ.get("E2E_JELLYFIN_URL", "http://localhost:8096")
@@ -19,8 +18,8 @@ E2E_API_KEY = os.environ.get("JELLYFIN_API_KEY", "")
 
 def wait_for_app(timeout=30):
     """Wait for the app server to be ready."""
-    deadline = time.time() + timeout
-    while time.time() < deadline:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
         try:
             resp = requests.get(f"{E2E_APP_URL}/api/config", timeout=3)
             if resp.status_code == 200:
@@ -33,8 +32,8 @@ def wait_for_app(timeout=30):
 
 def wait_for_jellyfin(timeout=30):
     """Wait for Jellyfin to be healthy."""
-    deadline = time.time() + timeout
-    while time.time() < deadline:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
         try:
             resp = requests.get(f"{E2E_JELLYFIN_URL}/health", timeout=3)
             if resp.status_code == 200:
@@ -88,28 +87,28 @@ def e2e_session(e2e_app_url, e2e_jellyfin_url, e2e_api_key):
             "global_schedule": "",
             "global_exclude_ids": [],
             "cleanup_enabled": False,
-            "cleanup_schedule": ""
-        }
+            "cleanup_schedule": "",
+        },
     }
     resp = requests.post(f"{e2e_app_url}/api/config", json=config, timeout=10)
     assert resp.status_code == 200
-    yield {
+    return {
         "app_url": e2e_app_url,
         "jellyfin_url": e2e_jellyfin_url,
         "jellyfin_url_internal": E2E_JELLYFIN_URL_INTERNAL,
-        "api_key": e2e_api_key
+        "api_key": e2e_api_key,
     }
 
 
 def api_post(session, path, data=None):
-    """Helper to POST to the app API."""
+    """POST to the app API."""
     url = f"{session['app_url']}{path}"
     resp = requests.post(url, json=data or {}, timeout=10)
     return resp.json()
 
 
 def api_get(session, path):
-    """Helper to GET from the app API."""
+    """GET from the app API."""
     url = f"{session['app_url']}{path}"
     resp = requests.get(url, timeout=10)
     return resp.json()
