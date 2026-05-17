@@ -11,6 +11,8 @@ import re
 
 import requests
 
+__all__ = ["fetch_imdb_list"]
+
 logger = logging.getLogger(__name__)
 
 # Request timeout (seconds)

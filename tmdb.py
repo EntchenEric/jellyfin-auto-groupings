@@ -12,6 +12,8 @@ from urllib.parse import urlparse
 
 import requests
 
+__all__ = ["fetch_tmdb_list", "get_tmdb_recommendations"]
+
 logger = logging.getLogger(__name__)
 
 _TMDB_API_BASE: str = "https://api.themoviedb.org/3"

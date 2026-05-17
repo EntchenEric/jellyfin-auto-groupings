@@ -13,6 +13,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 
+__all__ = ["fetch_letterboxd_list"]
+
 logger = logging.getLogger(__name__)
 
 # Request timeouts (seconds)

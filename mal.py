@@ -6,6 +6,8 @@ from typing import Any
 
 import requests
 
+__all__ = ["fetch_mal_list"]
+
 MAL_API_BASE_URL = "https://api.myanimelist.net/v2"
 
 # Request timeout (seconds)

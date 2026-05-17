@@ -12,6 +12,8 @@ from typing import Any
 
 import requests
 
+__all__ = ["fetch_trakt_list"]
+
 logger = logging.getLogger(__name__)
 
 # Request timeout (seconds)
