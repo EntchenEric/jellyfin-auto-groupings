@@ -56,7 +56,7 @@ def test_match_condition():
         "People": [{"Name": "Tom Cruise", "Type": "Actor"}],
         "Studios": [{"Name": "Marvel"}],
         "Tags": ["UHD"],
-        "ProductionYear": 2022
+        "ProductionYear": 2022,
     }
     assert _match_condition(item, "genre", "action") is True
     assert _match_condition(item, "genre", "comedy") is False
@@ -70,7 +70,7 @@ def test_sort_items_in_memory():
     items = [
         {"Name": "B", "SortName": "B", "ProductionYear": 2020, "CommunityRating": 8.0},
         {"Name": "A", "SortName": "A", "ProductionYear": 2021, "CommunityRating": 7.0},
-        {"Name": "C", "SortName": "C", "ProductionYear": 2019, "CommunityRating": 9.0}
+        {"Name": "C", "SortName": "C", "ProductionYear": 2019, "CommunityRating": 9.0},
     ]
     sorted_name = _sort_items_in_memory(items, "SortName")
     assert sorted_name[0]["Name"] == "A"
@@ -89,18 +89,18 @@ def test_eval_item():
     # AND NOT
     rules = [
         {"operator": "AND", "type": "genre", "value": "action"},
-        {"operator": "AND NOT", "type": "year", "value": "2021"}
+        {"operator": "AND NOT", "type": "year", "value": "2021"},
     ]
     assert _eval_item(item, rules) is True
     rules = [
         {"operator": "AND", "type": "genre", "value": "action"},
-        {"operator": "AND NOT", "type": "year", "value": "2020"}
+        {"operator": "AND NOT", "type": "year", "value": "2020"},
     ]
     assert _eval_item(item, rules) is False
     # OR
     rules = [
         {"operator": "AND", "type": "genre", "value": "comedy"},
-        {"operator": "OR", "type": "year", "value": "2020"}
+        {"operator": "OR", "type": "year", "value": "2020"},
     ]
     assert _eval_item(item, rules) is True
     # Inverted first rule (NOT)
@@ -143,10 +143,10 @@ def test_match_jellyfin_items_by_provider(mock_jf):
     _LIBRARY_CACHE.clear()
     mock_jf.return_value = [
         {"Id": "1", "Name": "M1", "ProviderIds": {"Tmdb": "101"}},
-        {"Id": "2", "Name": "M2", "ProviderIds": {"Tmdb": "202"}}
+        {"Id": "2", "Name": "M2", "ProviderIds": {"Tmdb": "202"}},
     ]
     items, _err, _code = _match_jellyfin_items_by_provider(
-        ["101"], "Tmdb", "tmdb_list_order", "tmdb_list_order", "http://jf", "key", "Group"
+        ["101"], "Tmdb", "tmdb_list_order", "tmdb_list_order", "http://jf", "key", "Group",
     )
     assert len(items) == 1
     assert items[0]["Name"] == "M1"
@@ -157,22 +157,22 @@ def test_match_jellyfin_items_with_watch_state(mock_jf):
     _LIBRARY_CACHE.clear()
     mock_jf.return_value = [
         {"Id": "1", "Name": "Played", "ProviderIds": {"Tmdb": "101"}, "UserData": {"Played": True}},
-        {"Id": "2", "Name": "Unplayed", "ProviderIds": {"Tmdb": "102"}, "UserData": {"Played": False}}
+        {"Id": "2", "Name": "Unplayed", "ProviderIds": {"Tmdb": "102"}, "UserData": {"Played": False}},
     ]
     # All
     items, _, _ = _match_jellyfin_items_by_provider(
-        ["101", "102"], "Tmdb", "SortName", "SortName", "http://jf", "key", "Group", ""
+        ["101", "102"], "Tmdb", "SortName", "SortName", "http://jf", "key", "Group", "",
     )
     assert len(items) == 2
     # Unwatched
     items, _, _ = _match_jellyfin_items_by_provider(
-        ["101", "102"], "Tmdb", "SortName", "SortName", "http://jf", "key", "Group", "unwatched"
+        ["101", "102"], "Tmdb", "SortName", "SortName", "http://jf", "key", "Group", "unwatched",
     )
     assert len(items) == 1
     assert items[0]["Name"] == "Unplayed"
     # Watched
     items, _, _ = _match_jellyfin_items_by_provider(
-        ["101", "102"], "Tmdb", "SortName", "SortName", "http://jf", "key", "Group", "watched"
+        ["101", "102"], "Tmdb", "SortName", "SortName", "http://jf", "key", "Group", "watched",
     )
     assert len(items) == 1
     assert items[0]["Name"] == "Played"
@@ -232,7 +232,7 @@ def test_eval_item_multiple_or():
     rules = [
         {"operator": "AND", "type": "genre", "value": "action"},
         {"operator": "OR", "type": "genre", "value": "drama"},
-        {"operator": "OR", "type": "genre", "value": "comedy"}
+        {"operator": "OR", "type": "genre", "value": "comedy"},
     ]
     assert _eval_item(item, rules) is True
 
@@ -243,7 +243,7 @@ def test_match_condition_variants():
         "People": [{"Name": "A", "Type": "Actor"}],
         "Studios": [{"Name": "S"}],
         "Tags": ["T"],
-        "ProductionYear": 2020
+        "ProductionYear": 2020,
     }
     # Test normalization and missing fields
     # Note: _match_condition expects r_val to be pre-normalized (lower/stripped)
@@ -258,7 +258,7 @@ def test_match_by_provider_empty_library(mock_jf):
     _LIBRARY_CACHE.clear()
     mock_jf.return_value = []
     items, _err, code = _match_jellyfin_items_by_provider(
-        ["101"], "Tmdb", "tmdb_list_order", "tmdb_list_order", "http://jf", "key", "Group"
+        ["101"], "Tmdb", "tmdb_list_order", "tmdb_list_order", "http://jf", "key", "Group",
     )
     assert items == []
     assert code == 200
@@ -291,11 +291,11 @@ def test_sort_items_missing_field():
 def test_match_jellyfin_items_no_match(mock_jf):
     _LIBRARY_CACHE.clear()
     mock_jf.return_value = [
-        {"Id": "1", "Name": "M1", "ProviderIds": {"Tmdb": "202"}}
+        {"Id": "1", "Name": "M1", "ProviderIds": {"Tmdb": "202"}},
     ]
     # Should return empty if no match
     items, _err, _code = _match_jellyfin_items_by_provider(
-        ["101"], "Tmdb", "tmdb_list_order", "tmdb_list_order", "http://jf", "key", "Group"
+        ["101"], "Tmdb", "tmdb_list_order", "tmdb_list_order", "http://jf", "key", "Group",
     )
     assert len(items) == 0
 
@@ -303,7 +303,7 @@ def test_match_jellyfin_items_no_match(mock_jf):
 def test_sort_items_rating():
     items = [
         {"Name": "A", "CommunityRating": 5.0},
-        {"Name": "B", "CommunityRating": 9.0}
+        {"Name": "B", "CommunityRating": 9.0},
     ]
     sorted_items = _sort_items_in_memory(items, "CommunityRating")
     assert sorted_items[0]["CommunityRating"] == 9.0
@@ -319,7 +319,7 @@ def test_sort_items_unknown():
 def test_sort_items_missing_values_logic():
     items = [
         {"SortName": "A"},
-        {"SortName": None}
+        {"SortName": None},
     ]
     # Ascending (SortName)
     res_asc = _sort_items_in_memory(items, "SortName")
@@ -327,7 +327,7 @@ def test_sort_items_missing_values_logic():
     assert res_asc[1]["SortName"] is None
     items_year = [
         {"ProductionYear": 2020},
-        {"ProductionYear": None}
+        {"ProductionYear": None},
     ]
     # Descending (ProductionYear)
     res_desc = _sort_items_in_memory(items_year, "ProductionYear")
@@ -371,7 +371,7 @@ def test_run_cleanup_broken_symlinks_invalid_path():
 
 def test_fetch_items_recommendations_no_api_key():
     _items, error, code = _fetch_items_for_recommendations_group(
-        "Rec", "user1", "SortName", "http://jf", "key", None
+        "Rec", "user1", "SortName", "http://jf", "key", None,
     )
     assert code == 400
     assert "TMDb API Key not set" in error
@@ -379,7 +379,7 @@ def test_fetch_items_recommendations_no_api_key():
 
 def test_fetch_items_recommendations_no_source_value():
     _items, error, code = _fetch_items_for_recommendations_group(
-        "Rec", "", "SortName", "http://jf", "key", "api_key"
+        "Rec", "", "SortName", "http://jf", "key", "api_key",
     )
     assert code == 400
     assert "User ID must be selected" in error
@@ -389,7 +389,7 @@ def test_fetch_items_recommendations_no_source_value():
 def test_fetch_items_recommendations_no_tmdb_ids(mock_recent):
     mock_recent.return_value = [{"ProviderIds": {}, "Type": "Movie"}]
     items, _error, code = _fetch_items_for_recommendations_group(
-        "Rec", "user1", "SortName", "http://jf", "key", "api_key"
+        "Rec", "user1", "SortName", "http://jf", "key", "api_key",
     )
     assert code == 200
     assert items == []
@@ -399,7 +399,7 @@ def test_fetch_items_recommendations_no_tmdb_ids(mock_recent):
 def test_fetch_items_recommendations_exception(mock_recent):
     mock_recent.side_effect = RuntimeError("Jellyfin down")
     _items, error, code = _fetch_items_for_recommendations_group(
-        "Rec", "user1", "SortName", "http://jf", "key", "api_key"
+        "Rec", "user1", "SortName", "http://jf", "key", "api_key",
     )
     assert code == 400
     assert "Recommendations fetch error" in error
@@ -414,7 +414,7 @@ def test_fetch_items_recommendations_exception(mock_recent):
 def test_process_collection_group_dry_run(mock_add, mock_find):
     items = [{"Id": "1", "Name": "Movie"}]
     result = _process_collection_group(
-        "Group", items, "http://jf", "key", "/target", dry_run=True, auto_set_library_covers=False
+        "Group", items, "http://jf", "key", "/target", dry_run=True, auto_set_library_covers=False,
     )
     assert result["links"] == 1
     assert "items" in result
@@ -422,7 +422,7 @@ def test_process_collection_group_dry_run(mock_add, mock_find):
 
 def test_process_collection_group_no_ids():
     result = _process_collection_group(
-        "Group", [], "http://jf", "key", "/target", dry_run=False, auto_set_library_covers=False
+        "Group", [], "http://jf", "key", "/target", dry_run=False, auto_set_library_covers=False,
     )
     assert result["links"] == 0
     assert "No item IDs" in result["error"]
@@ -433,7 +433,7 @@ def test_process_collection_group_error(mock_find):
     mock_find.side_effect = RuntimeError("Collection error")
     items = [{"Id": "1", "Name": "Movie"}]
     result = _process_collection_group(
-        "Group", items, "http://jf", "key", "/target", dry_run=False, auto_set_library_covers=False
+        "Group", items, "http://jf", "key", "/target", dry_run=False, auto_set_library_covers=False,
     )
     assert result["links"] == 0
     assert "Collection error" in result["error"]
@@ -447,7 +447,7 @@ def test_process_collection_group_error(mock_find):
 def test_fetch_items_letterboxd_error(mock_fetch):
     mock_fetch.side_effect = RuntimeError("Network error")
     _items, error, code = _fetch_items_for_letterboxd_group(
-        "LB", "user/list", "SortName", "http://jf", "key"
+        "LB", "user/list", "SortName", "http://jf", "key",
     )
     assert code == 400
     assert "Letterboxd fetch error" in error
@@ -458,7 +458,7 @@ def test_fetch_items_letterboxd_error(mock_fetch):
 def test_fetch_items_letterboxd_empty_list(mock_lib, mock_fetch):
     mock_fetch.return_value = []
     items, _error, code = _fetch_items_for_letterboxd_group(
-        "LB", "user/list", "SortName", "http://jf", "key"
+        "LB", "user/list", "SortName", "http://jf", "key",
     )
     assert code == 200
     assert items == []
@@ -469,10 +469,10 @@ def test_fetch_items_letterboxd_empty_list(mock_lib, mock_fetch):
 def test_fetch_items_letterboxd_watch_state(mock_lib, mock_fetch):
     mock_fetch.return_value = ["tt123"]
     mock_lib.return_value = [
-        {"Id": "1", "ProviderIds": {"Imdb": "tt123"}, "UserData": {"Played": True}}
+        {"Id": "1", "ProviderIds": {"Imdb": "tt123"}, "UserData": {"Played": True}},
     ], None, 200
     items, _error, code = _fetch_items_for_letterboxd_group(
-        "LB", "user/list", "SortName", "http://jf", "key", watch_state="unwatched"
+        "LB", "user/list", "SortName", "http://jf", "key", watch_state="unwatched",
     )
     assert code == 200
     assert items == []
@@ -483,10 +483,10 @@ def test_fetch_items_letterboxd_watch_state(mock_lib, mock_fetch):
 def test_fetch_items_letterboxd_tmdb_match(mock_lib, mock_fetch):
     mock_fetch.return_value = ["456"]
     mock_lib.return_value = [
-        {"Id": "1", "ProviderIds": {"Tmdb": "456"}}
+        {"Id": "1", "ProviderIds": {"Tmdb": "456"}},
     ], None, 200
     items, _error, code = _fetch_items_for_letterboxd_group(
-        "LB", "user/list", "SortName", "http://jf", "key"
+        "LB", "user/list", "SortName", "http://jf", "key",
     )
     assert code == 200
     assert len(items) == 1
@@ -497,10 +497,10 @@ def test_fetch_items_letterboxd_tmdb_match(mock_lib, mock_fetch):
 def test_fetch_items_letterboxd_non_list_order(mock_lib, mock_fetch):
     mock_fetch.return_value = ["tt123", "tt123"]
     mock_lib.return_value = [
-        {"Id": "1", "ProviderIds": {"Imdb": "tt123"}}
+        {"Id": "1", "ProviderIds": {"Imdb": "tt123"}},
     ], None, 200
     items, _error, code = _fetch_items_for_letterboxd_group(
-        "LB", "user/list", "SortName", "http://jf", "key"
+        "LB", "user/list", "SortName", "http://jf", "key",
     )
     assert code == 200
     assert len(items) == 1
@@ -514,7 +514,7 @@ def test_fetch_items_letterboxd_non_list_order(mock_lib, mock_fetch):
 def test_fetch_items_imdb_error(mock_fetch):
     mock_fetch.side_effect = RuntimeError("IMDb down")
     _items, error, code = _fetch_items_for_imdb_group(
-        "IMDb", "list_id", "SortName", "http://jf", "key"
+        "IMDb", "list_id", "SortName", "http://jf", "key",
     )
     assert code == 400
     assert "IMDb fetch error" in error
@@ -524,7 +524,7 @@ def test_fetch_items_imdb_error(mock_fetch):
 def test_fetch_items_imdb_empty(mock_fetch):
     mock_fetch.return_value = []
     items, _error, code = _fetch_items_for_imdb_group(
-        "IMDb", "list_id", "SortName", "http://jf", "key"
+        "IMDb", "list_id", "SortName", "http://jf", "key",
     )
     assert code == 200
     assert items == []
@@ -537,7 +537,7 @@ def test_fetch_items_imdb_empty(mock_fetch):
 @patch('sync.fetch_trakt_list')
 def test_fetch_items_trakt_no_client_id(mock_fetch):
     _items, error, code = _fetch_items_for_trakt_group(
-        "Trakt", "user/list", "SortName", "http://jf", "key", None
+        "Trakt", "user/list", "SortName", "http://jf", "key", None,
     )
     assert code == 400
     assert "Trakt Client ID not set" in error
@@ -547,7 +547,7 @@ def test_fetch_items_trakt_no_client_id(mock_fetch):
 def test_fetch_items_trakt_error(mock_fetch):
     mock_fetch.side_effect = RuntimeError("Trakt down")
     _items, error, code = _fetch_items_for_trakt_group(
-        "Trakt", "user/list", "SortName", "http://jf", "key", "client_id"
+        "Trakt", "user/list", "SortName", "http://jf", "key", "client_id",
     )
     assert code == 400
     assert "Trakt fetch error" in error
@@ -557,7 +557,7 @@ def test_fetch_items_trakt_error(mock_fetch):
 def test_fetch_items_trakt_empty(mock_fetch):
     mock_fetch.return_value = []
     items, _error, code = _fetch_items_for_trakt_group(
-        "Trakt", "user/list", "SortName", "http://jf", "key", "client_id"
+        "Trakt", "user/list", "SortName", "http://jf", "key", "client_id",
     )
     assert code == 200
     assert items == []
@@ -571,7 +571,7 @@ def test_fetch_items_trakt_empty(mock_fetch):
 def test_fetch_items_tmdb_error(mock_fetch):
     mock_fetch.side_effect = RuntimeError("TMDb down")
     _items, error, code = _fetch_items_for_tmdb_group(
-        "TMDb", "123", "SortName", "http://jf", "key", "api_key"
+        "TMDb", "123", "SortName", "http://jf", "key", "api_key",
     )
     assert code == 400
     assert "TMDb fetch error" in error
@@ -581,7 +581,7 @@ def test_fetch_items_tmdb_error(mock_fetch):
 def test_fetch_items_tmdb_empty(mock_fetch):
     mock_fetch.return_value = []
     items, _error, code = _fetch_items_for_tmdb_group(
-        "TMDb", "123", "SortName", "http://jf", "key", "api_key"
+        "TMDb", "123", "SortName", "http://jf", "key", "api_key",
     )
     assert code == 200
     assert items == []
@@ -595,7 +595,7 @@ def test_fetch_items_tmdb_empty(mock_fetch):
 def test_fetch_items_anilist_error(mock_fetch):
     mock_fetch.side_effect = RuntimeError("AniList down")
     _items, error, code = _fetch_items_for_anilist_group(
-        "AniList", "user", "SortName", "http://jf", "key"
+        "AniList", "user", "SortName", "http://jf", "key",
     )
     assert code == 400
     assert "AniList fetch error" in error
@@ -605,7 +605,7 @@ def test_fetch_items_anilist_error(mock_fetch):
 def test_fetch_items_anilist_empty(mock_fetch):
     mock_fetch.return_value = []
     items, _error, code = _fetch_items_for_anilist_group(
-        "AniList", "user", "SortName", "http://jf", "key"
+        "AniList", "user", "SortName", "http://jf", "key",
     )
     assert code == 200
     assert items == []
@@ -619,7 +619,7 @@ def test_fetch_items_anilist_empty(mock_fetch):
 def test_fetch_items_mal_error(mock_fetch):
     mock_fetch.side_effect = RuntimeError("MAL down")
     _items, error, code = _fetch_items_for_mal_group(
-        "MAL", "user", "SortName", "http://jf", "key", "client_id"
+        "MAL", "user", "SortName", "http://jf", "key", "client_id",
     )
     assert code == 400
     assert "MAL fetch error" in error
@@ -629,7 +629,7 @@ def test_fetch_items_mal_error(mock_fetch):
 def test_fetch_items_mal_empty(mock_fetch):
     mock_fetch.return_value = []
     items, _error, code = _fetch_items_for_mal_group(
-        "MAL", "user", "SortName", "http://jf", "key", "client_id"
+        "MAL", "user", "SortName", "http://jf", "key", "client_id",
     )
     assert code == 200
     assert items == []
@@ -701,7 +701,7 @@ def test_match_jellyfin_items_by_provider_library_error(mock_lib):
     _LIBRARY_CACHE.clear()
     mock_lib.return_value = ([], "Lib error", 503)
     _items, error, code = _match_jellyfin_items_by_provider(
-        ["101"], "Tmdb", "tmdb_list_order", "tmdb_list_order", "http://jf", "key", "Group"
+        ["101"], "Tmdb", "tmdb_list_order", "tmdb_list_order", "http://jf", "key", "Group",
     )
     assert code == 503
     assert error == "Lib error"
@@ -713,7 +713,7 @@ def test_fetch_items_imdb_normal(mock_fetch, mock_match):
     mock_fetch.return_value = ["tt123"]
     mock_match.return_value = ([{"Name": "M1"}], None, 200)
     items, _error, code = _fetch_items_for_imdb_group(
-        "IMDb", "list_id", "SortName", "http://jf", "key"
+        "IMDb", "list_id", "SortName", "http://jf", "key",
     )
     assert code == 200
     assert len(items) == 1
@@ -725,7 +725,7 @@ def test_fetch_items_trakt_normal(mock_fetch, mock_match):
     mock_fetch.return_value = ["tt123"]
     mock_match.return_value = ([{"Name": "M1"}], None, 200)
     items, _error, code = _fetch_items_for_trakt_group(
-        "Trakt", "user/list", "SortName", "http://jf", "key", "client_id"
+        "Trakt", "user/list", "SortName", "http://jf", "key", "client_id",
     )
     assert code == 200
     assert len(items) == 1
@@ -737,7 +737,7 @@ def test_fetch_items_tmdb_normal(mock_fetch, mock_match):
     mock_fetch.return_value = ["101"]
     mock_match.return_value = ([{"Name": "M1"}], None, 200)
     items, _error, code = _fetch_items_for_tmdb_group(
-        "TMDb", "123", "SortName", "http://jf", "key", "api_key"
+        "TMDb", "123", "SortName", "http://jf", "key", "api_key",
     )
     assert code == 200
     assert len(items) == 1
@@ -749,7 +749,7 @@ def test_fetch_items_anilist_normal(mock_fetch, mock_match):
     mock_fetch.return_value = [12345]
     mock_match.return_value = ([{"Name": "M1"}], None, 200)
     items, _error, code = _fetch_items_for_anilist_group(
-        "AniList", "user", "SortName", "http://jf", "key"
+        "AniList", "user", "SortName", "http://jf", "key",
     )
     assert code == 200
     assert len(items) == 1
@@ -761,7 +761,7 @@ def test_fetch_items_mal_normal(mock_fetch, mock_match):
     mock_fetch.return_value = ["mal123"]
     mock_match.return_value = ([{"Name": "M1"}], None, 200)
     items, _error, code = _fetch_items_for_mal_group(
-        "MAL", "user", "SortName", "http://jf", "key", "client_id"
+        "MAL", "user", "SortName", "http://jf", "key", "client_id",
     )
     assert code == 200
     assert len(items) == 1
@@ -773,7 +773,7 @@ def test_fetch_items_letterboxd_library_error(mock_fetch, mock_lib):
     mock_fetch.return_value = ["tt123"]
     mock_lib.return_value = ([], "Lib error", 503)
     _items, error, code = _fetch_items_for_letterboxd_group(
-        "LB", "user/list", "SortName", "http://jf", "key"
+        "LB", "user/list", "SortName", "http://jf", "key",
     )
     assert code == 503
     assert error == "Lib error"
@@ -784,7 +784,7 @@ def test_complex_group_empty_rules(mock_lib):
     _LIBRARY_CACHE.clear()
     mock_lib.return_value = ([{"Name": "M1"}], None, 200)
     items, _error, _code = _fetch_items_for_complex_group(
-        "Group", [], "SortName", "http://jf", "key"
+        "Group", [], "SortName", "http://jf", "key",
     )
     assert items == []
 
@@ -794,7 +794,7 @@ def test_complex_group_malformed_rule(mock_lib):
     _LIBRARY_CACHE.clear()
     mock_lib.return_value = ([{"Name": "M1"}], None, 200)
     items, _error, _code = _fetch_items_for_complex_group(
-        "Group", [{"type": 123, "value": None}], "SortName", "http://jf", "key"
+        "Group", [{"type": 123, "value": None}], "SortName", "http://jf", "key",
     )
     assert items == []
 
@@ -826,7 +826,7 @@ def test_complex_group_watch_state(mock_lib):
 def test_fetch_items_metadata_request_error(mock_fetch):
     mock_fetch.side_effect = RuntimeError("fail")
     _items, error, code = _fetch_items_for_metadata_group(
-        "Group", "genre", "Action", "SortName", "http://jf", "key"
+        "Group", "genre", "Action", "SortName", "http://jf", "key",
     )
     assert code == 500
     assert "Jellyfin connection error" in error
@@ -836,7 +836,7 @@ def test_fetch_items_metadata_request_error(mock_fetch):
 def test_fetch_items_metadata_unexpected_error(mock_fetch):
     mock_fetch.side_effect = RuntimeError("bad")
     _items, error, code = _fetch_items_for_metadata_group(
-        "Group", "genre", "Action", "SortName", "http://jf", "key"
+        "Group", "genre", "Action", "SortName", "http://jf", "key",
     )
     assert code == 500
     assert "Jellyfin connection error" in error
@@ -849,7 +849,7 @@ def test_fetch_items_metadata_unexpected_error(mock_fetch):
 @patch('sync.create_collection')
 @patch('sync.find_collection_by_name')
 def test_process_collection_group_create_and_cover(
-    mock_find, mock_create, mock_add, mock_cover, mock_set, mock_exists
+    mock_find, mock_create, mock_add, mock_cover, mock_set, mock_exists,
 ):
     mock_find.return_value = None
     mock_create.return_value = "col123"
@@ -857,7 +857,7 @@ def test_process_collection_group_create_and_cover(
     mock_exists.return_value = True
     items = [{"Id": "1", "Name": "Movie"}]
     result = _process_collection_group(
-        "Group", items, "http://jf", "key", "/target", dry_run=False, auto_set_library_covers=True
+        "Group", items, "http://jf", "key", "/target", dry_run=False, auto_set_library_covers=True,
     )
     assert result["links"] == 1
     mock_create.assert_called_once()
@@ -876,7 +876,7 @@ def test_process_collection_group_cover_error(mock_find, mock_add, mock_cover, m
     mock_exists.return_value = True
     items = [{"Id": "1", "Name": "Movie"}]
     result = _process_collection_group(
-        "Group", items, "http://jf", "key", "/target", dry_run=False, auto_set_library_covers=True
+        "Group", items, "http://jf", "key", "/target", dry_run=False, auto_set_library_covers=True,
     )
     assert result["links"] == 1
 
@@ -886,7 +886,7 @@ def test_process_collection_group_cover_error(mock_find, mock_add, mock_cover, m
 
 def test_process_group_empty_name(tmp_path):
     result = _process_group(
-        {}, str(tmp_path), "http://jf", "key", "", "", "", "", "", False, False, False, None, ""
+        {}, str(tmp_path), "http://jf", "key", "", "", "", "", "", False, False, False, None, "",
     )
     assert result["group"] == "(unnamed)"
     assert result["links"] == 0
@@ -906,7 +906,7 @@ def test_process_group_complex_query(mock_meta, mock_complex, tmp_path):
         "sort_order": "SortName",
     }
     result = _process_group(
-        group, str(tmp_path), "http://jf", "key", "", "", "", "", "", False, False, False, None, ""
+        group, str(tmp_path), "http://jf", "key", "", "", "", "", "", False, False, False, None, "",
     )
     mock_complex.assert_called_once()
     assert result["links"] == 1
@@ -922,7 +922,7 @@ def test_process_group_no_items(mock_meta, tmp_path):
         "sort_order": "SortName",
     }
     result = _process_group(
-        group, str(tmp_path), "http://jf", "key", "", "", "", "", "", False, False, False, None, ""
+        group, str(tmp_path), "http://jf", "key", "", "", "", "", "", False, False, False, None, "",
     )
     assert result["links"] == 0
 
@@ -946,7 +946,7 @@ def test_process_group_non_dict_item(mock_meta, tmp_path):
         "sort_order": "SortName",
     }
     result = _process_group(
-        group, str(tmp_path), "http://jf", "key", "", "", "", "", "", False, False, False, None, ""
+        group, str(tmp_path), "http://jf", "key", "", "", "", "", "", False, False, False, None, "",
     )
     assert result["links"] == 1
 
@@ -961,7 +961,7 @@ def test_process_group_missing_path(mock_meta, tmp_path):
         "sort_order": "SortName",
     }
     result = _process_group(
-        group, str(tmp_path), "http://jf", "key", "", "", "", "", "", False, False, False, None, ""
+        group, str(tmp_path), "http://jf", "key", "", "", "", "", "", False, False, False, None, "",
     )
     assert result["links"] == 0
 
@@ -980,7 +980,7 @@ def test_process_group_symlink_error(mock_meta, mock_symlink, tmp_path):
         "sort_order": "SortName",
     }
     result = _process_group(
-        group, str(tmp_path), "http://jf", "key", "", "", "", "", "", False, False, False, None, ""
+        group, str(tmp_path), "http://jf", "key", "", "", "", "", "", False, False, False, None, "",
     )
     assert result["links"] == 0
 
@@ -1159,7 +1159,7 @@ def test_run_sync_seasonal_cleanup(mock_libs, mock_season, mock_process, tmp_pat
                 "seasonal_enabled": True,
                 "seasonal_start": "01-01",
                 "seasonal_end": "01-02",
-            }
+            },
         ],
     }
     results = run_sync(config, dry_run=False)
@@ -1193,7 +1193,7 @@ def test_match_jellyfin_items_by_provider_falsy_provider_id():
     ]
     with patch('sync._fetch_full_library', return_value=(raw_items, None, 200)):
         items, _error, _code = _match_jellyfin_items_by_provider(
-            ["tt123"], "Imdb", "imdb_list_order", "SortName", "http://jf", "key", "Group"
+            ["tt123"], "Imdb", "imdb_list_order", "SortName", "http://jf", "key", "Group",
         )
     assert len(items) == 1
     assert items[0]["Id"] == "2"
@@ -1204,7 +1204,7 @@ def test_match_jellyfin_items_by_provider_letterboxd_unmatched():
     raw_items = [{"Id": "1", "ProviderIds": {"Imdb": "tt123"}}]
     with patch('sync._fetch_full_library', return_value=(raw_items, None, 200)):
         items, _error, _code = _match_jellyfin_items_by_provider(
-            ["tt999", "456"], "Tmdb", "letterboxd_list_order", "SortName", "http://jf", "key", "Group"
+            ["tt999", "456"], "Tmdb", "letterboxd_list_order", "SortName", "http://jf", "key", "Group",
         )
     assert items == []
 
@@ -1217,7 +1217,7 @@ def test_match_jellyfin_items_by_provider_letterboxd_watched():
     ]
     with patch('sync._fetch_full_library', return_value=(raw_items, None, 200)):
         items, _error, _code = _match_jellyfin_items_by_provider(
-            ["tt111", "tt222"], "Imdb", "letterboxd_list_order", "SortName", "http://jf", "key", "Group", watch_state="watched"
+            ["tt111", "tt222"], "Imdb", "letterboxd_list_order", "SortName", "http://jf", "key", "Group", watch_state="watched",
         )
     assert len(items) == 1
     assert items[0]["Id"] == "1"
@@ -1229,7 +1229,7 @@ def test_fetch_items_recommendations_empty_tmdb_ids(mock_recent, mock_recs):
     mock_recent.return_value = [{"Id": "1", "Name": "M1"}]
     mock_recs.return_value = []
     items, error, code = _fetch_items_for_recommendations_group(
-        "Group", "user1", "SortName", "http://jf", "key", "tmdb_key"
+        "Group", "user1", "SortName", "http://jf", "key", "tmdb_key",
     )
     assert items == []
     assert error is None
@@ -1276,7 +1276,7 @@ def test_complex_group_non_dict_rule(mock_lib):
     _LIBRARY_CACHE.clear()
     mock_lib.return_value = ([{"Name": "M1"}], None, 200)
     items, _error, _code = _fetch_items_for_complex_group(
-        "Group", [123], "SortName", "http://jf", "key"
+        "Group", [123], "SortName", "http://jf", "key",
     )
     assert items == []
 
@@ -1286,7 +1286,7 @@ def test_complex_group_empty_type_value(mock_lib):
     _LIBRARY_CACHE.clear()
     mock_lib.return_value = ([{"Name": "M1"}], None, 200)
     items, _error, _code = _fetch_items_for_complex_group(
-        "Group", [{"type": "", "value": ""}], "SortName", "http://jf", "key"
+        "Group", [{"type": "", "value": ""}], "SortName", "http://jf", "key",
     )
     assert items == []
 
@@ -1325,7 +1325,7 @@ def test_process_collection_group_no_cover(mock_find, mock_add, tmp_path):
     mock_find.return_value = "col123"
     items = [{"Id": "1", "Name": "Movie"}]
     result = _process_collection_group(
-        "Group", items, "http://jf", "key", str(tmp_path), dry_run=False, auto_set_library_covers=True
+        "Group", items, "http://jf", "key", str(tmp_path), dry_run=False, auto_set_library_covers=True,
     )
     assert result["links"] == 1
 
@@ -1336,7 +1336,7 @@ def test_process_collection_group_auto_cover_off(mock_find, mock_add, tmp_path):
     mock_find.return_value = "col123"
     items = [{"Id": "1", "Name": "Movie"}]
     result = _process_collection_group(
-        "Group", items, "http://jf", "key", str(tmp_path), dry_run=False, auto_set_library_covers=False
+        "Group", items, "http://jf", "key", str(tmp_path), dry_run=False, auto_set_library_covers=False,
     )
     assert result["links"] == 1
 
@@ -1359,7 +1359,7 @@ def test_process_group_create_collection(mock_meta, mock_add, mock_create, mock_
         "create_as_collection": True,
     }
     result = _process_group(
-        group, str(tmp_path), "http://jf", "key", "", "", "", "", "", False, False, False, None, ""
+        group, str(tmp_path), "http://jf", "key", "", "", "", "", "", False, False, False, None, "",
     )
     assert result["links"] == 1
     mock_create.assert_called_once()
@@ -1375,7 +1375,7 @@ def test_process_group_missing_host_path(mock_meta, tmp_path):
         "sort_order": "SortName",
     }
     result = _process_group(
-        group, str(tmp_path), "http://jf", "key", "", "", "", "", "", False, False, False, None, ""
+        group, str(tmp_path), "http://jf", "key", "", "", "", "", "", False, False, False, None, "",
     )
     assert result["links"] == 0
 
@@ -1436,7 +1436,7 @@ def test_run_sync_seasonal_dry_run(mock_libs, mock_season, mock_process, tmp_pat
                 "seasonal_enabled": True,
                 "seasonal_start": "01-01",
                 "seasonal_end": "01-02",
-            }
+            },
         ],
     }
     results = run_sync(config, dry_run=True)
@@ -1463,7 +1463,7 @@ def test_run_sync_seasonal_no_dir(mock_libs, mock_season, mock_process, tmp_path
                 "seasonal_enabled": True,
                 "seasonal_start": "01-01",
                 "seasonal_end": "01-02",
-            }
+            },
         ],
     }
     results = run_sync(config, dry_run=False)
@@ -1480,10 +1480,10 @@ def test_fetch_items_letterboxd_tmdb_list_order(mock_lib, mock_fetch):
     """Cover line 560: TMDb match inside list-order branch."""
     mock_fetch.return_value = ["456"]
     mock_lib.return_value = [
-        {"Id": "1", "ProviderIds": {"Tmdb": "456"}}
+        {"Id": "1", "ProviderIds": {"Tmdb": "456"}},
     ], None, 200
     items, _error, code = _fetch_items_for_letterboxd_group(
-        "LB", "user/list", "letterboxd_list_order", "http://jf", "key"
+        "LB", "user/list", "letterboxd_list_order", "http://jf", "key",
     )
     assert code == 200
     assert len(items) == 1
@@ -1494,11 +1494,11 @@ def test_fetch_items_letterboxd_tmdb_list_order(mock_lib, mock_fetch):
 def test_fetch_items_recommendations_empty(mock_recent, mock_tmdb):
     """Cover lines 636-638: empty tmdb_ids after recommendations fetch."""
     mock_recent.return_value = [
-        {"Id": "1", "ProviderIds": {"Tmdb": "123"}, "Type": "Movie"}
+        {"Id": "1", "ProviderIds": {"Tmdb": "123"}, "Type": "Movie"},
     ]
     mock_tmdb.return_value = []
     items, _error, code = _fetch_items_for_recommendations_group(
-        "Rec", "user-id", "SortName", "http://jf", "key", "tmdb_key"
+        "Rec", "user-id", "SortName", "http://jf", "key", "tmdb_key",
     )
     assert code == 200
     assert items == []
@@ -1509,7 +1509,7 @@ def test_fetch_items_recommendations_error(mock_recent):
     """Cover lines 632-634: exception in recommendations fetch."""
     mock_recent.side_effect = RuntimeError("Jellyfin down")
     _items, error, code = _fetch_items_for_recommendations_group(
-        "Rec", "user-id", "SortName", "http://jf", "key", "tmdb_key"
+        "Rec", "user-id", "SortName", "http://jf", "key", "tmdb_key",
     )
     assert code == 400
     assert "Recommendations fetch error" in error

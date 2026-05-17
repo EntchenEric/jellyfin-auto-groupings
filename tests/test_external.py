@@ -79,7 +79,7 @@ def test_fetch_mal_list(mock_get):
     mock_resp.status_code = 200
     mock_resp.json.return_value = {
         "data": [{"node": {"id": 123}}],
-        "paging": {}
+        "paging": {},
     }
     mock_get.return_value = mock_resp
 
@@ -96,13 +96,13 @@ def test_fetch_mal_pagination(mock_get):
     resp1.status_code = 200
     resp1.json.return_value = {
         "data": [{"node": {"id": 1}}],
-        "paging": {"next": "url_to_page_2"}
+        "paging": {"next": "url_to_page_2"},
     }
     resp2 = MagicMock()
     resp2.status_code = 200
     resp2.json.return_value = {
         "data": [{"node": {"id": 2}}],
-        "paging": {}
+        "paging": {},
     }
     mock_get.side_effect = [resp1, resp2]
     ids = fetch_mal_list("user", "cid")
@@ -114,7 +114,7 @@ def test_fetch_trakt_list(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 200
     mock_resp.json.return_value = [
-        {"type": "movie", "movie": {"ids": {"imdb": "tt123"}}}
+        {"type": "movie", "movie": {"ids": {"imdb": "tt123"}}},
     ]
     mock_resp.headers = {"X-Pagination-Page-Count": "1"}
     mock_get.return_value = mock_resp
@@ -365,7 +365,7 @@ def test_fetch_trakt_full_url(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 200
     mock_resp.json.return_value = [
-        {"type": "movie", "movie": {"ids": {"imdb": "tt111"}}}
+        {"type": "movie", "movie": {"ids": {"imdb": "tt111"}}},
     ]
     mock_resp.headers = {"X-Pagination-Page-Count": "1"}
     mock_get.return_value = mock_resp
@@ -406,7 +406,7 @@ def test_fetch_trakt_bad_pagination_header(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 200
     mock_resp.json.return_value = [
-        {"type": "movie", "movie": {"ids": {"imdb": "tt222"}}}
+        {"type": "movie", "movie": {"ids": {"imdb": "tt222"}}},
     ]
     mock_resp.headers = {"X-Pagination-Page-Count": "not_a_number"}
     mock_get.return_value = mock_resp

@@ -55,7 +55,7 @@ def fetch_imdb_list(list_id: str) -> list[str]:
 
     if not list_id.startswith("ls"):
         raise ValueError(
-            f"Invalid IMDb list ID: {list_id!r}. Expected format: ls000024390"
+            f"Invalid IMDb list ID: {list_id!r}. Expected format: ls000024390",
         )
 
     ids: list[str] = []
@@ -86,7 +86,7 @@ def fetch_imdb_list(list_id: str) -> list[str]:
 
         # Stop when there is no pagination link pointing to the next page
         has_next = re.search(r'class="[^"]*next-page[^"]*"', html) or re.search(
-            r'rel="next"', html
+            r'rel="next"', html,
         )
         if not has_next or page >= _MAX_PAGES:
             break

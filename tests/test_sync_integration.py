@@ -24,17 +24,17 @@ def test_run_sync_basic(mock_fetch, mock_symlink, mock_rmtree, mock_exists, mock
                 "name": "Action Movies",
                 "source_type": "genre",
                 "source_value": "Action",
-                "sort_order": "SortName"
-            }
-        ]
+                "sort_order": "SortName",
+            },
+        ],
     }
     # Mock items returned by Jellyfin
     mock_fetch.return_value = [
         {
             "Name": "Action Film 1",
             "Path": "/jf/movies/Action Film 1/file.mkv",
-            "Id": "item1"
-        }
+            "Id": "item1",
+        },
     ]
     mock_exists.return_value = True
     results = run_sync(config)
@@ -64,9 +64,9 @@ def test_run_sync_imdb(mock_imdb_fetch, mock_jf_fetch, mock_exists):
                 "name": "IMDb List",
                 "source_type": "imdb_list",
                 "source_value": "ls12345",
-                "sort_order": "imdb_list_order"
-            }
-        ]
+                "sort_order": "imdb_list_order",
+            },
+        ],
     }
     mock_imdb_fetch.return_value = ([{"Name": "M", "Path": "/p", "Id": "i"}], None, 200)
     # Dry run to avoid filesystem mocks

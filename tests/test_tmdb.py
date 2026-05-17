@@ -19,13 +19,13 @@ def test_fetch_tmdb_list_success(mock_get):
     mock_resp_1.status_code = 200
     mock_resp_1.json.return_value = {
         "items": [{"id": 101}, {"id": 102}],
-        "total_pages": 2
+        "total_pages": 2,
     }
     mock_resp_2 = MagicMock()
     mock_resp_2.status_code = 200
     mock_resp_2.json.return_value = {
         "items": [{"id": 103}],
-        "total_pages": 2
+        "total_pages": 2,
     }
     mock_get.side_effect = [mock_resp_1, mock_resp_2]
 
@@ -40,7 +40,7 @@ def test_fetch_tmdb_list_url_parsing(mock_get):
     mock_resp.status_code = 200
     mock_resp.json.return_value = {
         "items": [{"id": 101}],
-        "total_pages": 1
+        "total_pages": 1,
     }
     mock_get.return_value = mock_resp
 
@@ -67,13 +67,13 @@ def test_get_tmdb_recommendations_success(mock_get):
     mock_resp_movie = MagicMock()
     mock_resp_movie.status_code = 200
     mock_resp_movie.json.return_value = {
-        "results": [{"id": 201}, {"id": 202}]
+        "results": [{"id": 201}, {"id": 202}],
     }
 
     mock_resp_tv = MagicMock()
     mock_resp_tv.status_code = 200
     mock_resp_tv.json.return_value = {
-        "results": [{"id": 202}, {"id": 203}]
+        "results": [{"id": 202}, {"id": 203}],
     }
 
     mock_get.side_effect = [mock_resp_movie, mock_resp_tv]
@@ -94,7 +94,7 @@ def test_get_tmdb_recommendations_failure_skipped(mock_get):
     mock_resp_movie = MagicMock()
     mock_resp_movie.status_code = 200
     mock_resp_movie.json.return_value = {
-        "results": [{"id": 201}]
+        "results": [{"id": 201}],
     }
 
     mock_get.side_effect = [requests.exceptions.RequestException("Error"), mock_resp_movie]

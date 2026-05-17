@@ -48,7 +48,7 @@ def fetch_anilist_list(username: str, status: str | None = None) -> list[int]:
             "DROPPED": "DROPPED",
             "PAUSED": "PAUSED",
             "REWATCHING": "REPEATING",
-            "REPEATING": "REPEATING"
+            "REPEATING": "REPEATING",
         }
         normalized_status = status_map.get(status.upper())
         if normalized_status:
@@ -57,7 +57,7 @@ def fetch_anilist_list(username: str, status: str | None = None) -> list[int]:
     response = requests.post(
         ANILIST_API_URL,
         json={"query": query, "variables": variables},
-        timeout=_REQUEST_TIMEOUT
+        timeout=_REQUEST_TIMEOUT,
     )
     response.raise_for_status()
 

@@ -29,7 +29,7 @@ def test_config_migration(temp_config):
     """Test that legacy keys are migrated to new names."""
     legacy_cfg = {
         "jellyfin_root": "/jellyfin/path",
-        "host_root": "/host/path"
+        "host_root": "/host/path",
     }
     with open(temp_config, "w") as f:
         json.dump(legacy_cfg, f)
@@ -45,8 +45,8 @@ def test_nested_defaults(temp_config):
     """Test that nested keys gain defaults if missing."""
     partial_cfg = {
         "scheduler": {
-            "global_enabled": True
-        }
+            "global_enabled": True,
+        },
     }
     with open(temp_config, "w") as f:
         json.dump(partial_cfg, f)

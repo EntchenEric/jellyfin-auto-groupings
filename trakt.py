@@ -46,7 +46,7 @@ def fetch_trakt_list(list_url: str, client_id: str) -> list[str]:
     """
     if not client_id:
         raise ValueError(
-            "A Trakt API Client ID (trakt_client_id) is required to fetch Trakt lists."
+            "A Trakt API Client ID (trakt_client_id) is required to fetch Trakt lists.",
         )
 
     list_url = list_url.strip()
@@ -55,7 +55,7 @@ def fetch_trakt_list(list_url: str, client_id: str) -> list[str]:
     username: str
     list_slug: str
     full_url_match = re.search(
-        r"trakt\.tv/users/([^/]+)/lists/([^/?#]+)", list_url
+        r"trakt\.tv/users/([^/]+)/lists/([^/?#]+)", list_url,
     )
     if full_url_match:
         username = full_url_match.group(1)
@@ -65,7 +65,7 @@ def fetch_trakt_list(list_url: str, client_id: str) -> list[str]:
     else:
         raise ValueError(
             f"Invalid Trakt list URL: {list_url!r}. "
-            "Expected format: https://trakt.tv/users/username/lists/list-slug"
+            "Expected format: https://trakt.tv/users/username/lists/list-slug",
         )
 
     headers: dict[str, str] = {
@@ -87,7 +87,7 @@ def fetch_trakt_list(list_url: str, client_id: str) -> list[str]:
             resp.raise_for_status()
         except requests.exceptions.RequestException as exc:
             raise RuntimeError(
-                f"Failed to fetch Trakt list page {page}: {exc}"
+                f"Failed to fetch Trakt list page {page}: {exc}",
             ) from exc
 
         items: list[dict[str, Any]] = resp.json()

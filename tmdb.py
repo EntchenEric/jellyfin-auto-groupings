@@ -54,7 +54,7 @@ def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
         params = {
             "api_key": api_key,
             "page": str(page),
-            "language": _DEFAULT_TMDB_LANGUAGE
+            "language": _DEFAULT_TMDB_LANGUAGE,
         }
 
         try:
@@ -62,7 +62,7 @@ def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
             resp.raise_for_status()
         except requests.exceptions.RequestException as exc:
             raise RuntimeError(
-                f"Failed to fetch TMDb list page {page}: {exc}"
+                f"Failed to fetch TMDb list page {page}: {exc}",
             ) from exc
 
         data: dict[str, Any] = resp.json()
@@ -108,7 +108,7 @@ def get_tmdb_recommendations(items_with_type: list[tuple[str, str]], api_key: st
         params = {
             "api_key": api_key,
             "language": _DEFAULT_TMDB_LANGUAGE,
-            "page": "1"
+            "page": "1",
         }
         try:
             resp = requests.get(url, params=params, timeout=10)

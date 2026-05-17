@@ -36,7 +36,7 @@ def test_get_libraries(mock_get):
     mock_get.assert_called_with(
         "http://localhost:8096/Library/VirtualFolders",
         headers={"X-Emby-Token": "test_key"},
-        timeout=30
+        timeout=30,
     )
 
 
@@ -138,7 +138,7 @@ def test_delete_virtual_folder(mock_delete):
         "http://localhost:8096/Library/VirtualFolders",
         params={"name": "ToDelete"},
         headers={"X-Emby-Token": "test_key"},
-        timeout=30
+        timeout=30,
     )
 
 
@@ -166,7 +166,7 @@ def test_get_library_id(mock_get):
     mock_response.json.return_value = [
         {"Name": "Movies", "ItemId": "12345"},
         {"Name": "TV Shows", "ItemId": "67890"},
-        {"Name": "Orphans"}
+        {"Name": "Orphans"},
     ]
     mock_response.raise_for_status.return_value = None
     mock_get.return_value = mock_response
@@ -217,7 +217,7 @@ def test_get_users(mock_get):
     mock_get.assert_called_once_with(
         "http://localhost:8096/Users",
         headers={"X-Emby-Token": "test_key"},
-        timeout=30
+        timeout=30,
     )
 
 
@@ -245,7 +245,7 @@ def test_get_user_recent_items(mock_get):
         "http://localhost:8096/Users/u1/Items",
         headers={"X-Emby-Token": "test_key"},
         params=expected_params,
-        timeout=30
+        timeout=30,
     )
 
 
@@ -384,7 +384,7 @@ def test_set_virtual_folder_image_request_exception(mock_get_library_id, mock_po
 @patch('requests.post')
 @patch('jellyfin.get_library_id')
 def test_set_virtual_folder_image_request_exception_no_response(
-    mock_get_library_id, mock_post, mock_open, mock_guess, caplog
+    mock_get_library_id, mock_post, mock_open, mock_guess, caplog,
 ):
     mock_guess.return_value = ("image/jpeg", None)
     mock_get_library_id.return_value = "123"

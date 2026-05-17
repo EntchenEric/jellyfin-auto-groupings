@@ -57,7 +57,7 @@ def fetch_mal_list(username: str, client_id: str, status: str | None = None) -> 
         params["status"] = normalized_status
 
     headers = {
-        "X-MAL-CLIENT-ID": client_id
+        "X-MAL-CLIENT-ID": client_id,
     }
 
     ids = []

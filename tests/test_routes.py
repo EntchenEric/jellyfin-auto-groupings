@@ -145,7 +145,7 @@ def test_auto_detect_paths(mock_fetch, client):
 
     with patch('os.walk') as mock_walk:
         mock_walk.return_value = [
-            ('/home/user/Movies', [], ['M1.mkv'])
+            ('/home/user/Movies', [], ['M1.mkv']),
         ]
         response = client.post('/api/jellyfin/auto-detect-paths')
         assert response.status_code == 200
@@ -439,7 +439,7 @@ def test_get_cleanup_items_with_groups(client, tmp_path):
     (target / ".hidden").mkdir()
     save_config({
         "target_path": str(target),
-        "groups": [{"name": "Action"}]
+        "groups": [{"name": "Action"}],
     })
     response = client.get('/api/cleanup')
     assert response.status_code == 200
@@ -772,7 +772,7 @@ def test_perform_cleanup_with_auto_create(mock_exists, mock_delete, client, tmp_
         "target_path": str(target),
         "auto_create_libraries": True,
         "jellyfin_url": "http://jf",
-        "api_key": "key"
+        "api_key": "key",
     })
     mock_exists.return_value = True
     response = client.post('/api/cleanup', json={"folders": ["Action"]})
@@ -792,7 +792,7 @@ def test_perform_cleanup_delete_virtual_folder_error(mock_exists, mock_delete, c
         "target_path": str(target),
         "auto_create_libraries": True,
         "jellyfin_url": "http://jf",
-        "api_key": "key"
+        "api_key": "key",
     })
     mock_exists.return_value = True
     mock_delete.side_effect = RuntimeError("Jellyfin error")
@@ -956,7 +956,7 @@ def test_csrf_protection_with_header(client):
         response = client.post(
             '/api/config',
             json={"jellyfin_url": "http://test"},
-            headers={"X-Requested-With": "XMLHttpRequest"}
+            headers={"X-Requested-With": "XMLHttpRequest"},
         )
         # CSRF passes, so we get the normal handler response (200), not 403
         assert response.status_code == 200

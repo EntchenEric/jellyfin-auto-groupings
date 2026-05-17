@@ -27,7 +27,7 @@ class TestE2ELibraries:
         resp = requests.post(
             f"{e2e_session['app_url']}/api/config",
             json=config,
-            timeout=10
+            timeout=10,
         )
         assert resp.status_code == 200
 

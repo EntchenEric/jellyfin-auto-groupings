@@ -13,7 +13,7 @@ class TestE2EConnection:
         """The test-server endpoint should return success against real Jellyfin."""
         result = api_post(e2e_session, "/api/test-server", {
             "jellyfin_url": e2e_session["jellyfin_url_internal"],
-            "api_key": e2e_session["api_key"]
+            "api_key": e2e_session["api_key"],
         })
         assert result["status"] == "success"
 
@@ -21,7 +21,7 @@ class TestE2EConnection:
         """Server info should be retrievable from the test-server response."""
         result = api_post(e2e_session, "/api/test-server", {
             "jellyfin_url": e2e_session["jellyfin_url_internal"],
-            "api_key": e2e_session["api_key"]
+            "api_key": e2e_session["api_key"],
         })
         assert "message" in result
 
@@ -29,7 +29,7 @@ class TestE2EConnection:
         """An invalid URL should result in an error."""
         result = api_post(e2e_session, "/api/test-server", {
             "jellyfin_url": "http://nonexistent:9999",
-            "api_key": "fake-key"
+            "api_key": "fake-key",
         })
         assert result["status"] == "error"
 
@@ -37,6 +37,6 @@ class TestE2EConnection:
         """An incorrect API key should result in an error."""
         result = api_post(e2e_session, "/api/test-server", {
             "jellyfin_url": e2e_session["jellyfin_url_internal"],
-            "api_key": "invalid-key-12345"
+            "api_key": "invalid-key-12345",
         })
         assert result["status"] == "error"

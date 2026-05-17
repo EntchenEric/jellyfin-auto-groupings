@@ -36,15 +36,15 @@ def test_sync_with_diverse_data(virtual_jellyfin):
                 "name": "Action Classics",
                 "source_type": "complex",
                 "source_value": "genre:Action AND year:<2000",
-                "sort_order": "SortName"
+                "sort_order": "SortName",
             },
             {
                 "name": "Modern Sci-Fi",
                 "source_type": "complex",
                 "source_value": "genre:Sci-Fi AND year:>2000",
-                "sort_order": "SortName"
-            }
-        ]
+                "sort_order": "SortName",
+            },
+        ],
     }
     # Action classics: The Matrix (1999) [Action, Sci-Fi]
     # Modern Sci-Fi: Inception (2010), Interstellar (2014)
@@ -66,9 +66,9 @@ def test_sync_robustness_missing_metadata(virtual_jellyfin):
                 "name": "All Movies",
                 "source_type": "general",
                 "source_value": "all",
-                "sort_order": "SortName"
-            }
-        ]
+                "sort_order": "SortName",
+            },
+        ],
     }
     # This should not crash even with items like "Empty Item" or "Movie Without Year"
     results = run_sync(config, dry_run=True)
@@ -88,9 +88,9 @@ def test_sync_large_volume(virtual_jellyfin):
                 "name": "Large Group",
                 "source_type": "general",
                 "source_value": "all",
-                "sort_order": "SortName"
-            }
-        ]
+                "sort_order": "SortName",
+            },
+        ],
     }
     results = run_sync(config, dry_run=True)
     # 106 unique items * 40 = 4240 items.
@@ -108,9 +108,9 @@ def test_sync_complex_nested_queries(virtual_jellyfin):
                 "name": "Complex Filter",
                 "source_type": "complex",
                 "source_value": "(genre:Action OR genre:Crime) AND NOT genre:Sci-Fi",
-                "sort_order": "SortName"
-            }
-        ]
+                "sort_order": "SortName",
+            },
+        ],
     }
     results = run_sync(config, dry_run=True)
     assert results[0]["links"] > 0
@@ -127,9 +127,9 @@ def test_sync_chaos_robustness(virtual_jellyfin):
                 "name": "Chaos Group",
                 "source_type": "general",
                 "source_value": "all",
-                "sort_order": "SortName"
-            }
-        ]
+                "sort_order": "SortName",
+            },
+        ],
     }
     # This should not crash despite:
     # - Duplicate ID "chaos_1"
@@ -153,9 +153,9 @@ def test_sync_mixed_character_encodings(virtual_jellyfin):
                 "name": "International",
                 "source_type": "complex",
                 "source_value": "year:>2020",
-                "sort_order": "SortName"
-            }
-        ]
+                "sort_order": "SortName",
+            },
+        ],
     }
     results = run_sync(config, dry_run=True)
     assert results[0]["links"] > 0

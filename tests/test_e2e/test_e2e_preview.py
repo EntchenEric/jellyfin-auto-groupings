@@ -14,7 +14,7 @@ class TestE2EPreview:
         result = api_post(e2e_session, "/api/grouping/preview", {
             "type": "genre",
             "value": "Action",
-            "watch_state": ""
+            "watch_state": "",
         })
         assert result["status"] == "success"
         assert isinstance(result.get("count"), int)
@@ -25,7 +25,7 @@ class TestE2EPreview:
         result = api_post(e2e_session, "/api/grouping/preview", {
             "type": "genre",
             "value": "",
-            "watch_state": ""
+            "watch_state": "",
         })
         assert result["status"] == "error"
 
@@ -34,6 +34,6 @@ class TestE2EPreview:
         result = api_post(e2e_session, "/api/grouping/preview", {
             "type": "general",
             "value": "Matrix",
-            "watch_state": ""
+            "watch_state": "",
         })
         assert result["status"] == "success"
