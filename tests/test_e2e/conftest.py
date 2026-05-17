@@ -101,14 +101,14 @@ def e2e_session(e2e_app_url, e2e_jellyfin_url, e2e_api_key):
 
 
 def api_post(session, path, data=None):
-    """Helper to POST to the app API."""
+    """POST to the app API."""
     url = f"{session['app_url']}{path}"
     resp = requests.post(url, json=data or {}, timeout=10)
     return resp.json()
 
 
 def api_get(session, path):
-    """Helper to GET from the app API."""
+    """GET from the app API."""
     url = f"{session['app_url']}{path}"
     resp = requests.get(url, timeout=10)
     return resp.json()

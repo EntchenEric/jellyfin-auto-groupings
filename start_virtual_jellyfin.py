@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Helper script to run the virtual Jellyfin mock server for development and testing.
-Provides a dashboard at http://localhost:8096
+
+Provides a dashboard at http://localhost:8096.
 """
 
 import logging

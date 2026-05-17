@@ -56,8 +56,11 @@ _original_delete = requests.delete
 
 
 def _reraise_timeout(exc: requests.ConnectionError) -> None:
-    """If *exc* wraps a read-timeout from the retry adapter, re-raise as
-    :class:`requests.Timeout` so callers see the expected exception type."""
+    """Re-raise a retry timeout as :class:`requests.Timeout`.
+
+    If *exc* wraps a read-timeout from the retry adapter, re-raise it so callers
+    see the expected exception type.
+    """
     inner = exc.args[0] if exc.args else None
     if not isinstance(inner, MaxRetryError):
         return
