@@ -13,7 +13,7 @@ class TestServerConnection:
 
     def test_test_server_success(self, client):
         """Test that /api/test-server returns success with valid params."""
-        with patch("routes.requests.get") as mock_get:
+        with patch("routes.network.get") as mock_get:
             mock_resp = MagicMock()
             mock_resp.status_code = 200
             mock_get.return_value = mock_resp
@@ -38,7 +38,7 @@ class TestServerConnection:
 
     def test_test_server_auth_failure(self, client):
         """Test that invalid API key returns error."""
-        with patch("routes.requests.get") as mock_get:
+        with patch("routes.network.get") as mock_get:
             mock_get.side_effect = requests_lib.exceptions.RequestException("Unauthorized")
 
             resp = client.post("/api/test-server", json={
@@ -63,7 +63,7 @@ class TestMetadataEndpoints:
     def test_metadata_returns_categories(self, client):
         """Test successful metadata response has expected categories."""
         with patch("routes.load_config") as mock_load, \
-                patch("routes.requests.get") as mock_get:
+                patch("routes.network.get") as mock_get:
             mock_load.return_value = {
                 "jellyfin_url": TEST_URL,
                 "api_key": TEST_API_KEY,

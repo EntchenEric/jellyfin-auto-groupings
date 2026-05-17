@@ -15,7 +15,7 @@ from tmdb import fetch_tmdb_list
 from trakt import fetch_trakt_list
 
 
-@patch('requests.Session.get')
+@patch('requests.get')
 def test_fetch_letterboxd_list(mock_get):
     # Mock main list page
     mock_list_resp = MagicMock()
@@ -33,7 +33,7 @@ def test_fetch_letterboxd_list(mock_get):
     assert ids == ["tt0068646"]
 
 
-@patch('requests.Session.get')
+@patch('requests.get')
 def test_fetch_letterboxd_list_tmdb(mock_get):
     # Test TMDb ID extraction and pagination stop
     mock_list_resp = MagicMock()
@@ -64,7 +64,7 @@ def test_fetch_letterboxd_invalid_url():
         fetch_letterboxd_list("https://not-lb-domain.com")
 
 
-@patch('requests.Session.get')
+@patch('requests.get')
 def test_fetch_letterboxd_http_error(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 500
@@ -221,14 +221,14 @@ def test_extract_ids_priority_tmdb_over_imdb():
     assert result == {"film1": "111"}
 
 
-@patch('requests.Session.get')
+@patch('requests.get')
 def test_fetch_id_for_slug_request_exception(mock_get):
     mock_get.side_effect = requests.exceptions.ConnectionError("Network down")
     result = _fetch_id_for_slug("some-film")
     assert result is None
 
 
-@patch('requests.Session.get')
+@patch('requests.get')
 def test_letterboxd_404_on_page_two(mock_get):
     resp1 = MagicMock()
     resp1.status_code = 200
@@ -247,7 +247,7 @@ def test_letterboxd_404_on_page_two(mock_get):
     assert ids == ["tt1234567"]
 
 
-@patch('requests.Session.get')
+@patch('requests.get')
 def test_letterboxd_fallback_slug_regex(mock_get):
     resp = MagicMock()
     resp.status_code = 200
@@ -258,7 +258,7 @@ def test_letterboxd_fallback_slug_regex(mock_get):
     assert ids == []
 
 
-@patch('requests.Session.get')
+@patch('requests.get')
 def test_letterboxd_no_slugs(mock_get):
     resp = MagicMock()
     resp.status_code = 200
@@ -270,7 +270,7 @@ def test_letterboxd_no_slugs(mock_get):
 
 
 @patch('letterboxd._fetch_id_for_slug')
-@patch('requests.Session.get')
+@patch('requests.get')
 def test_letterboxd_threadpool_exception(mock_get, mock_fetch_slug):
     resp = MagicMock()
     resp.status_code = 200

@@ -26,11 +26,15 @@ from config import CONFIG_FILE, DEFAULT_CONFIG, save_config
 from routes import bp
 from scheduler import start_scheduler
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+
+def _configure_logging() -> None:
+    """Configure logging — call once at startup, not at import time."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
 
 # ---------------------------------------------------------------------------
 # Application factory
@@ -45,11 +49,14 @@ app.register_blueprint(bp)
 if not app.testing and (not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true"):
     start_scheduler()
 
+
 # ---------------------------------------------------------------------------
 # Entry-point
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
+    _configure_logging()
+
     # Create a default config file on first run so the UI has something to load
     if not Path(CONFIG_FILE).exists():
         save_config(DEFAULT_CONFIG.copy())

@@ -1,4 +1,4 @@
-name: Old Tests
+name: Tests
 
 on:
   push:
@@ -22,11 +22,26 @@ jobs:
     - name: Run ruff linter
       run: ruff check .
 
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-dev.txt
+    - name: Run mypy type checker
+      run: mypy --ignore-missing-imports --exclude tests --exclude venv --exclude __pycache__ --exclude node_modules .
+
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.12']
+        python-version: ['3.11', '3.12']
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python

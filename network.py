@@ -1,14 +1,11 @@
 """network.py - Retry-aware HTTP for external API calls.
 
-Importing this module monkey-patches ``requests.get``, ``requests.post``, and
-``requests.delete`` to use a shared :class:`requests.Session` configured with
+Provides explicit :func:`get`, :func:`post`, and :func:`delete` helpers
+that delegate to a shared :class:`requests.Session` configured with
 exponential-backoff retry on transient failures (5xx, connection errors).
 
-All modules that ``import requests`` after this module has been loaded
-automatically benefit from retry logic with **zero code changes**.
-
-Tests that ``@patch('module.requests.get')`` continue to work because the mock
-replaces the monkey-patched function, not the underlying session.
+Import these helpers instead of ``requests.get`` / ``requests.post`` / ``requests.delete``
+to benefit from retry logic with **zero monkey-patching**.
 """
 
 from __future__ import annotations
@@ -22,6 +19,12 @@ from urllib3.exceptions import MaxRetryError, ReadTimeoutError
 from urllib3.util.retry import Retry
 
 logger = logging.getLogger(__name__)
+
+__all__ = [
+    "delete",
+    "get",
+    "post",
+]
 
 _RETRY_TOTAL = 3
 _RETRY_BACKOFF_FACTOR = 1.0
@@ -50,11 +53,8 @@ def _build_retry_session() -> requests.Session:
 _SESSION = _build_retry_session()
 
 # ---------------------------------------------------------------------------
-# Monkey-patch the top-level requests functions to delegate to the session.
+# Public helpers — explicit functions instead of monkey-patching requests.
 # ---------------------------------------------------------------------------
-_original_get = requests.get
-_original_post = requests.post
-_original_delete = requests.delete
 
 
 def _reraise_timeout(exc: requests.ConnectionError) -> None:
@@ -73,7 +73,7 @@ def _reraise_timeout(exc: requests.ConnectionError) -> None:
         raise requests.Timeout(msg) from reason
 
 
-def _patched_get(url: str, **kwargs: Any) -> requests.Response:
+def get(url: str, **kwargs: Any) -> requests.Response:
     """GET *url* through the retry-enabled session."""
     try:
         return _SESSION.get(url, **kwargs)
@@ -82,7 +82,7 @@ def _patched_get(url: str, **kwargs: Any) -> requests.Response:
         raise
 
 
-def _patched_post(url: str, **kwargs: Any) -> requests.Response:
+def post(url: str, **kwargs: Any) -> requests.Response:
     """POST to *url* through the retry-enabled session."""
     try:
         return _SESSION.post(url, **kwargs)
@@ -91,15 +91,10 @@ def _patched_post(url: str, **kwargs: Any) -> requests.Response:
         raise
 
 
-def _patched_delete(url: str, **kwargs: Any) -> requests.Response:
+def delete(url: str, **kwargs: Any) -> requests.Response:
     """DELETE *url* through the retry-enabled session."""
     try:
         return _SESSION.delete(url, **kwargs)
     except requests.ConnectionError as exc:
         _reraise_timeout(exc)
         raise
-
-
-requests.get = _patched_get         # type: ignore[method-assign, assignment]
-requests.post = _patched_post       # type: ignore[method-assign, assignment]
-requests.delete = _patched_delete   # type: ignore[method-assign, assignment]

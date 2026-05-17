@@ -16,6 +16,8 @@ if TYPE_CHECKING:
 
 import requests
 
+import network
+
 logger = logging.getLogger(__name__)
 
 __all__ = [
@@ -118,7 +120,7 @@ def _get_json(
     if params is not None:
         kwargs["params"] = params
     try:
-        response = requests.get(url, timeout=timeout, **kwargs)
+        response = network.get(url, timeout=timeout, **kwargs)
         response.raise_for_status()
     except requests.exceptions.RequestException as exc:
         _raise_request_error(exc, f"Failed to GET {url}")
@@ -153,9 +155,9 @@ def _request_or_raise(
         kwargs["json"] = json
     try:
         if method == "POST":
-            response = requests.post(url, timeout=timeout, **kwargs)
+            response = network.post(url, timeout=timeout, **kwargs)
         elif method == "DELETE":
-            response = requests.delete(url, timeout=timeout, **kwargs)
+            response = network.delete(url, timeout=timeout, **kwargs)
         else:
             msg = f"Unsupported HTTP method: {method}"
             raise ValueError(msg)
@@ -464,7 +466,7 @@ def add_virtual_folder(
 
     try:
         # data="" ensures non-JSON POST works for creation if needed
-        create_resp = requests.post(
+        create_resp = network.post(
             f"{base_url}/Library/VirtualFolders",
             params=create_params,
             headers=headers,
@@ -509,7 +511,7 @@ def delete_virtual_folder(base_url: str, api_key: str, name: str, timeout: int =
     params = {"name": name}
     headers = _auth_headers(api_key)
     try:
-        response = requests.delete(
+        response = network.delete(
             f"{base_url}/Library/VirtualFolders",
             params=params,
             headers=headers,
@@ -572,7 +574,7 @@ def _upload_image(
     headers["Content-Type"] = mime_type or "application/octet-stream"
     url = f"{base_url}/Items/{item_id}/Images/Primary"
     try:
-        response = requests.post(url, data=image_bytes, headers=headers, timeout=timeout)
+        response = network.post(url, data=image_bytes, headers=headers, timeout=timeout)
         response.raise_for_status()
     except requests.exceptions.RequestException as exc:
         _raise_request_error(exc, f"Failed to upload image for item {item_id!r}")

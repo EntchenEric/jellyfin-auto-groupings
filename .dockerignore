@@ -54,3 +54,6 @@ build/
 README.md
 unraid/
 e2e/
+.env
+*.log
+*.tmp
