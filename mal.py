@@ -11,6 +11,24 @@ MAL_API_BASE_URL = "https://api.myanimelist.net/v2"
 # Request timeout (seconds)
 _REQUEST_TIMEOUT: int = 15
 
+_VALID_MAL_STATUSES: frozenset[str] = frozenset(
+    {"watching", "completed", "on_hold", "dropped", "plan_to_watch"}
+)
+
+
+def _normalize_mal_status(status: str | None) -> str | None:
+    """Normalize a user-provided MAL status string to the API's expected values."""
+    if not status:
+        return None
+    s = status.lower().replace(" ", "_").replace("-", "_")
+    mapping = {
+        "current": "watching",
+        "planning": "plan_to_watch",
+        "paused": "on_hold",
+        "all": None,
+    }
+    return mapping.get(s, s if s in _VALID_MAL_STATUSES else s)
+
 
 def fetch_mal_list(username: str, client_id: str, status: str | None = None) -> list[int]:
     """Fetch anime IDs from a user's MyAnimeList profile.
@@ -28,25 +46,7 @@ def fetch_mal_list(username: str, client_id: str, status: str | None = None) -> 
     if not client_id:
         raise ValueError("MyAnimeList Client ID is required.")
 
-    # Status normalization if needed. MAL expects these exact strings:
-    # watching, completed, on_hold, dropped, plan_to_watch
-    # We'll assume the input matches or we'll map common variants.
-    valid_statuses = {"watching", "completed", "on_hold", "dropped", "plan_to_watch"}
-    normalized_status = None
-    if status:
-        s = status.lower().replace(" ", "_").replace("-", "_")
-        if s == "current":
-            normalized_status = "watching"
-        elif s == "planning":
-            normalized_status = "plan_to_watch"
-        elif s == "paused":
-            normalized_status = "on_hold"
-        elif s in valid_statuses:
-            normalized_status = s
-        elif s == "all":
-            normalized_status = None
-        else:
-            normalized_status = s  # Fallback to whatever user typed
+    normalized_status = _normalize_mal_status(status)
 
     url = f"{MAL_API_BASE_URL}/users/{username}/animelist"
     params: dict[str, Any] = {
