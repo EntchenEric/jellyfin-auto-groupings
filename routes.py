@@ -18,7 +18,7 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import requests
 from flask import (
@@ -30,8 +30,10 @@ from flask import (
     request,
     send_from_directory,
 )
-from flask.typing import ResponseReturnValue
 from werkzeug.exceptions import HTTPException
+
+if TYPE_CHECKING:
+    from flask.typing import ResponseReturnValue
 
 from config import load_config, save_config
 from jellyfin import (
