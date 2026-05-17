@@ -176,8 +176,8 @@ def _get_jellyfin_config(
     config = load_config()
     if not isinstance(config, dict):
         abort(500, description="Invalid configuration format")
-    url = str(config.get("jellyfin_url", "")).rstrip("/")
-    api_key = str(config.get("api_key", ""))
+    url = str(config.get("jellyfin_url") or "").rstrip("/")
+    api_key = str(config.get("api_key") or "")
     if not url or not api_key:
         abort(400, description=missing_msg)
     return url, api_key
