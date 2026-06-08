@@ -252,9 +252,38 @@ See [`.env.example`](.env.example) for quick setup.
 1. Clone the repo.
 2. Install dependencies: `pip install -r requirements.txt`.
 3. Run: `python app.py`.
-4. Tests: `python -m pytest`.
 
-### 🧪 Virtual Jellyfin for Development
+### 🧪 Testing
+
+```bash
+# Run the full test suite (417+ tests, 99%+ coverage)
+python -m pytest
+
+# Run tests with coverage report
+python -m pytest --cov=.
+
+# Run a specific test file
+python -m pytest tests/test_routes.py -v
+
+# Run without slow integration/exhaustive tests
+python -m pytest -m "not exhaustive" tests/
+
+# Generate an HTML coverage report
+python -m pytest --cov=. --cov-report=html
+open htmlcov/index.html
+```
+
+Run tests and save output to a file:
+```bash
+python run_tests_to_file.py
+```
+
+#### Test Dashboard
+
+Open `/test` in your browser (when the app is running) to view a dashboard that
+shows test results, coverage metrics, and verbose logs in real time.
+
+#### Virtual Jellyfin for Development
 If you don't have a real Jellyfin server handy, or want to test without affecting your real setup, you can run a **mock Jellyfin server**:
 
 ```bash

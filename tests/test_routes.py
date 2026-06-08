@@ -1038,3 +1038,26 @@ def test_get_jellyfin_config_null_values(mock_load_config):
     with pytest.raises(HTTPException) as excinfo:
         _get_jellyfin_config()
     assert excinfo.value.code == 400
+
+
+# ---------------------------------------------------------------------------
+# auth coverage — _check_auth returning 401 response (via application context)
+# ---------------------------------------------------------------------------
+
+
+def test_check_auth_no_password_set(client):
+    """When APP_PASSWORD is empty, all requests pass through."""
+    response = client.get('/api/config')
+    assert response.status_code == 200
+
+
+def test_check_auth_protected_endpoint_missing_auth(app, monkeypatch):
+    """Protected endpoint returns 401 when no auth header is sent."""
+    # By directly setting the module-level variable, we simulate auth protection
+    import routes as routes_mod
+
+    monkeypatch.setattr(routes_mod, '_APP_PASSWORD', 'secret')
+    routes_mod._check_auth.cache_clear() if hasattr(routes_mod._check_auth, 'cache_clear') else None
+
+    response = app.test_client().get('/api/config')
+    assert response.status_code == 401
