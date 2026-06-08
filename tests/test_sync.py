@@ -336,24 +336,64 @@ def test_sort_items_missing_values_logic():
 
 
 def test_is_in_season():
-    from unittest.mock import MagicMock
+    from datetime import datetime
+    from unittest.mock import MagicMock, patch
+
     with patch('sync.datetime') as mock_datetime:
-        mock_now = MagicMock()
+        mock_now = MagicMock(spec=datetime)
         mock_datetime.now.return_value = mock_now
-        # Case 1: Within year window
-        mock_now.strftime.return_value = "07-15"
+
+        # Case 1: Within-year window
+        mock_now.month = 7
+        mock_now.day = 15
         assert _is_in_season("06-01", "09-01") is True
-        mock_now.strftime.return_value = "05-15"
+
+        mock_now.month = 5
+        mock_now.day = 15
         assert _is_in_season("06-01", "09-01") is False
-        # Case 2: Crossing year window
-        mock_now.strftime.return_value = "12-15"
+
+        mock_now.month = 6
+        mock_now.day = 1
+        assert _is_in_season("06-01", "09-01") is True   # Inclusive start
+
+        # Case 2: Crossing-year window (e.g. Dec to Jan)
+        mock_now.month = 12
+        mock_now.day = 15
         assert _is_in_season("12-01", "01-01") is True
-        mock_now.strftime.return_value = "01-15"
+
+        mock_now.month = 1
+        mock_now.day = 15
         assert _is_in_season("12-01", "01-01") is False
-        mock_now.strftime.return_value = "01-01"
+
+        mock_now.month = 1
+        mock_now.day = 1
         assert _is_in_season("12-01", "01-01") is False  # Exclusive end
-        # Case 3: Invalid types
-        assert _is_in_season(None, "01-01") is True  # Defaults to True
+
+        # Case 3: Invalid types -> gracefully in-season
+        assert _is_in_season(None, "01-01") is True
+        assert _is_in_season(123, 456) is True
+
+        # Case 4: Edge — exactly at end of crossing-year window
+        mock_now.month = 12
+        mock_now.day = 31
+        assert _is_in_season("12-01", "01-01") is True
+
+        # Case 5: Crossing year, mid-season
+        mock_now.month = 11
+        mock_now.day = 30
+        assert _is_in_season("11-15", "03-15") is True
+
+        mock_now.month = 2
+        mock_now.day = 28
+        assert _is_in_season("11-15", "03-15") is True
+
+        mock_now.month = 10
+        mock_now.day = 1
+        assert _is_in_season("11-15", "03-15") is False
+
+        mock_now.month = 4
+        mock_now.day = 1
+        assert _is_in_season("11-15", "03-15") is False
 
 
 # ---------------------------------------------------------------------------

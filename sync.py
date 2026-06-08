@@ -350,10 +350,12 @@ def _sort_items_in_memory(
         the overall sort is ascending or descending.
         """
         value = item.get(primary_key)
-        # For ascending (reverse=False): missing=1 > present=0  → end
-        # For descending (reverse=True):  missing=0 < present=1 → end (smallest after reversal)
-        missing = (1 if value is None else 0) if not reverse else (0 if value is None else 1)
-        return (missing, value or "")
+        if value is None:
+            # Sentinel for items missing the sort field — always sorts to the end.
+            # Ascending:  (1, "") > (0, "ValueX")  → end
+            # Descending: (1, "") > (0, "ValueX")  but reverse=True pushes (1,) below (0,)
+            return (0, "") if reverse else (1, "")
+        return (1, value) if reverse else (0, value)
 
     return sorted(items, key=_key, reverse=reverse)
 
@@ -1357,25 +1359,49 @@ def _process_group(
     return result
 
 
+def _parse_mmdd(value: str) -> tuple[int, int]:
+    """Parse an ``MM-DD`` string into a ``(month, day)`` tuple.
+
+    Returns ``(0, 0)`` for unparseable values so they never match.
+    """
+    parts = value.split("-", 1)
+    try:
+        return (int(parts[0]), int(parts[1]))
+    except (ValueError, IndexError):
+        return (0, 0)
+
+
 def _is_in_season(start_str: Any, end_str: Any) -> bool:
     """Check if the current date is within the seasonal window [start, end).
 
-    Dates are in 'MM-DD' format.
+    Both start and end must be ``MM-DD`` strings.  The window is **inclusive**
+    of *start* and **exclusive** of *end* so that two windows can cleanly
+    abut without overlap.  Year-boundaries are handled correctly (e.g.
+    ``12-01`` to ``01-01`` means the period covering all of December).
+
+    Returns:
+        ``True`` if the current date falls within the seasonal window.
+        ``True`` also when inputs are malformed (graceful degradation
+        — treats a broken season rule as "always in season").
+
     """
     if not isinstance(start_str, str) or not isinstance(end_str, str):
         return True
 
     now = datetime.now(tz=UTC)
-    current_md = now.strftime("%m-%d")
+    current = (now.month, now.day)
 
-    s: str = start_str
-    e: str = end_str
+    s = _parse_mmdd(start_str)
+    e = _parse_mmdd(end_str)
+
+    if s == (0, 0) or e == (0, 0):
+        return True
 
     if s <= e:
         # Simple case: window stays within one calendar year (e.g., 06-01 to 08-31)
-        return s <= current_md < e
+        return s <= current < e
     # Over-year case: window spans across Jan 1st (e.g., 12-01 to 01-01)
-    return current_md >= s or current_md < e
+    return current >= s or current < e
 
 
 def _fetch_existing_libraries(url: str, api_key: str) -> list[str]:
