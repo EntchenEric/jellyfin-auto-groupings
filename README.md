@@ -106,9 +106,130 @@ You can use the **Complex** source type to build highly specific libraries. The 
 **Example:**
 `actor:Tom Cruise AND genre:Action AND NOT genre:Sci-Fi`
 
+## ⏰ Scheduler Configuration
+
+Jellyfin Groupings includes a built-in scheduler that can automatically sync groups and clean up broken symlinks on a recurring basis.
+
+### Scheduler Settings
+
+| Setting | Description | Default |
+|---|---|---|
+| **Global Sync Enabled** | Toggle automatic syncing of all groups on a schedule | `false` |
+| **Global Sync Schedule** | Cron expression for global sync (e.g., `0 0 * * *` = daily at midnight) | `0 0 * * *` |
+| **Excluded Groups** | List of group names that should NOT be synced automatically | `[]` |
+| **Cleanup Enabled** | Automatically remove broken symlinks on a schedule | `true` |
+| **Cleanup Schedule** | Cron expression for cleanup (e.g., `0 * * * *` = hourly) | `0 * * * *` |
+
+### Per-Group Schedules
+
+Each group can also have its own schedule (override the global cron). When set, that group
+will sync at its own cadence regardless of the global setting.
+
+### Example Cron Expressions
+
+| Expression | Meaning |
+|---|---|
+| `0 0 * * *` | Daily at midnight |
+| `0 */6 * * *` | Every 6 hours |
+| `0 3 * * 0` | Every Sunday at 3:00 AM |
+| `*/30 * * * *` | Every 30 minutes |
+
 ---
 
-## 👨‍💻 Development
+## 🌿 Seasonal Groups
+
+Groups can be configured to only appear during a specific time of year — useful for
+holiday-themed libraries or seasonal collections.
+
+1. In the group editor, enable **Seasonal**.
+2. Set the **Start** and **End** dates in `MM-DD` format (e.g., `10-01` to `10-31` for October/Halloween).
+3. When the group is out of season, its symlinks are removed automatically.
+4. When it re-enters season, the next sync recreates them.
+
+> [!TIP]
+> Seasonal groups that are out of season will show a "Seasonal group — out of season"
+> message in the sidebar, making it clear why they're currently empty.
+
+---
+
+## 🗂️ Collection Mode (Boxsets)
+
+Instead of symlink-based virtual folders, each group can be synced as a Jellyfin
+**Collection (Boxset)**. Enable **"Sync as Collection"** in the group settings.
+
+When enabled:
+- The group resolves matching items as usual.
+- Instead of creating symlinks, the items are gathered into a Jellyfin Boxset.
+- Cover images can be auto-applied (same as library covers).
+- Duplicate additions are safely ignored by the Jellyfin API.
+
+> [!NOTE]
+> This is useful for curated collections like "Best of 2024" or "Tom Cruise Movies"
+> that you want to appear as a single item in your library rather than a whole folder.
+
+---
+
+## 🔌 REST API
+
+The application exposes several API endpoints for programmatic use. All API routes
+are prefixed with `/api/`.
+
+### Configuration
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/config` | `GET` | Load the current configuration |
+| `/api/config` | `POST` | Save the configuration (requires JSON body with config fields) |
+| `/api/config/export` | `POST` | Export configuration as a download |
+| `/api/config/import` | `POST` | Import configuration from a JSON file upload |
+| `/api/settings` | `GET` | Get current server/path settings |
+
+### Jellyfin
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/jellyfin/metadata` | `POST` | Fetch available metadata (genres, actors, studios, tags, years) |
+| `/api/jellyfin/auto-detect-paths` | `POST` | Auto-detect path mappings between Jellyfin and host |
+| `/api/jellyfin/test-connection` | `POST` | Test the Jellyfin server connection |
+
+### Sync & Preview
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/sync/preview` | `POST` | Preview which items would be matched for a single group |
+| `/api/sync/preview_all` | `POST` | Preview all configured groups without syncing |
+| `/api/sync` | `POST` | Execute a full synchronisation (creates symlinks/collections) |
+| `/api/sync/cleanup` | `POST` | Remove broken symlinks from the target directory |
+
+### Groups
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/groups` | `GET` | Get the list of configured groups |
+| `/api/groups` | `POST` | Add a new group |
+| `/api/groups/<id>` | `PUT` | Update an existing group |
+| `/api/groups/<id>` | `DELETE` | Delete a group and optionally its symlinks |
+
+### Export/Import
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/export-import/export` | `POST` | Export group configurations as JSON |
+| `/api/export-import/import` | `POST` | Import group configurations from JSON |
+
+---
+
+## 🧹 Cover Images
+
+Cover images are stored and managed automatically:
+
+- **Storage**: `{target_path}/.covers/{md5_hash}.jpg`
+- **Priority**: Library-local `.covers/` directory → legacy `config/covers/` directory
+- **Auto-apply**: When enabled, covers are applied to both virtual libraries and Boxset collections
+
+To set a cover for a group, upload an image via the group editor UI.
+
+---
 
 ### Environment Variables
 
@@ -216,3 +337,18 @@ If the above doesn't resolve your issue, please [open a GitHub issue](https://gi
 - Your Docker/installation setup
 - Steps to reproduce
 - Relevant logs or error messages
+
+### API Error Reference
+
+The REST API returns standard HTTP status codes with JSON error bodies containing
+a `message` field:
+
+| Status | Meaning | Common Causes |
+|---|---|---|
+| `400` | Bad Request | Missing/invalid input fields, failed external list fetch |
+| `401` | Unauthorized | Invalid or missing Jellyfin API key |
+| `403` | Forbidden | App password required but missing/invalid |
+| `500` | Internal Error | Server-side failure (check logs) |
+
+Errors also include an `error` field in the response body with a human-readable description.
+When preview or sync fails, the error is shown in a modal dialog within the UI.
