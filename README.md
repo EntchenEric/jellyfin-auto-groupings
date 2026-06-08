@@ -6,7 +6,7 @@
 
 > **Virtual Libraries Simplified.** Create dynamic Jellyfin libraries using symlinks without duplicating your media.
 
-[![Docker](https://img.shields.io/badge/Docker-ready-blue.svg?logo=docker&logoColor=white)](https://github.com/entcheneric/jellyfin-groupings)
+[![Docker](https://img.shields.io/badge/Docker-ready-blue.svg?logo=docker&logoColor=white)](https://github.com/entcheneric/jellyfin-auto-groupings)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ---
@@ -110,7 +110,23 @@ You can use the **Complex** source type to build highly specific libraries. The 
 
 ## 👨‍💻 Development
 
-If you'd like to build the project from source or contribute:
+### Environment Variables
+
+The application reads the following environment variables (which take precedence over values set in the UI config):
+
+| Variable | Purpose |
+|---|---|
+| `JELLYFIN_API_KEY` | Jellyfin API key override |
+| `TRAKT_CLIENT_ID` | Trakt Client ID override |
+| `TMDB_API_KEY` | TMDb API Key override |
+| `MAL_CLIENT_ID` | MyAnimeList Client ID override |
+| `APP_PASSWORD` | Enables HTTP Basic Auth on the web UI |
+| `FLASK_PORT` | Server port (default: `5000`) |
+| `FLASK_DEBUG` | Enable Flask debug mode (`true`/`false`) |
+
+See [`.env.example`](.env.example) for quick setup.
+
+### Building from Source
 
 1. Clone the repo.
 2. Install dependencies: `pip install -r requirements.txt`.
@@ -128,12 +144,75 @@ This will start a mock API at `http://localhost:8096`. You can then:
 - Access the **Dashboard** at [http://localhost:8096](http://localhost:8096) to see the mock state.
 - In the Jellyfin Groupings UI, set the **Server URL** to `http://localhost:8096` and **API Key** to anything (e.g., `test`).
 
+> **Note:** The virtual Jellyfin server is minimal and intended for development/testing. It does not provide all Jellyfin API endpoints.
+
 ### Unraid Support
 An Unraid Community Applications template is available in the `unraid/` directory.
 
 ---
 
+## 🐳 Docker Environment Variables
+
+When running via Docker, you can set environment variables to override sensitive config values:
+
+```yaml
+services:
+  jellyfin-groupings:
+    image: ghcr.io/entcheneric/jellyfin-groupings:latest
+    container_name: jellyfin-groupings
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./config:/app/config
+      - /mnt/user/jellyfin-groupings-virtual:/groupings
+      - /mnt/user/media:/media:ro
+    environment:
+      - JELLYFIN_API_KEY=your-api-key
+      - TRAKT_CLIENT_ID=your-trakt-client-id
+      - TMDB_API_KEY=your-tmdb-api-key
+      - MAL_CLIENT_ID=your-myanimelist-client-id
+      - APP_PASSWORD=your-password  # Enables HTTP Basic Auth
+    restart: unless-stopped
+```
+
 ## 📜 License
 
 Created and maintained by [entcheneric](https://github.com/entcheneric). 
 This project is licensed under the MIT License - feel free to use it however you want!
+
+## 🐛 Troubleshooting
+
+### Path Translation Issues
+If symlinks point to non-existent files, verify your path mapping:
+1. Go to **Server Settings** in the UI.
+2. Ensure **Media path as Jellyfin sees it** and **Same path on this machine** are correctly set.
+3. Use the **Auto-Detect Settings** button to automatically detect the correct mapping.
+
+### "Permission denied" when creating virtual directories
+- Ensure the target path is writable by the container/process.
+- On Docker, verify the volume mount for the virtual output directory has correct permissions.
+
+### Jellyfin Connection Errors
+1. Confirm your Jellyfin server is accessible from the app container.
+2. If using Docker networking, use the container name or internal Docker network address.
+3. Verify your API key is valid (regenerate in Jellyfin Dashboard if needed).
+
+### Groups Show 0 Items
+- Verify the source type and value match actual metadata in Jellyfin.
+- For external lists (IMDb, Trakt, etc.), confirm your API keys are configured.
+- Try the **Preview** button before syncing to see what will match.
+
+### Cover Images Not Showing
+- Jellyfin caches images aggressively — try a **Library Scan** or restart Jellyfin.
+- Covers are stored in `{target_path}/.covers/` — ensure the directory persists across restarts.
+
+### Nothing Happens When I Click Sync
+- Check the browser console (F12) for JavaScript errors.
+- Verify the Flask backend is running (`docker logs jellyfin-groupings`).
+- Ensure you have at least one group configured.
+
+### Getting More Help
+If the above doesn't resolve your issue, please [open a GitHub issue](https://github.com/entcheneric/jellyfin-auto-groupings/issues) with:
+- Your Docker/installation setup
+- Steps to reproduce
+- Relevant logs or error messages

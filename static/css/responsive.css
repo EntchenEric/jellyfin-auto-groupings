@@ -1,4 +1,22 @@
 /* ─────────────────────────────────────────────────────────
+   TABLET  (768px - 1024px)
+───────────────────────────────────────────────────────── */
+@media (max-width: 1024px) and (min-width: 769px) {
+    #groups-list {
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    }
+
+    #sidebar {
+        width: 280px;
+        padding: 1.25rem;
+    }
+
+    #app-layout {
+        grid-template-columns: 280px 1fr;
+    }
+}
+
+/* ─────────────────────────────────────────────────────────
    MOBILE  (< 768px)
 ───────────────────────────────────────────────────────── */
 @media (max-width: 768px) {

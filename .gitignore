@@ -18,6 +18,7 @@ include/
 pyvenv.cfg
 
 # Test artifacts
+test_error.log
 coverage_report.txt
 test_results.txt
 pytest_verbose.log
@@ -26,6 +27,7 @@ test_api_out.txt
 pytest.log
 .pytest_cache/
 .coverage
+htmlcov/
 e2e/test_media/
 e2e/test_output/
 

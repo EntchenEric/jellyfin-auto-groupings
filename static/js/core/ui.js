@@ -2,7 +2,11 @@
 
 let toastTimer = null;
 
-export function showToast(msg, type = 'success', duration = 5000) {
+export function showToast(msg, type = 'success', duration = null) {
+    // Increase duration for error messages so users have time to read them
+    if (duration === null) {
+        duration = type === 'error' ? 8000 : 5000;
+    }
     const el = document.getElementById('status-msg');
     if (!el) return;
     el.textContent = msg;
