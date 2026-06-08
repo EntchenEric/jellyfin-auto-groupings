@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import mimetypes
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, NoReturn
 
 if TYPE_CHECKING:
@@ -606,7 +607,7 @@ def _upload_image(
         timeout: HTTP request timeout.
 
     """
-    with open(image_path, "rb") as f:  # noqa: PTH123
+    with Path(image_path).open("rb") as f:
         image_bytes = f.read()
     mime_type, _ = mimetypes.guess_type(image_path)
     headers = _auth_headers(api_key)
