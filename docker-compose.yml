@@ -4,7 +4,7 @@
 
 services:
   jellyfin-groupings:
-    image: ghcr.io/entcheneric/jellyfin-groupings:latest
+    image: ghcr.io/entcheneric/jellyfin-groupings:${TAG:-latest}
     # build: . # Uncomment this if you want to build from source locally
     container_name: jellyfin-groupings
     restart: unless-stopped
@@ -18,6 +18,8 @@ services:
       - TRAKT_CLIENT_ID=${TRAKT_CLIENT_ID:-}
       - TMDB_API_KEY=${TMDB_API_KEY:-}
       - MAL_CLIENT_ID=${MAL_CLIENT_ID:-}
+      # Set a password to enable HTTP Basic Auth on the web UI:
+      # - APP_PASSWORD=${APP_PASSWORD:-}
       # Uncomment to disable debug mode in production:
       # - FLASK_DEBUG=false
     volumes:
@@ -36,6 +38,10 @@ services:
       # Mount your real media folder here so the container can verify symlink targets.
       # In the Web UI, set "Same path on this machine" to: /media
       # - /path/to/your/media:/media:ro
+
+      # 4. Local covers directory (optional — library-local .covers/ takes
+      #    precedence; this is the legacy fallback location)
+      # - ./config/covers:/app/config/covers
 
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/')"]
