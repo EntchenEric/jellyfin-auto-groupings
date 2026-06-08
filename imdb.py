@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import re
 
+import network
 import requests
 
 __all__ = ["fetch_imdb_list"]
@@ -70,7 +71,7 @@ def fetch_imdb_list(list_id: str) -> list[str]:
             f"?sort=list_order,asc&st_dt=&mode=detail&page={page}"
         )
         try:
-            resp = requests.get(
+            resp = network.get(
                 page_url,
                 headers=_REQUEST_HEADERS,
                 timeout=_REQUEST_TIMEOUT,

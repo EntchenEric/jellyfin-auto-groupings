@@ -11,6 +11,7 @@ import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+import network
 import requests
 
 __all__ = ["fetch_letterboxd_list"]
@@ -119,7 +120,7 @@ def _fetch_id_for_slug(slug: str) -> str | None:
     """
     film_url = f"https://letterboxd.com/film/{slug}/"
     try:
-        resp = requests.get(film_url, headers=_REQUEST_HEADERS, timeout=_FILM_PAGE_TIMEOUT)
+        resp = network.get(film_url, headers=_REQUEST_HEADERS, timeout=_FILM_PAGE_TIMEOUT)
         resp.raise_for_status()
         html = resp.text
 
@@ -172,7 +173,7 @@ def fetch_letterboxd_list(list_url: str) -> list[str]:
         current_url = f"{list_url}/page/{page}/" if page > 1 else f"{list_url}/"
 
         try:
-            resp = requests.get(current_url, headers=_REQUEST_HEADERS, timeout=_LIST_PAGE_TIMEOUT)
+            resp = network.get(current_url, headers=_REQUEST_HEADERS, timeout=_LIST_PAGE_TIMEOUT)
             if resp.status_code == 404 and page > 1:
                 break
             resp.raise_for_status()

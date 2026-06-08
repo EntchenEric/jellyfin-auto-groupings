@@ -55,8 +55,8 @@ def _schedule_global_sync(scheduler: BackgroundScheduler, sched_cfg: dict[str, A
             args=[excluded_names],
         )
         logger.info("Scheduled global sync: %s (excluding: %s)", cron_expr, excluded_names)
-    except (ValueError, KeyError, OSError):
-        logger.exception("Failed to schedule global sync")
+    except ValueError:
+        logger.exception("Failed to schedule global sync (invalid cron: %s)", cron_expr)
 
 
 def _schedule_group_syncs(scheduler: BackgroundScheduler, groups: list[Any]) -> None:
@@ -78,8 +78,8 @@ def _schedule_group_syncs(scheduler: BackgroundScheduler, groups: list[Any]) -> 
                     args=[group_name],
                 )
                 logger.info("Scheduled sync for group '%s': %s", group_name, cron_expr)
-            except (ValueError, KeyError, OSError):
-                logger.exception("Failed to schedule sync for group '%s'", group_name)
+            except ValueError:
+                logger.exception("Failed to schedule sync for group '%s' (invalid cron: %s)", group_name, cron_expr)
 
 
 def _schedule_cleanup(scheduler: BackgroundScheduler, sched_cfg: dict[str, Any]) -> None:
@@ -97,8 +97,8 @@ def _schedule_cleanup(scheduler: BackgroundScheduler, sched_cfg: dict[str, Any])
             name="Cleanup Broken Symlinks",
         )
         logger.info("Scheduled cleanup job: %s", cleanup_cron)
-    except (ValueError, KeyError, OSError):
-        logger.exception("Failed to schedule cleanup job")
+    except ValueError:
+        logger.exception("Failed to schedule cleanup job (invalid cron: %s)", cleanup_cron)
 
 
 def update_scheduler_jobs() -> None:

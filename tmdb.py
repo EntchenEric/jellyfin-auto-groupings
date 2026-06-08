@@ -10,6 +10,7 @@ import logging
 from typing import Any
 from urllib.parse import urlparse
 
+import network
 import requests
 
 __all__ = ["fetch_tmdb_list", "get_tmdb_recommendations"]
@@ -62,7 +63,7 @@ def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
         }
 
         try:
-            resp = requests.get(url, params=params, timeout=15)
+            resp = network.get(url, params=params, timeout=15)
             resp.raise_for_status()
         except requests.exceptions.RequestException as exc:
             msg = f"Failed to fetch TMDb list page {page}: {exc}"
@@ -115,7 +116,7 @@ def get_tmdb_recommendations(items_with_type: list[tuple[str, str]], api_key: st
             "page": "1",
         }
         try:
-            resp = requests.get(url, params=params, timeout=10)
+            resp = network.get(url, params=params, timeout=10)
             if resp.status_code == 200:
                 data = resp.json()
                 for i, rec in enumerate(data.get("results", [])):

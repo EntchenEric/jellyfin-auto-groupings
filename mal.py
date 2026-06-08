@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-import requests
+import network
 
 __all__ = ["fetch_mal_list"]
 
@@ -66,7 +66,7 @@ def fetch_mal_list(username: str, client_id: str, status: str | None = None) -> 
     ids = []
 
     while url:
-        response = requests.get(url, params=params, headers=headers, timeout=_REQUEST_TIMEOUT)
+        response = network.get(url, params=params, headers=headers, timeout=_REQUEST_TIMEOUT)
         response.raise_for_status()
 
         data = response.json()

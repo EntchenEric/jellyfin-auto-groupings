@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import requests
+import network
 
 __all__ = ["fetch_anilist_list"]
 
@@ -56,7 +56,7 @@ def fetch_anilist_list(username: str, status: str | None = None) -> list[int]:
         if normalized_status:
             variables["status"] = normalized_status
 
-    response = requests.post(
+    response = network.post(
         ANILIST_API_URL,
         json={"query": query, "variables": variables},
         timeout=_REQUEST_TIMEOUT,

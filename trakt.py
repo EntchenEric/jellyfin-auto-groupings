@@ -10,7 +10,8 @@ import logging
 import re
 from typing import Any
 
-import requests
+import network
+import requests  # keep for exception type references
 
 __all__ = ["fetch_trakt_list"]
 
@@ -87,7 +88,7 @@ def fetch_trakt_list(list_url: str, client_id: str) -> list[str]:
             f"?page={page}&limit={_PAGE_LIMIT}"
         )
         try:
-            resp = requests.get(url, headers=headers, timeout=_REQUEST_TIMEOUT)
+            resp = network.get(url, headers=headers, timeout=_REQUEST_TIMEOUT)
             resp.raise_for_status()
         except requests.exceptions.RequestException as exc:
             msg = f"Failed to fetch Trakt list page {page}: {exc}"
