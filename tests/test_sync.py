@@ -1608,6 +1608,32 @@ def test_eval_item_or_not():
     assert _eval_item(item, rules) is True
 
 
+def test_eval_item_unknown_operator():
+    """Graceful degradation for unknown operators — treated as AND."""
+    item = {"Genres": ["Action"], "ProductionYear": 2020}
+    rules = [
+        {"operator": "NOPE", "type": "genre", "value": "action"},
+        {"operator": "AND", "type": "year", "value": "2020"},
+    ]
+    assert _eval_item(item, rules) is True
+
+    rules_bad = [
+        {"operator": "NOPE", "type": "genre", "value": "comedy"},
+        {"operator": "AND", "type": "year", "value": "2020"},
+    ]
+    assert _eval_item(item, rules_bad) is False
+
+
+def test_eval_item_unknown_operator_caught():
+    """All strange operators should not raise."""
+    item = {"Genres": ["Action"]}
+    rules = [
+        {"operator": "SUPER AND", "type": "genre", "value": "action"},
+    ]
+    # Should not crash — unknown operators safe to fall through
+    assert _eval_item(item, rules) is True
+
+
 @patch('sync._fetch_full_library')
 def test_fetch_items_complex_group_malformed_rule(mock_lib):
     """Cover lines 761-763: malformed rule triggers TypeError/ValueError/AttributeError."""

@@ -12,7 +12,8 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 COPY requirements.txt requirements-dev.txt pyproject.toml README.md ./
 COPY *.py ./
-RUN pip install --no-cache-dir -r requirements.txt gunicorn
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt gunicorn
 
 # ---------------------------------------------------------------------------
 # Final stage — copy only what is needed to run the application

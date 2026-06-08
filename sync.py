@@ -764,11 +764,10 @@ def _eval_item(item: dict[str, Any], rules: list[dict[str, Any]]) -> bool:
     if not rules:
         return True
 
+    # Evaluate the first rule directly — a bare NOT at position 0 is
+    # treated as "invert this condition" (e.g. ``NOT genre:Comedy``).
     first_rule = rules[0]
-    # Treat the first rule as initializing the boolean state
     result = _match_condition(item, first_rule["type"], first_rule["value"])
-
-    # If the very first rule is NOT, we invert it (so we start with everything else)
     if first_rule["operator"].endswith("NOT"):
         result = not result
 
@@ -785,6 +784,10 @@ def _eval_item(item: dict[str, Any], rules: list[dict[str, Any]]) -> bool:
                 result = result and not matched
             case "OR NOT":
                 result = result or not matched
+            case _:
+                # Unknown operator — treat as AND for graceful degradation
+                logger.debug("Unknown operator %r in rule evaluation, treating as AND", op)
+                result = result and matched
 
     return result
 
