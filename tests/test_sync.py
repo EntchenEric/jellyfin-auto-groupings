@@ -1696,3 +1696,32 @@ def test_process_group_oserror(mock_rmtree, mock_meta, tmp_path):
 def test_is_in_season_invalid():
     """Cover lines 1228-1229: invalid date strings in _is_in_season."""
     assert _is_in_season("bad", "also-bad") is True
+
+
+def test_eval_item_unknown_operator_non_first_rule():
+    """Unknown operator in rules[1:] should degrade to AND (cover the `case _` branch in _eval_item)."""
+    item = {"Genres": ["Action"], "ProductionYear": 2020}
+    # First rule is a normal AND, second rule has unknown operator
+    rules = [
+        {"operator": "AND", "type": "genre", "value": "action"},
+        {"operator": "NOPE", "type": "year", "value": "2020"},
+    ]
+    assert _eval_item(item, rules) is True
+
+    rules_bad = [
+        {"operator": "AND", "type": "genre", "value": "action"},
+        {"operator": "NOPE", "type": "year", "value": "2021"},
+    ]
+    assert _eval_item(item, rules_bad) is False
+
+
+def test_eval_item_unknown_operator_non_first_rule_or():
+    """Unknown operator in rules[1:] degrades to AND even when first rule was OR-based."""
+    item = {"Genres": ["Horror"], "ProductionYear": 1999}
+    rules = [
+        {"operator": "OR", "type": "genre", "value": "action"},
+        {"operator": "SUPER AND", "type": "year", "value": "1999"},
+    ]
+    # genre doesn't match (Action), but year matches 
+    # OR with unknown AND: (False OR False) AND True = False
+    assert _eval_item(item, rules) is False

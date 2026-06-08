@@ -39,8 +39,8 @@ services:
       # In the Web UI, set "Same path on this machine" to: /media
       # - /path/to/your/media:/media:ro
 
-      # 4. Local covers directory (optional override — covers stored here take
-      #    precedence over the library-local .covers/ directory)
+      # 4. Local covers directory (optional — library-local .covers/ takes
+      #    precedence; this is the legacy fallback location)
       # - ./config/covers:/app/config/covers
 
     healthcheck:

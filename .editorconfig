@@ -10,8 +10,6 @@ indent_style = space
 indent_size = 4
 
 [*.py]
-indent_size = 4
-profile = black
 
 [*.yml]
 indent_size = 2
