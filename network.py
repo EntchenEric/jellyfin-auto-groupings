@@ -11,6 +11,7 @@ to benefit from retry logic with **zero monkey-patching**.
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any
 
 import requests
@@ -26,10 +27,12 @@ __all__ = [
     "post",
 ]
 
-_RETRY_TOTAL = 3
-_RETRY_BACKOFF_FACTOR = 1.0
-_RETRY_STATUS_FORCELIST = [429, 500, 502, 503, 504]
-_ALLOWED_RETRY_METHODS = frozenset({"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD"})
+_RETRY_TOTAL: int = int(os.environ.get("NETWORK_RETRY_TOTAL", "3"))
+_RETRY_BACKOFF_FACTOR: float = float(os.environ.get("NETWORK_RETRY_BACKOFF_FACTOR", "1.0"))
+_RETRY_STATUS_FORCELIST: list[int] = [
+    int(x) for x in os.environ.get("NETWORK_RETRY_STATUS_FORCELIST", "429,500,502,503,504").split(",")
+]
+_ALLOWED_RETRY_METHODS: frozenset[str] = frozenset({"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD"})
 
 
 def _build_retry_session() -> requests.Session:
