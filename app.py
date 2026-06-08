@@ -21,7 +21,6 @@ from pathlib import Path
 
 from flask import Flask
 
-import network  # noqa: F401 — registers retry-aware HTTP helpers (network.get / post / delete)
 from config import CONFIG_FILE, DEFAULT_CONFIG, save_config
 from routes import bp
 from scheduler import start_scheduler
