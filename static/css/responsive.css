@@ -153,6 +153,26 @@
     button {
         font-size: 16px; /* prevents iOS zoom-on-focus */
     }
+
+    /* ── Responsive tables on mobile ─── */
+    .table-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* ── Full-width modals on mobile ─── */
+    .modal-content {
+        margin: 0.5rem;
+        max-height: calc(100vh - 1rem);
+        border-radius: var(--radius-md);
+    }
+
+    /* ── Prevent body scroll when modal is open ─── */
+    body.modal-open {
+        overflow: hidden;
+        position: fixed;
+        width: 100%;
+    }
 }
 
 /* ─────────────────────────────────────────────────────────

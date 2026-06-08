@@ -80,7 +80,10 @@ def _fill_defaults(cfg: dict[str, Any], defaults: dict[str, Any]) -> None:
 
 
 def _migrate_legacy_keys(cfg: dict[str, Any]) -> bool:
-    """Migrate legacy keys to their new names. Returns True if any changes were made."""
+    """Migrate legacy keys to their new names. Returns True if any changes were made.
+
+    The caller is responsible for persisting changes when this returns True.
+    """
     migrated = False
     if cfg.get("jellyfin_root") and not cfg.get("media_path_in_jellyfin"):
         cfg["media_path_in_jellyfin"] = cfg["jellyfin_root"]
@@ -91,7 +94,6 @@ def _migrate_legacy_keys(cfg: dict[str, Any]) -> bool:
     if migrated:
         cfg.pop("jellyfin_root", None)
         cfg.pop("host_root", None)
-        save_config(cfg)
     return migrated
 
 
@@ -121,7 +123,8 @@ def load_config() -> dict[str, Any]:
             with Path(CONFIG_FILE).open("r", encoding="utf-8") as fh:
                 cfg = json.load(fh)
             _fill_defaults(cfg, DEFAULT_CONFIG)
-            _migrate_legacy_keys(cfg)
+            if _migrate_legacy_keys(cfg):
+                save_config(cfg)
         except (json.JSONDecodeError, OSError):
             # If the file is corrupt or unreadable, fall back to safe defaults
             logger.warning(

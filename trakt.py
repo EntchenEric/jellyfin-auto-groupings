@@ -10,7 +10,9 @@ import logging
 import re
 from typing import Any
 
-import requests
+import requests  # keep for exception type references
+
+import network
 
 __all__ = ["fetch_trakt_list"]
 
@@ -29,7 +31,8 @@ _TRAKT_API_BASE: str = "https://api.trakt.tv"
 def _parse_trakt_list_url(list_url: str) -> tuple[str, str]:
     """Parse username and list slug from a Trakt URL or shorthand."""
     full_url_match = re.search(
-        r"trakt\.tv/users/([^/]+)/lists/([^/?#]+)", list_url,
+        r"trakt\.tv/users/([^/]+)/lists/([^/?#]+)",
+        list_url,
     )
     if full_url_match:
         return full_url_match.group(1), full_url_match.group(2)
@@ -87,7 +90,7 @@ def fetch_trakt_list(list_url: str, client_id: str) -> list[str]:
             f"?page={page}&limit={_PAGE_LIMIT}"
         )
         try:
-            resp = requests.get(url, headers=headers, timeout=_REQUEST_TIMEOUT)
+            resp = network.get(url, headers=headers, timeout=_REQUEST_TIMEOUT)
             resp.raise_for_status()
         except requests.exceptions.RequestException as exc:
             msg = f"Failed to fetch Trakt list page {page}: {exc}"

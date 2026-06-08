@@ -9,9 +9,14 @@ from config import DEFAULT_CONFIG, load_config, save_config
 def test_default_config_has_required_keys():
     """DEFAULT_CONFIG must contain all essential keys."""
     required = [
-        "jellyfin_url", "api_key", "target_path",
-        "media_path_in_jellyfin", "media_path_on_host",
-        "groups", "scheduler", "setup_done",
+        "jellyfin_url",
+        "api_key",
+        "target_path",
+        "media_path_in_jellyfin",
+        "media_path_on_host",
+        "groups",
+        "scheduler",
+        "setup_done",
     ]
     for key in required:
         assert key in DEFAULT_CONFIG, f"Missing required key: {key}"
@@ -50,6 +55,7 @@ def test_setup_done_defaults_false():
 def test_save_config_preserves_structure(temp_config):
     """Saving config should produce valid JSON with all required fields."""
     import copy
+
     cfg = copy.deepcopy(DEFAULT_CONFIG)
     cfg["jellyfin_url"] = "http://example.com:8096"
     cfg["api_key"] = "test-key-123"

@@ -244,6 +244,9 @@ The application reads the following environment variables (which take precedence
 | `APP_PASSWORD` | Enables HTTP Basic Auth on the web UI |
 | `FLASK_PORT` | Server port (default: `5000`) |
 | `FLASK_DEBUG` | Enable Flask debug mode (`true`/`false`) |
+| `ANILIST_API_URL` | AniList GraphQL endpoint (default: `https://graphql.anilist.co`) |
+
+> **Note**: Environment variable overrides are *never* persisted back to `config.json`. They only affect the current process.
 
 See [`.env.example`](.env.example) for quick setup.
 

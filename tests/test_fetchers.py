@@ -9,7 +9,7 @@ from jellyfin import fetch_jellyfin_items
 from tmdb import fetch_tmdb_list
 
 
-@patch('jellyfin.network.get')
+@patch("jellyfin.network.get")
 def test_fetch_jellyfin_items(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 200
@@ -19,11 +19,11 @@ def test_fetch_jellyfin_items(mock_get):
     assert items == [{"Name": "M1"}]
     # Verify params
     _args, kwargs = mock_get.call_args
-    assert kwargs['headers']['X-Emby-Token'] == "key"
-    assert kwargs['params']['Type'] == "Movie"
+    assert kwargs["headers"]["X-Emby-Token"] == "key"
+    assert kwargs["params"]["Type"] == "Movie"
 
 
-@patch('imdb.requests.get')
+@patch("imdb.requests.get")
 def test_fetch_imdb_list(mock_get):
     mock_response = MagicMock()
     mock_response.text = '<html><div class="lister-item-header"><a href="/title/tt1234567/"></a></div></html>'
@@ -32,7 +32,7 @@ def test_fetch_imdb_list(mock_get):
     assert ids == ["tt1234567"]
 
 
-@patch('tmdb.requests.get')
+@patch("tmdb.requests.get")
 def test_fetch_tmdb_list(mock_get):
     mock_response = MagicMock()
     mock_response.json.return_value = {
@@ -47,7 +47,7 @@ def test_fetch_tmdb_list(mock_get):
     assert ids == ["101", "202"]
 
 
-@patch('anilist.requests.post')
+@patch("anilist.requests.post")
 def test_fetch_anilist_list(mock_post):
     mock_response = MagicMock()
     mock_response.json.return_value = {
@@ -63,7 +63,7 @@ def test_fetch_anilist_list(mock_post):
     ids = fetch_anilist_list("username", "completed")
     assert ids == [12345]
     _args, kwargs = mock_post.call_args
-    assert kwargs['json']['variables']['status'] == "COMPLETED"
+    assert kwargs["json"]["variables"]["status"] == "COMPLETED"
 
 
 # ---------------------------------------------------------------------------
@@ -76,17 +76,19 @@ def test_fetch_imdb_invalid_id():
         fetch_imdb_list("not-a-valid-id")
 
 
-@patch('imdb.requests.get')
+@patch("imdb.requests.get")
 def test_fetch_imdb_http_error(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 500
-    mock_resp.raise_for_status.side_effect = requests.exceptions.HTTPError("Server Error")
+    mock_resp.raise_for_status.side_effect = requests.exceptions.HTTPError(
+        "Server Error"
+    )
     mock_get.return_value = mock_resp
     with pytest.raises(RuntimeError, match="Failed to fetch IMDb"):
         fetch_imdb_list("ls12345")
 
 
-@patch('imdb.requests.get')
+@patch("imdb.requests.get")
 def test_fetch_imdb_pagination(mock_get):
     resp1 = MagicMock()
     resp1.status_code = 200
@@ -111,7 +113,7 @@ def test_fetch_imdb_pagination(mock_get):
 # ---------------------------------------------------------------------------
 
 
-@patch('anilist.requests.post')
+@patch("anilist.requests.post")
 def test_fetch_anilist_empty_collection(mock_post):
     mock_resp = MagicMock()
     mock_resp.status_code = 200

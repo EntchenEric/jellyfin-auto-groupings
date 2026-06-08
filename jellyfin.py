@@ -76,7 +76,9 @@ def _auth_headers(api_key: str) -> dict[str, str]:
     return {"X-Emby-Token": api_key}
 
 
-def _format_request_error(exc: requests.exceptions.RequestException, prefix: str) -> str:
+def _format_request_error(
+    exc: requests.exceptions.RequestException, prefix: str
+) -> str:
     """Build a human-readable error message from *exc* with response details if available."""
     msg = prefix
     if hasattr(exc, "response") and exc.response is not None:
@@ -86,7 +88,9 @@ def _format_request_error(exc: requests.exceptions.RequestException, prefix: str
     return msg
 
 
-def _raise_request_error(exc: requests.exceptions.RequestException, prefix: str) -> NoReturn:
+def _raise_request_error(
+    exc: requests.exceptions.RequestException, prefix: str
+) -> NoReturn:
     """Format *exc* into a ``RuntimeError`` with response details if available."""
     raise RuntimeError(_format_request_error(exc, prefix)) from exc
 
@@ -180,7 +184,14 @@ def _post_or_raise(
 ) -> requests.Response:
     """POST to *url* and return the response, translating errors into ``RuntimeError``."""
     return _request_or_raise(
-        "POST", url, headers=headers, params=params, data=data, json=json, timeout=timeout, error_prefix=error_prefix,
+        "POST",
+        url,
+        headers=headers,
+        params=params,
+        data=data,
+        json=json,
+        timeout=timeout,
+        error_prefix=error_prefix,
     )
 
 
@@ -196,7 +207,15 @@ def _post_json(
 ) -> Any:
     """POST to *url* and return the parsed JSON response, translating errors into ``RuntimeError``."""
     return _parse_json(
-        _post_or_raise(url, headers=headers, params=params, data=data, json=json, timeout=timeout, error_prefix=error_prefix),
+        _post_or_raise(
+            url,
+            headers=headers,
+            params=params,
+            data=data,
+            json=json,
+            timeout=timeout,
+            error_prefix=error_prefix,
+        ),
     )
 
 
@@ -210,7 +229,12 @@ def _delete_or_raise(
 ) -> requests.Response:
     """DELETE *url* and return the response, translating errors into ``RuntimeError``."""
     return _request_or_raise(
-        "DELETE", url, headers=headers, params=params, timeout=timeout, error_prefix=error_prefix,
+        "DELETE",
+        url,
+        headers=headers,
+        params=params,
+        timeout=timeout,
+        error_prefix=error_prefix,
     )
 
 
@@ -253,7 +277,10 @@ def fetch_jellyfin_items(
         params.update(extra_params)
 
     return _get_json(
-        f"{base_url}/Items", headers=headers, params=params, timeout=timeout,
+        f"{base_url}/Items",
+        headers=headers,
+        params=params,
+        timeout=timeout,
     ).get("Items", [])
 
 
@@ -397,7 +424,11 @@ def get_users(base_url: str, api_key: str, timeout: int = 30) -> list[dict[str, 
 
 
 def get_user_recent_items(
-    base_url: str, api_key: str, user_id: str, limit: int = 20, timeout: int = _DEFAULT_TIMEOUT,
+    base_url: str,
+    api_key: str,
+    user_id: str,
+    limit: int = 20,
+    timeout: int = _DEFAULT_TIMEOUT,
 ) -> list[dict[str, Any]]:
     """Fetch a user's recently played movies and shows.
 
@@ -498,7 +529,9 @@ def add_virtual_folder(
         )
 
 
-def delete_virtual_folder(base_url: str, api_key: str, name: str, timeout: int = 30) -> None:
+def delete_virtual_folder(
+    base_url: str, api_key: str, name: str, timeout: int = 30
+) -> None:
     """Delete a virtual folder (library) from Jellyfin.
 
     Args:
@@ -518,13 +551,19 @@ def delete_virtual_folder(base_url: str, api_key: str, name: str, timeout: int =
             timeout=timeout,
         )
         if not response.ok:
-            logger.warning("Delete Virtual Folder Failed (%s): %s", response.status_code, response.text)
+            logger.warning(
+                "Delete Virtual Folder Failed (%s): %s",
+                response.status_code,
+                response.text,
+            )
         response.raise_for_status()
     except requests.exceptions.RequestException as exc:
         _raise_request_error(exc, f"Failed to delete virtual folder {name!r}")
 
 
-def get_library_id(base_url: str, api_key: str, name: str, timeout: int = 30) -> str | None:
+def get_library_id(
+    base_url: str, api_key: str, name: str, timeout: int = 30
+) -> str | None:
     """Get the ItemId of a virtual folder (library) from Jellyfin by name.
 
     Args:
@@ -678,7 +717,12 @@ def find_collection_by_name(
         "SearchTerm": name,
     }
     for page in _paginate_jellyfin(
-        base_url, api_key, "Items", params, limit=_PAGE_LIMIT, timeout=timeout,
+        base_url,
+        api_key,
+        "Items",
+        params,
+        limit=_PAGE_LIMIT,
+        timeout=timeout,
     ):
         for item in page:
             if item.get("Name") == name:
