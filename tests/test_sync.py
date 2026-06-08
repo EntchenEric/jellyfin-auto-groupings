@@ -1,6 +1,7 @@
 import hashlib
+from datetime import datetime
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -336,8 +337,6 @@ def test_sort_items_missing_values_logic():
 
 
 def test_is_in_season():
-    from datetime import datetime
-    from unittest.mock import MagicMock, patch
 
     with patch('sync.datetime') as mock_datetime:
         mock_now = MagicMock(spec=datetime)
@@ -373,7 +372,12 @@ def test_is_in_season():
         assert _is_in_season(None, "01-01") is True
         assert _is_in_season(123, 456) is True
 
-        # Case 4: Edge — exactly at end of crossing-year window
+        # Case 4: Invalid-but-parseable dates -> gracefully in-season
+        assert _is_in_season("13-45", "01-01") is True
+        assert _is_in_season("01-01", "02-31") is True
+        assert _is_in_season("00-00", "12-31") is True
+
+        # Case 5: Edge — exactly at end of crossing-year window
         mock_now.month = 12
         mock_now.day = 31
         assert _is_in_season("12-01", "01-01") is True

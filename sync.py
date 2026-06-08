@@ -352,8 +352,8 @@ def _sort_items_in_memory(
         value = item.get(primary_key)
         if value is None:
             # Sentinel for items missing the sort field — always sorts to the end.
-            # Ascending:  (1, "") > (0, "ValueX")  → end
-            # Descending: (1, "") > (0, "ValueX")  but reverse=True pushes (1,) below (0,)
+            # When reverse=False:  missing=(1, ""), present=(0, value)  → missing sorts last
+            # When reverse=True:   missing=(0, ""), present=(1, value)  → with reverse, missing sorts last
             return (0, "") if reverse else (1, "")
         return (1, value) if reverse else (0, value)
 
@@ -1362,13 +1362,18 @@ def _process_group(
 def _parse_mmdd(value: str) -> tuple[int, int]:
     """Parse an ``MM-DD`` string into a ``(month, day)`` tuple.
 
-    Returns ``(0, 0)`` for unparseable values so they never match.
+    Validates that month is 1–12 and day is 1–31.  Returns ``(0, 0)`` for
+    unparseable or out-of-range values so they never match.
     """
-    parts = value.split("-", 1)
+    parts = value.strip().split("-", 1)
     try:
-        return (int(parts[0]), int(parts[1]))
+        month = int(parts[0])
+        day = int(parts[1])
     except (ValueError, IndexError):
         return (0, 0)
+    if not (1 <= month <= 12 and 1 <= day <= 31):
+        return (0, 0)
+    return (month, day)
 
 
 def _is_in_season(start_str: Any, end_str: Any) -> bool:
