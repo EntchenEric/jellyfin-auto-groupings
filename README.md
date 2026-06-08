@@ -390,7 +390,7 @@ When preview or sync fails, the error is shown in a modal dialog within the UI.
 
 ## 🧪 Running Tests
 
-This project has a comprehensive test suite (300+ tests) covering sync logic, API routes,
+This project has a comprehensive test suite (417+ tests) covering sync logic, API routes,
 scheduler, external list fetching, and configuration management.
 
 ### Setup for testing

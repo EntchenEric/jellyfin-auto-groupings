@@ -27,11 +27,66 @@ __all__ = [
     "post",
 ]
 
-_RETRY_TOTAL: int = int(os.environ.get("NETWORK_RETRY_TOTAL", "3"))
-_RETRY_BACKOFF_FACTOR: float = float(os.environ.get("NETWORK_RETRY_BACKOFF_FACTOR", "1.0"))
-_RETRY_STATUS_FORCELIST: list[int] = [
-    int(x) for x in os.environ.get("NETWORK_RETRY_STATUS_FORCELIST", "429,500,502,503,504").split(",")
-]
+_RETRY_TOTAL: int
+_RETRY_BACKOFF_FACTOR: float
+_RETRY_STATUS_FORCELIST: list[int]
+
+
+def _parse_retry_config() -> tuple[int, float, list[int]]:
+    """Parse retry configuration from environment variables with validation.
+
+    Returns
+    -------
+    tuple of (total, backoff_factor, status_forcelist)
+
+    Raises
+    ------
+    ValueError
+        If any parsed value is out of valid range.
+    """
+    # Parse total retries
+    try:
+        total = int(os.environ.get("NETWORK_RETRY_TOTAL", "3"))
+    except ValueError:
+        logger.warning("Invalid NETWORK_RETRY_TOTAL value, falling back to default 3")
+        total = 3
+    if total < 0:
+        raise ValueError(f"NETWORK_RETRY_TOTAL must be non-negative, got: {total}")
+
+    # Parse backoff factor
+    try:
+        backoff = float(os.environ.get("NETWORK_RETRY_BACKOFF_FACTOR", "1.0"))
+    except ValueError:
+        logger.warning("Invalid NETWORK_RETRY_BACKOFF_FACTOR value, falling back to default 1.0")
+        backoff = 1.0
+    if backoff < 0:
+        raise ValueError(f"NETWORK_RETRY_BACKOFF_FACTOR must be non-negative, got: {backoff}")
+
+    # Parse status forcelist
+    raw = os.environ.get("NETWORK_RETRY_STATUS_FORCELIST", "429,500,502,503,504")
+    statuses: list[int] = []
+    for part in raw.split(","):
+        stripped = part.strip()
+        if not stripped:
+            continue  # tolerate trailing commas / empty entries
+        try:
+            code = int(stripped)
+        except ValueError:
+            logger.warning(
+                "Ignoring invalid entry %r in NETWORK_RETRY_STATUS_FORCELIST",
+                stripped,
+            )
+            continue
+        if not (100 <= code <= 599):
+            raise ValueError(
+                f"NETWORK_RETRY_STATUS_FORCELIST contains invalid HTTP status code: {code}"
+            )
+        statuses.append(code)
+
+    return total, backoff, statuses
+
+
+_RETRY_TOTAL, _RETRY_BACKOFF_FACTOR, _RETRY_STATUS_FORCELIST = _parse_retry_config()
 _ALLOWED_RETRY_METHODS: frozenset[str] = frozenset({"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD"})
 
 
