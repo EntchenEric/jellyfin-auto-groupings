@@ -8,6 +8,7 @@
 
 [![Docker](https://img.shields.io/badge/Docker-ready-blue.svg?logo=docker&logoColor=white)](https://github.com/entcheneric/jellyfin-auto-groupings)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 ---
 
@@ -384,3 +385,11 @@ a `message` field:
 
 Errors also include an `error` field in the response body with a human-readable description.
 When preview or sync fails, the error is shown in a modal dialog within the UI.
+
+---
+
+## 📚 Additional Resources
+
+- [CONTRIBUTING.md](CONTRIBUTING.md) — Development guide and contribution process
+- [SECURITY.md](SECURITY.md) — Security policy and vulnerability reporting
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) — Community guidelines
