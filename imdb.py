@@ -9,8 +9,9 @@ from __future__ import annotations
 import logging
 import re
 
-import network
 import requests
+
+import network
 
 __all__ = ["fetch_imdb_list"]
 
@@ -57,9 +58,7 @@ def fetch_imdb_list(list_id: str) -> list[str]:
         list_id = url_match.group(0)
 
     if not list_id.startswith("ls"):
-        msg = (
-            f"Invalid IMDb list ID: {list_id!r}. Expected format: ls000024390"
-        )
+        msg = f"Invalid IMDb list ID: {list_id!r}. Expected format: ls000024390"
         raise ValueError(msg)
 
     ids: list[str] = []
@@ -95,7 +94,8 @@ def fetch_imdb_list(list_id: str) -> list[str]:
 
         # Stop when there is no pagination link pointing to the next page
         has_next = re.search(r'class="[^"]*next-page[^"]*"', html) or re.search(
-            r'rel="next"', html,
+            r'rel="next"',
+            html,
         )
         if not has_next or page >= _MAX_PAGES:
             break

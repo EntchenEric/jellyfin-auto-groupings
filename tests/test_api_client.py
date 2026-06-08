@@ -18,10 +18,13 @@ class TestServerConnection:
             mock_resp.status_code = 200
             mock_get.return_value = mock_resp
 
-            resp = client.post("/api/test-server", json={
-                "jellyfin_url": TEST_URL,
-                "api_key": TEST_API_KEY,
-            })
+            resp = client.post(
+                "/api/test-server",
+                json={
+                    "jellyfin_url": TEST_URL,
+                    "api_key": TEST_API_KEY,
+                },
+            )
             data = resp.get_json()
             assert resp.status_code == 200
             assert data["status"] == "success"
@@ -39,12 +42,17 @@ class TestServerConnection:
     def test_test_server_auth_failure(self, client):
         """Test that invalid API key returns error."""
         with patch("routes.network.get") as mock_get:
-            mock_get.side_effect = requests_lib.exceptions.RequestException("Unauthorized")
+            mock_get.side_effect = requests_lib.exceptions.RequestException(
+                "Unauthorized"
+            )
 
-            resp = client.post("/api/test-server", json={
-                "jellyfin_url": TEST_URL,
-                "api_key": "bad-key",
-            })
+            resp = client.post(
+                "/api/test-server",
+                json={
+                    "jellyfin_url": TEST_URL,
+                    "api_key": "bad-key",
+                },
+            )
             data = resp.get_json()
             assert data["status"] == "error"
 
@@ -62,8 +70,10 @@ class TestMetadataEndpoints:
 
     def test_metadata_returns_categories(self, client):
         """Test successful metadata response has expected categories."""
-        with patch("routes.load_config") as mock_load, \
-                patch("routes.network.get") as mock_get:
+        with (
+            patch("routes.load_config") as mock_load,
+            patch("routes.network.get") as mock_get,
+        ):
             mock_load.return_value = {
                 "jellyfin_url": TEST_URL,
                 "api_key": TEST_API_KEY,
@@ -72,13 +82,25 @@ class TestMetadataEndpoints:
             def mock_jellyfin(url, **kwargs):
                 m = MagicMock()
                 if "Genres" in url:
-                    m.json.return_value = {"Items": [{"Name": "Action"}, {"Name": "Thriller"}], "TotalRecordCount": 2}
+                    m.json.return_value = {
+                        "Items": [{"Name": "Action"}, {"Name": "Thriller"}],
+                        "TotalRecordCount": 2,
+                    }
                 elif "Studios" in url:
-                    m.json.return_value = {"Items": [{"Name": "Studio A"}], "TotalRecordCount": 1}
+                    m.json.return_value = {
+                        "Items": [{"Name": "Studio A"}],
+                        "TotalRecordCount": 1,
+                    }
                 elif "Persons" in url:
-                    m.json.return_value = {"Items": [{"Name": "Actor One"}], "TotalRecordCount": 1}
+                    m.json.return_value = {
+                        "Items": [{"Name": "Actor One"}],
+                        "TotalRecordCount": 1,
+                    }
                 elif "Tags" in url:
-                    m.json.return_value = {"Items": [{"Name": "4K"}], "TotalRecordCount": 1}
+                    m.json.return_value = {
+                        "Items": [{"Name": "4K"}],
+                        "TotalRecordCount": 1,
+                    }
                 else:
                     m.json.return_value = {"Items": [], "TotalRecordCount": 0}
                 m.raise_for_status = MagicMock()
@@ -106,26 +128,39 @@ class TestPreviewEndpoint:
 
     def test_preview_with_valid_params(self, client):
         """Preview with genre type returns item count."""
-        with patch("routes.load_config") as mock_load, \
-                patch("routes.preview_group") as mock_preview:
+        with (
+            patch("routes.load_config") as mock_load,
+            patch("routes.preview_group") as mock_preview,
+        ):
             mock_load.return_value = {
                 "jellyfin_url": TEST_URL,
                 "api_key": TEST_API_KEY,
             }
             mock_preview.return_value = (
                 [
-                    {"Name": "Action Film", "Genres": ["Action"], "ProductionYear": 2024},
-                    {"Name": "Thriller Film", "Genres": ["Thriller"], "ProductionYear": 2023},
+                    {
+                        "Name": "Action Film",
+                        "Genres": ["Action"],
+                        "ProductionYear": 2024,
+                    },
+                    {
+                        "Name": "Thriller Film",
+                        "Genres": ["Thriller"],
+                        "ProductionYear": 2023,
+                    },
                 ],
                 None,
                 200,
             )
 
-            resp = client.post("/api/grouping/preview", json={
-                "type": "genre",
-                "value": "Action",
-                "watch_state": "",
-            })
+            resp = client.post(
+                "/api/grouping/preview",
+                json={
+                    "type": "genre",
+                    "value": "Action",
+                    "watch_state": "",
+                },
+            )
             data = resp.get_json()
             assert data["status"] == "success"
             assert isinstance(data.get("count"), int)

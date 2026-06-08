@@ -91,7 +91,11 @@ _AUTO_DETECT_MAX_FILES = 50_000
 _AUTO_DETECT_MAX_DEPTH = 6
 
 # Test result filenames
-_TEST_RESULT_FILENAMES = ("test_results.txt", "current_test_out.txt", "test_api_out.txt")
+_TEST_RESULT_FILENAMES = (
+    "test_results.txt",
+    "current_test_out.txt",
+    "test_api_out.txt",
+)
 
 # Allowed preview metadata types
 _ALLOWED_PREVIEW_TYPES: frozenset[str] = frozenset(
@@ -158,6 +162,7 @@ def _check_csrf() -> ResponseReturnValue | None:
 # Security helpers for the filesystem browser
 # ---------------------------------------------------------------------------
 
+
 def _is_valid_folder_name(name: str) -> bool:
     """Return True if *name* is a safe, non-empty folder name without path separators."""
     return (
@@ -186,10 +191,7 @@ def _path_is_allowed(path: str) -> bool:
 
     """
     real = os.path.realpath(path)
-    return any(
-        real == root or real.startswith(root + os.sep)
-        for root in _BROWSE_ROOTS
-    )
+    return any(real == root or real.startswith(root + os.sep) for root in _BROWSE_ROOTS)
 
 
 def _get_jellyfin_config(
@@ -360,7 +362,12 @@ def _fetch_jellyfin_endpoint(
     items: list[dict[str, Any]] = []
     try:
         for page in _paginate_jellyfin(
-            base_url, api_key, endpoint, extra_params, limit=_PAGE_LIMIT, timeout=timeout,
+            base_url,
+            api_key,
+            endpoint,
+            extra_params,
+            limit=_PAGE_LIMIT,
+            timeout=timeout,
         ):
             items.extend(page)
     except RuntimeError:
@@ -392,7 +399,9 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
         with ThreadPoolExecutor(max_workers=4) as pool:
             futures: dict[str, Any] = {
                 "genre": pool.submit(_fetch_jellyfin_endpoint, url, api_key, "Genres"),
-                "studio": pool.submit(_fetch_jellyfin_endpoint, url, api_key, "Studios"),
+                "studio": pool.submit(
+                    _fetch_jellyfin_endpoint, url, api_key, "Studios"
+                ),
                 "actor": pool.submit(
                     _fetch_jellyfin_endpoint,
                     url,
@@ -409,7 +418,9 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
                         item.get("Name", "") for item in items if item.get("Name")
                     ]
                 except (RuntimeError, ValueError):
-                    logger.warning("Failed to process metadata key %r", key, exc_info=True)
+                    logger.warning(
+                        "Failed to process metadata key %r", key, exc_info=True
+                    )
                     result[key] = []
                     failed += 1
 
@@ -590,7 +601,9 @@ def preview_grouping() -> ResponseReturnValue:
 
     try:
         # Resolve items using the public sync API
-        items, error, status_code = preview_group(type_name, val, url, api_key, watch_state)
+        items, error, status_code = preview_group(
+            type_name, val, url, api_key, watch_state
+        )
 
         if error is not None:
             return _error(error, status_code)
@@ -620,7 +633,9 @@ def get_cleanup_items() -> ResponseReturnValue:
     if not target_base or not Path(target_base).exists():
         return _success("", items=[])
 
-    configured_groups: set[str] = {str(g.get("name")) for g in config.get("groups", []) if g.get("name")}
+    configured_groups: set[str] = {
+        str(g.get("name")) for g in config.get("groups", []) if g.get("name")
+    }
 
     try:
         entries = [
@@ -688,14 +703,18 @@ def perform_cleanup() -> ResponseReturnValue:
         if not _is_valid_folder_name(name):
             errors.append(f"Invalid folder name: {name}")
             continue
-        removed, err = _delete_folder(name, target_base, auto_create_libraries, url, api_key)
+        removed, err = _delete_folder(
+            name, target_base, auto_create_libraries, url, api_key
+        )
         if removed:
             deleted += 1
         elif err:
             errors.append(err)
 
     if errors:
-        return jsonify({"status": "partial_success", "deleted": deleted, "errors": errors}), 207
+        return jsonify(
+            {"status": "partial_success", "deleted": deleted, "errors": errors}
+        ), 207
     return _success("", deleted=deleted)
 
 
@@ -750,7 +769,9 @@ def _search_local_filesystem(
     return None
 
 
-def _compute_common_root(jellyfin_path: str, host_path: str) -> tuple[str | None, str | None]:
+def _compute_common_root(
+    jellyfin_path: str, host_path: str
+) -> tuple[str | None, str | None]:
     """Infer the common root prefixes from a Jellyfin path and its host match.
 
     Counts matching trailing path components and returns the inferred

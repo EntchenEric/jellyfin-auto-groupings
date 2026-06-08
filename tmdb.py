@@ -10,8 +10,9 @@ import logging
 from typing import Any
 from urllib.parse import urlparse
 
-import network
 import requests
+
+import network
 
 __all__ = ["fetch_tmdb_list", "get_tmdb_recommendations"]
 
@@ -88,7 +89,9 @@ def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
     return ids
 
 
-def get_tmdb_recommendations(items_with_type: list[tuple[str, str]], api_key: str) -> list[str]:
+def get_tmdb_recommendations(
+    items_with_type: list[tuple[str, str]], api_key: str
+) -> list[str]:
     """Fetch recommendations for a list of TMDb IDs.
 
     Args:
@@ -122,10 +125,14 @@ def get_tmdb_recommendations(items_with_type: list[tuple[str, str]], api_key: st
                 for i, rec in enumerate(data.get("results", [])):
                     rec_id = str(rec.get("id"))
                     score = 1.0 / (i + 1)  # Higher weight for top recommendations
-                    recommendation_counts[rec_id] = recommendation_counts.get(rec_id, 0.0) + score
+                    recommendation_counts[rec_id] = (
+                        recommendation_counts.get(rec_id, 0.0) + score
+                    )
         except (requests.exceptions.RequestException, ValueError):
             logger.debug("Skipping failed recommendation item", exc_info=True)
 
     # Sort items by their accumulated score
-    sorted_recs = sorted(recommendation_counts.items(), key=lambda x: x[1], reverse=True)
+    sorted_recs = sorted(
+        recommendation_counts.items(), key=lambda x: x[1], reverse=True
+    )
     return [rec_id for rec_id, _ in sorted_recs]

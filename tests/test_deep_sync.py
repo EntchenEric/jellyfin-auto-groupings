@@ -9,10 +9,12 @@ from sync import run_sync
 @pytest.fixture(autouse=True)
 def mock_filesystem():
     """Mock filesystem checks to avoid dependency on real files."""
-    with patch('pathlib.Path.exists', return_value=True), \
-            patch('pathlib.Path.mkdir'), \
-            patch('sync.os.symlink'), \
-            patch('sync.shutil.rmtree'):
+    with (
+        patch("pathlib.Path.exists", return_value=True),
+        patch("pathlib.Path.mkdir"),
+        patch("sync.os.symlink"),
+        patch("sync.shutil.rmtree"),
+    ):
         yield
 
 

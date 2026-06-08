@@ -1,6 +1,5 @@
 """E2E tests for full sync cycle."""
 
-
 import pytest
 import requests
 
@@ -35,17 +34,19 @@ class TestE2ESync:
         """Full sync with one genre-based grouping."""
         # Create a group
         config = api_get(e2e_session, "/api/config")
-        config["groups"] = [{
-            "name": "E2E Action Movies",
-            "source_category": "jellyfin",
-            "source_type": "genre",
-            "source_value": "Action",
-            "sort_order": "",
-            "schedule_enabled": False,
-            "schedule": "",
-            "seasonal_enabled": False,
-            "watch_state": "",
-        }]
+        config["groups"] = [
+            {
+                "name": "E2E Action Movies",
+                "source_category": "jellyfin",
+                "source_type": "genre",
+                "source_value": "Action",
+                "sort_order": "",
+                "schedule_enabled": False,
+                "schedule": "",
+                "seasonal_enabled": False,
+                "watch_state": "",
+            }
+        ]
         resp = requests.post(
             f"{e2e_session['app_url']}/api/config",
             json=config,
@@ -63,17 +64,19 @@ class TestE2ESync:
     def test_sync_preview_all(self, e2e_session):
         """Preview sync should show expected results without touching disk."""
         config = api_get(e2e_session, "/api/config")
-        config["groups"] = [{
-            "name": "E2E Sci-Fi",
-            "source_category": "jellyfin",
-            "source_type": "genre",
-            "source_value": "Sci-Fi",
-            "sort_order": "",
-            "schedule_enabled": False,
-            "schedule": "",
-            "seasonal_enabled": False,
-            "watch_state": "",
-        }]
+        config["groups"] = [
+            {
+                "name": "E2E Sci-Fi",
+                "source_category": "jellyfin",
+                "source_type": "genre",
+                "source_value": "Sci-Fi",
+                "sort_order": "",
+                "schedule_enabled": False,
+                "schedule": "",
+                "seasonal_enabled": False,
+                "watch_state": "",
+            }
+        ]
         requests.post(
             f"{e2e_session['app_url']}/api/config",
             json=config,

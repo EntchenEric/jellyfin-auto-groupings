@@ -63,7 +63,15 @@ _COMPLEX_QUERY_RE = re.compile(r"\s+(AND NOT|OR NOT|AND|OR)\s+", re.IGNORECASE)
 # Source types that come from external lists (IMDb / Trakt / TMDb / AniList / MyAnimeList / Letterboxd) rather than
 # from a Jellyfin metadata filter.
 _LIST_SOURCES: frozenset[str] = frozenset(
-    {"imdb_list", "trakt_list", "tmdb_list", "anilist_list", "mal_list", "letterboxd_list", "recommendations"},
+    {
+        "imdb_list",
+        "trakt_list",
+        "tmdb_list",
+        "anilist_list",
+        "mal_list",
+        "letterboxd_list",
+        "recommendations",
+    },
 )
 
 # ``sort_order`` values that mean "keep the order from the external list"
@@ -99,9 +107,7 @@ _METADATA_FILTER_MAP: dict[str, str] = {
 }
 
 # Jellyfin Fields parameter for full-library fetches
-_FULL_LIBRARY_FIELDS: str = (
-    "Path,ProviderIds,Genres,Studios,Tags,People,ProductionYear,CommunityRating,UserData"
-)
+_FULL_LIBRARY_FIELDS: str = "Path,ProviderIds,Genres,Studios,Tags,People,ProductionYear,CommunityRating,UserData"
 
 # Jellyfin API timeout for full-library fetches (seconds)
 _FULL_LIBRARY_TIMEOUT: int = 30
@@ -110,7 +116,9 @@ _FULL_LIBRARY_TIMEOUT: int = 30
 _METADATA_FETCH_TIMEOUT: int = 30
 
 
-def _build_preview_item(item: dict[str, Any], file_name: str | None = None) -> dict[str, Any]:
+def _build_preview_item(
+    item: dict[str, Any], file_name: str | None = None
+) -> dict[str, Any]:
     """Build a preview dict from a Jellyfin item."""
     preview: dict[str, Any] = {
         "Name": item.get("Name", "Unknown"),
@@ -119,6 +127,7 @@ def _build_preview_item(item: dict[str, Any], file_name: str | None = None) -> d
     if file_name is not None:
         preview["FileName"] = file_name
     return preview
+
 
 def _translate_path(
     jellyfin_path: str,
@@ -144,7 +153,10 @@ def _translate_path(
         try:
             normalized_root = os.path.normpath(jellyfin_root)
             normalized_path = os.path.normpath(jellyfin_path)
-            if os.path.commonpath([normalized_path, normalized_root]) == normalized_root:
+            if (
+                os.path.commonpath([normalized_path, normalized_root])
+                == normalized_root
+            ):
                 rel = os.path.relpath(normalized_path, normalized_root)
                 return str(Path(host_root) / rel)
         except ValueError:
@@ -152,7 +164,9 @@ def _translate_path(
     return jellyfin_path
 
 
-def _get_cover_path(group_name: str, target_base: str, check_exists: bool = True) -> str | None:
+def _get_cover_path(
+    group_name: str, target_base: str, check_exists: bool = True
+) -> str | None:
     """Compute the expected cover image path for a group, resolving storage priority.
 
     Priority:
@@ -169,7 +183,9 @@ def _get_cover_path(group_name: str, target_base: str, check_exists: bool = True
         The absolute path to the cover image, or None if not found/possible.
 
     """
-    safe_name = hashlib.md5(group_name.encode("utf-8"), usedforsecurity=False).hexdigest()
+    safe_name = hashlib.md5(
+        group_name.encode("utf-8"), usedforsecurity=False
+    ).hexdigest()
 
     # Priority 1: Library-local .covers/ directory (new storage location)
     lib_cover_path = str(Path(target_base) / ".covers" / f"{safe_name}.jpg")
@@ -198,7 +214,8 @@ _LIBRARY_CACHE_LOCK = threading.RLock()
 
 
 def _filter_by_watch_state(
-    items: list[dict[str, Any]], watch_state: str,
+    items: list[dict[str, Any]],
+    watch_state: str,
 ) -> list[dict[str, Any]]:
     """Filter *items* by Jellyfin watch state.
 
@@ -256,7 +273,9 @@ def _fetch_full_library(
         with _LIBRARY_CACHE_LOCK:
             _LIBRARY_CACHE[cache_key] = all_items
     except (RuntimeError, OSError, ValueError) as exc:
-        logger.exception("Infrastructure error fetching Jellyfin library for group %r", group_name)
+        logger.exception(
+            "Infrastructure error fetching Jellyfin library for group %r", group_name
+        )
         return [], f"Jellyfin connection error: {exc!s}", 500
     else:
         return all_items, None, 200
@@ -310,7 +329,9 @@ def _match_jellyfin_items_by_provider(
             if key in jf_by_provider:
                 items.append(jf_by_provider[key])
     else:
-        matched_ids = {str(eid).lower() if case_insensitive else str(eid) for eid in external_ids}
+        matched_ids = {
+            str(eid).lower() if case_insensitive else str(eid) for eid in external_ids
+        }
         items = [v for k, v in jf_by_provider.items() if k in matched_ids]
 
     items = _filter_by_watch_state(items, watch_state)
@@ -395,7 +416,9 @@ def _fetch_and_resolve(
         external_ids = fetch_fn()
         logger.info(log_msg_fn(len(external_ids)))
     except (requests.exceptions.RequestException, RuntimeError, ValueError) as exc:
-        logger.exception("Error fetching %s list for group %r", source_label, group_name)
+        logger.exception(
+            "Error fetching %s list for group %r", source_label, group_name
+        )
         return [], f"{source_label} fetch error: {exc!s}", 400
 
     if not external_ids:
@@ -403,7 +426,14 @@ def _fetch_and_resolve(
         return [], None, 200
 
     return _match_jellyfin_items_by_provider(
-        external_ids, provider_key, list_order_key, sort_order, url, api_key, group_name, watch_state,
+        external_ids,
+        provider_key,
+        list_order_key,
+        sort_order,
+        url,
+        api_key,
+        group_name,
+        watch_state,
     )
 
 
@@ -512,7 +542,9 @@ def _fetch_items_for_anilist_group(
         "AniList",
         "anilist_list_order",
         "AniList",
-        lambda count: f"AniList user {username!r} (status={status!r}): {count} items found",
+        lambda count: (
+            f"AniList user {username!r} (status={status!r}): {count} items found"
+        ),
     )
 
 
@@ -546,7 +578,9 @@ def _fetch_items_for_mal_group(
         "Mal",
         "mal_list_order",
         "MAL",
-        lambda count: f"MyAnimeList user {username!r} (status={status!r}): {count} items found",
+        lambda count: (
+            f"MyAnimeList user {username!r} (status={status!r}): {count} items found"
+        ),
     )
 
 
@@ -613,7 +647,9 @@ def _fetch_items_for_letterboxd_group(
         if tmdb_v:
             items_by_tmdb[str(tmdb_v)] = item
 
-    items = _build_letterboxd_items(external_ids, items_by_imdb, items_by_tmdb, sort_order)
+    items = _build_letterboxd_items(
+        external_ids, items_by_imdb, items_by_tmdb, sort_order
+    )
     items = _filter_by_watch_state(items, watch_state)
 
     return items, None, 200
@@ -668,7 +704,9 @@ def _fetch_items_for_recommendations_group(
     """
     if not tmdb_api_key:
         msg = "TMDb API Key not set — add tmdb_api_key in Server Settings"
-        logger.info("No TMDb API Key configured for recommendations group %r", group_name)
+        logger.info(
+            "No TMDb API Key configured for recommendations group %r", group_name
+        )
         return [], msg, 400
 
     if not source_value:
@@ -704,7 +742,14 @@ def _fetch_items_for_recommendations_group(
         return [], None, 200
 
     return _match_jellyfin_items_by_provider(
-        tmdb_ids, "Tmdb", "recommendations_list_order", sort_order, url, api_key, group_name, watch_state,
+        tmdb_ids,
+        "Tmdb",
+        "recommendations_list_order",
+        sort_order,
+        url,
+        api_key,
+        group_name,
+        watch_state,
     )
 
 
@@ -725,7 +770,9 @@ def _match_condition(item: dict[str, Any], r_type: str, r_val: str) -> bool:
 
     try:
         if r_type == "genre":
-            return any(r_val == str(g).strip().lower() for g in (item.get("Genres") or []))
+            return any(
+                r_val == str(g).strip().lower() for g in (item.get("Genres") or [])
+            )
         if r_type == "actor":
             return any(
                 r_val == str(p.get("Name", "")).strip().lower()
@@ -739,7 +786,9 @@ def _match_condition(item: dict[str, Any], r_type: str, r_val: str) -> bool:
                 if isinstance(s, dict)
             )
         if r_type == "tag":
-            return any(r_val == str(t).strip().lower() for t in (item.get("Tags") or []))
+            return any(
+                r_val == str(t).strip().lower() for t in (item.get("Tags") or [])
+            )
         if r_type == "year":
             val = item.get("ProductionYear")
             if val is not None:
@@ -786,7 +835,9 @@ def _eval_item(item: dict[str, Any], rules: list[dict[str, Any]]) -> bool:
                 result = result or not matched
             case _:
                 # Unknown operator — treat as AND for graceful degradation
-                logger.debug("Unknown operator %r in rule evaluation, treating as AND", op)
+                logger.debug(
+                    "Unknown operator %r in rule evaluation, treating as AND", op
+                )
                 result = result and matched
 
     return result
@@ -898,7 +949,9 @@ def _fetch_items_for_metadata_group(
         params["SortOrder"] = sort_order_dir
 
     try:
-        items = fetch_jellyfin_items(url, api_key, params, timeout=_METADATA_FETCH_TIMEOUT)
+        items = fetch_jellyfin_items(
+            url, api_key, params, timeout=_METADATA_FETCH_TIMEOUT
+        )
         logger.info("Found %s potential items for group %r", len(items), group_name)
     except (RuntimeError, OSError, ValueError) as exc:
         logger.exception("Infrastructure error fetching items for group %r", group_name)
@@ -936,20 +989,24 @@ def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
         return default_type, item_str.strip()
 
     t0, v0 = _parse_item(parts[0])
-    rules.append({
-        "operator": "AND",
-        "type": t0,
-        "value": v0,
-    })
+    rules.append(
+        {
+            "operator": "AND",
+            "type": t0,
+            "value": v0,
+        }
+    )
 
     for i in range(1, len(parts), 2):
         op = " ".join(parts[i].upper().split())
-        ti, vi = _parse_item(parts[i+1])
-        rules.append({
-            "operator": op,
-            "type": ti,
-            "value": vi,
-        })
+        ti, vi = _parse_item(parts[i + 1])
+        rules.append(
+            {
+                "operator": op,
+                "type": ti,
+                "value": vi,
+            }
+        )
 
     return rules
 
@@ -979,8 +1036,12 @@ def preview_group(
     """
     if _COMPLEX_QUERY_RE.search(val):
         rules = parse_complex_query(val, type_name)
-        return _fetch_items_for_complex_group("preview", rules, "", url, api_key, watch_state)
-    return _fetch_items_for_metadata_group("preview", type_name, val, "", url, api_key, watch_state)
+        return _fetch_items_for_complex_group(
+            "preview", rules, "", url, api_key, watch_state
+        )
+    return _fetch_items_for_metadata_group(
+        "preview", type_name, val, "", url, api_key, watch_state
+    )
 
 
 def _process_collection_group(
@@ -998,28 +1059,40 @@ def _process_collection_group(
     item IDs to it.  Jellyfin ignores duplicate additions, so we do not need
     to diff against the existing membership.
     """
-    item_ids = [item["Id"] for item in items if isinstance(item, dict) and item.get("Id")]
+    item_ids = [
+        item["Id"] for item in items if isinstance(item, dict) and item.get("Id")
+    ]
     if not item_ids:
-        return {"group": group_name, "links": 0, "error": "No item IDs to add to collection"}
+        return {
+            "group": group_name,
+            "links": 0,
+            "error": "No item IDs to add to collection",
+        }
 
     if dry_run:
         preview_items = [
-            _build_preview_item(item)
-            for item in items[:_MAX_PREVIEW_ITEMS]
+            _build_preview_item(item) for item in items[:_MAX_PREVIEW_ITEMS]
         ]
         return {"group": group_name, "links": len(item_ids), "items": preview_items}
 
     try:
         collection_id = find_collection_by_name(url, api_key, group_name)
         if collection_id:
-            logger.info("Found existing collection %r (id=%s)", group_name, collection_id)
+            logger.info(
+                "Found existing collection %r (id=%s)", group_name, collection_id
+            )
             # Add items to the existing collection; duplicates are safely ignored by Jellyfin
             add_to_collection(url, api_key, collection_id, item_ids)
             logger.info("Added %s items to collection %r", len(item_ids), group_name)
         else:
             # create_collection already includes the item_ids, so no separate add_to_collection needed
             collection_id = create_collection(url, api_key, group_name, item_ids)
-            logger.info("Created collection %r (id=%s) with %s items", group_name, collection_id, len(item_ids))
+            logger.info(
+                "Created collection %r (id=%s) with %s items",
+                group_name,
+                collection_id,
+                len(item_ids),
+            )
     except (RuntimeError, OSError) as exc:
         return {"group": group_name, "links": 0, "error": str(exc)}
 
@@ -1052,13 +1125,27 @@ def _auto_create_library(
 
     Mutates *existing_libraries* to prevent double creation in the same run.
     """
-    if not dry_run and auto_create_libraries and links_created > 0 and existing_libraries is not None and group_name not in existing_libraries:
+    if (
+        not dry_run
+        and auto_create_libraries
+        and links_created > 0
+        and existing_libraries is not None
+        and group_name not in existing_libraries
+    ):
         logger.info("Creating Jellyfin library for grouping: %r", group_name)
-        lib_path = str(Path(target_path_in_jellyfin) / group_name) if target_path_in_jellyfin else group_dir
+        lib_path = (
+            str(Path(target_path_in_jellyfin) / group_name)
+            if target_path_in_jellyfin
+            else group_dir
+        )
 
         try:
-            add_virtual_folder(url, api_key, group_name, [lib_path], collection_type="mixed")
-            logger.info("Successfully created library %r with path %r", group_name, lib_path)
+            add_virtual_folder(
+                url, api_key, group_name, [lib_path], collection_type="mixed"
+            )
+            logger.info(
+                "Successfully created library %r with path %r", group_name, lib_path
+            )
             existing_libraries.append(group_name)
         except (RuntimeError, OSError) as exc:
             logger.exception("Failed to create Jellyfin library %r", group_name)
@@ -1075,7 +1162,12 @@ def _auto_set_library_cover(
     auto_set_library_covers: bool,
 ) -> None:
     """Set the library cover image via API if configured."""
-    if not dry_run and auto_set_library_covers and source_cover and Path(source_cover).exists():
+    if (
+        not dry_run
+        and auto_set_library_covers
+        and source_cover
+        and Path(source_cover).exists()
+    ):
         logger.info("Setting cover image for library %r via API", group_name)
         set_virtual_folder_image(url, api_key, group_name, source_cover)
 
@@ -1123,7 +1215,9 @@ def _create_group_symlinks(
 
     """
     use_prefix: bool = bool(sort_order)
-    width: int = max(len(str(len(items))) if items else _MIN_PREFIX_WIDTH, _MIN_PREFIX_WIDTH)
+    width: int = max(
+        len(str(len(items))) if items else _MIN_PREFIX_WIDTH, _MIN_PREFIX_WIDTH
+    )
     links_created: int = 0
     preview_items: list[dict[str, Any]] = []
 
@@ -1149,7 +1243,9 @@ def _create_group_symlinks(
             file_name = f"{str(idx).zfill(width)} - {file_name}"
 
         dest_path: str = str(Path(group_dir) / file_name)
-        if _create_or_preview_link(item, host_path, dest_path, file_name, dry_run, preview_items):
+        if _create_or_preview_link(
+            item, host_path, dest_path, file_name, dry_run, preview_items
+        ):
             links_created += 1
 
     action = "Would create" if dry_run else "Created"
@@ -1180,14 +1276,20 @@ def _prepare_group_directory(
             Path(group_dir).mkdir(parents=True, exist_ok=True)
         except OSError as exc:
             logger.exception("Failed to prepare group directory %r", group_dir)
-            return {"group": group_name, "links": 0, "error": f"Directory error: {exc!s}"}
+            return {
+                "group": group_name,
+                "links": 0,
+                "error": f"Directory error: {exc!s}",
+            }
 
         source_cover = _get_cover_path(group_name, target_base)
         if source_cover:
             poster_dest = str(Path(group_dir) / "poster.jpg")
             try:
                 shutil.copy2(source_cover, poster_dest)
-                logger.info("Copied cover image from %s to %s", source_cover, poster_dest)
+                logger.info(
+                    "Copied cover image from %s to %s", source_cover, poster_dest
+                )
             except OSError:
                 logger.exception("Failed to copy cover image")
 
@@ -1208,27 +1310,68 @@ def _resolve_group_source(
     watch_state: str,
 ) -> tuple[list[dict[str, Any]], str | None, int]:
     """Resolve items for a group based on its source configuration."""
-    _source_dispatch: dict[str, Callable[[], tuple[list[dict[str, Any]], str | None, int]]] = {
+    _source_dispatch: dict[
+        str, Callable[[], tuple[list[dict[str, Any]], str | None, int]]
+    ] = {
         "imdb_list": lambda: _fetch_items_for_imdb_group(
-            group_name, source_value or "", sort_order, url, api_key, watch_state,
+            group_name,
+            source_value or "",
+            sort_order,
+            url,
+            api_key,
+            watch_state,
         ),
         "trakt_list": lambda: _fetch_items_for_trakt_group(
-            group_name, source_value or "", sort_order, url, api_key, trakt_client_id, watch_state,
+            group_name,
+            source_value or "",
+            sort_order,
+            url,
+            api_key,
+            trakt_client_id,
+            watch_state,
         ),
         "tmdb_list": lambda: _fetch_items_for_tmdb_group(
-            group_name, source_value or "", sort_order, url, api_key, tmdb_api_key, watch_state,
+            group_name,
+            source_value or "",
+            sort_order,
+            url,
+            api_key,
+            tmdb_api_key,
+            watch_state,
         ),
         "anilist_list": lambda: _fetch_items_for_anilist_group(
-            group_name, source_value or "", sort_order, url, api_key, watch_state,
+            group_name,
+            source_value or "",
+            sort_order,
+            url,
+            api_key,
+            watch_state,
         ),
         "mal_list": lambda: _fetch_items_for_mal_group(
-            group_name, source_value or "", sort_order, url, api_key, mal_client_id, watch_state,
+            group_name,
+            source_value or "",
+            sort_order,
+            url,
+            api_key,
+            mal_client_id,
+            watch_state,
         ),
         "letterboxd_list": lambda: _fetch_items_for_letterboxd_group(
-            group_name, source_value or "", sort_order, url, api_key, watch_state,
+            group_name,
+            source_value or "",
+            sort_order,
+            url,
+            api_key,
+            watch_state,
         ),
         "recommendations": lambda: _fetch_items_for_recommendations_group(
-            group_name, source_value or "", sort_order, url, api_key, tmdb_api_key, watch_state,
+            group_name,
+            source_value or "",
+            sort_order,
+            url,
+            api_key,
+            tmdb_api_key,
+            watch_state,
         ),
     }
 
@@ -1237,17 +1380,39 @@ def _resolve_group_source(
     if isinstance(group.get("rules"), list) and group["rules"]:
         rules_list = group["rules"]
         return _fetch_items_for_complex_group(
-            group_name, rules_list, sort_order, url, api_key, watch_state,
+            group_name,
+            rules_list,
+            sort_order,
+            url,
+            api_key,
+            watch_state,
         )
 
     val_str = str(source_value or "")
-    if source_type in ["genre", "actor", "studio", "tag", "year"] and _COMPLEX_QUERY_RE.search(val_str):
+    if source_type in [
+        "genre",
+        "actor",
+        "studio",
+        "tag",
+        "year",
+    ] and _COMPLEX_QUERY_RE.search(val_str):
         rules = parse_complex_query(val_str, str(source_type))
         return _fetch_items_for_complex_group(
-            group_name, rules, sort_order, url, api_key, watch_state,
+            group_name,
+            rules,
+            sort_order,
+            url,
+            api_key,
+            watch_state,
         )
     return _fetch_items_for_metadata_group(
-        group_name, source_type, source_value, sort_order, url, api_key, watch_state,
+        group_name,
+        source_type,
+        source_value,
+        sort_order,
+        url,
+        api_key,
+        watch_state,
     )
 
 
@@ -1302,7 +1467,9 @@ def _process_group(
     source_type: str | None = group.get("source_type")
     source_value: str | None = group.get("source_value")
 
-    logger.info("Processing group: %r -> %s  (sort_order=%r)", group_name, group_dir, sort_order)
+    logger.info(
+        "Processing group: %r -> %s  (sort_order=%r)", group_name, group_dir, sort_order
+    )
 
     source_cover = _prepare_group_directory(group_dir, group_name, target_base, dry_run)
     if isinstance(source_cover, dict):
@@ -1311,8 +1478,17 @@ def _process_group(
     # --- Resolve items ---
     watch_state: str = group.get("watch_state", "")
     items, error, _status_code = _resolve_group_source(
-        group, group_name, source_type, source_value, sort_order, url, api_key,
-        trakt_client_id, tmdb_api_key, mal_client_id, watch_state,
+        group,
+        group_name,
+        source_type,
+        source_value,
+        sort_order,
+        url,
+        api_key,
+        trakt_client_id,
+        tmdb_api_key,
+        mal_client_id,
+        watch_state,
     )
 
     if error is not None:
@@ -1345,18 +1521,37 @@ def _process_group(
 
     # --- Create symlinks ---
     links_created, preview_items = _create_group_symlinks(
-        items, group_dir, group_name, jellyfin_root, host_root, sort_order, dry_run,
+        items,
+        group_dir,
+        group_name,
+        jellyfin_root,
+        host_root,
+        sort_order,
+        dry_run,
     )
     result: dict[str, Any] = {"group": group_name, "links": links_created}
     if dry_run:
         result["items"] = preview_items
 
     result = _auto_create_library(
-        result, group_name, group_dir, url, api_key,
-        dry_run, auto_create_libraries, links_created, existing_libraries, target_path_in_jellyfin,
+        result,
+        group_name,
+        group_dir,
+        url,
+        api_key,
+        dry_run,
+        auto_create_libraries,
+        links_created,
+        existing_libraries,
+        target_path_in_jellyfin,
     )
     _auto_set_library_cover(
-        group_name, source_cover, url, api_key, dry_run, auto_set_library_covers,
+        group_name,
+        source_cover,
+        url,
+        api_key,
+        dry_run,
+        auto_set_library_covers,
     )
 
     return result
@@ -1444,14 +1639,18 @@ def _maybe_handle_seasonal(
         group_dir = str(Path(target_base) / name)
         if Path(group_dir).is_dir():
             logger.info(
-                "Seasonal group %r is out of season. Deleting directory: %s", name, group_dir,
+                "Seasonal group %r is out of season. Deleting directory: %s",
+                name,
+                group_dir,
             )
             shutil.rmtree(group_dir)
     return {"group": name or "(unnamed)", "links": 0, "status": "out_of_season"}
 
 
 def run_sync(
-    config: dict[str, Any], dry_run: bool = False, group_names: list[str] | None = None,
+    config: dict[str, Any],
+    dry_run: bool = False,
+    group_names: list[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Run the synchronisation process for configured groups.
 
@@ -1493,7 +1692,9 @@ def run_sync(
     mal_client_id: str = str(config.get("mal_client_id") or "").strip()
     auto_create_libraries: bool = bool(config.get("auto_create_libraries", False))
     auto_set_library_covers: bool = bool(config.get("auto_set_library_covers", False))
-    target_path_in_jellyfin: str = str(config.get("target_path_in_jellyfin") or "").strip()
+    target_path_in_jellyfin: str = str(
+        config.get("target_path_in_jellyfin") or ""
+    ).strip()
 
     if not url or not api_key or not target_base:
         msg = "Server settings or target path not configured"
