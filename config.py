@@ -35,8 +35,8 @@ _ENV_OVERRIDES: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 _CONFIG_PATH = Path(__file__).parent / "config"
-CONFIG_DIR: str = str(_CONFIG_PATH)
-CONFIG_FILE: str = str(_CONFIG_PATH / "config.json")
+CONFIG_DIR: Path = _CONFIG_PATH
+CONFIG_FILE: Path = _CONFIG_PATH / "config.json"
 
 # ---------------------------------------------------------------------------
 # Defaults
