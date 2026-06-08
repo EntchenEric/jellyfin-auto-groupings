@@ -1362,7 +1362,7 @@ def _process_group(
 def _parse_mmdd(value: str) -> tuple[int, int]:
     """Parse an ``MM-DD`` string into a ``(month, day)`` tuple.
 
-    Validates that month is 1–12 and day is 1–31.  Returns ``(0, 0)`` for
+    Validates that month is 1-12 and day is 1-31.  Returns ``(0, 0)`` for
     unparseable or out-of-range values so they never match.
     """
     parts = value.strip().split("-", 1)
