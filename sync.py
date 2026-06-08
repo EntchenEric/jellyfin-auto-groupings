@@ -151,15 +151,12 @@ def _translate_path(
     """
     if jellyfin_root and host_root:
         try:
-            normalized_root = os.path.normpath(jellyfin_root)
-            normalized_path = os.path.normpath(jellyfin_path)
-            if (
-                os.path.commonpath([normalized_path, normalized_root])
-                == normalized_root
-            ):
-                rel = os.path.relpath(normalized_path, normalized_root)
+            normalized_root = Path(jellyfin_root).resolve()
+            normalized_path = Path(jellyfin_path).resolve()
+            if normalized_path.is_relative_to(normalized_root):
+                rel = normalized_path.relative_to(normalized_root)
                 return str(Path(host_root) / rel)
-        except ValueError:
+        except (ValueError, RuntimeError, OSError):
             pass
     return jellyfin_path
 
