@@ -13,7 +13,7 @@ def test_fetch_tmdb_list_missing_args():
         fetch_tmdb_list("", "api_key")
 
 
-@patch("requests.get")
+@patch("network.get")
 def test_fetch_tmdb_list_success(mock_get):
     mock_resp_1 = MagicMock()
     mock_resp_1.status_code = 200
@@ -34,7 +34,7 @@ def test_fetch_tmdb_list_success(mock_get):
     assert mock_get.call_count == 2
 
 
-@patch("requests.get")
+@patch("network.get")
 def test_fetch_tmdb_list_url_parsing(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 200
@@ -52,7 +52,7 @@ def test_fetch_tmdb_list_url_parsing(mock_get):
     assert "/list/456" in args[0]
 
 
-@patch("requests.get")
+@patch("network.get")
 def test_fetch_tmdb_list_failure(mock_get):
     mock_get.side_effect = requests.exceptions.RequestException("Network Error")
     with pytest.raises(RuntimeError, match="Failed to fetch TMDb list page 1"):
@@ -64,7 +64,7 @@ def test_get_tmdb_recommendations_missing_key():
         get_tmdb_recommendations([("101", "movie")], "")
 
 
-@patch("requests.get")
+@patch("network.get")
 def test_get_tmdb_recommendations_success(mock_get):
     mock_resp_movie = MagicMock()
     mock_resp_movie.status_code = 200
@@ -91,7 +91,7 @@ def test_get_tmdb_recommendations_success(mock_get):
     assert recs == ["202", "201", "203"]
 
 
-@patch("requests.get")
+@patch("network.get")
 def test_get_tmdb_recommendations_failure_skipped(mock_get):
     mock_resp_movie = MagicMock()
     mock_resp_movie.status_code = 200
