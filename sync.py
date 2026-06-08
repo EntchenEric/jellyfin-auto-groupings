@@ -212,9 +212,9 @@ def _filter_by_watch_state(
 
     """
     if watch_state == "unwatched":
-        return [i for i in items if not i.get("UserData", {}).get("Played")]
+        return [i for i in items if not (i.get("UserData") or {}).get("Played")]
     if watch_state == "watched":
-        return [i for i in items if i.get("UserData", {}).get("Played")]
+        return [i for i in items if (i.get("UserData") or {}).get("Played")]
     return items
 
 
@@ -1008,12 +1008,13 @@ def _process_collection_group(
         collection_id = find_collection_by_name(url, api_key, group_name)
         if collection_id:
             logger.info("Found existing collection %r (id=%s)", group_name, collection_id)
+            # Add items to the existing collection; duplicates are safely ignored by Jellyfin
+            add_to_collection(url, api_key, collection_id, item_ids)
+            logger.info("Added %s items to collection %r", len(item_ids), group_name)
         else:
+            # create_collection already includes the item_ids, so no separate add_to_collection needed
             collection_id = create_collection(url, api_key, group_name, item_ids)
-            logger.info("Created collection %r (id=%s)", group_name, collection_id)
-
-        add_to_collection(url, api_key, collection_id, item_ids)
-        logger.info("Added %s items to collection %r", len(item_ids), group_name)
+            logger.info("Created collection %r (id=%s) with %s items", group_name, collection_id, len(item_ids))
     except (RuntimeError, OSError) as exc:
         return {"group": group_name, "links": 0, "error": str(exc)}
 
@@ -1157,11 +1158,12 @@ def _prepare_group_directory(
     group_name: str,
     target_base: str,
     dry_run: bool,
-) -> str | dict[str, Any]:
+) -> str | None | dict[str, Any]:
     """Clean up and recreate the group directory, copying a cover image if available.
 
     Returns:
-        The path to the source cover image, or an error dict on failure.
+        The path to the source cover image (or ``None`` if none found / dry run),
+        or an error dict on failure.
 
     """
     source_cover: str | None = None
@@ -1184,7 +1186,7 @@ def _prepare_group_directory(
             except OSError:
                 logger.exception("Failed to copy cover image")
 
-    return source_cover or ""
+    return source_cover
 
 
 def _resolve_group_source(
