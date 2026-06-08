@@ -7,6 +7,9 @@ __pycache__/
 *.py[cod]
 *.pyo
 
+# Python type-checking cache
+.mypy_cache/
+
 # Virtual environments
 .venv/
 venv/
