@@ -193,7 +193,7 @@ def test_get_library_id(mock_get):
 
 
 @patch("mimetypes.guess_type")
-@patch("builtins.open")
+@patch("jellyfin.Path.open")
 @patch("jellyfin.network.post")
 @patch("jellyfin.get_library_id")
 def test_set_virtual_folder_image(
@@ -388,7 +388,7 @@ def test_set_virtual_folder_image_no_library_id(mock_get_library_id, caplog):
 def test_set_virtual_folder_image_os_error(mock_get_library_id, caplog):
     mock_get_library_id.return_value = "123"
 
-    with patch("builtins.open", side_effect=OSError("Permission Denied")):
+    with patch("jellyfin.Path.open", side_effect=OSError("Permission Denied")):
         set_virtual_folder_image(TEST_URL, TEST_KEY, "MyLib", "/path/to/img.jpg")
 
     assert (
@@ -397,7 +397,7 @@ def test_set_virtual_folder_image_os_error(mock_get_library_id, caplog):
 
 
 @patch("mimetypes.guess_type")
-@patch("builtins.open")
+@patch("jellyfin.Path.open")
 @patch("jellyfin.network.post")
 @patch("jellyfin.get_library_id")
 def test_set_virtual_folder_image_request_exception(
@@ -427,7 +427,7 @@ def test_set_virtual_folder_image_request_exception(
 
 
 @patch("mimetypes.guess_type")
-@patch("builtins.open")
+@patch("jellyfin.Path.open")
 @patch("jellyfin.network.post")
 @patch("jellyfin.get_library_id")
 def test_set_virtual_folder_image_request_exception_no_response(
@@ -725,7 +725,7 @@ def test_delete_collection_request_exception(mock_delete):
 
 
 @patch("mimetypes.guess_type")
-@patch("builtins.open")
+@patch("jellyfin.Path.open")
 @patch("jellyfin.network.post")
 def test_set_collection_image_success(mock_post, mock_open, mock_guess, caplog):
     mock_guess.return_value = ("image/png", None)
@@ -745,7 +745,7 @@ def test_set_collection_image_success(mock_post, mock_open, mock_guess, caplog):
     assert "Successfully updated cover image for collection 'col_1'" in caplog.text
 
 
-@patch("builtins.open")
+@patch("jellyfin.Path.open")
 def test_set_collection_image_os_error(mock_open, caplog):
     mock_open.side_effect = OSError("Permission denied")
 
@@ -754,7 +754,7 @@ def test_set_collection_image_os_error(mock_open, caplog):
 
 
 @patch("mimetypes.guess_type")
-@patch("builtins.open")
+@patch("jellyfin.Path.open")
 @patch("jellyfin.network.post")
 def test_set_collection_image_unknown_mime(mock_post, mock_open, mock_guess, caplog):
     mock_guess.return_value = (None, None)
@@ -771,7 +771,7 @@ def test_set_collection_image_unknown_mime(mock_post, mock_open, mock_guess, cap
 
 
 @patch("mimetypes.guess_type")
-@patch("builtins.open")
+@patch("jellyfin.Path.open")
 @patch("jellyfin.network.post")
 def test_set_collection_image_http_error(mock_post, mock_open, mock_guess, caplog):
     mock_guess.return_value = ("image/jpeg", None)
@@ -791,7 +791,7 @@ def test_set_collection_image_http_error(mock_post, mock_open, mock_guess, caplo
 
 
 @patch("mimetypes.guess_type")
-@patch("builtins.open")
+@patch("jellyfin.Path.open")
 @patch("jellyfin.network.post")
 def test_set_collection_image_request_exception_no_response(
     mock_post, mock_open, mock_guess, caplog
