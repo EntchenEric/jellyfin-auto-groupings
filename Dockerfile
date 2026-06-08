@@ -10,10 +10,12 @@ WORKDIR /app
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
+# Only copy what pip needs — .py source files are not required to
+# resolve dependencies.  The final layer copies everything anyway.
 COPY requirements.txt requirements-dev.txt pyproject.toml README.md ./
-COPY *.py ./
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt gunicorn
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir gunicorn
 
 # ---------------------------------------------------------------------------
 # Final stage — copy only what is needed to run the application

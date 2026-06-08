@@ -11,6 +11,7 @@ responsible for:
 
 from __future__ import annotations
 
+import calendar
 import hashlib
 import logging
 import os
@@ -1557,8 +1558,8 @@ def _process_group(
 def _parse_mmdd(value: str) -> tuple[int, int]:
     """Parse an ``MM-DD`` string into a ``(month, day)`` tuple.
 
-    Validates that month is 1-12 and day is 1-31.  Returns ``(0, 0)`` for
-    unparseable or out-of-range values so they never match.
+    Validates that month is 1-12 and that *day* is valid for the given month.
+    Returns ``(0, 0)`` for unparseable or out-of-range values so they never match.
     """
     parts = value.strip().split("-", 1)
     try:
@@ -1566,7 +1567,10 @@ def _parse_mmdd(value: str) -> tuple[int, int]:
         day = int(parts[1])
     except (ValueError, IndexError):
         return (0, 0)
-    if not (1 <= month <= 12 and 1 <= day <= 31):
+    if not (1 <= month <= 12):
+        return (0, 0)
+    _, max_day = calendar.monthrange(2000, month)
+    if not (1 <= day <= max_day):
         return (0, 0)
     return (month, day)
 

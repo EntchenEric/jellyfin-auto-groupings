@@ -13,17 +13,17 @@ venv/
 env/
 
 # Test artifacts
-coverage_report.txt
+test_error.log
 test_results.txt
-pytest_verbose.log
-current_test_out.txt
 test_api_out.txt
+current_test_out.txt
+pytest_verbose.log
 pytest.log
+coverage_report.txt
 .pytest_cache/
 .coverage
 htmlcov/
 tests/
-test_*
 
 # IDE
 .vscode/
