@@ -196,3 +196,26 @@ def testdelete_maxretry_non_readtimeout(monkeypatch):
     monkeypatch.setattr(_SESSION, "delete", _fail)
     with pytest.raises(requests.ConnectionError):
         delete("http://example.com/api")
+
+
+def test_reraise_timeout_maxretry_no_reason():
+    """_reraise_timeout handles MaxRetryError with no reason attribute."""
+    from network import _reraise_timeout
+
+    # MaxRetryError raised directly as reason to cover code path where exc.args[0]
+    # exists but has no .reason attribute
+    class MaxRetryNoReason:
+        pass
+
+    mr = MaxRetryNoReason()
+    conn_err = requests.ConnectionError(mr)
+    _reraise_timeout(conn_err)  # should not raise
+
+
+def test_reraise_timeout_maxretry_reason_none():
+    """_reraise_timeout handles MaxRetryError with reason=None."""
+    from network import _reraise_timeout
+
+    max_retry = MaxRetryError("pool", "url", reason=None)
+    conn_err = requests.ConnectionError(max_retry)
+    _reraise_timeout(conn_err)  # should not raise
