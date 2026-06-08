@@ -15,7 +15,12 @@ from tmdb import fetch_tmdb_list
 from trakt import fetch_trakt_list
 
 
-@patch("requests.get")
+# ---------------------------------------------------------------------------
+# letterboxd.py — code uses network.get (not requests.get directly)
+# ---------------------------------------------------------------------------
+
+
+@patch("network.get")
 def test_fetch_letterboxd_list(mock_get):
     # Mock main list page
     mock_list_resp = MagicMock()
@@ -33,7 +38,7 @@ def test_fetch_letterboxd_list(mock_get):
     assert ids == ["tt0068646"]
 
 
-@patch("requests.get")
+@patch("network.get")
 def test_fetch_letterboxd_list_tmdb(mock_get):
     # Test TMDb ID extraction and pagination stop
     mock_list_resp = MagicMock()
@@ -69,7 +74,7 @@ def test_fetch_letterboxd_invalid_url():
         fetch_letterboxd_list("https://not-lb-domain.com")
 
 
-@patch("requests.get")
+@patch("network.get")
 def test_fetch_letterboxd_http_error(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 500
@@ -79,7 +84,12 @@ def test_fetch_letterboxd_http_error(mock_get):
         fetch_letterboxd_list("https://letterboxd.com/user/list/list")
 
 
-@patch("requests.get")
+# ---------------------------------------------------------------------------
+# mal.py — code uses network.get
+# ---------------------------------------------------------------------------
+
+
+@patch("network.get")
 def test_fetch_mal_list(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 200
@@ -96,7 +106,7 @@ def test_fetch_mal_list(mock_get):
     assert kwargs["params"]["status"] == "watching"
 
 
-@patch("requests.get")
+@patch("network.get")
 def test_fetch_mal_pagination(mock_get):
     resp1 = MagicMock()
     resp1.status_code = 200
@@ -115,7 +125,12 @@ def test_fetch_mal_pagination(mock_get):
     assert ids == [1, 2]
 
 
-@patch("requests.get")
+# ---------------------------------------------------------------------------
+# trakt.py — code uses network.get
+# ---------------------------------------------------------------------------
+
+
+@patch("network.get")
 def test_fetch_trakt_list(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 200
@@ -129,7 +144,12 @@ def test_fetch_trakt_list(mock_get):
     assert ids == ["tt123"]
 
 
-@patch("requests.post")
+# ---------------------------------------------------------------------------
+# anilist.py — code uses network.post
+# ---------------------------------------------------------------------------
+
+
+@patch("network.post")
 def test_fetch_anilist_all(mock_post):
     mock_resp = MagicMock()
     mock_resp.status_code = 200
@@ -138,6 +158,11 @@ def test_fetch_anilist_all(mock_post):
     fetch_anilist_list("user", "all")
     _args, kwargs = mock_post.call_args
     assert "status" not in kwargs["json"]["variables"]
+
+
+# ---------------------------------------------------------------------------
+# tmdb.py — code uses network.get
+# ---------------------------------------------------------------------------
 
 
 def test_fetch_tmdb_invalid_args():
@@ -149,7 +174,7 @@ def test_fetch_tmdb_invalid_args():
         fetch_tmdb_list("", "key")
 
 
-@patch("requests.get")
+@patch("network.get")
 def test_fetch_tmdb_url_parsing(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 200
@@ -160,7 +185,7 @@ def test_fetch_tmdb_url_parsing(mock_get):
     assert "list/999" in args[0]
 
 
-@patch("requests.get")
+@patch("network.get")
 def test_fetch_mal_error(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 401
@@ -172,7 +197,7 @@ def test_fetch_mal_error(mock_get):
         fetch_mal_list("u", "c")
 
 
-@patch("requests.get")
+@patch("network.get")
 def test_fetch_trakt_pagination(mock_get):
     resp1 = MagicMock()
     resp1.status_code = 200
@@ -187,7 +212,7 @@ def test_fetch_trakt_pagination(mock_get):
     assert ids == ["tt1", "tt2"]
 
 
-@patch("requests.post")
+@patch("network.post")
 def test_fetch_anilist_empty_data(mock_post):
     mock_resp = MagicMock()
     mock_resp.status_code = 200
@@ -230,14 +255,15 @@ def test_extract_ids_priority_tmdb_over_imdb():
     assert result == {"film1": "111"}
 
 
-@patch("requests.get")
+@patch("network.get")
 def test_fetch_id_for_slug_request_exception(mock_get):
+    # _fetch_id_for_slug uses network.get now
     mock_get.side_effect = requests.exceptions.ConnectionError("Network down")
     result = _fetch_id_for_slug("some-film")
     assert result is None
 
 
-@patch("requests.get")
+@patch("network.get")
 def test_letterboxd_404_on_page_two(mock_get):
     resp1 = MagicMock()
     resp1.status_code = 200
@@ -256,7 +282,7 @@ def test_letterboxd_404_on_page_two(mock_get):
     assert ids == ["tt1234567"]
 
 
-@patch("requests.get")
+@patch("network.get")
 def test_letterboxd_fallback_slug_regex(mock_get):
     resp = MagicMock()
     resp.status_code = 200
@@ -267,7 +293,7 @@ def test_letterboxd_fallback_slug_regex(mock_get):
     assert ids == []
 
 
-@patch("requests.get")
+@patch("network.get")
 def test_letterboxd_no_slugs(mock_get):
     resp = MagicMock()
     resp.status_code = 200
@@ -279,7 +305,7 @@ def test_letterboxd_no_slugs(mock_get):
 
 
 @patch("letterboxd._fetch_id_for_slug")
-@patch("requests.get")
+@patch("network.get")
 def test_letterboxd_threadpool_exception(mock_get, mock_fetch_slug):
     resp = MagicMock()
     resp.status_code = 200
@@ -307,7 +333,7 @@ def test_fetch_mal_no_client_id():
         fetch_mal_list("user", "")
 
 
-@patch("requests.get")
+@patch("network.get")
 def test_fetch_mal_status_current(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 200
@@ -319,7 +345,7 @@ def test_fetch_mal_status_current(mock_get):
     assert kwargs["params"]["status"] == "watching"
 
 
-@patch("requests.get")
+@patch("network.get")
 def test_fetch_mal_status_planning(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 200
@@ -331,7 +357,7 @@ def test_fetch_mal_status_planning(mock_get):
     assert kwargs["params"]["status"] == "plan_to_watch"
 
 
-@patch("requests.get")
+@patch("network.get")
 def test_fetch_mal_status_paused(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 200
@@ -343,7 +369,7 @@ def test_fetch_mal_status_paused(mock_get):
     assert kwargs["params"]["status"] == "on_hold"
 
 
-@patch("requests.get")
+@patch("network.get")
 def test_fetch_mal_status_all(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 200
@@ -355,7 +381,7 @@ def test_fetch_mal_status_all(mock_get):
     assert "status" not in kwargs["params"]
 
 
-@patch("requests.get")
+@patch("network.get")
 def test_fetch_mal_status_unknown(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 200
@@ -377,7 +403,7 @@ def test_fetch_trakt_no_client_id():
         fetch_trakt_list("user/list", "")
 
 
-@patch("requests.get")
+@patch("network.get")
 def test_fetch_trakt_full_url(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 200
@@ -396,7 +422,7 @@ def test_fetch_trakt_invalid_url():
         fetch_trakt_list("not-a-valid-url", "client_id")
 
 
-@patch("requests.get")
+@patch("network.get")
 def test_fetch_trakt_http_error(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 500
@@ -408,7 +434,7 @@ def test_fetch_trakt_http_error(mock_get):
         fetch_trakt_list("user/list", "client_id")
 
 
-@patch("requests.get")
+@patch("network.get")
 def test_fetch_trakt_empty_items(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 200
@@ -420,7 +446,7 @@ def test_fetch_trakt_empty_items(mock_get):
     assert ids == []
 
 
-@patch("requests.get")
+@patch("network.get")
 def test_fetch_trakt_bad_pagination_header(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 200
