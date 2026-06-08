@@ -14,7 +14,6 @@ from mal import fetch_mal_list
 from tmdb import fetch_tmdb_list
 from trakt import fetch_trakt_list
 
-
 # ---------------------------------------------------------------------------
 # letterboxd.py — code uses network.get (not requests.get directly)
 # ---------------------------------------------------------------------------
