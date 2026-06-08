@@ -673,3 +673,51 @@ button:disabled {
 #main-content>* {
     animation: fadeIn 0.4s ease-out;
 }
+
+/* ── Close button on modals (shared) ───────────────────── */
+.close-modal-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    transition: color 0.2s;
+    width: auto;
+    margin: 0;
+}
+
+.close-modal-btn:hover {
+    color: var(--error-color);
+}
+
+/* ── Code / pre blocks ──────────────────────────────────── */
+code, pre {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.82rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    padding: 0.2rem 0.4rem;
+}
+
+pre {
+    padding: 1rem;
+    overflow-x: auto;
+    line-height: 1.5;
+}
+
+/* ── Scrollbar styling ──────────────────────────────────── */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
