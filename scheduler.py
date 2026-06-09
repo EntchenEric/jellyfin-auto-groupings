@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import logging
 import threading
+from typing import Any
+
 from apscheduler.schedulers.background import (
     BackgroundScheduler,  # type: ignore[import-untyped]
 )
@@ -227,7 +229,3 @@ def validate_cron(expr: str) -> str | None:
     except (ValueError, TypeError, AttributeError) as exc:
         return f"Invalid cron expression: {exc}"
     return None
-
-
-
-
