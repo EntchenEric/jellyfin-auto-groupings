@@ -16,7 +16,9 @@ def main() -> None:
     """Run pytest with coverage and stream output to ``test_results.txt``."""
     repo_root = Path(__file__).resolve().parent
     existing = os.environ.get("PYTHONPATH")
-    os.environ["PYTHONPATH"] = f"{existing}{os.pathsep}{repo_root}" if existing else str(repo_root)
+    os.environ["PYTHONPATH"] = (
+        f"{existing}{os.pathsep}{repo_root}" if existing else str(repo_root)
+    )
     with Path("test_results.txt").open("w", encoding="utf-8") as f:
         try:
             # Running all tests with coverage

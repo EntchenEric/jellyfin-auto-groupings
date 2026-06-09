@@ -10,10 +10,8 @@ import logging
 import threading
 from typing import Any
 
-from apscheduler.schedulers.background import (
-    BackgroundScheduler,  # type: ignore[import-untyped]
-)
-from apscheduler.triggers.cron import CronTrigger  # type: ignore[import-untyped]
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 from config import load_config
 from sync import run_cleanup_broken_symlinks, run_sync

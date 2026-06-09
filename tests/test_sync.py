@@ -73,7 +73,6 @@ def test_parse_complex_query_bare_not_at_start():
     assert rules[0]["value"] == ""
 
 
-
 def test_match_condition():
     item = {
         "Genres": ["Action", "Thriller"],
