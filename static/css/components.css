@@ -767,7 +767,208 @@ pre {
     line-height: 1.5;
 }
 
-/* ── Scrollbar styling ──────────────────────────────────── */
+/* ── Utility classes ──────────────────────────────────────── */
+
+/* Accent link color */
+.accent-link {
+    color: var(--accent-color);
+}
+
+/* Sub-panel heading with optional badge */
+.sub-panel-heading {
+    font-size: 0.82rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+/* Optional badge text */
+.badge-optional {
+    font-weight: 400;
+    text-transform: none;
+}
+
+/* Sub-panel description text */
+.sub-panel-text {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+/* Section label (small) */
+.label-sm {
+    font-size: 0.68rem;
+    margin-bottom: 0.35rem;
+}
+
+/* Small input variant */
+.input-sm {
+    font-size: 0.85rem;
+    padding: 0.5rem 0.7rem;
+}
+
+/* Select small variant */
+.select-sm {
+    flex: 1;
+    padding: 0.45rem;
+    font-size: 0.82rem;
+}
+
+.select-sm-2 {
+    flex: 2;
+    padding: 0.45rem;
+    font-size: 0.82rem;
+}
+
+/* Horizontal rule separator */
+.hr-section {
+    border: 0;
+    border-top: 1px solid var(--glass-border);
+    margin: 1.25rem 0;
+}
+
+.hr-dashed {
+    border-top: 1px dashed var(--glass-border);
+}
+
+/* Section title with bottom border */
+.section-title-border {
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--glass-border);
+    padding-bottom: 0.5rem;
+}
+
+/* Accent-colored section heading */
+.section-accent-heading {
+    font-size: 0.9rem;
+    color: var(--accent-color);
+    margin-bottom: 1rem;
+    margin-top: 0;
+}
+
+.section-dashed-top {
+    margin-top: 1.5rem;
+    border-top: 1px dashed var(--glass-border);
+    padding-top: 1.5rem;
+}
+
+/* Form card (group editor) */
+.form-card {
+    background: rgba(0,0,0,0.15);
+    border: 1px solid var(--glass-border);
+    padding: 1.5rem;
+    border-radius: var(--radius-lg);
+}
+
+/* Utility margin classes */
+.mb-0 { margin-bottom: 0 !important; }
+.mb-0_5 { margin-bottom: 0.5rem; }
+.mb-1_25 { margin-bottom: 1.25rem; }
+.mt-0_75 { margin-top: 0.75rem; }
+.mt-0 { margin-top: 0 !important; }
+.mt-1 { margin-top: 1rem; }
+
+/* Hidden but preserves layout for JS toggle */
+.hidden { display: none; }
+
+/* Hidden by default, flex-column when shown via JS style.display */
+.hidden-flex-col {
+    display: none;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.hidden-flex-col[style*="display: flex"],
+.hidden-flex-col[style*="display:flex"] {
+    display: flex !important;
+}
+
+/* Flex utilities */
+.flex-col { display: flex; gap: 0.5rem; flex-direction: column; }
+.gap-0_5 { gap: 0.5rem; }
+
+/* Preview result box */
+.preview-box {
+    margin-top: 0.75rem;
+    font-size: 0.8rem;
+    padding: 0.9rem;
+    background: rgba(0,0,0,0.2);
+    border-radius: var(--radius-md);
+    border: 1px dashed var(--glass-border);
+}
+
+/* Accent color utility */
+.accent-color {
+    color: var(--accent-color);
+}
+
+/* Flex row utility */
+.flex-row {
+    display: flex;
+}
+
+.flex-row.gap-1 {
+    gap: 1rem;
+}
+
+.flex-row.gap-0_3 {
+    gap: 0.3rem;
+}
+
+.flex-row.align-items-center {
+    align-items: center;
+}
+
+.flex-1 {
+    flex: 1;
+}
+
+/* Small margin top utility */
+.small-mt {
+    margin-top: 0.4rem;
+}
+
+/* Form footer with button row */
+.form-footer {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 2rem;
+    border-top: 1px solid var(--glass-border);
+    padding-top: 1.5rem;
+}
+
+.form-btn-secondary {
+    flex: 1;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--text-secondary);
+    color: var(--text-primary);
+    margin-top: 0;
+    padding: 0.8rem;
+}
+
+.form-btn-primary {
+    flex: 3;
+    background: var(--accent-color);
+    border: none;
+    font-weight: 600;
+    color: white;
+    margin-top: 0;
+    padding: 0.8rem;
+}
+
+/* Preview button variant */
+.btn-preview {
+    padding: 0.5rem 0.9rem;
+    font-size: 0.85rem;
+    align-self: flex-start;
+    margin: 0;
+}
+
+.text-secondary {
+    color: var(--text-secondary);
+}
+
+/* Scrollbar styling */
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;

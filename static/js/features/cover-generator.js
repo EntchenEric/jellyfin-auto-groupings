@@ -2,7 +2,7 @@
 
 import { state } from '../core/state.js';
 import { saveConfig, uploadCover } from '../core/api.js';
-import { showToast, showErrorDialog, getEl } from '../core/ui.js';
+import { showToast, showErrorDialog, hideModal, getEl } from '../core/ui.js';
 
 let activeCoverIndex = -1;
 
@@ -459,13 +459,15 @@ export function renderCover() {
 
 export function downloadCover() {
     if (activeCoverIndex < 0) return;
-    const group = state.currentConfig.groups[activeCoverIndex];
+    const group = state.currentConfig?.groups?.[activeCoverIndex];
+    if (!group) return;
     const canvas = getEl('cover-canvas');
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    const dataUrl = canvas?.toDataURL('image/jpeg', 0.92);
+    if (!dataUrl) return;
 
     const a = document.createElement('a');
     a.href = dataUrl;
-    a.download = (group.name || 'group_cover') + '_cover.jpg';
+    a.download = `${group.name || 'group_cover'}_cover.jpg`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -474,24 +476,26 @@ export function downloadCover() {
 
 export async function applyCover() {
     if (activeCoverIndex < 0) return;
-    const group = state.currentConfig.groups[activeCoverIndex];
+    const group = state.currentConfig?.groups?.[activeCoverIndex];
+    if (!group) return;
 
     const canvas = getEl('cover-canvas');
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    const dataUrl = canvas?.toDataURL('image/jpeg', 0.92);
+    if (!dataUrl) return;
 
     try {
         await uploadCover(group.name, dataUrl);
         showToast('Cover generated and saved!', 'success');
 
-        group.cover_text = getEl('cover-text').value;
-        group.cover_theme = getEl('cover-theme').value;
-        group.cover_border_style = getEl('cover-border-style').value;
-        group.cover_border_color = getEl('cover-border-color').value;
-        group.cover_color1 = getEl('cover-color-1').value;
-        group.cover_color2 = getEl('cover-color-2').value;
+        group.cover_text = getEl('cover-text')?.value ?? group.cover_text;
+        group.cover_theme = getEl('cover-theme')?.value ?? group.cover_theme;
+        group.cover_border_style = getEl('cover-border-style')?.value ?? group.cover_border_style;
+        group.cover_border_color = getEl('cover-border-color')?.value ?? group.cover_border_color;
+        group.cover_color1 = getEl('cover-color-1')?.value ?? group.cover_color1;
+        group.cover_color2 = getEl('cover-color-2')?.value ?? group.cover_color2;
 
         await saveConfig(state.currentConfig);
-        getEl('cover-generator-modal').style.display = 'none';
+        hideModal('cover-generator-modal');
         document.dispatchEvent(new CustomEvent('groups-changed'));
     } catch (err) {
         showErrorDialog('Network error while saving cover.');
