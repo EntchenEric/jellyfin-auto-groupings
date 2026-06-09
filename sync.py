@@ -62,20 +62,6 @@ __all__ = [
 # Pre-compiled regex for splitting complex query logical operators.
 _COMPLEX_QUERY_RE = re.compile(r"\s+(AND NOT|OR NOT|AND|OR)\s+", re.IGNORECASE)
 
-# Source types that come from external lists (IMDb / Trakt / TMDb / AniList / MyAnimeList / Letterboxd) rather than
-# from a Jellyfin metadata filter.
-_LIST_SOURCES: frozenset[str] = frozenset(
-    {
-        "imdb_list",
-        "trakt_list",
-        "tmdb_list",
-        "anilist_list",
-        "mal_list",
-        "letterboxd_list",
-        "recommendations",
-    },
-)
-
 # ``sort_order`` values that mean "keep the order from the external list"
 # rather than applying a Jellyfin / in-memory sort.
 _LIST_ORDER_VALUES: frozenset[str] = frozenset(
@@ -116,6 +102,24 @@ _FULL_LIBRARY_TIMEOUT: int = 30
 
 # Jellyfin API timeout for metadata group fetches (seconds)
 _METADATA_FETCH_TIMEOUT: int = 30
+
+# Source types that use external list fetchers (not Jellyfin metadata filters)
+_LIST_SOURCE_TYPES: frozenset[str] = frozenset(
+    {
+        "imdb_list",
+        "trakt_list",
+        "tmdb_list",
+        "anilist_list",
+        "mal_list",
+        "letterboxd_list",
+        "recommendations",
+    },
+)
+
+# Metadata source types that can contain complex queries
+_COMPLEX_QUERY_SOURCE_TYPES: frozenset[str] = frozenset(
+    {"genre", "actor", "studio", "tag", "year"},
+)
 
 
 def _build_preview_item(
@@ -262,6 +266,9 @@ def _fetch_full_library(
 ) -> tuple[list[dict[str, Any]], str | None, int]:
     """Fetch the full Jellyfin library once per run for matching.
 
+    Uses double-checked locking with a reentrant lock to avoid redundant
+    fetches when multiple groups share the same Jellyfin server.
+
     Args:
         url: Jellyfin base URL.
         api_key: Jellyfin API key.
@@ -291,7 +298,9 @@ def _fetch_full_library(
         )
         logger.info("Jellyfin library: %s items fetched for matching", len(all_items))
         with _LIBRARY_CACHE_LOCK:
-            _LIBRARY_CACHE[cache_key] = all_items
+            # Double-check: another thread may have populated the cache while we fetched
+            if cache_key not in _LIBRARY_CACHE:
+                _LIBRARY_CACHE[cache_key] = all_items
     except (RuntimeError, OSError, ValueError) as exc:
         logger.exception(
             "Infrastructure error fetching Jellyfin library for group %r",
@@ -1369,6 +1378,84 @@ def _prepare_group_directory(
     return source_cover
 
 
+# Module-level dispatch table for external list source types.
+# Each entry maps a source_type string to a callable that accepts the
+# standard parameter signature for external list fetchers.
+_SOURCE_DISPATCH: dict[
+    str,
+    Callable[
+        ...,
+        tuple[list[dict[str, Any]], str | None, int],
+    ],
+] = {
+    "imdb_list": _fetch_items_for_imdb_group,
+    "trakt_list": _fetch_items_for_trakt_group,
+    "tmdb_list": _fetch_items_for_tmdb_group,
+    "anilist_list": _fetch_items_for_anilist_group,
+    "mal_list": _fetch_items_for_mal_group,
+    "letterboxd_list": _fetch_items_for_letterboxd_group,
+    "recommendations": _fetch_items_for_recommendations_group,
+}
+
+
+def _dispatch_list_source(
+    source_type: str,
+    group_name: str,
+    source_value: str,
+    sort_order: str,
+    url: str,
+    api_key: str,
+    watch_state: str,
+    *,
+    trakt_client_id: str = "",
+    tmdb_api_key: str = "",
+    mal_client_id: str = "",
+    anilist_api_url: str | None = None,
+) -> tuple[list[dict[str, Any]], str | None, int]:
+    """Dispatch to the correct external-list fetch function based on *source_type*.
+
+    Each external list source has a slightly different parameter signature;
+    this helper normalises the call site so the dispatch table can remain
+    a simple name-to-function mapping.
+    """
+    match source_type:
+        case "imdb_list":
+            return _fetch_items_for_imdb_group(
+                group_name, source_value, sort_order, url, api_key, watch_state,
+            )
+        case "trakt_list":
+            return _fetch_items_for_trakt_group(
+                group_name, source_value, sort_order, url, api_key,
+                trakt_client_id, watch_state,
+            )
+        case "tmdb_list":
+            return _fetch_items_for_tmdb_group(
+                group_name, source_value, sort_order, url, api_key,
+                tmdb_api_key, watch_state,
+            )
+        case "anilist_list":
+            return _fetch_items_for_anilist_group(
+                group_name, source_value, sort_order, url, api_key,
+                watch_state, anilist_api_url=anilist_api_url,
+            )
+        case "mal_list":
+            return _fetch_items_for_mal_group(
+                group_name, source_value, sort_order, url, api_key,
+                mal_client_id, watch_state,
+            )
+        case "letterboxd_list":
+            return _fetch_items_for_letterboxd_group(
+                group_name, source_value, sort_order, url, api_key, watch_state,
+            )
+        case "recommendations":
+            return _fetch_items_for_recommendations_group(
+                group_name, source_value, sort_order, url, api_key,
+                tmdb_api_key, watch_state,
+            )
+        case _:
+            return [], f"Unknown source type: {source_type}", 400
+
+
 def _resolve_group_source(
     group: dict[str, Any],
     group_name: str,
@@ -1383,76 +1470,30 @@ def _resolve_group_source(
     watch_state: str,
     anilist_api_url: str | None = None,
 ) -> tuple[list[dict[str, Any]], str | None, int]:
-    """Resolve items for a group based on its source configuration."""
-    _source_dispatch: dict[
-        str,
-        Callable[[], tuple[list[dict[str, Any]], str | None, int]],
-    ] = {
-        "imdb_list": lambda: _fetch_items_for_imdb_group(
-            group_name,
-            source_value or "",
-            sort_order,
-            url,
-            api_key,
-            watch_state,
-        ),
-        "trakt_list": lambda: _fetch_items_for_trakt_group(
-            group_name,
-            source_value or "",
-            sort_order,
-            url,
-            api_key,
-            trakt_client_id,
-            watch_state,
-        ),
-        "tmdb_list": lambda: _fetch_items_for_tmdb_group(
-            group_name,
-            source_value or "",
-            sort_order,
-            url,
-            api_key,
-            tmdb_api_key,
-            watch_state,
-        ),
-        "anilist_list": lambda: _fetch_items_for_anilist_group(
-            group_name,
-            source_value or "",
-            sort_order,
-            url,
-            api_key,
-            watch_state,
-            anilist_api_url=anilist_api_url,
-        ),
-        "mal_list": lambda: _fetch_items_for_mal_group(
-            group_name,
-            source_value or "",
-            sort_order,
-            url,
-            api_key,
-            mal_client_id,
-            watch_state,
-        ),
-        "letterboxd_list": lambda: _fetch_items_for_letterboxd_group(
-            group_name,
-            source_value or "",
-            sort_order,
-            url,
-            api_key,
-            watch_state,
-        ),
-        "recommendations": lambda: _fetch_items_for_recommendations_group(
-            group_name,
-            source_value or "",
-            sort_order,
-            url,
-            api_key,
-            tmdb_api_key,
-            watch_state,
-        ),
-    }
+    """Resolve items for a group based on its source configuration.
 
-    if source_type in _source_dispatch:
-        return _source_dispatch[source_type]()
+    Dispatches to the appropriate fetch function based on *source_type*.
+    External list sources (IMDb, Trakt, etc.) use their dedicated fetchers;
+    metadata sources use Jellyfin API filters or complex rule evaluation.
+
+    Returns:
+        A ``(items, error, status_code)`` tuple.
+
+    """
+    if source_type in _LIST_SOURCE_TYPES:
+        return _dispatch_list_source(
+            source_type,
+            group_name,
+            source_value or "",
+            sort_order,
+            url,
+            api_key,
+            watch_state,
+            trakt_client_id=trakt_client_id,
+            tmdb_api_key=tmdb_api_key,
+            mal_client_id=mal_client_id,
+            anilist_api_url=anilist_api_url,
+        )
     if isinstance(group.get("rules"), list) and group["rules"]:
         rules_list = group["rules"]
         return _fetch_items_for_complex_group(
@@ -1465,13 +1506,7 @@ def _resolve_group_source(
         )
 
     val_str = str(source_value or "")
-    if source_type in [
-        "genre",
-        "actor",
-        "studio",
-        "tag",
-        "year",
-    ] and _COMPLEX_QUERY_RE.search(val_str):
+    if source_type in _COMPLEX_QUERY_SOURCE_TYPES and _COMPLEX_QUERY_RE.search(val_str):
         rules = parse_complex_query(val_str, str(source_type))
         return _fetch_items_for_complex_group(
             group_name,
@@ -1584,7 +1619,7 @@ def _process_group(
     # Apply in-memory sort for external-list sources when a non-list-order
     # sort is requested (Jellyfin cannot sort external lists for us).
     if (
-        source_type in _LIST_SOURCES
+        source_type in _LIST_SOURCE_TYPES
         and sort_order
         and sort_order not in _LIST_ORDER_VALUES
         and sort_order in SORT_MAP
@@ -1818,6 +1853,7 @@ def run_sync(
     if auto_create_libraries:
         existing_libraries = _fetch_existing_libraries(url, api_key)
 
+    # Clear any stale cached library data before starting a fresh sync
     with _LIBRARY_CACHE_LOCK:
         _LIBRARY_CACHE.clear()
 
@@ -1855,8 +1891,6 @@ def run_sync(
         )
         results.append(result)
 
-    with _LIBRARY_CACHE_LOCK:
-        _LIBRARY_CACHE.clear()
     return results
 
 
