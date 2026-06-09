@@ -8,8 +8,6 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Any
-
 from apscheduler.schedulers.background import (
     BackgroundScheduler,  # type: ignore[import-untyped]
 )
@@ -230,16 +228,6 @@ def validate_cron(expr: str) -> str | None:
         return f"Invalid cron expression: {exc}"
     return None
 
-
-def _validate_data_key(config: dict[str, Any], key: str, expected_type: type) -> bool:
-    """Validate that *key* in *config* is of *expected_type*.
-
-    Returns ``True`` if the key is missing (no error), ``False`` if present
-    but wrong type.
-    """
-    if key not in config:
-        return True
-    return isinstance(config[key], expected_type)
 
 
 
