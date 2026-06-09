@@ -8,7 +8,6 @@ import pytest
 from config import save_config
 from routes import _compute_common_root
 
-
 # ---------------------------------------------------------------------------
 # Routes line 136: auth bypass for index/test_dashboard with password set
 # ---------------------------------------------------------------------------
