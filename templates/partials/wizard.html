@@ -44,7 +44,12 @@
                     </div>
                     <div class="form-group">
                         <label for="wizard_api_key">API Key</label>
-                        <input type="password" id="wizard_api_key" placeholder="Paste your API key here">
+                        <div class="password-field-wrapper">
+                            <input type="password" id="wizard_api_key" placeholder="Paste your API key here">
+                            <button type="button" class="toggle-password-btn" data-target="wizard_api_key" title="Toggle visibility" aria-label="Toggle API key visibility">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </button>
+                        </div>
                         <small>Generated in Jellyfin Dashboard > API Keys.</small>
                     </div>
                     <button type="button" class="secondary-btn" id="wizard-test-btn">

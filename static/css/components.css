@@ -76,6 +76,45 @@ h3 {
     line-height: 1.4;
 }
 
+/* ── Password field with toggle ────────────────────────── */
+.password-field-wrapper {
+    display: flex;
+    gap: 0;
+    align-items: stretch;
+}
+
+.password-field-wrapper input {
+    flex: 1;
+    min-width: 0;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-right: none;
+    margin: 0;
+}
+
+.toggle-password-btn {
+    width: auto;
+    margin: 0;
+    padding: 0 0.65rem;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--glass-border);
+    border-left: none;
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+
+.toggle-password-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+    transform: none;
+    box-shadow: none;
+}
+
 /* ── Forms ──────────────────────────────────────────────── */
 .form-group {
     margin-bottom: 1rem;

@@ -109,6 +109,20 @@ function wireImportFilePicker() {
     }
 }
 
+function wirePasswordToggles() {
+    document.querySelectorAll('.toggle-password-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetId = btn.getAttribute('data-target');
+            const input = document.getElementById(targetId);
+            if (!input) return;
+            const isPassword = input.type === 'password';
+            input.type = isPassword ? 'text' : 'password';
+            btn.classList.toggle('visible', isPassword);
+            btn.setAttribute('aria-label', isPassword ? 'Hide API key' : 'Show API key');
+        });
+    });
+}
+
 function wireMiscButtons() {
     const clearResultsBtn = getEl('clear-sync-results');
     if (clearResultsBtn) {
@@ -132,6 +146,7 @@ async function bootstrap() {
     wireTopbarButtons();
     wireConfirmSyncDialog();
     wireImportFilePicker();
+    wirePasswordToggles();
     wireMiscButtons();
 
     const groupForm = getEl('group-form');

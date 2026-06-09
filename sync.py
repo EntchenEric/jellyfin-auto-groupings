@@ -999,6 +999,9 @@ def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
     Each part of the query is assigned the *default_type* unless a specific
     type prefix (e.g., "actor:Tom Hanks") is provided.
 
+    A bare ``NOT`` (or ``AND NOT``) at position 0 is treated as a negation
+    of the first condition (e.g. ``NOT Comedy`` negates ``genre:Comedy``).
+
     Args:
         query: The textual query string (e.g., "Action AND NOT Comedy").
         default_type: The metadata type to apply to each value (e.g., "genre").
@@ -1009,7 +1012,7 @@ def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
     """
     parts = _COMPLEX_QUERY_RE.split(query.strip())
 
-    rules = []
+    rules: list[dict[str, Any]] = []
 
     def _parse_item(item_str: str) -> tuple[str, str]:
         """Parse a single query fragment into ``(type, value)``."""
@@ -1021,9 +1024,28 @@ def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
         return default_type, item_str.strip()
 
     t0, v0 = _parse_item(parts[0])
+    # Detect a bare NOT at position 0 so _eval_item can apply the negation.
+    # A bare "NOT" means the first keyword is literally "not", not a value.
+    # We check the original parts[0] to see if it starts with NOT as a standalone
+    # keyword (not as part of a value like "notebook").
+    stripped_v0 = v0.strip()
+    # Check if the query starts with "NOT" (case-insensitive)
+    _is_bare_not = False
+    if stripped_v0.upper().startswith("NOT ") or stripped_v0.upper() == "NOT":
+        # Verify that "NOT" isn't the actual value by checking if the
+        # original parts[0] doesn't resolve to a known type
+        _is_bare_not = True
+    first_op = "AND NOT" if _is_bare_not else "AND"
+    if first_op == "AND NOT":
+        # Strip the NOT keyword and re-parse the remainder
+        remainder = stripped_v0[3:].strip()
+        if remainder:
+            t0, v0 = _parse_item(remainder)
+        else:
+            v0 = remainder
     rules.append(
         {
-            "operator": "AND",
+            "operator": first_op,
             "type": t0,
             "value": v0,
         },
@@ -1316,28 +1338,22 @@ def _prepare_group_directory(
     group_name: str,
     target_base: str,
     dry_run: bool,
-) -> str | None | dict[str, Any]:
+) -> str | None:
     """Clean up and recreate the group directory, copying a cover image if available.
 
     Returns:
-        The path to the source cover image (or ``None`` if none found / dry run),
-        or an error dict on failure.
+        The path to the source cover image (or ``None`` if none found / dry run).
+
+    Raises:
+        OSError: If the directory cannot be cleaned or created.
 
     """
     source_cover: str | None = None
     if not dry_run:
-        try:
-            if Path(group_dir).exists():
-                logger.info("Cleaning existing directory: %s", group_dir)
-                shutil.rmtree(group_dir)
-            Path(group_dir).mkdir(parents=True, exist_ok=True)
-        except OSError as exc:
-            logger.exception("Failed to prepare group directory %r", group_dir)
-            return {
-                "group": group_name,
-                "links": 0,
-                "error": f"Directory error: {exc!s}",
-            }
+        if Path(group_dir).exists():
+            logger.info("Cleaning existing directory: %s", group_dir)
+            shutil.rmtree(group_dir)
+        Path(group_dir).mkdir(parents=True, exist_ok=True)
 
         source_cover = _get_cover_path(group_name, target_base)
         if source_cover:
@@ -1537,9 +1553,10 @@ def _process_group(
         sort_order,
     )
 
-    source_cover = _prepare_group_directory(group_dir, group_name, target_base, dry_run)
-    if isinstance(source_cover, dict):
-        return source_cover
+    try:
+        source_cover = _prepare_group_directory(group_dir, group_name, target_base, dry_run)
+    except OSError as exc:
+        return {"group": group_name, "links": 0, "error": f"Directory error: {exc!s}"}
 
     # --- Resolve items ---
     watch_state: str = group.get("watch_state", "")
