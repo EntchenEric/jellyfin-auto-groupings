@@ -43,7 +43,8 @@ def test_test_server_success(mock_get, client):
     mock_get.return_value = mock_response
 
     response = client.post(
-        "/api/test-server", json={"jellyfin_url": "http://test", "api_key": "key"},
+        "/api/test-server",
+        json={"jellyfin_url": "http://test", "api_key": "key"},
     )
     assert response.status_code == 200
     assert response.get_json()["status"] == "success"
@@ -57,7 +58,8 @@ def test_test_server_failure(mock_get, client):
     mock_get.return_value = mock_response
 
     response = client.post(
-        "/api/test-server", json={"jellyfin_url": "http://test", "api_key": "wrong"},
+        "/api/test-server",
+        json={"jellyfin_url": "http://test", "api_key": "wrong"},
     )
     assert response.status_code == 400
     assert response.get_json()["status"] == "error"
@@ -127,7 +129,8 @@ def test_upload_cover_security_check(client):
     # Test with payload exceeding MAX_B64_SIZE
     large_data = "data:image/jpeg;base64," + "a" * (MAX_B64_SIZE + 1024 * 1024)
     response = client.post(
-        "/api/upload_cover", json={"group_name": "G", "image": large_data},
+        "/api/upload_cover",
+        json={"group_name": "G", "image": large_data},
     )
     assert response.status_code == 413
 
@@ -141,7 +144,8 @@ def test_upload_cover_success(mock_get_path, client, tmp_path):
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
     )
     response = client.post(
-        "/api/upload_cover", json={"group_name": "Test Group", "image": img_data},
+        "/api/upload_cover",
+        json={"group_name": "Test Group", "image": img_data},
     )
     assert response.status_code == 200
     assert (tmp_path / "test.jpg").exists()
@@ -179,7 +183,8 @@ def test_preview_grouping(mock_preview, client):
 
     # Simple
     response = client.post(
-        "/api/grouping/preview", json={"type": "genre", "value": "Action"},
+        "/api/grouping/preview",
+        json={"type": "genre", "value": "Action"},
     )
     assert response.status_code == 200
     assert response.get_json()["count"] == 1
@@ -207,7 +212,9 @@ def test_browse_security(client):
 
 def test_update_config_non_dict(client):
     response = client.post(
-        "/api/config", data="not json", content_type="application/json",
+        "/api/config",
+        data="not json",
+        content_type="application/json",
     )
     assert response.status_code == 400
 
@@ -236,7 +243,8 @@ def test_test_server_missing_fields(client):
 
 def test_test_server_null_fields(client):
     response = client.post(
-        "/api/test-server", json={"jellyfin_url": None, "api_key": None},
+        "/api/test-server",
+        json={"jellyfin_url": None, "api_key": None},
     )
     assert response.status_code == 400
 
@@ -245,7 +253,8 @@ def test_test_server_null_fields(client):
 def test_test_server_exception(mock_get, client):
     mock_get.side_effect = requests.exceptions.ConnectionError("Failed")
     response = client.post(
-        "/api/test-server", json={"jellyfin_url": "http://test", "api_key": "key"},
+        "/api/test-server",
+        json={"jellyfin_url": "http://test", "api_key": "key"},
     )
     assert response.status_code == 400
     assert "Connection error" in response.get_json()["message"]
@@ -274,7 +283,8 @@ def test_upload_cover_invalid_json(client):
 
 def test_upload_cover_bad_format(client):
     response = client.post(
-        "/api/upload_cover", json={"group_name": "G", "image": "not-data-uri"},
+        "/api/upload_cover",
+        json={"group_name": "G", "image": "not-data-uri"},
     )
     assert response.status_code == 400
 
@@ -298,7 +308,8 @@ def test_preview_grouping_missing_type(client):
 def test_preview_grouping_invalid_type(client):
     save_config({"jellyfin_url": "http://t", "api_key": "k"})
     response = client.post(
-        "/api/grouping/preview", json={"type": "invalid", "value": "V"},
+        "/api/grouping/preview",
+        json={"type": "invalid", "value": "V"},
     )
     assert response.status_code == 400
 
@@ -309,7 +320,8 @@ def test_preview_grouping_error(mock_preview, client):
     save_config({"jellyfin_url": "http://t", "api_key": "k"})
     mock_preview.return_value = ([], "Error occurred", 500)
     response = client.post(
-        "/api/grouping/preview", json={"type": "genre", "value": "Action"},
+        "/api/grouping/preview",
+        json={"type": "genre", "value": "Action"},
     )
     assert response.status_code == 500
 
@@ -420,7 +432,8 @@ def test_upload_cover_missing_fields(client):
 
 def test_upload_cover_invalid_image_data(client):
     response = client.post(
-        "/api/upload_cover", json={"group_name": "G", "image": "plain-text"},
+        "/api/upload_cover",
+        json={"group_name": "G", "image": "plain-text"},
     )
     assert response.status_code == 400
 
@@ -453,7 +466,8 @@ def test_upload_cover_server_error(mock_get_cover, client):
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
     )
     response = client.post(
-        "/api/upload_cover", json={"group_name": "G", "image": img_data},
+        "/api/upload_cover",
+        json={"group_name": "G", "image": img_data},
     )
     assert response.status_code == 500
     assert response.get_json()["status"] == "error"
@@ -467,7 +481,8 @@ def test_upload_cover_unresolvable_path(mock_get_cover, client):
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
     )
     response = client.post(
-        "/api/upload_cover", json={"group_name": "G", "image": img_data},
+        "/api/upload_cover",
+        json={"group_name": "G", "image": img_data},
     )
     assert response.status_code == 500
     assert "Could not resolve cover storage path" in response.get_json()["message"]
@@ -786,7 +801,8 @@ def test_preview_grouping_missing_value(client):
 def test_preview_grouping_value_not_string(client):
     save_config({"jellyfin_url": "http://t", "api_key": "k"})
     response = client.post(
-        "/api/grouping/preview", json={"type": "genre", "value": 123},
+        "/api/grouping/preview",
+        json={"type": "genre", "value": 123},
     )
     assert response.status_code == 400
 
@@ -795,7 +811,8 @@ def test_preview_grouping_value_not_string(client):
 def test_preview_grouping_empty_value(client):
     save_config({"jellyfin_url": "http://t", "api_key": "k"})
     response = client.post(
-        "/api/grouping/preview", json={"type": "genre", "value": "   "},
+        "/api/grouping/preview",
+        json={"type": "genre", "value": "   "},
     )
     assert response.status_code == 400
 
@@ -813,7 +830,8 @@ def test_preview_grouping_invalid_body(client):
 @pytest.mark.usefixtures("temp_config")
 def test_preview_grouping_no_config(client):
     response = client.post(
-        "/api/grouping/preview", json={"type": "genre", "value": "Action"},
+        "/api/grouping/preview",
+        json={"type": "genre", "value": "Action"},
     )
     assert response.status_code == 400
     assert "Server settings not configured" in response.get_json()["message"]
@@ -826,7 +844,8 @@ def test_preview_grouping_runtime_error(mock_preview, client):
     save_config({"jellyfin_url": "http://t", "api_key": "k"})
     mock_preview.side_effect = RuntimeError("Preview failed")
     response = client.post(
-        "/api/grouping/preview", json={"type": "genre", "value": "Action"},
+        "/api/grouping/preview",
+        json={"type": "genre", "value": "Action"},
     )
     assert response.status_code == 500
 
@@ -858,7 +877,10 @@ def test_perform_cleanup_with_auto_create(mock_exists, mock_delete, client, tmp_
 @patch("routes.os.path.exists")
 @pytest.mark.usefixtures("temp_config")
 def test_perform_cleanup_delete_virtual_folder_error(
-    mock_exists, mock_delete, client, tmp_path,
+    mock_exists,
+    mock_delete,
+    client,
+    tmp_path,
 ):
     target = tmp_path / "target"
     target.mkdir()
@@ -892,14 +914,23 @@ def test_auto_detect_no_path(mock_fetch, client):
 
 # Auto-detect: root not a directory (line 693)
 @patch("routes.fetch_jellyfin_items")
-@patch("routes.os.path.isdir")
 @pytest.mark.usefixtures("temp_config")
-def test_auto_detect_root_not_dir(mock_isdir, mock_fetch, client):
+def test_auto_detect_root_not_dir(mock_fetch, client):
     save_config({"jellyfin_url": "http://test", "api_key": "key"})
     mock_fetch.return_value = [{"Path": "/media/movies/M1.mkv"}]
-    mock_isdir.return_value = False
     response = client.post("/api/jellyfin/auto-detect-paths")
     assert response.status_code == 200
+
+
+def test_search_filesystem_skip_nonexistent_root():
+    """_search_local_filesystem skips a root that doesn't exist as a directory (line 745)."""
+    from routes import _search_local_filesystem
+
+    result = _search_local_filesystem(
+        "anyfile.mkv",
+        ["/nonexistent-dir-for-testing-only"],
+    )
+    assert result is None
 
 
 # Auto-detect: mount point skip (lines 697-698)
@@ -909,13 +940,49 @@ def test_auto_detect_root_not_dir(mock_isdir, mock_fetch, client):
 @patch("routes.os.walk")
 @pytest.mark.usefixtures("temp_config")
 def test_auto_detect_mount_skip(
-    mock_walk, mock_isdir, mock_ismount, mock_fetch, client,
+    mock_walk,
+    mock_isdir,
+    mock_ismount,
+    mock_fetch,
+    client,
 ):
     save_config({"jellyfin_url": "http://test", "api_key": "key"})
     mock_fetch.return_value = [{"Path": "/media/movies/M1.mkv"}]
     mock_isdir.return_value = True
     mock_ismount.return_value = True
     mock_walk.return_value = [("/home", ["sub"], ["M1.mkv"])]
+    response = client.post("/api/jellyfin/auto-detect-paths")
+    assert response.status_code == 200
+
+
+# Auto-detect: mount subdirectory skip (line 745: child mount point > root)
+@patch("routes.fetch_jellyfin_items")
+@patch("routes.os.path.ismount")
+@patch("routes.os.path.isdir")
+@patch("routes.os.walk")
+@pytest.mark.usefixtures("temp_config")
+def test_auto_detect_mount_subdir_skip(
+    mock_walk,
+    mock_isdir,
+    mock_ismount,
+    mock_fetch,
+    client,
+):
+    """Auto-detect prunes subdirectories that are mount points."""
+    save_config({"jellyfin_url": "http://test", "api_key": "key"})
+    mock_fetch.return_value = [{"Path": "/media/movies/M1.mkv"}]
+    mock_isdir.return_value = True
+
+    # Root /media is not a mount, but /media/subvol is
+    def _ismount_side_effect(path):
+        return path in ("/media/subvol",)
+
+    mock_ismount.side_effect = _ismount_side_effect
+    # Walk yields root, then a subdir that is a mount point
+    mock_walk.return_value = [
+        ("/media", ["movies", "subvol"], []),
+        ("/media/subvol", [], ["M1.mkv"]),
+    ]
     response = client.post("/api/jellyfin/auto-detect-paths")
     assert response.status_code == 200
 
@@ -928,7 +995,12 @@ def test_auto_detect_mount_skip(
 @patch("routes.os.path.ismount")
 @pytest.mark.usefixtures("temp_config")
 def test_auto_detect_timeout(
-    mock_ismount, mock_isdir, mock_walk, mock_time, mock_fetch, client,
+    mock_ismount,
+    mock_isdir,
+    mock_walk,
+    mock_time,
+    mock_fetch,
+    client,
 ):
     save_config({"jellyfin_url": "http://test", "api_key": "key"})
     mock_fetch.return_value = [{"Path": "/media/movies/M1.mkv"}]
@@ -952,7 +1024,11 @@ def test_auto_detect_timeout(
 @patch("routes.os.path.ismount")
 @pytest.mark.usefixtures("temp_config")
 def test_auto_detect_file_limit(
-    mock_ismount, mock_isdir, mock_walk, mock_fetch, client,
+    mock_ismount,
+    mock_isdir,
+    mock_walk,
+    mock_fetch,
+    client,
 ):
     save_config({"jellyfin_url": "http://test", "api_key": "key"})
     mock_fetch.return_value = [{"Path": "/media/movies/M1.mkv"}]
@@ -971,7 +1047,11 @@ def test_auto_detect_file_limit(
 @patch("routes.os.path.ismount")
 @pytest.mark.usefixtures("temp_config")
 def test_auto_detect_depth_limit(
-    mock_ismount, mock_isdir, mock_walk, mock_fetch, client,
+    mock_ismount,
+    mock_isdir,
+    mock_walk,
+    mock_fetch,
+    client,
 ):
     save_config({"jellyfin_url": "http://test", "api_key": "key"})
     mock_fetch.return_value = [{"Path": "/media/movies/M1.mkv"}]
@@ -1013,8 +1093,9 @@ def test_get_test_results_success(mock_open, mock_exists, client):
 
 def test_handle_http_error_bad_request_json():
     """Test that a concrete HTTPException produces a proper JSON response."""
-    from routes import _handle_http_error
     from flask import Flask
+
+    from routes import _handle_http_error
 
     app = Flask(__name__)
     with app.test_request_context("/"):
@@ -1127,7 +1208,11 @@ def test_perform_cleanup_auto_create_missing_settings(mock_exists, client, tmp_p
 @patch("routes.os.path.ismount")
 @pytest.mark.usefixtures("temp_config")
 def test_auto_detect_no_common_path(
-    mock_ismount, mock_isdir, mock_walk, mock_fetch, client,
+    mock_ismount,
+    mock_isdir,
+    mock_walk,
+    mock_fetch,
+    client,
 ):
     save_config({"jellyfin_url": "http://test", "api_key": "key"})
     # Jellyfin path has a matching filename but no real common prefix
@@ -1176,6 +1261,21 @@ def test_check_auth_no_password_set(client):
     assert response.status_code == 200
 
 
+def test_check_auth_static_path_allowed(app, monkeypatch):
+    """Static paths bypass auth even when APP_PASSWORD is set (covers line 138)."""
+    import routes as routes_mod
+
+    monkeypatch.setattr(routes_mod, "_APP_PASSWORD", "secret")
+    if hasattr(routes_mod._check_auth, "cache_clear"):
+        routes_mod._check_auth.cache_clear()
+
+    # /static/ paths should bypass the password check
+    response = app.test_client().get("/static/css/variables.css")
+    # Without auth header, a password-protected endpoint would 401,
+    # but static paths are excluded
+    assert response.status_code == 200
+
+
 def test_check_auth_protected_endpoint_missing_auth(app, monkeypatch):
     """Protected endpoint returns 401 when no auth header is sent."""
     # By directly setting the module-level variable, we simulate auth protection
@@ -1183,8 +1283,45 @@ def test_check_auth_protected_endpoint_missing_auth(app, monkeypatch):
 
     monkeypatch.setattr(routes_mod, "_APP_PASSWORD", "secret")
     routes_mod._check_auth.cache_clear() if hasattr(
-        routes_mod._check_auth, "cache_clear",
+        routes_mod._check_auth,
+        "cache_clear",
     ) else None
 
     response = app.test_client().get("/api/config")
     assert response.status_code == 401
+
+
+def test_check_auth_with_wrong_password(app, monkeypatch):
+    """Protected endpoint returns 401 when wrong password is sent."""
+    import routes as routes_mod
+
+    monkeypatch.setattr(routes_mod, "_APP_PASSWORD", "secret")
+    if hasattr(routes_mod._check_auth, "cache_clear"):
+        routes_mod._check_auth.cache_clear()
+
+    response = app.test_client().get(
+        "/api/config",
+        headers={
+            "Authorization": "Basic dXNlcjp3cm9uZ3Bhc3M=",
+        },
+    )
+    assert response.status_code == 401
+
+
+def test_check_auth_with_no_password(app, monkeypatch):
+    """When APP_PASSWORD is empty, all requests pass through (line 138 coverage)."""
+    import routes as routes_mod
+
+    monkeypatch.setattr(routes_mod, "_APP_PASSWORD", "")
+    if hasattr(routes_mod._check_auth, "cache_clear"):
+        routes_mod._check_auth.cache_clear()
+
+    # This should pass without auth even for protected endpoints
+    response = app.test_client().get(
+        "/api/config",
+        headers={"X-Requested-With": "XMLHttpRequest"},
+    )
+    # When _APP_PASSWORD is empty, auth check returns None early (line 138)
+    # and the request proceeds normally. The endpoint needs X-Requested-With
+    # for POST, but GET endpoints don't need it. /api/config is GET so it works.
+    assert response.status_code == 200

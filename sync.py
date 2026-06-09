@@ -118,7 +118,8 @@ _METADATA_FETCH_TIMEOUT: int = 30
 
 
 def _build_preview_item(
-    item: dict[str, Any], file_name: str | None = None,
+    item: dict[str, Any],
+    file_name: str | None = None,
 ) -> dict[str, Any]:
     """Build a preview dict from a Jellyfin item."""
     preview: dict[str, Any] = {
@@ -157,13 +158,21 @@ def _translate_path(
             if normalized_path.is_relative_to(normalized_root):
                 rel = normalized_path.relative_to(normalized_root)
                 return str(Path(host_root) / rel)
-        except (ValueError, RuntimeError, OSError):
-            pass
+        except (ValueError, RuntimeError, OSError) as exc:
+            logger.debug(
+                "Path translation failed for %r (root=%r, host=%r): %s",
+                jellyfin_path,
+                jellyfin_root,
+                host_root,
+                exc,
+            )
     return jellyfin_path
 
 
 def _get_cover_path(
-    group_name: str, target_base: str, check_exists: bool = True,
+    group_name: str,
+    target_base: str,
+    check_exists: bool = True,
 ) -> str | None:
     """Compute the expected cover image path for a group, resolving storage priority.
 
@@ -182,7 +191,8 @@ def _get_cover_path(
 
     """
     safe_name = hashlib.md5(
-        group_name.encode("utf-8"), usedforsecurity=False,
+        group_name.encode("utf-8"),
+        usedforsecurity=False,
     ).hexdigest()
 
     # Priority 1: Library-local .covers/ directory (new storage location)
@@ -272,7 +282,8 @@ def _fetch_full_library(
             _LIBRARY_CACHE[cache_key] = all_items
     except (RuntimeError, OSError, ValueError) as exc:
         logger.exception(
-            "Infrastructure error fetching Jellyfin library for group %r", group_name,
+            "Infrastructure error fetching Jellyfin library for group %r",
+            group_name,
         )
         return [], f"Jellyfin connection error: {exc!s}", 500
     else:
@@ -415,7 +426,9 @@ def _fetch_and_resolve(
         logger.info(log_msg_fn(len(external_ids)))
     except (requests.exceptions.RequestException, RuntimeError, ValueError) as exc:
         logger.exception(
-            "Error fetching %s list for group %r", source_label, group_name,
+            "Error fetching %s list for group %r",
+            source_label,
+            group_name,
         )
         return [], f"{source_label} fetch error: {exc!s}", 400
 
@@ -647,7 +660,10 @@ def _fetch_items_for_letterboxd_group(
             items_by_tmdb[str(tmdb_v)] = item
 
     items = _build_letterboxd_items(
-        external_ids, items_by_imdb, items_by_tmdb, sort_order,
+        external_ids,
+        items_by_imdb,
+        items_by_tmdb,
+        sort_order,
     )
     items = _filter_by_watch_state(items, watch_state)
 
@@ -704,7 +720,8 @@ def _fetch_items_for_recommendations_group(
     if not tmdb_api_key:
         msg = "TMDb API Key not set — add tmdb_api_key in Server Settings"
         logger.info(
-            "No TMDb API Key configured for recommendations group %r", group_name,
+            "No TMDb API Key configured for recommendations group %r",
+            group_name,
         )
         return [], msg, 400
 
@@ -835,7 +852,8 @@ def _eval_item(item: dict[str, Any], rules: list[dict[str, Any]]) -> bool:
             case _:
                 # Unknown operator — treat as AND for graceful degradation
                 logger.debug(
-                    "Unknown operator %r in rule evaluation, treating as AND", op,
+                    "Unknown operator %r in rule evaluation, treating as AND",
+                    op,
                 )
                 result = result and matched
 
@@ -949,7 +967,10 @@ def _fetch_items_for_metadata_group(
 
     try:
         items = fetch_jellyfin_items(
-            url, api_key, params, timeout=_METADATA_FETCH_TIMEOUT,
+            url,
+            api_key,
+            params,
+            timeout=_METADATA_FETCH_TIMEOUT,
         )
         logger.info("Found %s potential items for group %r", len(items), group_name)
     except (RuntimeError, OSError, ValueError) as exc:
@@ -1036,10 +1057,21 @@ def preview_group(
     if _COMPLEX_QUERY_RE.search(val):
         rules = parse_complex_query(val, type_name)
         return _fetch_items_for_complex_group(
-            "preview", rules, "", url, api_key, watch_state,
+            "preview",
+            rules,
+            "",
+            url,
+            api_key,
+            watch_state,
         )
     return _fetch_items_for_metadata_group(
-        "preview", type_name, val, "", url, api_key, watch_state,
+        "preview",
+        type_name,
+        val,
+        "",
+        url,
+        api_key,
+        watch_state,
     )
 
 
@@ -1078,7 +1110,9 @@ def _process_collection_group(
         collection_id = find_collection_by_name(url, api_key, group_name)
         if collection_id:
             logger.info(
-                "Found existing collection %r (id=%s)", group_name, collection_id,
+                "Found existing collection %r (id=%s)",
+                group_name,
+                collection_id,
             )
             # Add items to the existing collection; duplicates are safely ignored by Jellyfin
             add_to_collection(url, api_key, collection_id, item_ids)
@@ -1140,10 +1174,16 @@ def _auto_create_library(
 
         try:
             add_virtual_folder(
-                url, api_key, group_name, [lib_path], collection_type="mixed",
+                url,
+                api_key,
+                group_name,
+                [lib_path],
+                collection_type="mixed",
             )
             logger.info(
-                "Successfully created library %r with path %r", group_name, lib_path,
+                "Successfully created library %r with path %r",
+                group_name,
+                lib_path,
             )
             existing_libraries.append(group_name)
         except (RuntimeError, OSError) as exc:
@@ -1215,7 +1255,8 @@ def _create_group_symlinks(
     """
     use_prefix: bool = bool(sort_order)
     width: int = max(
-        len(str(len(items))) if items else _MIN_PREFIX_WIDTH, _MIN_PREFIX_WIDTH,
+        len(str(len(items))) if items else _MIN_PREFIX_WIDTH,
+        _MIN_PREFIX_WIDTH,
     )
     links_created: int = 0
     preview_items: list[dict[str, Any]] = []
@@ -1243,7 +1284,12 @@ def _create_group_symlinks(
 
         dest_path: str = str(Path(group_dir) / file_name)
         if _create_or_preview_link(
-            item, host_path, dest_path, file_name, dry_run, preview_items,
+            item,
+            host_path,
+            dest_path,
+            file_name,
+            dry_run,
+            preview_items,
         ):
             links_created += 1
 
@@ -1287,7 +1333,9 @@ def _prepare_group_directory(
             try:
                 shutil.copy2(source_cover, poster_dest)
                 logger.info(
-                    "Copied cover image from %s to %s", source_cover, poster_dest,
+                    "Copied cover image from %s to %s",
+                    source_cover,
+                    poster_dest,
                 )
             except OSError:
                 logger.exception("Failed to copy cover image")
@@ -1311,7 +1359,8 @@ def _resolve_group_source(
 ) -> tuple[list[dict[str, Any]], str | None, int]:
     """Resolve items for a group based on its source configuration."""
     _source_dispatch: dict[
-        str, Callable[[], tuple[list[dict[str, Any]], str | None, int]],
+        str,
+        Callable[[], tuple[list[dict[str, Any]], str | None, int]],
     ] = {
         "imdb_list": lambda: _fetch_items_for_imdb_group(
             group_name,
@@ -1470,7 +1519,10 @@ def _process_group(
     source_value: str | None = group.get("source_value")
 
     logger.info(
-        "Processing group: %r -> %s  (sort_order=%r)", group_name, group_dir, sort_order,
+        "Processing group: %r -> %s  (sort_order=%r)",
+        group_name,
+        group_dir,
+        sort_order,
     )
 
     source_cover = _prepare_group_directory(group_dir, group_name, target_base, dry_run)
@@ -1696,7 +1748,9 @@ def run_sync(
     trakt_client_id: str = str(config.get("trakt_client_id") or "").strip()
     tmdb_api_key: str = str(config.get("tmdb_api_key") or "").strip()
     mal_client_id: str = str(config.get("mal_client_id") or "").strip()
-    anilist_api_url: str | None = str(config.get("anilist_api_url") or "").strip() or None
+    anilist_api_url: str | None = (
+        str(config.get("anilist_api_url") or "").strip() or None
+    )
     auto_create_libraries: bool = bool(config.get("auto_create_libraries", False))
     auto_set_library_covers: bool = bool(config.get("auto_set_library_covers", False))
     target_path_in_jellyfin: str = str(

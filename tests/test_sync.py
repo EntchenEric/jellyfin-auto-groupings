@@ -230,7 +230,10 @@ def test_preview_group(mock_jf):
     # Complex group (AND)
     _LIBRARY_CACHE.clear()  # Ensure _fetch_full_library calls mock
     items, _err, code = preview_group(
-        "genre", "Action AND NOT Comedy", "http://jf", "key",
+        "genre",
+        "Action AND NOT Comedy",
+        "http://jf",
+        "key",
     )
     assert code == 200
     assert len(items) == 1
@@ -241,19 +244,37 @@ def test_fetch_items_for_metadata_group_with_watch_state(mock_jf):
     mock_jf.return_value = [{"Name": "M1"}]
     # Test 'unwatched' calls fetch with Filters=IsUnplayed
     _fetch_items_for_metadata_group(
-        "Group", "genre", "Action", "SortName", "http://jf", "key", "unwatched",
+        "Group",
+        "genre",
+        "Action",
+        "SortName",
+        "http://jf",
+        "key",
+        "unwatched",
     )
     args, _ = mock_jf.call_args
     assert args[2]["Filters"] == "IsUnplayed"
     # Test 'watched' calls fetch with Filters=IsPlayed
     _fetch_items_for_metadata_group(
-        "Group", "genre", "Action", "SortName", "http://jf", "key", "watched",
+        "Group",
+        "genre",
+        "Action",
+        "SortName",
+        "http://jf",
+        "key",
+        "watched",
     )
     args, _ = mock_jf.call_args
     assert args[2]["Filters"] == "IsPlayed"
     # Test default doesn't have Filters
     _fetch_items_for_metadata_group(
-        "Group", "genre", "Action", "SortName", "http://jf", "key", "",
+        "Group",
+        "genre",
+        "Action",
+        "SortName",
+        "http://jf",
+        "key",
+        "",
     )
     args, _ = mock_jf.call_args
     assert "Filters" not in args[2]
@@ -880,6 +901,24 @@ def test_translate_path_valueerror():
     assert _translate_path("/foo", ".", "/host") == "/foo"
 
 
+def test_translate_path_resolve_oserror():
+    """_translate_path handles OSError from Path.resolve() gracefully."""
+    with patch.object(Path, "resolve", side_effect=OSError("too many symlinks")):
+        result = _translate_path("/media/movie.mkv", "/media", "/host")
+    assert result == "/media/movie.mkv"
+
+
+def test_translate_path_is_relative_to_runtimeerror():
+    """_translate_path handles RuntimeError from is_relative_to gracefully."""
+    mock_path = MagicMock(spec=Path)
+    mock_path.resolve.return_value = mock_path
+    mock_path.is_relative_to.side_effect = RuntimeError("nested symlink loop")
+
+    with patch("sync.Path", return_value=mock_path):
+        result = _translate_path("/media/movie.mkv", "/media", "/host")
+    assert result == "/media/movie.mkv"
+
+
 def test_filter_by_watch_state():
     unwatched = {"UserData": {"Played": False}}
     watched = {"UserData": {"Played": True}}
@@ -1175,7 +1214,11 @@ def test_process_collection_group_create_and_cover(
 @patch("sync.add_to_collection")
 @patch("sync.find_collection_by_name")
 def test_process_collection_group_cover_error(
-    mock_find, mock_add, mock_cover, mock_set, mock_exists,
+    mock_find,
+    mock_add,
+    mock_cover,
+    mock_set,
+    mock_exists,
 ):
     mock_find.return_value = "col123"
     mock_cover.return_value = "/cover.jpg"
@@ -1474,7 +1517,10 @@ def test_process_group_library_already_exists(mock_meta, mock_add, tmp_path):
 @patch("sync._get_cover_path")
 @patch("sync._fetch_items_for_metadata_group")
 def test_process_group_auto_set_library_covers(
-    mock_meta, mock_cover, mock_set, tmp_path,
+    mock_meta,
+    mock_cover,
+    mock_set,
+    tmp_path,
 ):
     host = tmp_path / "movie.mkv"
     host.write_text("movie")
@@ -1567,7 +1613,10 @@ def test_run_sync_seasonal_cleanup(mock_libs, mock_season, mock_process, tmp_pat
 @patch("pathlib.Path.is_symlink")
 @patch("pathlib.Path.is_dir")
 def test_cleanup_broken_symlinks_unlink_error(
-    mock_isdir, mock_islink, mock_exists, mock_unlink,
+    mock_isdir,
+    mock_islink,
+    mock_exists,
+    mock_unlink,
 ):
     mock_isdir.return_value = True
     mock_islink.return_value = True
@@ -1787,7 +1836,11 @@ def test_process_collection_group_auto_cover_off(mock_find, mock_add, tmp_path):
 @patch("sync.add_to_collection")
 @patch("sync._fetch_items_for_metadata_group")
 def test_process_group_create_collection(
-    mock_meta, mock_add, mock_create, mock_find, tmp_path,
+    mock_meta,
+    mock_add,
+    mock_create,
+    mock_find,
+    tmp_path,
 ):
     host = tmp_path / "movie.mkv"
     host.write_text("movie")
@@ -2173,3 +2226,65 @@ def test_eval_item_unknown_operator_non_first_rule_or():
     # genre doesn't match (Action), but year matches
     # OR with unknown AND: (False OR False) AND True = False
     assert _eval_item(item, rules) is False
+
+
+def test_create_group_symlinks_path_translation_log(tmp_path, caplog):
+    """_create_group_symlinks logs path translations when host_path differs (line 1240)."""
+    import logging
+
+    caplog.set_level(logging.INFO)
+    from sync import _create_group_symlinks
+
+    # Simulate Docker path translation: Jellyfin sees /data/media but files
+    # are actually at /real/host/media.
+    real_root = tmp_path / "real_host" / "media"
+    real_root.mkdir(parents=True)
+    real_file = real_root / "movie.mkv"
+    real_file.write_text("content")
+
+    jellyfin_seen_root = tmp_path / "data" / "media"
+
+    # Item's Path = what Jellyfin sees (doesn't actually exist there)
+    item_path = jellyfin_seen_root / "movie.mkv"
+
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+
+    items = [{"Id": "m1", "Name": "M1", "Path": str(item_path)}]
+    _, _ = _create_group_symlinks(
+        items,
+        str(output_dir),
+        "TestGroup",
+        jellyfin_root=str(jellyfin_seen_root),
+        host_root=str(real_root),
+        sort_order="",
+        dry_run=False,
+    )
+
+    records = [r.message for r in caplog.records]
+    translation_logs = [r for r in records if "Translated path:" in r]
+    assert len(translation_logs) == 1, translation_logs or records
+    assert "movie.mkv" in translation_logs[0]
+    assert str(real_root / "movie.mkv") in translation_logs[0]
+
+
+@patch("sync._process_group")
+@patch("sync._fetch_existing_libraries")
+def test_run_sync_path_translation_active(mock_libs, mock_process, tmp_path, caplog):
+    """run_sync logs when path translation is configured (line 1725)."""
+    import logging
+
+    caplog.set_level(logging.INFO)
+    mock_libs.return_value = []
+    mock_process.return_value = {"group": "Test", "links": 0}
+
+    config = {
+        "jellyfin_url": "http://jf",
+        "api_key": "key",
+        "target_path": str(tmp_path),
+        "media_path_in_jellyfin": "/data/media",
+        "media_path_on_host": "/mnt/media",
+        "groups": [{"name": "Test", "source_type": "genre", "source_value": "Action"}],
+    }
+    run_sync(config, dry_run=False)
+    assert any("Path translation active" in r.message for r in caplog.records)
