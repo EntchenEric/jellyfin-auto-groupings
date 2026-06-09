@@ -57,7 +57,11 @@ def test_check_auth_valid_password(app, monkeypatch):
 @patch("routes.os.path.ismount")
 @pytest.mark.usefixtures("temp_config")
 def test_auto_detect_skip_non_dir_root(
-    mock_ismount, mock_isdir, mock_walk, mock_fetch, client,
+    mock_ismount,
+    mock_isdir,
+    mock_walk,
+    mock_fetch,
+    client,
 ):
     """Search roots that are not directories are skipped."""
     save_config({"jellyfin_url": "http://test", "api_key": "key"})
@@ -82,7 +86,12 @@ def test_auto_detect_skip_non_dir_root(
 @patch("routes.fetch_jellyfin_items")
 @pytest.mark.usefixtures("temp_config")
 def test_auto_detect_home_not_writable(
-    mock_fetch, mock_isdir, mock_walk, mock_ismount, mock_access, client,
+    mock_fetch,
+    mock_isdir,
+    mock_walk,
+    mock_ismount,
+    mock_access,
+    client,
 ):
     """When home dir is not writable, suggested_target uses CWD fallback."""
     save_config({"jellyfin_url": "http://test", "api_key": "key"})
@@ -152,8 +161,13 @@ def test_validate_config_types_non_string_fields():
     """Non-string string fields are flagged."""
     from routes import _validate_config_types
 
-    for field in ("jellyfin_url", "target_path", "media_path_in_jellyfin",
-                  "media_path_on_host", "target_path_in_jellyfin"):
+    for field in (
+        "jellyfin_url",
+        "target_path",
+        "media_path_in_jellyfin",
+        "media_path_on_host",
+        "target_path_in_jellyfin",
+    ):
         errors = _validate_config_types({field: 123})
         assert any(field in e for e in errors), f"Expected error for {field}"
 
@@ -190,7 +204,9 @@ def test_validate_config_types_scheduler_bool_mismatch():
     for field in ("global_enabled", "cleanup_enabled"):
         cfg = {"scheduler": {field: "not_bool"}}
         errors = _validate_config_types(cfg)
-        assert any(f"scheduler.{field}" in e for e in errors), f"Expected error for scheduler.{field}"
+        assert any(f"scheduler.{field}" in e for e in errors), (
+            f"Expected error for scheduler.{field}"
+        )
 
 
 def test_validate_config_types_scheduler_str_mismatch():
@@ -200,7 +216,9 @@ def test_validate_config_types_scheduler_str_mismatch():
     for field in ("global_schedule", "cleanup_schedule"):
         cfg = {"scheduler": {field: 123}}
         errors = _validate_config_types(cfg)
-        assert any(f"scheduler.{field}" in e for e in errors), f"Expected error for scheduler.{field}"
+        assert any(f"scheduler.{field}" in e for e in errors), (
+            f"Expected error for scheduler.{field}"
+        )
 
 
 def test_validate_config_types_scheduler_exclude_non_list():
@@ -273,7 +291,10 @@ def test_update_config_rejects_bad_types(client, temp_config):
     assert response.status_code == 400
     data = response.get_json()
     assert data is not None
-    assert "type" in data.get("error", "").lower() or "type" in data.get("message", "").lower()
+    assert (
+        "type" in data.get("error", "").lower()
+        or "type" in data.get("message", "").lower()
+    )
 
 
 def test_auto_detect_partial_match():

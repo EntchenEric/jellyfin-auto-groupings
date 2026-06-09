@@ -128,7 +128,9 @@ def _fetch_id_for_slug(slug: str) -> str | None:
     film_url = f"https://letterboxd.com/film/{slug}/"
     try:
         resp = network.get(
-            film_url, headers=_REQUEST_HEADERS, timeout=_FILM_PAGE_TIMEOUT,
+            film_url,
+            headers=_REQUEST_HEADERS,
+            timeout=_FILM_PAGE_TIMEOUT,
         )
         resp.raise_for_status()
         html = resp.text
@@ -147,7 +149,9 @@ def _fetch_id_for_slug(slug: str) -> str | None:
 
     except requests.exceptions.RequestException:
         logger.warning(
-            "Failed to fetch Letterboxd film page for '%s'", slug, exc_info=True,
+            "Failed to fetch Letterboxd film page for '%s'",
+            slug,
+            exc_info=True,
         )
         return None
 
@@ -185,7 +189,9 @@ def fetch_letterboxd_list(list_url: str) -> list[str]:
 
         try:
             resp = network.get(
-                current_url, headers=_REQUEST_HEADERS, timeout=_LIST_PAGE_TIMEOUT,
+                current_url,
+                headers=_REQUEST_HEADERS,
+                timeout=_LIST_PAGE_TIMEOUT,
             )
             if resp.status_code == 404 and page > 1:
                 break

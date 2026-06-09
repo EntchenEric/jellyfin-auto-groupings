@@ -10,7 +10,12 @@ from sync import preview_group, run_sync
 @patch("sync.fetch_jellyfin_items")
 @patch("sync.fetch_tmdb_list")
 def test_run_sync_tmdb(
-    mock_tmdb, mock_jf_fetch, _mock_symlink, _mock_exists, _mock_mkdir, _mock_rmtree,
+    mock_tmdb,
+    mock_jf_fetch,
+    _mock_symlink,
+    _mock_exists,
+    _mock_mkdir,
+    _mock_rmtree,
 ):
     config = {
         "jellyfin_url": "http://jf",
@@ -44,7 +49,12 @@ def test_run_sync_tmdb(
 @patch("sync.fetch_jellyfin_items")
 @patch("sync.fetch_anilist_list")
 def test_run_sync_anilist(
-    mock_anilist, mock_jf_fetch, _mock_symlink, _mock_exists, _mock_mkdir, _mock_rmtree,
+    mock_anilist,
+    mock_jf_fetch,
+    _mock_symlink,
+    _mock_exists,
+    _mock_mkdir,
+    _mock_rmtree,
 ):
     config = {
         "jellyfin_url": "http://jf",
@@ -115,7 +125,12 @@ def test_run_sync_trakt(
 @patch("sync.fetch_jellyfin_items")
 @patch("sync.fetch_mal_list")
 def test_run_sync_mal(
-    mock_mal, mock_jf_fetch, _mock_symlink, _mock_exists, _mock_mkdir, _mock_rmtree,
+    mock_mal,
+    mock_jf_fetch,
+    _mock_symlink,
+    _mock_exists,
+    _mock_mkdir,
+    _mock_rmtree,
 ):
     config = {
         "jellyfin_url": "http://jf",
@@ -147,7 +162,12 @@ def test_run_sync_mal(
 @patch("sync.fetch_jellyfin_items")
 @patch("sync.fetch_letterboxd_list")
 def test_run_sync_letterboxd(
-    mock_lb, mock_jf_fetch, _mock_symlink, _mock_exists, _mock_mkdir, _mock_rmtree,
+    mock_lb,
+    mock_jf_fetch,
+    _mock_symlink,
+    _mock_exists,
+    _mock_mkdir,
+    _mock_rmtree,
 ):
     config = {
         "jellyfin_url": "http://jf",
@@ -190,7 +210,11 @@ def test_run_sync_invalid_group():
 @patch("sync.os.symlink")
 @patch("sync.fetch_jellyfin_items")
 def test_run_sync_complex(
-    mock_jf_fetch, _mock_symlink, _mock_exists, _mock_mkdir, _mock_rmtree,
+    mock_jf_fetch,
+    _mock_symlink,
+    _mock_exists,
+    _mock_mkdir,
+    _mock_rmtree,
 ):
     config = {
         "jellyfin_url": "http://jf",
@@ -218,7 +242,11 @@ def test_run_sync_complex(
 @patch("sync.os.symlink")
 @patch("sync.fetch_jellyfin_items")
 def test_run_sync_dry_run(
-    mock_jf_fetch, _mock_symlink, _mock_exists, _mock_mkdir, _mock_rmtree,
+    mock_jf_fetch,
+    _mock_symlink,
+    _mock_exists,
+    _mock_mkdir,
+    _mock_rmtree,
 ):
     config = {
         "jellyfin_url": "http://jf",
@@ -249,7 +277,11 @@ def test_run_sync_dry_run(
 @patch("sync.os.symlink")
 @patch("sync.fetch_jellyfin_items")
 def test_run_sync_selective(
-    mock_jf_fetch, _mock_symlink, _mock_exists, _mock_mkdir, _mock_rmtree,
+    mock_jf_fetch,
+    _mock_symlink,
+    _mock_exists,
+    _mock_mkdir,
+    _mock_rmtree,
 ):
     config = {
         "jellyfin_url": "http://jf",
@@ -310,7 +342,12 @@ def test_fetch_items_tmdb_no_key(mock_tmdb):
     from sync import _fetch_items_for_tmdb_group
 
     _items, err, code = _fetch_items_for_tmdb_group(
-        "G", "val", "order", "url", "key", "",
+        "G",
+        "val",
+        "order",
+        "url",
+        "key",
+        "",
     )
     assert code == 400
     assert "TMDb API Key not set" in err
@@ -322,7 +359,12 @@ def test_fetch_items_tmdb_empty(mock_tmdb):
 
     mock_tmdb.return_value = []
     items, _err, code = _fetch_items_for_tmdb_group(
-        "G", "val", "order", "url", "key", "tmdb_key",
+        "G",
+        "val",
+        "order",
+        "url",
+        "key",
+        "tmdb_key",
     )
     assert code == 200
     assert items == []
@@ -334,7 +376,11 @@ def test_fetch_items_anilist_error(mock_ani):
 
     mock_ani.side_effect = RuntimeError("AniList Error")
     _items, err, code = _fetch_items_for_anilist_group(
-        "G", "user/status", "order", "url", "key",
+        "G",
+        "user/status",
+        "order",
+        "url",
+        "key",
     )
     assert code == 400
     assert "AniList fetch error" in err
@@ -345,7 +391,12 @@ def test_fetch_items_mal_no_id(mock_mal):
     from sync import _fetch_items_for_mal_group
 
     _items, err, code = _fetch_items_for_mal_group(
-        "G", "val", "order", "url", "key", "",
+        "G",
+        "val",
+        "order",
+        "url",
+        "key",
+        "",
     )
     assert code == 400
     assert "MyAnimeList Client ID not set" in err
@@ -359,7 +410,12 @@ def test_fetch_items_mal_with_status(mock_full, mock_mal):
     mock_mal.return_value = [1]
     mock_full.return_value = ([], None, 200)
     _items, _err, code = _fetch_items_for_mal_group(
-        "G", "user/completed", "order", "http://jf", "key", "id",
+        "G",
+        "user/completed",
+        "order",
+        "http://jf",
+        "key",
+        "id",
     )
     assert code == 200
     assert mock_mal.called
@@ -373,7 +429,12 @@ def test_fetch_items_mal_error(mock_mal):
 
     mock_mal.side_effect = RuntimeError("MAL Error")
     _items, err, code = _fetch_items_for_mal_group(
-        "G", "user", "order", "url", "key", "id",
+        "G",
+        "user",
+        "order",
+        "url",
+        "key",
+        "id",
     )
     assert code == 400
     assert "MAL fetch error" in err
@@ -385,7 +446,12 @@ def test_fetch_items_mal_empty(mock_mal):
 
     mock_mal.return_value = []
     items, _err, code = _fetch_items_for_mal_group(
-        "G", "user", "order", "http://jf", "key", "id",
+        "G",
+        "user",
+        "order",
+        "http://jf",
+        "key",
+        "id",
     )
     assert code == 200
     assert items == []
@@ -397,7 +463,12 @@ def test_fetch_items_trakt_error(mock_trakt):
 
     mock_trakt.side_effect = RuntimeError("Trakt Fail")
     _items, err, code = _fetch_items_for_trakt_group(
-        "G", "val", "order", "http://jf", "key", "cli",
+        "G",
+        "val",
+        "order",
+        "http://jf",
+        "key",
+        "cli",
     )
     assert code == 400
     assert "Trakt fetch error" in err
@@ -409,7 +480,12 @@ def test_fetch_items_trakt_empty(mock_trakt):
 
     mock_trakt.return_value = []
     items, _err, code = _fetch_items_for_trakt_group(
-        "G", "val", "order", "http://jf", "key", "cli",
+        "G",
+        "val",
+        "order",
+        "http://jf",
+        "key",
+        "cli",
     )
     assert code == 200
     assert items == []
@@ -521,10 +597,14 @@ def test_run_sync_with_auto_set_library_covers(
     assert results[0]["links"] == 1
     # Verify image setting was called
     mock_set_image.assert_called_once_with(
-        "http://jf", "key", "CoverGroup", "/target/CoverGroup_cover.jpg",
+        "http://jf",
+        "key",
+        "CoverGroup",
+        "/target/CoverGroup_cover.jpg",
     )
     mock_copy2.assert_called_once_with(
-        "/target/CoverGroup_cover.jpg", "/target/CoverGroup/poster.jpg",
+        "/target/CoverGroup_cover.jpg",
+        "/target/CoverGroup/poster.jpg",
     )
 
 

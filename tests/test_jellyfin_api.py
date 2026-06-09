@@ -161,7 +161,11 @@ def test_add_virtual_folder_mixed(mock_post):
     mock_post.return_value = mock_response
 
     add_virtual_folder(
-        TEST_URL, TEST_KEY, "MixedLib", ["/path1"], collection_type="mixed",
+        TEST_URL,
+        TEST_KEY,
+        "MixedLib",
+        ["/path1"],
+        collection_type="mixed",
     )
 
     # Check the first call (creation) parameters
@@ -197,7 +201,10 @@ def test_get_library_id(mock_get):
 @patch("jellyfin.network.post")
 @patch("jellyfin.get_library_id")
 def test_set_virtual_folder_image(
-    mock_get_library_id, mock_post, mock_open, mock_guess,
+    mock_get_library_id,
+    mock_post,
+    mock_open,
+    mock_guess,
 ):
     mock_guess.return_value = ("image/jpeg", None)
     mock_get_library_id.return_value = "12345"
@@ -401,7 +408,11 @@ def test_set_virtual_folder_image_os_error(mock_get_library_id, caplog):
 @patch("jellyfin.network.post")
 @patch("jellyfin.get_library_id")
 def test_set_virtual_folder_image_request_exception(
-    mock_get_library_id, mock_post, mock_open, mock_guess, caplog,
+    mock_get_library_id,
+    mock_post,
+    mock_open,
+    mock_guess,
+    caplog,
 ):
     mock_guess.return_value = ("image/jpeg", None)
     mock_get_library_id.return_value = "123"
@@ -461,7 +472,10 @@ def test_create_collection_success(mock_post):
     mock_post.return_value = mock_response
 
     col_id = create_collection(
-        TEST_URL, TEST_KEY, "My Collection", ["item_1", "item_2"],
+        TEST_URL,
+        TEST_KEY,
+        "My Collection",
+        ["item_1", "item_2"],
     )
     assert col_id == "col_123"
     mock_post.assert_called_once_with(
@@ -480,7 +494,8 @@ def test_create_collection_no_id(mock_post):
     mock_post.return_value = mock_response
 
     with pytest.raises(
-        RuntimeError, match="Collection created but no Id returned for 'Bad'",
+        RuntimeError,
+        match="Collection created but no Id returned for 'Bad'",
     ):
         create_collection(TEST_URL, TEST_KEY, "Bad", ["item_1"])
 
@@ -507,7 +522,8 @@ def test_create_collection_request_exception_no_response(mock_post):
     mock_post.side_effect = requests.exceptions.RequestException("Network down")
 
     with pytest.raises(
-        RuntimeError, match="Failed to create collection 'Fail': Network down",
+        RuntimeError,
+        match="Failed to create collection 'Fail': Network down",
     ):
         create_collection(TEST_URL, TEST_KEY, "Fail", ["item_1"])
 
@@ -633,7 +649,8 @@ def test_add_to_collection_request_exception(mock_post):
     mock_post.side_effect = requests.exceptions.RequestException("Net fail")
 
     with pytest.raises(
-        RuntimeError, match="Failed to add items to collection 'col_1': Net fail",
+        RuntimeError,
+        match="Failed to add items to collection 'col_1': Net fail",
     ):
         add_to_collection(TEST_URL, TEST_KEY, "col_1", ["x"])
 
@@ -680,7 +697,8 @@ def test_remove_from_collection_request_exception(mock_delete):
     mock_delete.side_effect = requests.exceptions.RequestException("Timeout")
 
     with pytest.raises(
-        RuntimeError, match="Failed to remove items from collection 'col_1': Timeout",
+        RuntimeError,
+        match="Failed to remove items from collection 'col_1': Timeout",
     ):
         remove_from_collection(TEST_URL, TEST_KEY, "col_1", ["x"])
 
@@ -794,7 +812,10 @@ def test_set_collection_image_http_error(mock_post, mock_open, mock_guess, caplo
 @patch("jellyfin.Path.open")
 @patch("jellyfin.network.post")
 def test_set_collection_image_request_exception_no_response(
-    mock_post, mock_open, mock_guess, caplog,
+    mock_post,
+    mock_open,
+    mock_guess,
+    caplog,
 ):
     mock_guess.return_value = ("image/jpeg", None)
     mock_open.return_value.__enter__.return_value.read.return_value = b"jpeg_data"
@@ -845,7 +866,9 @@ def test_parse_json_decode_error():
     mock_response.status_code = 500
     mock_response.text = "not json"
     mock_response.json.side_effect = requests.exceptions.JSONDecodeError(
-        "test", "not json", 0,
+        "test",
+        "not json",
+        0,
     )
     with pytest.raises(RuntimeError, match="Invalid JSON response"):
         _parse_json(mock_response)

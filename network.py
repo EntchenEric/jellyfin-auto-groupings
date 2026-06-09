@@ -60,7 +60,9 @@ def _parse_retry_config() -> tuple[int, float, list[int]]:
     try:
         backoff = float(os.environ.get("NETWORK_RETRY_BACKOFF_FACTOR", "1.0"))
     except ValueError:
-        logger.warning("Invalid NETWORK_RETRY_BACKOFF_FACTOR value, falling back to default 1.0")
+        logger.warning(
+            "Invalid NETWORK_RETRY_BACKOFF_FACTOR value, falling back to default 1.0"
+        )
         backoff = 1.0
     if backoff < 0:
         msg = f"NETWORK_RETRY_BACKOFF_FACTOR must be non-negative, got: {backoff}"
@@ -92,7 +94,9 @@ def _parse_retry_config() -> tuple[int, float, list[int]]:
 
 
 _RETRY_TOTAL, _RETRY_BACKOFF_FACTOR, _RETRY_STATUS_FORCELIST = _parse_retry_config()
-_ALLOWED_RETRY_METHODS: frozenset[str] = frozenset({"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD"})
+_ALLOWED_RETRY_METHODS: frozenset[str] = frozenset(
+    {"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD"}
+)
 
 
 def _build_retry_session() -> requests.Session:
