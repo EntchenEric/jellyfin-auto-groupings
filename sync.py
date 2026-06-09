@@ -52,6 +52,7 @@ from trakt import fetch_trakt_list
 logger = logging.getLogger(__name__)
 
 __all__ = [
+    "clear_library_cache",
     "parse_complex_query",
     "preview_group",
     "run_cleanup_broken_symlinks",
@@ -219,6 +220,17 @@ def _get_cover_path(
 
 _LIBRARY_CACHE: dict[tuple[str, str], list[dict[str, Any]]] = {}
 _LIBRARY_CACHE_LOCK = threading.RLock()
+
+
+def clear_library_cache() -> None:
+    """Clear the cached Jellyfin library data.
+
+    Called by routes when the configuration changes to prevent stale
+    cached data from being used after a server URL or API key update.
+    """
+    with _LIBRARY_CACHE_LOCK:
+        _LIBRARY_CACHE.clear()
+    logger.debug("Jellyfin library cache cleared")
 
 
 def _filter_by_watch_state(

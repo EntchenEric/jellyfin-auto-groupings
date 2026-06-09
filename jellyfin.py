@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import mimetypes
+from http import HTTPStatus
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, NoReturn
 
@@ -509,7 +510,7 @@ def add_virtual_folder(
             data="",
             timeout=timeout,
         )
-        if create_resp.status_code != 409:
+        if create_resp.status_code != HTTPStatus.CONFLICT:
             create_resp.raise_for_status()
     except requests.exceptions.RequestException as exc:
         _raise_request_error(exc, f"Failed to create virtual folder {name!r}")

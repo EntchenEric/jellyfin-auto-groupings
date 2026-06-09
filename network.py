@@ -34,6 +34,11 @@ _RETRY_BACKOFF_FACTOR: float
 _RETRY_STATUS_FORCELIST: list[int]
 
 
+# Valid HTTP status code range for retry configuration
+_HTTP_STATUS_MIN: int = 100
+_HTTP_STATUS_MAX: int = 599
+
+
 def _parse_retry_config() -> tuple[int, float, list[int]]:
     """Parse retry configuration from environment variables with validation.
 
@@ -83,7 +88,7 @@ def _parse_retry_config() -> tuple[int, float, list[int]]:
                 stripped,
             )
             continue
-        if not (100 <= code <= 599):
+        if not (_HTTP_STATUS_MIN <= code <= _HTTP_STATUS_MAX):
             msg = f"NETWORK_RETRY_STATUS_FORCELIST contains invalid HTTP status code: {code}"
             raise ValueError(
                 msg,
