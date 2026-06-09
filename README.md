@@ -268,7 +268,7 @@ See [`.env.example`](.env.example) for quick setup.
 ### 🧪 Testing
 
 ```bash
-# Run the full test suite (506+ tests, 99.7%+ coverage)
+# Run the full test suite (555+ tests, 100% coverage)
 python -m pytest
 
 # Run tests with coverage report
@@ -404,51 +404,3 @@ When preview or sync fails, the error is shown in a modal dialog within the UI.
 
 ---
 
-## 🧪 Running Tests
-
-This project has a comprehensive test suite (**506+ tests, 99.7%+ coverage**) covering sync logic, API routes,
-scheduler, external list fetching, and configuration management.
-
-### Setup for testing
-
-```bash
-# Create and activate a virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install all dependencies (including dev extras like pytest, coverage)
-pip install -e .[dev]
-```
-
-### Run all tests
-
-```bash
-pytest tests/
-```
-
-### Run with coverage
-
-```bash
-pytest tests/ --cov=sync --cov=routes --cov=config --cov=jellyfin --cov-report=term-missing
-```
-
-### Run a specific test file
-
-```bash
-pytest tests/test_sync.py -v
-pytest tests/test_fetchers.py -v
-pytest tests/test_routes.py -v
-```
-
-### Exhaustive tests (mocked Jellyfin server)
-
-Some tests spin up a lightweight Flask mock of Jellyfin. These are included by default
-and don't require a real Jellyfin instance.
-
----
-
-## 📚 Additional Resources
-
-- [CONTRIBUTING.md](CONTRIBUTING.md) — Development guide and contribution process
-- [SECURITY.md](SECURITY.md) — Security policy and vulnerability reporting
-- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) — Community guidelines

@@ -719,6 +719,21 @@ button:disabled {
     animation: fadeIn 0.4s ease-out;
 }
 
+/* ── Toast close button ──────────────────────────────── */
+.toast-close {
+    position: absolute;
+    top: 4px;
+    right: 8px;
+    font-size: 1rem;
+    color: inherit;
+    width: auto;
+    margin: 0;
+    padding: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
 /* ── Close button on modals (shared) ───────────────────── */
 .close-modal-btn {
     background: none;

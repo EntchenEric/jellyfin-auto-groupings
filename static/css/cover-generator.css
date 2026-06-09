@@ -1,3 +1,113 @@
 /* ── Cover Generator ────────────────────────────────────── */
-/* Extended cover-gen specific styles will be added here */
-/* (Cover generator modal uses shared .modal, .modal-content styles) */
+
+/* Modal card sizing */
+.cover-generator-card {
+    max-width: min(800px, 95vw);
+    width: 90%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 3-column grid for controls */
+.cover-controls-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+.cover-controls-grid > .cover-text-col {
+    grid-column: span 3;
+}
+
+/* Color picker group */
+.cover-color-picker-group {
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-end;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 0.4rem 0.6rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--glass-border);
+}
+
+.cover-color-input {
+    width: 44px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    cursor: pointer;
+    background: transparent;
+}
+
+.cover-color-label {
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+    display: block;
+}
+
+/* Control label style */
+.cover-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.4rem;
+    display: block;
+}
+
+.cover-col {
+    min-width: 0;
+}
+
+/* Canvas preview area */
+.cover-preview-area {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    overflow: hidden;
+    border: 1px dashed var(--glass-border);
+    min-height: 300px;
+}
+
+.cover-canvas {
+    max-width: 100%;
+    max-height: 45vh;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* Action buttons row */
+.cover-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+}
+
+.cover-btn-primary {
+    flex: 2;
+    font-weight: 600;
+    margin-top: 0;
+}
+
+.cover-btn-secondary {
+    flex: 1;
+    font-weight: 600;
+    margin-top: 0;
+}
+
+.cover-btn-tertiary {
+    flex: 1;
+    margin-top: 0;
+}
