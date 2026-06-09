@@ -36,7 +36,7 @@
                 <label for="target_path">Base Target Path</label>
                 <div id="target_path_group" class="picker-row path-field-locked">
                     <input type="text" id="target_path" placeholder="/path/to/virtual/libraries" required disabled>
-                    <button type="button" class="browse-btn" onclick="openPathPicker('target_path')" disabled title="Browse">Browse</button>
+                    <button type="button" class="browse-btn" data-path-field="target_path" disabled title="Browse">Browse</button>
                 </div>
                 <small>Where symlink folders will be created on <em>this machine</em>.</small>
             </div>
@@ -52,14 +52,14 @@
                     <label class="sidebar-label-sm">Path in Jellyfin</label>
                     <div id="media_path_in_jellyfin_group" class="picker-row path-field-locked">
                         <input type="text" id="media_path_in_jellyfin" placeholder="/media" class="sidebar-input-sm" disabled>
-                        <button type="button" class="browse-btn" onclick="openPathPicker('media_path_in_jellyfin')" disabled>Browse</button>
+                        <button type="button" class="browse-btn" data-path-field="media_path_in_jellyfin" disabled>Browse</button>
                     </div>
                 </div>
                 <div class="form-group mb-0">
                     <label class="sidebar-label-sm">Same path on this machine</label>
                     <div id="media_path_on_host_group" class="picker-row path-field-locked">
                         <input type="text" id="media_path_on_host" placeholder="/home/user/media" class="sidebar-input-sm" disabled>
-                        <button type="button" class="browse-btn" onclick="openPathPicker('media_path_on_host')" disabled>Browse</button>
+                        <button type="button" class="browse-btn" data-path-field="media_path_on_host" disabled>Browse</button>
                     </div>
                 </div>
             </div>
@@ -86,7 +86,7 @@
                 <label class="sidebar-label-sm sidebar-label-muted">Target path as Jellyfin sees it (optional)</label>
                 <div id="target_path_in_jellyfin_group" class="picker-row path-field-locked">
                     <input type="text" id="target_path_in_jellyfin" placeholder="/groupings" class="sidebar-input-sm" disabled>
-                    <button type="button" class="browse-btn" onclick="openPathPicker('target_path_in_jellyfin')" disabled>Browse</button>
+                    <button type="button" class="browse-btn" data-path-field="target_path_in_jellyfin" disabled>Browse</button>
                 </div>
             </div>
 
@@ -115,11 +115,11 @@
 
         <div class="sub-panel">
             <label class="checkbox-label">
-                <input type="checkbox" id="global_scheduler_enabled" onchange="toggleGlobalScheduler(this)">
+                <input type="checkbox" id="global_scheduler_enabled">
                 <span>Enable Global Scheduler</span>
             </label>
 
-            <div id="global_scheduler_panel" class="toggle-panel" style="display: none;">
+            <div id="global_scheduler_panel" class="toggle-panel">
                 <div class="form-group">
                     <label for="global_sync_schedule">Global Sync Schedule (Cron)</label>
                     <input type="text" id="global_sync_schedule" placeholder="0 0 * * * (Every midnight)" class="input-sm">
@@ -127,19 +127,18 @@
                 </div>
                 <div class="form-group mb-0">
                     <label>Excluded Groupings</label>
-                    <div id="global_sync_exclusions"
-                        class="flex-col gap-0_3" style="max-height: 130px; overflow-y: auto; background: rgba(0,0,0,0.15); padding: 0.5rem; border-radius: var(--radius-sm);">
+                    <div id="global_sync_exclusions" class="flex-col gap-0_3 scheduler-exclusion-list">
                     </div>
                     <small>These groupings skip the global scheduled sync.</small>
                 </div>
             </div>
 
-            <div class="small-mt hr-dashed" style="padding-top: 1rem;">
+            <div class="scheduler-separator hr-dashed">
                 <label class="checkbox-label">
-                    <input type="checkbox" id="cleanup_scheduler_enabled" onchange="toggleCleanupScheduler(this)">
+                    <input type="checkbox" id="cleanup_scheduler_enabled">
                     <span>Enable Auto-Cleanup</span>
                 </label>
-                <div id="cleanup_scheduler_panel" class="toggle-panel" style="display: none;">
+                <div id="cleanup_scheduler_panel" class="toggle-panel">
                     <div class="form-group mb-0">
                         <label for="cleanup_sync_schedule">Cleanup Schedule (Cron)</label>
                         <input type="text" id="cleanup_sync_schedule" placeholder="0 * * * * (Every hour)" class="input-sm">

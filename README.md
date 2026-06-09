@@ -331,6 +331,7 @@ services:
       - TMDB_API_KEY=your-tmdb-api-key
       - MAL_CLIENT_ID=your-myanimelist-client-id
       - APP_PASSWORD=your-password  # Enables HTTP Basic Auth
+      - ANILIST_API_URL=            # optional: custom AniList API endpoint
     restart: unless-stopped
 ```
 

@@ -41,6 +41,12 @@ export function openExportModal() {
 
     document.querySelector('input[name="export-type"][value="all"]').checked = true;
     toggleExportSelection();
+
+    // Wire radio button change events (removes dependency on HTML onchange)
+    document.querySelectorAll('input[name="export-type"]').forEach(radio => {
+        radio.onchange = toggleExportSelection;
+    });
+
     getEl('export-modal').style.display = 'flex';
 }
 
@@ -101,7 +107,7 @@ export function handleFileSelected(event) {
 
 function setupImportStep2(data) {
     getEl('import-step-1').style.display = 'none';
-    getEl('import-step-2').style.display = 'block';
+    getEl('import-step-2').style.display = 'flex';
     getEl('cancel-import-top').style.display = 'none';
 
     const warning = getEl('import-warning');

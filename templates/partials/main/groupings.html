@@ -31,14 +31,14 @@
         <div class="form-grid-2">
             <div class="form-group mb-0">
                 <label for="source_category">Source Category</label>
-                <select id="source_category" onchange="updateSourceTypeOptions()">
+                <select id="source_category">
                     <option value="jellyfin">Jellyfin (Integrated)</option>
                     <option value="external">External (3rd Party)</option>
                 </select>
             </div>
             <div class="form-group mb-0">
                 <label for="source_type">Filter By</label>
-                <select id="source_type" onchange="updateSourceValueUI()">
+                <select id="source_type">
                     <!-- Options injected via JS -->
                 </select>
             </div>
@@ -47,13 +47,13 @@
             <label for="source_value">Filter Value</label>
 
             <div id="metadata_rules_container" class="hidden-flex-col mb-0_5"></div>
-            <button type="button" onclick="addMetadataRule()" class="secondary-btn add-condition-btn" id="add-rule-btn">+ Add Condition</button>
+            <button type="button" class="secondary-btn add-condition-btn" id="add-rule-btn">+ Add Condition</button>
 
             <div id="source_value_container" class="flex-col gap-0_5">
                 <input type="text" id="source_value" list="source_value_datalist"
                     placeholder="Action  or  ls000024390" required>
                 <datalist id="source_value_datalist"></datalist>
-                <button type="button" onclick="previewGrouping()" class="secondary-btn btn-preview" id="preview-fetch-btn">Preview Filter</button>
+                <button type="button" class="secondary-btn btn-preview" id="preview-fetch-btn">Preview Filter</button>
             </div>
             <small id="source_value_help">
                 The specific genre, actor name, tag, or list ID.<br>
@@ -82,7 +82,7 @@
         <!-- Sort Order -->
         <div class="form-group mt-0_75">
             <label class="checkbox-label">
-                <input type="checkbox" id="sort_order_enabled" onchange="toggleSortOrder(this)">
+                <input type="checkbox" id="sort_order_enabled">
                 <span>Custom Sort Order <span class="badge-optional">(optional)</span></span>
             </label>
             <div id="sort_order_panel" class="toggle-panel">
@@ -116,7 +116,7 @@
         <!-- Individual Schedule -->
         <div class="form-group">
             <label class="checkbox-label">
-                <input type="checkbox" id="schedule_enabled" onchange="toggleGroupScheduler(this)">
+                <input type="checkbox" id="schedule_enabled">
                 <span>Individual Sync Schedule <span class="badge-optional">(optional)</span></span>
             </label>
             <div id="group_scheduler_panel" class="toggle-panel">
@@ -128,7 +128,7 @@
         <!-- Seasonal Grouping -->
         <div class="form-group">
             <label class="checkbox-label">
-                <input type="checkbox" id="seasonal_enabled" onchange="toggleSeasonal(this)">
+                <input type="checkbox" id="seasonal_enabled">
                 <span>Seasonal Grouping <span class="badge-optional">(optional)</span></span>
             </label>
             <div id="seasonal_panel" class="toggle-panel">
@@ -164,7 +164,7 @@
         </div>
 
         <div class="form-footer">
-            <button type="button" id="cancel-edit-btn" onclick="cancelEdit()"
+            <button type="button" id="cancel-edit-btn"
                 class="form-btn-secondary hidden">
                 Cancel
             </button>

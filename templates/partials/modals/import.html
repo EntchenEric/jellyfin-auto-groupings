@@ -1,22 +1,22 @@
 <!-- Import Modal -->
 <div id="import-modal" class="modal" role="dialog" aria-label="Import Settings" aria-modal="true">
-    <div class="card modal-card" style="overflow-y: auto;">
+    <div class="card modal-card import-modal-scroll">
         <h2>Import Settings</h2>
         <div id="import-step-1">
             <p class="modal-description">Select a file to begin the import process.</p>
             <button id="import-select-file-btn" class="btn-full">Select JSON File</button>
             <input type="file" id="import-file-input" class="file-input-hidden" accept=".json">
         </div>
-        <div id="import-step-2" style="display: none;">
-            <div id="import-warning" class="status-msg error" style="margin-bottom: 1.25rem; display: none;">
+        <div id="import-step-2" class="hidden-flex-col">
+            <div id="import-warning" class="status-msg error form-group-bottom-spacing">
                 WARNING: This will overwrite your entire current configuration!</div>
             <div id="import-selection-list">
                 <label>Select items to import</label>
                 <div id="import-groups-container" class="small-mt"></div>
             </div>
             <div class="action-row" style="margin-top: 1.5rem;">
-                <button id="confirm-import" class="flex-2" style="margin-top:0;">Confirm Import</button>
-                <button class="secondary-btn close-modal-btn flex-1" style="margin-top:0;">Cancel</button>
+                <button id="confirm-import" class="flex-2 action-row-btn-nomargin">Confirm Import</button>
+                <button class="secondary-btn close-modal-btn flex-1 action-row-btn-nomargin">Cancel</button>
             </div>
         </div>
         <button id="cancel-import-top" class="secondary-btn close-modal-btn btn-full-mt">Cancel</button>
