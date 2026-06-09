@@ -9,15 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Initial CHANGELOG.md for project tracking.
+- Added `anilist_api_url` to `DEFAULT_CONFIG` to prevent KeyError when config
+  is accessed before the key is explicitly set.
 
 ### Fixed
 - Improved CSRF testing check in `routes.py` to use the standard Flask
   `current_app.config.get("TESTING")` pattern instead of `current_app.testing`.
 - Better type handling for seasonal start/end strings in `_is_in_season` when
   passed non-string types (already handled gracefully as a fallback).
+- Fixed double-checked locking pattern in `_fetch_full_library()` so the cache
+  is not overwritten if another thread populated it during the fetch.
 
 ### Changed
 - Minor documentation improvements in README.md and docstrings.
+- Moved `_SOURCE_DISPATCH` routing from a module-level dict of lambdas to a
+  `match/case`-based `_dispatch_list_source` function, removing the unused
+  dispatch table.
+- Renamed `_LIST_SOURCES` to `_LIST_SOURCE_TYPES` and added
+  `_COMPLEX_QUERY_SOURCE_TYPES` for more descriptive naming.
+- Removed redundant cache clear at end of `run_sync` (the cache is already
+  cleared at the start of each sync run).
+- Mypy type fixes in `tests/virtual_jellyfin.py` dashboard helper.
 
 ## [1.0.0] - 2025-03-01
 
