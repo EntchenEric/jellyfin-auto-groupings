@@ -46,7 +46,7 @@ from jellyfin import (
     get_users,
 )
 from scheduler import update_scheduler_jobs, validate_cron
-from sync import _get_cover_path, preview_group, run_sync
+from sync import _get_cover_path, clear_library_cache, preview_group, run_sync
 
 logger = logging.getLogger(__name__)
 
@@ -336,6 +336,9 @@ def update_config() -> ResponseReturnValue:
     except OSError as exc:
         logger.exception("Failed to write config file")
         return _error(f"Config file write failed: {exc}", 500)
+
+    # Clear any cached Jellyfin data — the server URL or API key may have changed
+    clear_library_cache()
 
     try:
         update_scheduler_jobs()

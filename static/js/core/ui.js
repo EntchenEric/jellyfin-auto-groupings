@@ -127,9 +127,9 @@ export function showLoadingOverlay(title, status, totalSteps = 0) {
     if (titleEl) titleEl.textContent = title || 'Connecting to Jellyfin';
     if (statusEl) statusEl.textContent = status || 'Fetching data...';
 
-    _progressTotal = totalSteps;
+    _progressTotal = Math.max(0, totalSteps);
     _progressStep = 0;
-    _progressStartTime = totalSteps > 0 ? Date.now() : 0;
+    _progressStartTime = _progressTotal > 0 ? Date.now() : 0;
     _updateProgressBar();
 
     overlay.style.display = 'flex';

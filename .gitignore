@@ -1,6 +1,9 @@
 # Local config – contains secrets (API key etc.), never commit
 config.json
 
+# Environment secrets — users copy .env.example to .env
+.env
+
 # Python
 __pycache__/
 *.py[cod]
@@ -18,13 +21,15 @@ bin/
 include/
 pyvenv.cfg
 
+# Test results (not artifacts)
+test_results.txt
+current_test_out.txt
+test_api_out.txt
+
 # Test artifacts
 test_error.log
 coverage_report.txt
-test_results.txt
 pytest_verbose.log
-current_test_out.txt
-test_api_out.txt
 pytest.log
 .pytest_cache/
 .coverage
