@@ -255,6 +255,50 @@ def _validate_cron_expressions(new_config: dict[str, Any]) -> list[str]:
     return cron_errors
 
 
+def _validate_config_types(new_config: dict[str, Any]) -> list[str]:
+    """Validate basic types in *new_config*, returning a list of errors."""
+    errors: list[str] = []
+    for str_field in ("jellyfin_url", "target_path", "media_path_in_jellyfin",
+                      "media_path_on_host", "target_path_in_jellyfin"):
+        val = new_config.get(str_field)
+        if val is not None and not isinstance(val, str):
+            errors.append(f"'{str_field}' must be a string")
+    for list_field in "groups":
+        val = new_config.get(list_field)
+        if val is not None and not isinstance(val, list):
+            errors.append(f"'{list_field}' must be a list")
+    for bool_field in ("auto_create_libraries", "auto_set_library_covers", "setup_done"):
+        val = new_config.get(bool_field)
+        if val is not None and not isinstance(val, bool):
+            errors.append(f"'{bool_field}' must be a boolean")
+    sched = new_config.get("scheduler")
+    if sched is not None:
+        if not isinstance(sched, dict):
+            errors.append("'scheduler' must be an object")
+        else:
+            for bool_field in ("global_enabled", "cleanup_enabled"):
+                val = sched.get(bool_field)
+                if val is not None and not isinstance(val, bool):
+                    errors.append(f"'scheduler.{bool_field}' must be a boolean")
+            for str_field in ("global_schedule", "cleanup_schedule"):
+                val = sched.get(str_field)
+                if val is not None and not isinstance(val, str):
+                    errors.append(f"'scheduler.{str_field}' must be a string")
+            exclude = sched.get("global_exclude_ids")
+            if exclude is not None and not isinstance(exclude, list):
+                errors.append("'scheduler.global_exclude_ids' must be a list")
+    groups = new_config.get("groups")
+    if isinstance(groups, list):
+        for i, group in enumerate(groups):
+            if not isinstance(group, dict):
+                errors.append(f"groups[{i}] must be an object")
+                continue
+            name = group.get("name")
+            if name is not None and not isinstance(name, str):
+                errors.append(f"groups[{i}].name must be a string")
+    return errors
+
+
 @bp.route("/api/config", methods=["POST"])
 def update_config() -> ResponseReturnValue:
     """Persist a new application configuration supplied in the request body.
@@ -273,6 +317,10 @@ def update_config() -> ResponseReturnValue:
     cron_errors = _validate_cron_expressions(new_config)
     if cron_errors:
         return _error("Invalid cron expression(s)", 400, errors=cron_errors)
+
+    type_errors = _validate_config_types(new_config)
+    if type_errors:
+        return _error("Invalid config field type(s)", 400, errors=type_errors)
 
     try:
         save_config(new_config)
