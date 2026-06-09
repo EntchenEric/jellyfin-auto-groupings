@@ -115,7 +115,7 @@
 
         <div class="sub-panel">
             <label class="checkbox-label">
-                <input type="checkbox" id="global_scheduler_enabled" onchange="toggleGlobalScheduler(this)">
+                <input type="checkbox" id="global_scheduler_enabled">
                 <span>Enable Global Scheduler</span>
             </label>
 
@@ -127,8 +127,7 @@
                 </div>
                 <div class="form-group mb-0">
                     <label>Excluded Groupings</label>
-                    <div id="global_sync_exclusions"
-                <div class="flex-col gap-0_3 scheduler-exclusion-list">
+                    <div id="global_sync_exclusions" class="flex-col gap-0_3 scheduler-exclusion-list">
                     </div>
                     <small>These groupings skip the global scheduled sync.</small>
                 </div>
@@ -136,7 +135,7 @@
 
             <div class="scheduler-separator hr-dashed">
                 <label class="checkbox-label">
-                    <input type="checkbox" id="cleanup_scheduler_enabled" onchange="toggleCleanupScheduler(this)">
+                    <input type="checkbox" id="cleanup_scheduler_enabled">
                     <span>Enable Auto-Cleanup</span>
                 </label>
                 <div id="cleanup_scheduler_panel" class="toggle-panel">

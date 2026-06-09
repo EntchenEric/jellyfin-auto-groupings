@@ -134,15 +134,6 @@ function wireSchedulerToggles() {
     if (cleanupToggle) {
         cleanupToggle.addEventListener('change', () => toggleCleanupScheduler(cleanupToggle));
     }
-function wireSchedulerToggles() {
-    const globalToggle = getEl('global_scheduler_enabled');
-    if (globalToggle) {
-        globalToggle.addEventListener('change', () => toggleGlobalScheduler(globalToggle));
-    }
-    const cleanupToggle = getEl('cleanup_scheduler_enabled');
-    if (cleanupToggle) {
-        cleanupToggle.addEventListener('change', () => toggleCleanupScheduler(cleanupToggle));
-    }
 }
 
 function wireGroupFormEvents() {
