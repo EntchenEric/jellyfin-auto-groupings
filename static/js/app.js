@@ -18,19 +18,14 @@ import { renderGroups, cancelEdit, toggleSortOrder, toggleSeasonal, toggleGroupS
 // Listen for cross-module events
 document.addEventListener('groups-changed', () => renderGroups());
 
-// Expose to window for inline HTML onclick handlers
-window.addMetadataRule = addMetadataRule;
-window.previewGrouping = previewGrouping;
-window.cancelEdit = cancelEdit;
+// Expose to window for inline HTML onclick handlers (path-picker modal)
 window.closePicker = closePicker;
 window.confirmPicker = confirmPicker;
 window.pickerOutsideClick = pickerOutsideClick;
 window.openPathPicker = openPathPicker;
-window.toggleSortOrder = toggleSortOrder;
-window.toggleSeasonal = toggleSeasonal;
-window.toggleGroupScheduler = toggleGroupScheduler;
-window.toggleGlobalScheduler = toggleGlobalScheduler;
-window.toggleCleanupScheduler = toggleCleanupScheduler;
+
+// Expose for JS-injected buttons (group edit inline)
+window.cancelEdit = cancelEdit;
 
 function wireTopbarButtons() {
     // Sync button → confirmation dialog first
@@ -109,6 +104,105 @@ function wireImportFilePicker() {
     }
 }
 
+function wireHamburgerButton() {
+    const hamburger = getEl('hamburger-btn');
+    if (hamburger) {
+        hamburger.addEventListener('click', () => {
+            document.getElementById('sidebar').classList.toggle('open');
+        });
+    }
+}
+
+function wireBrowseButtons() {
+    // Browse buttons use data-path-field attribute
+    document.querySelectorAll('.browse-btn[data-path-field]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const field = btn.getAttribute('data-path-field');
+            if (field) {
+                openPathPicker(field);
+            }
+        });
+    });
+}
+
+function wireSchedulerToggles() {
+    const globalToggle = getEl('global_scheduler_enabled');
+    if (globalToggle) {
+        globalToggle.addEventListener('change', () => toggleGlobalScheduler(globalToggle));
+    }
+    const cleanupToggle = getEl('cleanup_scheduler_enabled');
+    if (cleanupToggle) {
+        cleanupToggle.addEventListener('change', () => toggleCleanupScheduler(cleanupToggle));
+    }
+function wireSchedulerToggles() {
+    const globalToggle = getEl('global_scheduler_enabled');
+    if (globalToggle) {
+        globalToggle.addEventListener('change', () => toggleGlobalScheduler(globalToggle));
+    }
+    const cleanupToggle = getEl('cleanup_scheduler_enabled');
+    if (cleanupToggle) {
+        cleanupToggle.addEventListener('change', () => toggleCleanupScheduler(cleanupToggle));
+    }
+}
+
+function wireGroupFormEvents() {
+    // Wire source type category change
+    const sourceCategory = getEl('source_category');
+    if (sourceCategory) {
+        sourceCategory.addEventListener('change', () => {
+            if (typeof window.updateSourceTypeOptions === 'function') {
+                window.updateSourceTypeOptions();
+            }
+        });
+    }
+
+    // Wire source type change
+    const sourceType = getEl('source_type');
+    if (sourceType) {
+        sourceType.addEventListener('change', () => {
+            if (typeof window.updateSourceValueUI === 'function') {
+                window.updateSourceValueUI();
+            }
+        });
+    }
+
+    // Wire sort order toggle
+    const sortOrderToggle = getEl('sort_order_enabled');
+    if (sortOrderToggle) {
+        sortOrderToggle.addEventListener('change', () => toggleSortOrder(sortOrderToggle));
+    }
+
+    // Wire schedule toggle
+    const scheduleToggle = getEl('schedule_enabled');
+    if (scheduleToggle) {
+        scheduleToggle.addEventListener('change', () => toggleGroupScheduler(scheduleToggle));
+    }
+
+    // Wire seasonal toggle
+    const seasonalToggle = getEl('seasonal_enabled');
+    if (seasonalToggle) {
+        seasonalToggle.addEventListener('change', () => toggleSeasonal(seasonalToggle));
+    }
+
+    // Wire preview button
+    const previewBtn = getEl('preview-fetch-btn');
+    if (previewBtn) {
+        previewBtn.addEventListener('click', () => previewGrouping());
+    }
+
+    // Wire add condition button
+    const addRuleBtn = getEl('add-rule-btn');
+    if (addRuleBtn) {
+        addRuleBtn.addEventListener('click', () => addMetadataRule());
+    }
+
+    // Wire cancel edit button
+    const cancelEditBtn = getEl('cancel-edit-btn');
+    if (cancelEditBtn) {
+        cancelEditBtn.addEventListener('click', () => cancelEdit());
+    }
+}
+
 function wirePasswordToggles() {
     const eyeSvg = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
     const eyeSlashSvg = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
@@ -151,6 +245,10 @@ async function bootstrap() {
     wireImportFilePicker();
     wirePasswordToggles();
     wireMiscButtons();
+    wireHamburgerButton();
+    wireBrowseButtons();
+    wireSchedulerToggles();
+    wireGroupFormEvents();
 
     const groupForm = getEl('group-form');
     groupForm.addEventListener('submit', async (e) => {

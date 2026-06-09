@@ -1,26 +1,26 @@
 <!-- Export Modal -->
 <div id="export-modal" class="modal" role="dialog" aria-label="Export Settings" aria-modal="true">
-    <div class="card modal-card" style="overflow-y: auto;">
+    <div class="card modal-card export-modal-scroll">
         <h2>Export Settings</h2>
-        <div class="form-group" style="margin-bottom: 1.5rem;">
+        <div class="form-group form-group-bottom-spacing">
             <label>What do you want to export?</label>
             <div class="flex-col gap-0_5 small-mt">
                 <label class="radio-label">
-                    <input type="radio" name="export-type" value="all" checked onchange="toggleExportSelection()">
+                    <input type="radio" name="export-type" value="all" checked>
                     Full Configuration (Settings + All Groups)
                 </label>
                 <label class="radio-label">
-                    <input type="radio" name="export-type" value="selective" onchange="toggleExportSelection()">
+                    <input type="radio" name="export-type" value="selective">
                     Selected Groupings Only
                 </label>
             </div>
         </div>
-        <div id="export-selection-list" class="hr-dashed" style="padding-top: 1rem; margin-bottom: 1.25rem; display: none;">
+        <div id="export-selection-list" class="hr-dashed export-selection-list">
             <label>Select Groups</label>
             <div id="export-groups-container"></div>
         </div>
         <div class="action-row">
-            <button id="export-download-btn" class="flex-2" style="margin-top:0;">Download Export</button>
+            <button id="export-download-btn" class="flex-2 action-row-btn-nomargin">Download Export</button>
             <button class="secondary-btn close-modal-btn flex-1-error">Cancel</button>
         </div>
     </div>

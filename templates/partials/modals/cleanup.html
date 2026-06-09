@@ -3,14 +3,14 @@
     <div class="card modal-card flex-col-gap">
         <h2>Clean Up Folders</h2>
         <p class="modal-description-sm">Select the folders you want to delete from the target directory.</p>
-        <div id="cleanup-loading" class="flex-row gap-0_5" style="justify-content: center; padding: 2rem;">
-            <div class="loading-spinner" style="border-top-color: var(--accent-color); display: block;"></div>
+        <div id="cleanup-loading" class="flex-row gap-0_5 cleanup-loading">
+            <div class="loading-spinner loading-spinner-accent"></div>
         </div>
-        <div id="cleanup-error" class="status-msg error" style="display: none; margin-bottom: 1rem;"></div>
-        <div id="cleanup-content" style="display: none; flex: 1; min-height: 0; flex-direction: column;">
-            <div id="cleanup-list" class="list-scrollable" style="margin-bottom: 1.25rem;">
+        <div id="cleanup-error" class="status-msg error cleanup-error">
+        <div id="cleanup-content" class="cleanup-content">
+            <div id="cleanup-list" class="list-scrollable cleanup-list-wrapper">
             </div>
-            <div class="action-row" style="margin-top: auto;">
+            <div class="action-row cleanup-action-row">
                 <button id="confirm-cleanup-btn" class="btn-danger-primary">Delete Selected <span id="cleanup-count"></span></button>
                 <button class="secondary-btn close-modal-btn flex-1">Cancel</button>
             </div>

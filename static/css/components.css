@@ -1347,3 +1347,113 @@ pre {
     overflow-y: auto;
     background: rgba(0, 0, 0, 0.2);
 }
+
+/* ── Loading spinner inline color variations ───────────── */
+.loading-spinner-on-dark {
+    border-top-color: #fff;
+}
+
+.loading-spinner-accent {
+    border-top-color: var(--accent-color);
+    display: block;
+}
+
+/* ── Cleanup modal elements ────────────────────────────── */
+.cleanup-loading {
+    justify-content: center;
+    padding: 2rem;
+}
+
+.cleanup-error {
+    margin-bottom: 1rem;
+}
+
+.cleanup-content {
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+}
+
+.cleanup-list-wrapper {
+    margin-bottom: 1.25rem;
+}
+
+.cleanup-action-row {
+    margin-top: auto;
+}
+
+/* ── Confirm sync text styles ──────────────────────────── */
+.confirm-sync-body-text {
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.confirm-sync-warning-text {
+    font-size: 0.82rem;
+    margin-top: 0.75rem;
+}
+
+/* ── Scheduler panel styling ───────────────────────────── */
+.scheduler-exclusion-list {
+    max-height: 130px;
+    overflow-y: auto;
+    background: rgba(0,0,0,0.15);
+    padding: 0.5rem;
+    border-radius: var(--radius-sm);
+}
+
+.scheduler-separator {
+    padding-top: 1rem;
+}
+
+/* ── Import modal ────────────────────────────────────────── */
+.import-modal-scroll {
+    overflow-y: auto;
+}
+
+/* ── Topbar loading spinner (white on dark bg) ──────────── */
+.topbar-btn .loading-spinner {
+    border-top-color: #fff;
+}
+
+/* ── Export/Import modal elements ───────────────────────── */
+.export-modal-scroll {
+    overflow-y: auto;
+}
+
+.form-group-bottom-spacing {
+    margin-bottom: 1.5rem;
+}
+
+.export-selection-list {
+    padding-top: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.action-row-btn-nomargin {
+    margin: 0;
+}
+
+/* ── Preview sync modal ──────────────────────────────────── */
+.preview-modal-card {
+    max-width: 700px;
+    width: 90%;
+    max-height: 85vh;
+}
+
+.preview-results {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+/* ── Error dialog ────────────────────────────────────────── */
+.error-dialog-top-border {
+    border-top: 4px solid var(--error-color);
+}
+
+.error-dialog-message {
+    font-size: 0.95rem;
+    line-height: 1.5;
+}

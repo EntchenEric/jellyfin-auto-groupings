@@ -41,6 +41,12 @@ export function openExportModal() {
 
     document.querySelector('input[name="export-type"][value="all"]').checked = true;
     toggleExportSelection();
+
+    // Wire radio button change events (removes dependency on HTML onchange)
+    document.querySelectorAll('input[name="export-type"]').forEach(radio => {
+        radio.onchange = toggleExportSelection;
+    });
+
     getEl('export-modal').style.display = 'flex';
 }
 
