@@ -268,7 +268,7 @@ See [`.env.example`](.env.example) for quick setup.
 ### 🧪 Testing
 
 ```bash
-# Run the full test suite (555+ tests, 100% coverage)
+# Run the full test suite (520+ tests, 98%+ coverage)
 python -m pytest
 
 # Run tests with coverage report

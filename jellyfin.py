@@ -11,7 +11,7 @@ import logging
 import mimetypes
 from http import HTTPStatus
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, NoReturn
+from typing import TYPE_CHECKING, Any, NoReturn, cast
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -282,12 +282,15 @@ def fetch_jellyfin_items(
     if extra_params:
         params.update(extra_params)
 
-    return _get_json(
-        f"{base_url}/Items",
-        headers=headers,
-        params=params,
-        timeout=timeout,
-    ).get("Items", [])
+    return cast(
+        "list[dict[str, Any]]",
+        _get_json(
+            f"{base_url}/Items",
+            headers=headers,
+            params=params,
+            timeout=timeout,
+        ).get("Items", []),
+    )
 
 
 def fetch_all_jellyfin_items(
@@ -422,10 +425,13 @@ def get_users(base_url: str, api_key: str, timeout: int = 30) -> list[dict[str, 
         A list of user dictionaries.
 
     """
-    return _get_json(
-        f"{base_url}/Users",
-        headers=_auth_headers(api_key),
-        timeout=timeout,
+    return cast(
+        "list[dict[str, Any]]",
+        _get_json(
+            f"{base_url}/Users",
+            headers=_auth_headers(api_key),
+            timeout=timeout,
+        ),
     )
 
 
@@ -458,12 +464,15 @@ def get_user_recent_items(
         "Limit": str(limit),
         "Fields": "ProviderIds",
     }
-    return _get_json(
-        f"{base_url}/Users/{user_id}/Items",
-        headers=_auth_headers(api_key),
-        params=params,
-        timeout=timeout,
-    ).get("Items", [])
+    return cast(
+        "list[dict[str, Any]]",
+        _get_json(
+            f"{base_url}/Users/{user_id}/Items",
+            headers=_auth_headers(api_key),
+            params=params,
+            timeout=timeout,
+        ).get("Items", []),
+    )
 
 
 def add_virtual_folder(

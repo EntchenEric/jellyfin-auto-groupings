@@ -977,7 +977,9 @@ def browse_directory() -> ResponseReturnValue:
         entries: list[str] = sorted(
             entry.name
             for entry in Path(path).iterdir()
-            if entry.is_dir() and not entry.name.startswith(".")
+            if not entry.name.startswith(".")
+            and entry.is_dir()
+            and not entry.is_symlink()
         )
     except PermissionError:
         entries = []

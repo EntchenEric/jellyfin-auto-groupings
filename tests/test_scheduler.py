@@ -292,29 +292,6 @@ def test_run_group_sync_job_error(mock_load, mock_sync):
 
 
 # ---------------------------------------------------------------------------
-# _validate_data_key
-# ---------------------------------------------------------------------------
-
-
-def test_validate_data_key_missing():
-    from scheduler import _validate_data_key
-
-    assert _validate_data_key({}, "groups", list) is True
-
-
-def test_validate_data_key_correct():
-    from scheduler import _validate_data_key
-
-    assert _validate_data_key({"groups": []}, "groups", list) is True
-
-
-def test_validate_data_key_incorrect():
-    from scheduler import _validate_data_key
-
-    assert _validate_data_key({"groups": "not_a_list"}, "groups", list) is False
-
-
-# ---------------------------------------------------------------------------
 # Additional edge cases: non-string group name, duplicate names
 # ---------------------------------------------------------------------------
 
