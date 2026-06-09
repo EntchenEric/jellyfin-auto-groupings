@@ -290,11 +290,6 @@ Run tests and save output to a file:
 python run_tests_to_file.py
 ```
 
-#### Test Dashboard
-
-Open `/test` in your browser (when the app is running) to view a dashboard that
-shows test results, coverage metrics, and verbose logs in real time.
-
 #### Virtual Jellyfin for Development
 If you don't have a real Jellyfin server handy, or want to test without affecting your real setup, you can run a **mock Jellyfin server**:
 
