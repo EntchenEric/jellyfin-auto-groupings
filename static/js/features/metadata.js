@@ -265,6 +265,9 @@ export function initMetadata() {
     getEl('source_category').onchange = updateSourceTypeOptions;
     getEl('source_type').onchange = () => updateSourceValueUI();
     getEl('add-rule-btn').onclick = addMetadataRule;
+    // Expose to window for app.js cross-module event wiring
+    window.updateSourceTypeOptions = updateSourceTypeOptions;
+    window.updateSourceValueUI = updateSourceValueUI;
 }
 
 export async function previewGrouping() {

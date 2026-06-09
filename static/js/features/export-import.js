@@ -107,7 +107,7 @@ export function handleFileSelected(event) {
 
 function setupImportStep2(data) {
     getEl('import-step-1').style.display = 'none';
-    getEl('import-step-2').style.display = 'block';
+    getEl('import-step-2').style.display = 'flex';
     getEl('cancel-import-top').style.display = 'none';
 
     const warning = getEl('import-warning');
