@@ -389,3 +389,33 @@ def testpatch_timeout_re_raise(monkeypatch):
     monkeypatch.setattr(_SESSION, "patch", _fail)
     with pytest.raises(requests.Timeout):
         patch("http://example.com/api")
+
+
+def testput_connection_error_re_raise(monkeypatch):
+    """put re-raises ConnectionError when _reraise_timeout returns normally."""
+    from network import _SESSION, put
+
+    max_retry = MaxRetryError("pool", "url", reason=None)
+    conn_err = requests.ConnectionError(max_retry)
+
+    def _fail(*a, **kw):
+        raise conn_err
+
+    monkeypatch.setattr(_SESSION, "put", _fail)
+    with pytest.raises(requests.ConnectionError):
+        put("http://example.com/api")
+
+
+def testpatch_connection_error_re_raise(monkeypatch):
+    """patch re-raises ConnectionError when _reraise_timeout returns normally."""
+    from network import _SESSION, patch
+
+    max_retry = MaxRetryError("pool", "url", reason=None)
+    conn_err = requests.ConnectionError(max_retry)
+
+    def _fail(*a, **kw):
+        raise conn_err
+
+    monkeypatch.setattr(_SESSION, "patch", _fail)
+    with pytest.raises(requests.ConnectionError):
+        patch("http://example.com/api")
