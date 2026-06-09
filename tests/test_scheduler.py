@@ -312,3 +312,37 @@ def test_validate_data_key_incorrect():
     from scheduler import _validate_data_key
 
     assert _validate_data_key({"groups": "not_a_list"}, "groups", list) is False
+
+
+# ---------------------------------------------------------------------------
+# Additional edge cases: non-string group name, duplicate names
+# ---------------------------------------------------------------------------
+
+
+@patch("scheduler._scheduler")
+@patch("scheduler.load_config")
+def test_update_scheduler_jobs_group_non_str_name(mock_load, mock_sched):
+    """Non-string group names are skipped."""
+    mock_load.return_value = {
+        "scheduler": {"global_enabled": False, "cleanup_enabled": False},
+        "groups": [{"name": 42, "schedule_enabled": True, "schedule": "0 12 * * *"}],
+    }
+    update_scheduler_jobs()
+    mock_sched.add_job.assert_not_called()
+
+
+@patch("scheduler._scheduler")
+@patch("scheduler.load_config")
+def test_update_scheduler_jobs_duplicate_group_names(mock_load, mock_sched):
+    """Duplicate group names log a warning and only register one job."""
+    mock_load.return_value = {
+        "scheduler": {"global_enabled": False, "cleanup_enabled": False},
+        "groups": [
+            {"name": "SameName", "schedule_enabled": True, "schedule": "0 12 * * *"},
+            {"name": "SameName", "schedule_enabled": True, "schedule": "0 6 * * *"},
+        ],
+    }
+    update_scheduler_jobs()
+    assert mock_sched.add_job.call_count == 1
+    _args, kwargs = mock_sched.add_job.call_args
+    assert kwargs["id"] == "group_sync_SameName"

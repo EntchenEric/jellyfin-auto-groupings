@@ -55,3 +55,64 @@ def test_run_sync_no_url_or_api_key():
     """run_sync raises ValueError when url, api_key, or target_path not set."""
     with pytest.raises(ValueError, match="Server settings or target path not configured"):
         run_sync({"jellyfin_url": "", "api_key": "", "target_path": ""})
+
+
+# ---------------------------------------------------------------------------
+# _parse_mmdd edge cases
+# ---------------------------------------------------------------------------
+
+
+def test_parse_mmdd_non_string_value():
+    """Non-string input returns (0, 0)."""
+    from sync import _parse_mmdd
+
+    assert _parse_mmdd(None) == (0, 0)  # type: ignore[arg-type]
+
+
+def test_parse_mmdd_empty_string():
+    """Empty or whitespace-only strings return (0, 0)."""
+    from sync import _parse_mmdd
+
+    assert _parse_mmdd("") == (0, 0)
+    assert _parse_mmdd("   ") == (0, 0)
+
+
+def test_parse_mmdd_no_dash():
+    """Missing dash separator returns (0, 0)."""
+    from sync import _parse_mmdd
+
+    assert _parse_mmdd("1231") == (0, 0)
+    assert _parse_mmdd("nodash") == (0, 0)
+
+
+def test_parse_mmdd_valid():
+    """Valid MM-DD returns parsed tuple."""
+    from sync import _parse_mmdd
+
+    assert _parse_mmdd("06-15") == (6, 15)
+    assert _parse_mmdd("01-01") == (1, 1)
+    assert _parse_mmdd("12-31") == (12, 31)
+
+
+def test_parse_mmdd_invalid_month():
+    """Invalid month returns (0, 0)."""
+    from sync import _parse_mmdd
+
+    assert _parse_mmdd("13-01") == (0, 0)
+    assert _parse_mmdd("00-15") == (0, 0)
+
+
+def test_parse_mmdd_invalid_day():
+    """Invalid day for month returns (0, 0)."""
+    from sync import _parse_mmdd
+
+    assert _parse_mmdd("02-30") == (0, 0)
+    assert _parse_mmdd("04-31") == (0, 0)
+
+
+def test_parse_mmdd_non_numeric():
+    """Non-numeric month/day returns (0, 0)."""
+    from sync import _parse_mmdd
+
+    assert _parse_mmdd("ab-cd") == (0, 0)
+    assert _parse_mmdd("01-XX") == (0, 0)

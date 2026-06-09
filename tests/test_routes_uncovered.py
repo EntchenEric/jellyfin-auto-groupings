@@ -143,6 +143,139 @@ def test_auto_detect_no_match():
     assert result_h is None
 
 
+# ---------------------------------------------------------------------------
+# _validate_config_types tests
+# ---------------------------------------------------------------------------
+
+
+def test_validate_config_types_non_string_fields():
+    """Non-string string fields are flagged."""
+    from routes import _validate_config_types
+
+    for field in ("jellyfin_url", "target_path", "media_path_in_jellyfin",
+                  "media_path_on_host", "target_path_in_jellyfin"):
+        errors = _validate_config_types({field: 123})
+        assert any(field in e for e in errors), f"Expected error for {field}"
+
+
+def test_validate_config_types_non_list_groups():
+    """Non-list groups field is flagged."""
+    from routes import _validate_config_types
+
+    errors = _validate_config_types({"groups": "not_a_list"})
+    assert any("'groups'" in e for e in errors)
+
+
+def test_validate_config_types_non_bool_fields():
+    """Non-boolean bool fields are flagged."""
+    from routes import _validate_config_types
+
+    for field in ("auto_create_libraries", "auto_set_library_covers", "setup_done"):
+        errors = _validate_config_types({field: "not_bool"})
+        assert any(field in e for e in errors), f"Expected error for {field}"
+
+
+def test_validate_config_types_scheduler_non_dict():
+    """Scheduler must be a dict."""
+    from routes import _validate_config_types
+
+    errors = _validate_config_types({"scheduler": "not_a_dict"})
+    assert any("'scheduler' must be an object" in e for e in errors)
+
+
+def test_validate_config_types_scheduler_bool_mismatch():
+    """Scheduler bool fields are checked."""
+    from routes import _validate_config_types
+
+    for field in ("global_enabled", "cleanup_enabled"):
+        cfg = {"scheduler": {field: "not_bool"}}
+        errors = _validate_config_types(cfg)
+        assert any(f"scheduler.{field}" in e for e in errors), f"Expected error for scheduler.{field}"
+
+
+def test_validate_config_types_scheduler_str_mismatch():
+    """Scheduler str fields are checked."""
+    from routes import _validate_config_types
+
+    for field in ("global_schedule", "cleanup_schedule"):
+        cfg = {"scheduler": {field: 123}}
+        errors = _validate_config_types(cfg)
+        assert any(f"scheduler.{field}" in e for e in errors), f"Expected error for scheduler.{field}"
+
+
+def test_validate_config_types_scheduler_exclude_non_list():
+    """Scheduler global_exclude_ids must be a list."""
+    from routes import _validate_config_types
+
+    errors = _validate_config_types({"scheduler": {"global_exclude_ids": "not_list"}})
+    assert any("global_exclude_ids" in e for e in errors)
+
+
+def test_validate_config_types_group_non_dict():
+    """Group items must be dicts."""
+    from routes import _validate_config_types
+
+    errors = _validate_config_types({"groups": ["not_a_dict"]})
+    assert any("groups[0] must be an object" in e for e in errors)
+
+
+def test_validate_config_types_group_name_non_string():
+    """Group names must be strings."""
+    from routes import _validate_config_types
+
+    errors = _validate_config_types({"groups": [{"name": 123}]})
+    assert any("groups[0].name must be a string" in e for e in errors)
+
+
+def test_validate_config_types_valid_passthrough():
+    """Valid config produces no errors."""
+    from routes import _validate_config_types
+
+    valid_config = {
+        "jellyfin_url": "http://localhost:8096",
+        "target_path": "/virtual",
+        "media_path_in_jellyfin": "/data/media",
+        "media_path_on_host": "/media",
+        "target_path_in_jellyfin": "/virtual",
+        "groups": [{"name": "TestGroup"}],
+        "auto_create_libraries": False,
+        "auto_set_library_covers": True,
+        "setup_done": True,
+        "scheduler": {
+            "global_enabled": True,
+            "global_schedule": "0 0 * * *",
+            "cleanup_enabled": False,
+            "cleanup_schedule": "0 * * * *",
+            "global_exclude_ids": ["Excluded"],
+        },
+    }
+    errors = _validate_config_types(valid_config)
+    assert errors == []
+
+
+def test_validate_config_types_empty_config():
+    """Empty config produces no errors (all fields optional)."""
+    from routes import _validate_config_types
+
+    errors = _validate_config_types({})
+    assert errors == []
+
+
+def test_update_config_rejects_bad_types(client, temp_config):
+    """POST /api/config with wrong type returns 400."""
+    from config import save_config
+
+    save_config({})
+    response = client.post(
+        "/api/config",
+        json={"jellyfin_url": 12345},
+    )
+    assert response.status_code == 400
+    data = response.get_json()
+    assert data is not None
+    assert "type" in data.get("error", "").lower() or "type" in data.get("message", "").lower()
+
+
 def test_auto_detect_partial_match():
     """Only some trailing components match."""
     result_j, result_h = _compute_common_root(

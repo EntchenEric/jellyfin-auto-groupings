@@ -263,7 +263,7 @@ def _validate_config_types(new_config: dict[str, Any]) -> list[str]:
         val = new_config.get(str_field)
         if val is not None and not isinstance(val, str):
             errors.append(f"'{str_field}' must be a string")
-    for list_field in "groups":
+    for list_field in ("groups",):
         val = new_config.get(list_field)
         if val is not None and not isinstance(val, list):
             errors.append(f"'{list_field}' must be a list")
