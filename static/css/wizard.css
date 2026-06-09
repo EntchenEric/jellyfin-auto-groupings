@@ -141,7 +141,158 @@
     font-size: 1rem;
 }
 
-.detect-badge {
+/* Wizard card text styles */
+.wizard-card-text {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.wizard-card-center {
+    text-align: center;
+}
+
+.wizard-card-tip {
+    padding: 1rem;
+    background: rgba(0,0,0,0.2);
+    border-radius: var(--radius-md);
+    font-size: 0.8rem;
+    text-align: left;
+    color: var(--text-secondary);
+}
+
+.wizard-card-flex-gap {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.wizard-detect-btn {
+    margin-bottom: 0.5rem;
+    border-color: var(--success-color);
+    color: var(--success-color);
+}
+
+.wizard-pro-tip-illustration {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success-color);
+}
+
+.wizard-spacer {
+    flex: 1;
+}
+
+.wizard-back-btn-hidden {
+    visibility: hidden;
+}
+
+/* Detect badge hidden state */
+.detect-badge-hidden {
+    display: none;
+}
+
+/* Auto-detect button accent */
+.auto-detect-btn {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+
+.sidebar-error-card {
+    margin: 0;
+    padding: 0.9rem;
+    border-radius: var(--radius-md);
+}
+
+.sidebar-error-heading {
+    color: var(--error-color);
+    font-size: 0.85rem;
+    margin-bottom: 0.3rem;
+}
+
+.sidebar-error-text {
+    font-size: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.sidebar-error-link {
+    color: var(--accent-color);
+    font-weight: 600;
+}
+
+.sidebar-section-card {
+    padding: 1.25rem;
+}
+
+.sidebar-section-heading {
+    margin-bottom: 0;
+}
+
+.sidebar-sub-panel {
+    margin-top: 0.75rem;
+}
+
+.sidebar-sub-heading {
+    font-size: 0.82rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.sidebar-sub-optional {
+    font-weight: 400;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+}
+
+.sidebar-sub-text {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+    line-height: 1.4;
+}
+
+.sidebar-label-sm {
+    font-size: 0.68rem;
+}
+
+.sidebar-input-sm {
+    font-size: 0.82rem;
+    padding: 0.5rem 0.7rem;
+}
+
+.sidebar-sub-panel-accent {
+    margin-top: 0.75rem;
+}
+
+.sidebar-accent-heading {
+    font-size: 0.82rem;
+    color: var(--accent-color);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.sidebar-checkbox-label {
+    margin-bottom: 0.75rem;
+}
+
+/* ── Sync result status colors ─────────────────────────── */
+.sync-result-group {
+    display: inline-flex;
+    gap: 0.5rem;
+}
+
+.sync-result-links {
+    color: var(--accent-color);
+    font-weight: 600;
+}
+
+.sync-result-error {
+    color: var(--error-color);
+    margin-left: 0.5rem;
+}
+
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;

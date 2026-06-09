@@ -22,7 +22,7 @@
                 </div>
                 <div class="wizard-card">
                     <h3>How it works</h3>
-                    <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6;">
+                    <p class="wizard-card-text">
                         This tool creates "Virtual Libraries" in Jellyfin by using symlinks on your hard drive.
                         It doesn't move or copy your actual files, so it's completely safe!
                         You can group movies by genres, actors, years, or even external lists from IMDb and Trakt.
@@ -66,23 +66,22 @@
                     <h1>Path Configuration</h1>
                     <p>Where are your files, and where should we put the groups?</p>
                 </div>
-                <div class="wizard-card" style="display: flex; flex-direction: column; gap: 1rem;">
-                    <button type="button" class="secondary-btn" id="wizard-detect-btn"
-                        style="margin-bottom: 0.5rem; border-color: var(--success-color); color: var(--success-color);">
+                <div class="wizard-card wizard-card-flex-gap">
+                    <button type="button" class="secondary-btn wizard-detect-btn" id="wizard-detect-btn">
                         <span class="btn-text">Auto-Detect Paths</span>
                         <span class="loading-spinner"></span>
                     </button>
 
                     <div class="form-group">
-                        <label for="wizard_media_path_in_jellyfin">Media Path (Inside Jellyfin) <span class="detect-badge" id="badge-j-path" style="display:none;">Detected</span></label>
+                        <label for="wizard_media_path_in_jellyfin">Media Path (Inside Jellyfin) <span class="detect-badge detect-badge-hidden" id="badge-j-path">Detected</span></label>
                         <input type="text" id="wizard_media_path_in_jellyfin" placeholder="/data/movies">
                     </div>
                     <div class="form-group">
-                        <label for="wizard_media_path_on_host">Media Path (On this Host) <span class="detect-badge" id="badge-h-path" style="display:none;">Detected</span></label>
+                        <label for="wizard_media_path_on_host">Media Path (On this Host) <span class="detect-badge detect-badge-hidden" id="badge-h-path">Detected</span></label>
                         <input type="text" id="wizard_media_path_on_host" placeholder="/mnt/user/media/movies">
                     </div>
                     <div class="form-group">
-                        <label for="wizard_target_path">Target Path (Virtual Library) <span class="detect-badge" id="badge-t-path" style="display:none;">Detected</span></label>
+                        <label for="wizard_target_path">Target Path (Virtual Library) <span class="detect-badge detect-badge-hidden" id="badge-t-path">Detected</span></label>
                         <input type="text" id="wizard_target_path" placeholder="/mnt/user/media/jellyfin-groupings">
                         <small>This is where the symlinks will be created.</small>
                     </div>
@@ -91,7 +90,7 @@
 
             <!-- Step 4: Finished -->
             <div id="wizard-step-4" class="wizard-step">
-                <div class="wizard-illustration" style="background: rgba(16, 185, 129, 0.1); color: var(--success-color);">
+                <div class="wizard-illustration wizard-pro-tip-illustration">
                     <svg width="64" height="64" fill="currentColor" viewBox="0 0 16 16">
                         <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z" />
                     </svg>
@@ -100,12 +99,12 @@
                     <h1>All Set!</h1>
                     <p>Configuration complete and saved.</p>
                 </div>
-                <div class="wizard-card" style="text-align: center;">
-                    <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;">
+                <div class="wizard-card wizard-card-center">
+                    <p class="wizard-card-text mb-1">
                         You're ready to start creating your first grouping rules.
                         If you need help, check out the tips in the sidebar!
                     </p>
-                    <div style="padding: 1rem; background: rgba(0,0,0,0.2); border-radius: var(--radius-md); font-size: 0.8rem; text-align: left; color: var(--text-secondary);">
+                    <div class="wizard-card-tip">
                         <strong>Pro Tip:</strong> You can always re-run this setup by clicking the "Wizard" button in the top bar.
                     </div>
                 </div>
@@ -113,8 +112,8 @@
         </div>
 
         <div class="wizard-footer">
-            <button type="button" id="wizard-back" class="back-btn" style="visibility: hidden;" aria-label="Go back">Back</button>
-            <div style="flex: 1;"></div>
+            <button type="button" id="wizard-back" class="back-btn wizard-back-btn-hidden" aria-label="Go back">Back</button>
+            <div class="wizard-spacer"></div>
             <button type="button" id="wizard-next" class="next-btn" aria-label="Continue">Continue</button>
         </div>
     </div>

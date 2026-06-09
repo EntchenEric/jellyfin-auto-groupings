@@ -1195,6 +1195,39 @@ pre {
     padding: 0.2rem 0;
 }
 
+/* Error modal */
+.error-modal-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.error-icon {
+    flex-shrink: 0;
+}
+
+.btn-danger-ok {
+    margin: 0;
+    background: var(--error-color);
+    color: white;
+    border-color: var(--error-color);
+}
+
+/* Radio label (for export modal) */
+.radio-label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-transform: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+/* Margin top 0.5rem */
+.mt-0_5 {
+    margin-top: 0.5rem !important;
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
     width: 6px;
@@ -1208,4 +1241,107 @@ pre {
 
 ::-webkit-scrollbar-track {
     background: transparent;
+}
+
+.btn-auto {
+    width: auto;
+    padding: 0.5rem 1rem;
+    margin: 0;
+}
+
+/* Accent-colored button */
+.btn-accent {
+    background: var(--accent-color);
+    border: none;
+    color: white;
+    margin: 0;
+}
+
+/* Warning styled text */
+.text-warning {
+    color: var(--warning-color);
+}
+
+/* Small margin helper */
+.small-margin { margin: 0; }
+
+/* Modal card container */
+.modal-card {
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+}
+
+/* Modal text description */
+.modal-description {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.modal-description-sm {
+    color: var(--text-secondary);
+    margin-bottom: 1.25rem;
+    font-size: 0.85rem;
+}
+
+/* Column flex container */
+.flex-col-gap {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Action row */
+.action-row {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.action-row .flex-2 {
+    flex: 2;
+    margin: 0;
+}
+
+.action-row .flex-1 {
+    flex: 1;
+    margin: 0;
+}
+
+.action-row .flex-1-error {
+    flex: 1;
+    margin-top: 0;
+    border-color: var(--error-color);
+    color: var(--error-color);
+}
+
+/* Full width button */
+.btn-full {
+    width: 100%;
+    margin-top: 0;
+}
+
+.btn-full-mt {
+    margin-top: 1.25rem;
+    width: 100%;
+}
+
+/* Hidden file input */
+.file-input-hidden {
+    display: none;
+}
+
+/* Danger button primary */
+.btn-danger-primary {
+    flex: 2;
+    background: var(--error-color);
+    border-color: var(--error-color);
+    margin-top: 0;
+}
+
+/* Scrollable list container */
+.list-scrollable {
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    padding: 0.5rem;
+    overflow-y: auto;
+    background: rgba(0, 0, 0, 0.2);
 }
