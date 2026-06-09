@@ -14,7 +14,7 @@ MAL_API_BASE_URL = "https://api.myanimelist.net/v2"
 _REQUEST_TIMEOUT: int = 15
 
 _VALID_MAL_STATUSES: frozenset[str] = frozenset(
-    {"watching", "completed", "on_hold", "dropped", "plan_to_watch"}
+    {"watching", "completed", "on_hold", "dropped", "plan_to_watch"},
 )
 
 
@@ -33,7 +33,7 @@ def _normalize_mal_status(status: str | None) -> str | None:
 
 
 def fetch_mal_list(
-    username: str, client_id: str, status: str | None = None
+    username: str, client_id: str, status: str | None = None,
 ) -> list[int]:
     """Fetch anime IDs from a user's MyAnimeList profile.
 
@@ -69,7 +69,7 @@ def fetch_mal_list(
 
     while url:
         response = network.get(
-            url, params=params, headers=headers, timeout=_REQUEST_TIMEOUT
+            url, params=params, headers=headers, timeout=_REQUEST_TIMEOUT,
         )
         response.raise_for_status()
 

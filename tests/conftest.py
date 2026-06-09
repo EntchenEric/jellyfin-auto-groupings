@@ -21,7 +21,7 @@ logging.basicConfig(
 def virtual_jellyfin():
     """Fixture to run a virtual Jellyfin server in a background thread."""
     server_thread = threading.Thread(
-        target=lambda: jelly_mock_app.run(port=8096, debug=False, use_reloader=False)
+        target=lambda: jelly_mock_app.run(port=8096, debug=False, use_reloader=False),
     )
     server_thread.daemon = True
     server_thread.start()
@@ -52,7 +52,7 @@ def mock_scheduler():
 
 def pytest_configure(config):
     config.addinivalue_line(
-        "markers", "e2e: end-to-end tests requiring real Jellyfin instance"
+        "markers", "e2e: end-to-end tests requiring real Jellyfin instance",
     )
 
 
@@ -64,7 +64,7 @@ def app():
     flask_app.config.update(
         {
             "TESTING": True,
-        }
+        },
     )
 
     with flask_app.app_context():

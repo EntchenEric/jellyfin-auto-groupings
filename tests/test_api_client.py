@@ -43,7 +43,7 @@ class TestServerConnection:
         """Test that invalid API key returns error."""
         with patch("routes.network.get") as mock_get:
             mock_get.side_effect = requests_lib.exceptions.RequestException(
-                "Unauthorized"
+                "Unauthorized",
             )
 
             resp = client.post(

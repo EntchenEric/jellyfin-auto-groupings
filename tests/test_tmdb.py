@@ -45,7 +45,7 @@ def test_fetch_tmdb_list_url_parsing(mock_get):
     mock_get.return_value = mock_resp
 
     ids = fetch_tmdb_list(
-        "https://www.themoviedb.org/list/456?language=en-US", "test_key"
+        "https://www.themoviedb.org/list/456?language=en-US", "test_key",
     )
     assert ids == ["101"]
     args, _kwargs = mock_get.call_args
@@ -105,6 +105,6 @@ def test_get_tmdb_recommendations_failure_skipped(mock_get):
     ]
 
     recs = get_tmdb_recommendations(
-        [("error_id", "movie"), ("101", "movie")], "test_key"
+        [("error_id", "movie"), ("101", "movie")], "test_key",
     )
     assert recs == ["201"]

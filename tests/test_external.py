@@ -166,7 +166,7 @@ def test_fetch_anilist_all(mock_post):
 
 def test_fetch_tmdb_invalid_args():
     with pytest.raises(
-        ValueError, match=r"A TMDb API Key is required to fetch TMDb lists\."
+        ValueError, match=r"A TMDb API Key is required to fetch TMDb lists\.",
     ):
         fetch_tmdb_list("123", "")
     with pytest.raises(ValueError, match=r"A TMDb List ID is required\."):
@@ -189,7 +189,7 @@ def test_fetch_mal_error(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 401
     mock_resp.raise_for_status.side_effect = requests.exceptions.HTTPError(
-        "Unauthorized"
+        "Unauthorized",
     )
     mock_get.return_value = mock_resp
     with pytest.raises(requests.exceptions.HTTPError):
@@ -426,7 +426,7 @@ def test_fetch_trakt_http_error(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 500
     mock_resp.raise_for_status.side_effect = requests.exceptions.HTTPError(
-        "Server Error"
+        "Server Error",
     )
     mock_get.return_value = mock_resp
     with pytest.raises(RuntimeError, match="Failed to fetch Trakt"):

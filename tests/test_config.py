@@ -78,3 +78,10 @@ def test_load_config_env_override(temp_config, monkeypatch):
     monkeypatch.setenv("JELLYFIN_API_KEY", "env_api_key")
     cfg = load_config()
     assert cfg["api_key"] == "env_api_key"
+
+
+def test_load_config_anilist_url_env_override(temp_config, monkeypatch):
+    """Test that ANILIST_API_URL environment variable overrides config."""
+    monkeypatch.setenv("ANILIST_API_URL", "https://custom.anilist.example/graphql")
+    cfg = load_config()
+    assert cfg["anilist_api_url"] == "https://custom.anilist.example/graphql"

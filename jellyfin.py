@@ -61,8 +61,10 @@ _DEFAULT_TIMEOUT: int = 30
 # Maps internal ``sort_order`` keys to the Jellyfin API ``SortBy`` /
 # ``SortOrder`` query parameter pairs.
 #
-# ``"imdb_list_order"``, ``"trakt_list_order"``, and ``""`` are handled
-# separately by the sync logic and do **not** appear in this map.
+# ``"*_list_order"`` sort values (``imdb_list_order``, ``trakt_list_order``,
+# ``tmdb_list_order``, ``anilist_list_order``, ``mal_list_order``,
+# ``letterboxd_list_order``, ``recommendations_list_order``) and ``""`` are
+# handled separately by the sync logic and do **not** appear in this map.
 SORT_MAP: dict[str, tuple[str, str]] = {
     "CommunityRating": ("CommunityRating", "Descending"),
     "ProductionYear": ("ProductionYear,SortName", "Descending,Ascending"),
@@ -78,7 +80,7 @@ def _auth_headers(api_key: str) -> dict[str, str]:
 
 
 def _format_request_error(
-    exc: requests.exceptions.RequestException, prefix: str
+    exc: requests.exceptions.RequestException, prefix: str,
 ) -> str:
     """Build a human-readable error message from *exc* with response details if available."""
     msg = prefix
@@ -90,7 +92,7 @@ def _format_request_error(
 
 
 def _raise_request_error(
-    exc: requests.exceptions.RequestException, prefix: str
+    exc: requests.exceptions.RequestException, prefix: str,
 ) -> NoReturn:
     """Format *exc* into a ``RuntimeError`` with response details if available."""
     raise RuntimeError(_format_request_error(exc, prefix)) from exc
@@ -531,7 +533,7 @@ def add_virtual_folder(
 
 
 def delete_virtual_folder(
-    base_url: str, api_key: str, name: str, timeout: int = 30
+    base_url: str, api_key: str, name: str, timeout: int = 30,
 ) -> None:
     """Delete a virtual folder (library) from Jellyfin.
 
@@ -563,7 +565,7 @@ def delete_virtual_folder(
 
 
 def get_library_id(
-    base_url: str, api_key: str, name: str, timeout: int = 30
+    base_url: str, api_key: str, name: str, timeout: int = 30,
 ) -> str | None:
     """Get the ItemId of a virtual folder (library) from Jellyfin by name.
 

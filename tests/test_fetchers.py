@@ -81,7 +81,7 @@ def test_fetch_imdb_http_error(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 500
     mock_resp.raise_for_status.side_effect = requests.exceptions.HTTPError(
-        "Server Error"
+        "Server Error",
     )
     mock_get.return_value = mock_resp
     with pytest.raises(RuntimeError, match="Failed to fetch IMDb"):
