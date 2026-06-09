@@ -21,6 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is not overwritten if another thread populated it during the fetch.
 
 ### Changed
+- Documented `NETWORK_RETRY_*` environment variables in the README env vars table
+  (total, backoff factor, and status-forcelist) for better discoverability.
+- Updated README example commands to use `python3` for consistency with system defaults.
+- Extended `network.py` module docstring to mention the `put` and `patch` helpers
+  so the public API is fully documented.
 - Minor documentation improvements in README.md and docstrings.
 - Moved `_SOURCE_DISPATCH` routing from a module-level dict of lambdas to a
   `match/case`-based `_dispatch_list_source` function, removing the unused

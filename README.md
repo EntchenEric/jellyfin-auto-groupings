@@ -248,6 +248,9 @@ The application reads the following environment variables (which take precedence
 | `FLASK_PORT` | Server port (default: `5000`) |
 | `FLASK_DEBUG` | Enable Flask debug mode (`true`/`false`) |
 | `ANILIST_API_URL` | AniList GraphQL endpoint (default: `https://graphql.anilist.co`) |
+| `NETWORK_RETRY_TOTAL` | Max HTTP retries (default: `3`; set `0` to disable) |
+| `NETWORK_RETRY_BACKOFF_FACTOR` | Sleep multiplier between retries (default: `1.0`) |
+| `NETWORK_RETRY_STATUS_FORCELIST` | Status codes that trigger reretry (default: `429,500,502,503,504`) |
 
 > **Note**: Environment variable overrides are *never* persisted back to `config.json`. They only affect the current process.
 
@@ -265,38 +268,38 @@ See [`.env.example`](.env.example) for quick setup.
    ```bash
    pip install -e .[dev]
    ```
-4. Run: `python app.py`.
+4. Run: `python3 app.py`.
 
 ### 🧪 Testing
 
 ```bash
 # Run the full test suite (550+ tests, 100% coverage)
-python -m pytest
+python3 -m pytest
 
 # Run tests with coverage report
-python -m pytest --cov=.
+python3 -m pytest --cov=.
 
 # Run a specific test file
-python -m pytest tests/test_routes.py -v
+python3 -m pytest tests/test_routes.py -v
 
 # Run without slow integration/exhaustive tests
-python -m pytest -m "not exhaustive" tests/
+python3 -m pytest -m "not exhaustive" tests/
 
 # Generate an HTML coverage report
-python -m pytest --cov=. --cov-report=html
+python3 -m pytest --cov=. --cov-report=html
 open htmlcov/index.html
 ```
 
 Run tests and save output to a file:
 ```bash
-python run_tests_to_file.py
+python3 run_tests_to_file.py
 ```
 
 #### Virtual Jellyfin for Development
 If you don't have a real Jellyfin server handy, or want to test without affecting your real setup, you can run a **mock Jellyfin server**:
 
 ```bash
-python start_virtual_jellyfin.py
+python3 start_virtual_jellyfin.py
 ```
 
 This will start a mock API at `http://localhost:8096`. You can then:

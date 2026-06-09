@@ -1,10 +1,10 @@
 """network.py - Retry-aware HTTP for external API calls.
 
-Provides explicit :func:`get`, :func:`post`, and :func:`delete` helpers
+Provides explicit :func:`get`, :func:`post`, :func:`put`, :func:`patch`, and :func:`delete` helpers
 that delegate to a shared :class:`requests.Session` configured with
 exponential-backoff retry on transient failures (5xx, connection errors).
 
-Import these helpers instead of ``requests.get`` / ``requests.post`` / ``requests.delete``
+Import these helpers instead of ``requests.get`` / ``requests.post`` / etc.
 to benefit from retry logic with **zero monkey-patching**.
 """
 
