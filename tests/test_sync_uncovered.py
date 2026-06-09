@@ -1,7 +1,6 @@
 """Additional tests covering uncovered lines in sync.py (PermissionError, OSError, etc.)."""
 
-import stat
-from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -24,35 +23,32 @@ def test_translate_path_not_relative():
 
 def test_run_sync_permission_error(tmp_path):
     """run_sync raises ValueError when target directory cannot be created due to permission."""
-    readonly_dir = tmp_path / "readonly"
-    readonly_dir.mkdir(exist_ok=True)
-    readonly_dir.chmod(0o444)
-
     config = {
         "jellyfin_url": "http://jf:8096",
         "api_key": "testkey",
-        "target_path": str(readonly_dir / "subdir"),
+        "target_path": str(tmp_path / "subdir"),
         "groups": [],
     }
-    with pytest.raises(ValueError, match="permission denied"):
-        run_sync(config, dry_run=False)
+    with patch("sync.Path.mkdir") as mock_mkdir:
+        mock_mkdir.side_effect = PermissionError("Permission denied")
+        with pytest.raises(ValueError, match="permission denied"):
+            run_sync(config, dry_run=False)
 
 
 def test_run_sync_permission_error_dry_run_skips(tmp_path):
     """dry_run=True skips directory creation, so PermissionError is not raised."""
-    readonly_dir = tmp_path / "readonly"
-    readonly_dir.mkdir(exist_ok=True)
-    readonly_dir.chmod(0o444)
-
     config = {
         "jellyfin_url": "http://jf:8096",
         "api_key": "testkey",
-        "target_path": str(readonly_dir / "subdir"),
+        "target_path": str(tmp_path / "subdir"),
         "groups": [],
     }
-    results = run_sync(config, dry_run=True)
-    assert isinstance(results, list)
-    assert len(results) == 0
+    with patch("sync.Path.mkdir") as mock_mkdir:
+        mock_mkdir.side_effect = PermissionError("Permission denied")
+        results = run_sync(config, dry_run=True)
+        assert isinstance(results, list)
+        assert len(results) == 0
+        mock_mkdir.assert_not_called()
 
 
 def test_run_sync_no_url_or_api_key():

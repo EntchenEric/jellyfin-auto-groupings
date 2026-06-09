@@ -1,11 +1,9 @@
 """Additional tests covering remaining uncovered lines in routes.py and sync.py."""
 
 import os
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
-from werkzeug.exceptions import HTTPException
 
 from config import save_config
 from routes import _compute_common_root
@@ -41,7 +39,7 @@ def test_check_auth_valid_password(app, monkeypatch):
     monkeypatch.setattr(routes_mod, "_APP_PASSWORD", "secret")
     from base64 import b64encode
 
-    creds = b64encode(f":secret".encode()).decode()
+    creds = b64encode(":secret".encode()).decode()
     response = app.test_client().get(
         "/api/config",
         headers={"Authorization": f"Basic {creds}"},

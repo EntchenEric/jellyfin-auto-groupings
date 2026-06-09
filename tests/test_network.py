@@ -228,22 +228,23 @@ def test_reraise_timeout_maxretry_reason_none():
 
 def test_parse_retry_config_defaults():
     """_parse_retry_config returns defaults when no env vars are set."""
-    from network import _RETRY_TOTAL, _RETRY_BACKOFF_FACTOR, _RETRY_STATUS_FORCELIST
+    from network import _parse_retry_config
 
-    assert _RETRY_TOTAL == 3
-    assert _RETRY_BACKOFF_FACTOR == 1.0
-    assert 429 in _RETRY_STATUS_FORCELIST
-    assert 500 in _RETRY_STATUS_FORCELIST
+    total, backoff, statuses = _parse_retry_config()
+    assert total == 3
+    assert backoff == 1.0
+    assert 429 in statuses
+    assert 500 in statuses
 
 
 def test_parse_retry_config_invalid_total_fallback(monkeypatch):
     """Invalid NETWORK_RETRY_TOTAL falls back to default 3."""
     monkeypatch.setenv("NETWORK_RETRY_TOTAL", "not-a-number")
-    # Force re-import of the module to trigger re-parse
-    import importlib
-    import network as net
-    importlib.reload(net)
-    assert net._RETRY_TOTAL == 3
+    from network import _parse_retry_config
+
+    total, backoff, _ = _parse_retry_config()
+    assert total == 3
+    assert backoff == 1.0
 
 
 def test_parse_retry_config_negative_total(monkeypatch):
@@ -265,10 +266,10 @@ def test_parse_retry_config_negative_backoff(monkeypatch):
 def test_parse_retry_config_invalid_backoff_fallback(monkeypatch):
     """Invalid NETWORK_RETRY_BACKOFF_FACTOR falls back to default 1.0."""
     monkeypatch.setenv("NETWORK_RETRY_BACKOFF_FACTOR", "xyz")
-    import importlib
-    import network as net
-    importlib.reload(net)
-    assert net._RETRY_BACKOFF_FACTOR == 1.0
+    from network import _parse_retry_config
+
+    _, backoff, _ = _parse_retry_config()
+    assert backoff == 1.0
 
 
 def test_parse_retry_config_invalid_status_code_in_list(monkeypatch):
@@ -282,23 +283,23 @@ def test_parse_retry_config_invalid_status_code_in_list(monkeypatch):
 def test_parse_retry_config_non_numeric_status(monkeypatch):
     """Non-numeric entries in NETWORK_RETRY_STATUS_FORCELIST are skipped, valid ones kept."""
     monkeypatch.setenv("NETWORK_RETRY_STATUS_FORCELIST", "429,abc,503")
-    import importlib
-    import network as net
-    importlib.reload(net)
-    assert 429 in net._RETRY_STATUS_FORCELIST
-    assert 503 in net._RETRY_STATUS_FORCELIST
-    assert len(net._RETRY_STATUS_FORCELIST) == 2
+    from network import _parse_retry_config
+
+    _, _, statuses = _parse_retry_config()
+    assert 429 in statuses
+    assert 503 in statuses
+    assert len(statuses) == 2
 
 
 def test_parse_retry_config_trailing_comma(monkeypatch):
     """Trailing commas in NETWORK_RETRY_STATUS_FORCELIST are tolerated."""
     monkeypatch.setenv("NETWORK_RETRY_STATUS_FORCELIST", "429,500,")
-    import importlib
-    import network as net
-    importlib.reload(net)
-    assert 429 in net._RETRY_STATUS_FORCELIST
-    assert 500 in net._RETRY_STATUS_FORCELIST
-    assert len(net._RETRY_STATUS_FORCELIST) == 2
+    from network import _parse_retry_config
+
+    _, _, statuses = _parse_retry_config()
+    assert 429 in statuses
+    assert 500 in statuses
+    assert len(statuses) == 2
 
 
 def test_parse_retry_config_negative_status_code(monkeypatch):
