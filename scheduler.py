@@ -142,7 +142,12 @@ def _run_global_sync_job(exclude_names: list[str]) -> None:
     if sync_names:
         logger.info("Background global sync starting for groups: %s", sync_names)
         with sync_lock:
-            run_sync(config, group_names=sync_names)
+            try:
+                run_sync(config, group_names=sync_names)
+            except (ValueError, OSError, RuntimeError) as exc:
+                logger.error(
+                    "Background global sync failed: %s", exc, exc_info=True,
+                )
     else:
         logger.info(
             "Background global sync skipped: no groups to sync after exclusions",
@@ -154,7 +159,15 @@ def _run_group_sync_job(group_name: str) -> None:
     config = load_config()
     logger.info("Background sync starting for group: %s", group_name)
     with sync_lock:
-        run_sync(config, group_names=[group_name])
+        try:
+            run_sync(config, group_names=[group_name])
+        except (ValueError, OSError, RuntimeError) as exc:
+            logger.error(
+                "Background sync failed for group '%s': %s",
+                group_name,
+                exc,
+                exc_info=True,
+            )
 
 
 def _run_cleanup_job() -> None:
@@ -177,6 +190,11 @@ def validate_cron(expr: str) -> str | None:
     Returns:
         ``None`` if valid, otherwise an error message string.
 
+    Examples:
+        >>> validate_cron("0 0 * * *")
+        >>> validate_cron("")  # doctest: +SKIP
+        'Cron expression must not be empty'
+
     """
     if not expr or not expr.strip():
         return "Cron expression must not be empty"
@@ -191,3 +209,14 @@ def validate_cron(expr: str) -> str | None:
     except (ValueError, TypeError, AttributeError) as exc:
         return f"Invalid cron expression: {exc}"
     return None
+
+
+def _validate_data_key(config: dict[str, Any], key: str, expected_type: type) -> bool:
+    """Validate that *key* in *config* is of *expected_type*.
+
+    Returns ``True`` if the key is missing (no error), ``False`` if present
+    but wrong type.
+    """
+    if key not in config:
+        return True
+    return isinstance(config[key], expected_type)

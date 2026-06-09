@@ -24,7 +24,9 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "delete",
     "get",
+    "patch",
     "post",
+    "put",
 ]
 
 _RETRY_TOTAL: int
@@ -147,6 +149,24 @@ def post(url: str, **kwargs: Any) -> requests.Response:
     """POST to *url* through the retry-enabled session."""
     try:
         return _SESSION.post(url, **kwargs)
+    except requests.ConnectionError as exc:
+        _reraise_timeout(exc)
+        raise
+
+
+def put(url: str, **kwargs: Any) -> requests.Response:
+    """PUT *url* through the retry-enabled session."""
+    try:
+        return _SESSION.put(url, **kwargs)
+    except requests.ConnectionError as exc:
+        _reraise_timeout(exc)
+        raise
+
+
+def patch(url: str, **kwargs: Any) -> requests.Response:
+    """PATCH *url* through the retry-enabled session."""
+    try:
+        return _SESSION.patch(url, **kwargs)
     except requests.ConnectionError as exc:
         _reraise_timeout(exc)
         raise
