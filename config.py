@@ -52,6 +52,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "trakt_client_id": "",
     "tmdb_api_key": "",
     "mal_client_id": "",
+    "anilist_api_url": "",
     "groups": [],
     "scheduler": {
         "global_enabled": False,
