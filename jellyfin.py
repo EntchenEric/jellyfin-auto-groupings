@@ -80,7 +80,8 @@ def _auth_headers(api_key: str) -> dict[str, str]:
 
 
 def _format_request_error(
-    exc: requests.exceptions.RequestException, prefix: str,
+    exc: requests.exceptions.RequestException,
+    prefix: str,
 ) -> str:
     """Build a human-readable error message from *exc* with response details if available."""
     msg = prefix
@@ -92,7 +93,8 @@ def _format_request_error(
 
 
 def _raise_request_error(
-    exc: requests.exceptions.RequestException, prefix: str,
+    exc: requests.exceptions.RequestException,
+    prefix: str,
 ) -> NoReturn:
     """Format *exc* into a ``RuntimeError`` with response details if available."""
     raise RuntimeError(_format_request_error(exc, prefix)) from exc
@@ -533,7 +535,10 @@ def add_virtual_folder(
 
 
 def delete_virtual_folder(
-    base_url: str, api_key: str, name: str, timeout: int = 30,
+    base_url: str,
+    api_key: str,
+    name: str,
+    timeout: int = 30,
 ) -> None:
     """Delete a virtual folder (library) from Jellyfin.
 
@@ -565,7 +570,10 @@ def delete_virtual_folder(
 
 
 def get_library_id(
-    base_url: str, api_key: str, name: str, timeout: int = 30,
+    base_url: str,
+    api_key: str,
+    name: str,
+    timeout: int = 30,
 ) -> str | None:
     """Get the ItemId of a virtual folder (library) from Jellyfin by name.
 

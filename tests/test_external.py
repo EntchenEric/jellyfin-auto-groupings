@@ -166,7 +166,8 @@ def test_fetch_anilist_all(mock_post):
 
 def test_fetch_tmdb_invalid_args():
     with pytest.raises(
-        ValueError, match=r"A TMDb API Key is required to fetch TMDb lists\.",
+        ValueError,
+        match=r"A TMDb API Key is required to fetch TMDb lists\.",
     ):
         fetch_tmdb_list("123", "")
     with pytest.raises(ValueError, match=r"A TMDb List ID is required\."):

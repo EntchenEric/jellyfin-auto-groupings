@@ -90,7 +90,8 @@ def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
 
 
 def get_tmdb_recommendations(
-    items_with_type: list[tuple[str, str]], api_key: str,
+    items_with_type: list[tuple[str, str]],
+    api_key: str,
 ) -> list[str]:
     """Fetch recommendations for a list of TMDb IDs.
 
@@ -133,6 +134,8 @@ def get_tmdb_recommendations(
 
     # Sort items by their accumulated score
     sorted_recs = sorted(
-        recommendation_counts.items(), key=lambda x: x[1], reverse=True,
+        recommendation_counts.items(),
+        key=lambda x: x[1],
+        reverse=True,
     )
     return [rec_id for rec_id, _ in sorted_recs]

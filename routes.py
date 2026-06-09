@@ -258,8 +258,13 @@ def _validate_cron_expressions(new_config: dict[str, Any]) -> list[str]:
 def _validate_config_types(new_config: dict[str, Any]) -> list[str]:
     """Validate basic types in *new_config*, returning a list of errors."""
     errors: list[str] = []
-    for str_field in ("jellyfin_url", "target_path", "media_path_in_jellyfin",
-                      "media_path_on_host", "target_path_in_jellyfin"):
+    for str_field in (
+        "jellyfin_url",
+        "target_path",
+        "media_path_in_jellyfin",
+        "media_path_on_host",
+        "target_path_in_jellyfin",
+    ):
         val = new_config.get(str_field)
         if val is not None and not isinstance(val, str):
             errors.append(f"'{str_field}' must be a string")
@@ -267,7 +272,11 @@ def _validate_config_types(new_config: dict[str, Any]) -> list[str]:
         val = new_config.get(list_field)
         if val is not None and not isinstance(val, list):
             errors.append(f"'{list_field}' must be a list")
-    for bool_field in ("auto_create_libraries", "auto_set_library_covers", "setup_done"):
+    for bool_field in (
+        "auto_create_libraries",
+        "auto_set_library_covers",
+        "setup_done",
+    ):
         val = new_config.get(bool_field)
         if val is not None and not isinstance(val, bool):
             errors.append(f"'{bool_field}' must be a boolean")

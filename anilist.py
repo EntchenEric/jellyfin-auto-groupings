@@ -13,7 +13,9 @@ _REQUEST_TIMEOUT: int = 15
 
 
 def fetch_anilist_list(
-    username: str, status: str | None = None, api_url: str | None = None,
+    username: str,
+    status: str | None = None,
+    api_url: str | None = None,
 ) -> list[int]:
     """Fetch anime IDs from a user's AniList profile.
 
