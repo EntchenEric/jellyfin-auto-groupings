@@ -9,6 +9,8 @@
 [![Docker](https://img.shields.io/badge/Docker-ready-blue.svg?logo=docker&logoColor=white)](https://github.com/entcheneric/jellyfin-auto-groupings)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![Tests](https://github.com/EntchenEric/jellyfin-auto-groupings/actions/workflows/test.yml/badge.svg)](https://github.com/EntchenEric/jellyfin-auto-groupings/actions/workflows/test.yml)
+[![Python](https://img.shields.io/badge/Python-3.11%2B-blue?logo=python)](https://python.org)
 
 ---
 
@@ -268,7 +270,7 @@ See [`.env.example`](.env.example) for quick setup.
 ### 🧪 Testing
 
 ```bash
-# Run the full test suite (520+ tests, 98%+ coverage)
+# Run the full test suite (550+ tests, 98%+ coverage)
 python -m pytest
 
 # Run tests with coverage report
