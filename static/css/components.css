@@ -968,6 +968,70 @@ pre {
     color: var(--text-secondary);
 }
 
+/* ── Added section: inline-style migrations ────────────────── */
+
+/* Sync results panel */
+.sync-results-panel {
+    display: none;
+    margin-top: 1.25rem;
+    border-top: 1px solid var(--glass-border);
+    padding-top: 1rem;
+}
+
+.sync-results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.sync-results-heading {
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+.sync-results-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+/* Secondary button compact variant */
+.secondary-btn-sm {
+    width: auto;
+    margin: 0;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.72rem;
+}
+
+/* Add condition button inline */
+.add-condition-btn {
+    display: none;
+    margin-bottom: 0.5rem;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.82rem;
+    width: fit-content;
+    margin-top: 0;
+}
+
+/* Panel toggles (hidden by default) */
+.toggle-panel {
+    display: none;
+    margin-top: 0.6rem;
+}
+
+/* Seasonal label helper */
+.label-sm-spaced {
+    font-size: 0.68rem;
+    margin-bottom: 0.25rem;
+}
+
+/* Seasonal separator */
+.seasonal-separator {
+    padding-top: 1rem;
+    flex-shrink: 0;
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
     width: 6px;
