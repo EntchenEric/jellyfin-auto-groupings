@@ -649,7 +649,7 @@ def test_get_test_results(client):
 
 
 # ---------------------------------------------------------------------------
-# index / test_dashboard
+# index
 # ---------------------------------------------------------------------------
 
 
@@ -659,10 +659,10 @@ def test_index_html(client):
     assert b"html" in response.data.lower()
 
 
-def test_test_dashboard(client):
+def test_test_dashboard_removed(client):
+    """The /test route was removed along with the stale test.html artifact."""
     response = client.get("/test")
-    assert response.status_code == 200
-    assert b"html" in response.data.lower()
+    assert response.status_code == 404
 
 
 # ---------------------------------------------------------------------------

@@ -9,7 +9,7 @@ from config import save_config
 from routes import _compute_common_root
 
 # ---------------------------------------------------------------------------
-# Routes line 136: auth bypass for index/test_dashboard with password set
+# Routes line 135: auth bypass for index with password set
 # ---------------------------------------------------------------------------
 
 
@@ -22,13 +22,13 @@ def test_check_auth_bypass_index_endpoint(app, monkeypatch):
     assert response.status_code == 200
 
 
-def test_check_auth_bypass_test_dashboard(app, monkeypatch):
-    """When APP_PASSWORD is set, the test dashboard is accessible without auth."""
+def test_check_auth_bypass_removed_test_dashboard(app, monkeypatch):
+    """When APP_PASSWORD is set, the removed /test route returns 404 (no auth bypass needed)."""
     import routes as routes_mod
 
     monkeypatch.setattr(routes_mod, "_APP_PASSWORD", "secret")
     response = app.test_client().get("/test")
-    assert response.status_code == 200
+    assert response.status_code == 404
 
 
 def test_check_auth_valid_password(app, monkeypatch):

@@ -27,7 +27,6 @@ from flask import (
     jsonify,
     render_template,
     request,
-    send_from_directory,
 )
 from werkzeug.exceptions import HTTPException
 
@@ -132,7 +131,7 @@ def _check_auth() -> ResponseReturnValue | None:
     if not _APP_PASSWORD:
         return None
     # Allow unauthenticated access to the main UI and static assets
-    if request.endpoint in ("main.index", "main.test_dashboard"):
+    if request.endpoint == "main.index":
         return None
     if request.path.startswith("/static/"):
         return None  # pragma: no cover (defensive — Flask serves static at app level)
@@ -1026,14 +1025,3 @@ def index() -> ResponseReturnValue:
 
     """
     return render_template("base.html")
-
-
-@bp.route("/test")
-def test_dashboard() -> ResponseReturnValue:
-    """Serve the test dashboard frontend.
-
-    Returns:
-        The ``test.html`` file located next to ``app.py``.
-
-    """
-    return send_from_directory(".", "test.html")
