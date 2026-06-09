@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
-from werkzeug.exceptions import HTTPException
+from werkzeug.exceptions import BadRequest, HTTPException
 
 from config import save_config
 from routes import (
@@ -1009,6 +1009,23 @@ def test_get_test_results_success(mock_open, mock_exists, client):
     assert response.status_code == 200
     data = response.get_json()
     assert "test output" in data["results"].values()
+
+
+def test_handle_http_error_bad_request_json():
+    """Test that a concrete HTTPException produces a proper JSON response."""
+    from routes import _handle_http_error
+    from flask import Flask
+
+    app = Flask(__name__)
+    with app.test_request_context("/"):
+        response, status = _handle_http_error(
+            BadRequest(description="bad request"),
+        )
+    assert status == 400
+    assert response.get_json() == {
+        "status": "error",
+        "message": "bad request",
+    }
 
 
 def test_handle_http_error_non_http():
