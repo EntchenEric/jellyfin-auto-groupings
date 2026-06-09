@@ -16,9 +16,22 @@ export async function syncAll() {
             resultsContent.innerHTML = '';
             result.results.forEach(r => {
                 const entry = document.createElement('div');
-                entry.setAttribute('style', 'display:flex; justify-content:space-between; padding:0.3rem 0; border-bottom:1px solid var(--glass-border); font-size:0.85rem;');
-                entry.innerHTML = `<span>${r.group}</span><span style="color:var(--accent-color); font-weight:600;">${r.links} links</span>`;
-                if (r.error) entry.innerHTML += `<span style="color:var(--error-color); margin-left:0.5rem;">(${r.error})</span>`;
+                entry.className = 'sync-result-entry';
+                const groupSpan = document.createElement('span');
+                groupSpan.textContent = r.group;
+                entry.appendChild(groupSpan);
+                const linksSpan = document.createElement('span');
+                linksSpan.textContent = `${r.links} links`;
+                linksSpan.style.color = 'var(--accent-color)';
+                linksSpan.style.fontWeight = '600';
+                entry.appendChild(linksSpan);
+                if (r.error) {
+                    const errorSpan = document.createElement('span');
+                    errorSpan.textContent = `(${r.error})`;
+                    errorSpan.style.color = 'var(--error-color)';
+                    errorSpan.style.marginLeft = '0.5rem';
+                    entry.appendChild(errorSpan);
+                }
                 resultsContent.appendChild(entry);
             });
             resultsPanel.style.display = 'block';

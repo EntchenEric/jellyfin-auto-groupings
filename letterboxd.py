@@ -183,6 +183,7 @@ def fetch_letterboxd_list(list_url: str) -> list[str]:
     ids: list[str] = []
     seen_ids: set[str] = set()
     page = 1
+    consecutive_empty: int = 0
 
     while True:
         current_url = f"{list_url}/page/{page}/" if page > 1 else f"{list_url}/"
@@ -211,7 +212,15 @@ def fetch_letterboxd_list(list_url: str) -> list[str]:
         unique_slugs = _deduplicate_slugs(slugs)
         if not unique_slugs:
             logger.warning("No film slugs found on Letterboxd page %d", page)
-            break
+            consecutive_empty += 1
+            if consecutive_empty >= 3:
+                logger.info("Stopping after %d empty consecutive pages", consecutive_empty)
+                break
+            page += 1
+            time.sleep(0.5)
+            continue
+
+        consecutive_empty = 0
 
         slugs_to_fetch = [s for s in unique_slugs if s not in ids_from_list]
         logger.info(

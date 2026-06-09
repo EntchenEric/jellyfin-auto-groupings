@@ -11,7 +11,7 @@ TEST_API_KEY = "test_key"
 @patch("sync.shutil.rmtree")
 @patch("sync.os.symlink")
 @patch("sync.fetch_jellyfin_items")
-def test_run_sync_basic(mock_fetch, mock_symlink, mock_rmtree, mock_exists, mock_mkdir):
+def test_run_sync_basic(mock_fetch, mock_symlink, mock_rmtree, mock_exists, mock_mkdir) -> None:
     """Test run_sync with a simple genre-based group."""
     config = {
         "jellyfin_url": TEST_URL,
@@ -52,7 +52,7 @@ def test_run_sync_basic(mock_fetch, mock_symlink, mock_rmtree, mock_exists, mock
 @patch("pathlib.Path.exists")
 @patch("sync.fetch_jellyfin_items")
 @patch("sync._fetch_items_for_imdb_group")
-def test_run_sync_imdb(mock_imdb_fetch, mock_jf_fetch, mock_exists):
+def test_run_sync_imdb(mock_imdb_fetch, mock_jf_fetch, mock_exists) -> None:
     """Test run_sync with an IMDb-list group."""
     mock_exists.return_value = True
     config = {

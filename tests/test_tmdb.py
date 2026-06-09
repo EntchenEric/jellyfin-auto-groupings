@@ -6,7 +6,7 @@ import requests
 from tmdb import fetch_tmdb_list, get_tmdb_recommendations
 
 
-def test_fetch_tmdb_list_missing_args():
+def test_fetch_tmdb_list_missing_args() -> None:
     with pytest.raises(ValueError, match="A TMDb API Key is required"):
         fetch_tmdb_list("123", "")
     with pytest.raises(ValueError, match="A TMDb List ID is required"):
@@ -14,7 +14,7 @@ def test_fetch_tmdb_list_missing_args():
 
 
 @patch("network.get")
-def test_fetch_tmdb_list_success(mock_get):
+def test_fetch_tmdb_list_success(mock_get) -> None:
     mock_resp_1 = MagicMock()
     mock_resp_1.status_code = 200
     mock_resp_1.json.return_value = {
@@ -35,7 +35,7 @@ def test_fetch_tmdb_list_success(mock_get):
 
 
 @patch("network.get")
-def test_fetch_tmdb_list_url_parsing(mock_get):
+def test_fetch_tmdb_list_url_parsing(mock_get) -> None:
     mock_resp = MagicMock()
     mock_resp.status_code = 200
     mock_resp.json.return_value = {
@@ -54,19 +54,19 @@ def test_fetch_tmdb_list_url_parsing(mock_get):
 
 
 @patch("network.get")
-def test_fetch_tmdb_list_failure(mock_get):
+def test_fetch_tmdb_list_failure(mock_get) -> None:
     mock_get.side_effect = requests.exceptions.RequestException("Network Error")
     with pytest.raises(RuntimeError, match="Failed to fetch TMDb list page 1"):
         fetch_tmdb_list("123", "test_key")
 
 
-def test_get_tmdb_recommendations_missing_key():
+def test_get_tmdb_recommendations_missing_key() -> None:
     with pytest.raises(ValueError, match="A TMDb API Key is required"):
         get_tmdb_recommendations([("101", "movie")], "")
 
 
 @patch("network.get")
-def test_get_tmdb_recommendations_success(mock_get):
+def test_get_tmdb_recommendations_success(mock_get) -> None:
     mock_resp_movie = MagicMock()
     mock_resp_movie.status_code = 200
     mock_resp_movie.json.return_value = {
@@ -93,7 +93,7 @@ def test_get_tmdb_recommendations_success(mock_get):
 
 
 @patch("network.get")
-def test_get_tmdb_recommendations_failure_skipped(mock_get):
+def test_get_tmdb_recommendations_failure_skipped(mock_get) -> None:
     mock_resp_movie = MagicMock()
     mock_resp_movie.status_code = 200
     mock_resp_movie.json.return_value = {

@@ -1,11 +1,13 @@
 """Tests for network.py retry logic and error handling."""
 
+from typing import Never
+
 import pytest
 import requests
 from urllib3.exceptions import ConnectTimeoutError, MaxRetryError, ReadTimeoutError
 
 
-def test_reraise_timeout_read():
+def test_reraise_timeout_read() -> None:
     """_reraise_timeout re-raises Timeout when wrapping a ReadTimeoutError."""
     from network import _reraise_timeout
 
@@ -17,7 +19,7 @@ def test_reraise_timeout_read():
         _reraise_timeout(conn_err)
 
 
-def test_reraise_timeout_connect():
+def test_reraise_timeout_connect() -> None:
     """_reraise_timeout returns normally for ConnectTimeout, not ReadTimeout."""
     from network import _reraise_timeout
 
@@ -28,7 +30,7 @@ def test_reraise_timeout_connect():
     _reraise_timeout(conn_err)  # should not raise
 
 
-def test_reraise_timeout_plain_connection_error():
+def test_reraise_timeout_plain_connection_error() -> None:
     """_reraise_timeout returns normally for ConnectionError without MaxRetryError."""
     from network import _reraise_timeout
 
@@ -36,7 +38,7 @@ def test_reraise_timeout_plain_connection_error():
     _reraise_timeout(conn_err)  # should not raise
 
 
-def test_reraise_timeout_empty_args():
+def test_reraise_timeout_empty_args() -> None:
     """_reraise_timeout handles ConnectionError with no args."""
     from network import _reraise_timeout
 
@@ -44,8 +46,8 @@ def test_reraise_timeout_empty_args():
     _reraise_timeout(conn_err)  # should not raise
 
 
-def testget_success(monkeypatch):
-    """get delegates to session and returns response."""
+def testget_success(monkeypatch) -> None:
+    """Get delegates to session and returns response."""
     from network import _SESSION, get
 
     class FakeResp:
@@ -54,7 +56,7 @@ def testget_success(monkeypatch):
         def json(self):
             return {"ok": True}
 
-        def raise_for_status(self):
+        def raise_for_status(self) -> None:
             pass
 
     monkeypatch.setattr(_SESSION, "get", lambda url, **kw: FakeResp())
@@ -62,15 +64,15 @@ def testget_success(monkeypatch):
     assert result.json() == {"ok": True}
 
 
-def testget_timeout_re_raise(monkeypatch):
-    """get re-raises ReadTimeout as requests.Timeout."""
+def testget_timeout_re_raise(monkeypatch) -> None:
+    """Get re-raises ReadTimeout as requests.Timeout."""
     from network import _SESSION, get
 
     read_err = ReadTimeoutError("pool", "url", "msg")
     max_retry = MaxRetryError("pool", "url", reason=read_err)
     conn_err = requests.ConnectionError(max_retry)
 
-    def _fail(*a, **kw):
+    def _fail(*a, **kw) -> Never:
         raise conn_err
 
     monkeypatch.setattr(_SESSION, "get", _fail)
@@ -78,13 +80,13 @@ def testget_timeout_re_raise(monkeypatch):
         get("http://example.com/api")
 
 
-def testget_connection_error(monkeypatch):
-    """get re-raises ConnectionError that is not a read timeout."""
+def testget_connection_error(monkeypatch) -> None:
+    """Get re-raises ConnectionError that is not a read timeout."""
     from network import _SESSION, get
 
     conn_err = requests.ConnectionError("genuine connection refused")
 
-    def _fail(*a, **kw):
+    def _fail(*a, **kw) -> Never:
         raise conn_err
 
     monkeypatch.setattr(_SESSION, "get", _fail)
@@ -93,8 +95,8 @@ def testget_connection_error(monkeypatch):
     assert "genuine connection refused" in str(excinfo.value)
 
 
-def testpost_success(monkeypatch):
-    """post delegates to session."""
+def testpost_success(monkeypatch) -> None:
+    """Post delegates to session."""
     from network import _SESSION, post
 
     class FakeResp:
@@ -103,7 +105,7 @@ def testpost_success(monkeypatch):
         def json(self):
             return {"created": True}
 
-        def raise_for_status(self):
+        def raise_for_status(self) -> None:
             pass
 
     monkeypatch.setattr(_SESSION, "post", lambda url, **kw: FakeResp())
@@ -111,15 +113,15 @@ def testpost_success(monkeypatch):
     assert result.json() == {"created": True}
 
 
-def testpost_timeout_re_raise(monkeypatch):
-    """post re-raises ReadTimeout as requests.Timeout."""
+def testpost_timeout_re_raise(monkeypatch) -> None:
+    """Post re-raises ReadTimeout as requests.Timeout."""
     from network import _SESSION, post
 
     read_err = ReadTimeoutError("pool", "url", "msg")
     max_retry = MaxRetryError("pool", "url", reason=read_err)
     conn_err = requests.ConnectionError(max_retry)
 
-    def _fail(*a, **kw):
+    def _fail(*a, **kw) -> Never:
         raise conn_err
 
     monkeypatch.setattr(_SESSION, "post", _fail)
@@ -127,8 +129,8 @@ def testpost_timeout_re_raise(monkeypatch):
         post("http://example.com/api")
 
 
-def testdelete_success(monkeypatch):
-    """delete delegates to session."""
+def testdelete_success(monkeypatch) -> None:
+    """Delete delegates to session."""
     from network import _SESSION, delete
 
     class FakeResp:
@@ -137,7 +139,7 @@ def testdelete_success(monkeypatch):
         def json(self):
             return {}
 
-        def raise_for_status(self):
+        def raise_for_status(self) -> None:
             pass
 
     monkeypatch.setattr(_SESSION, "delete", lambda url, **kw: FakeResp())
@@ -145,15 +147,15 @@ def testdelete_success(monkeypatch):
     assert result.status_code == 204
 
 
-def testdelete_timeout_re_raise(monkeypatch):
-    """delete re-raises ReadTimeout as requests.Timeout."""
+def testdelete_timeout_re_raise(monkeypatch) -> None:
+    """Delete re-raises ReadTimeout as requests.Timeout."""
     from network import _SESSION, delete
 
     read_err = ReadTimeoutError("pool", "url", "msg")
     max_retry = MaxRetryError("pool", "url", reason=read_err)
     conn_err = requests.ConnectionError(max_retry)
 
-    def _fail(*a, **kw):
+    def _fail(*a, **kw) -> Never:
         raise conn_err
 
     monkeypatch.setattr(_SESSION, "delete", _fail)
@@ -166,15 +168,15 @@ def testdelete_timeout_re_raise(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-def testpost_maxretry_non_readtimeout(monkeypatch):
-    """post re-raises ConnectionError when MaxRetryError reason is not ReadTimeout."""
+def testpost_maxretry_non_readtimeout(monkeypatch) -> None:
+    """Post re-raises ConnectionError when MaxRetryError reason is not ReadTimeout."""
     from network import _SESSION, post
 
     connect_err = ConnectTimeoutError("pool", "url", "msg")
     max_retry = MaxRetryError("pool", "url", reason=connect_err)
     conn_err = requests.ConnectionError(max_retry)
 
-    def _fail(*a, **kw):
+    def _fail(*a, **kw) -> Never:
         raise conn_err
 
     monkeypatch.setattr(_SESSION, "post", _fail)
@@ -182,15 +184,15 @@ def testpost_maxretry_non_readtimeout(monkeypatch):
         post("http://example.com/api")
 
 
-def testdelete_maxretry_non_readtimeout(monkeypatch):
-    """delete re-raises ConnectionError when MaxRetryError reason is not ReadTimeout."""
+def testdelete_maxretry_non_readtimeout(monkeypatch) -> None:
+    """Delete re-raises ConnectionError when MaxRetryError reason is not ReadTimeout."""
     from network import _SESSION, delete
 
     connect_err = ConnectTimeoutError("pool", "url", "msg")
     max_retry = MaxRetryError("pool", "url", reason=connect_err)
     conn_err = requests.ConnectionError(max_retry)
 
-    def _fail(*a, **kw):
+    def _fail(*a, **kw) -> Never:
         raise conn_err
 
     monkeypatch.setattr(_SESSION, "delete", _fail)
@@ -198,7 +200,7 @@ def testdelete_maxretry_non_readtimeout(monkeypatch):
         delete("http://example.com/api")
 
 
-def test_reraise_timeout_maxretry_no_reason():
+def test_reraise_timeout_maxretry_no_reason() -> None:
     """_reraise_timeout handles MaxRetryError with no reason attribute."""
     from network import _reraise_timeout
 
@@ -212,7 +214,7 @@ def test_reraise_timeout_maxretry_no_reason():
     _reraise_timeout(conn_err)  # should not raise
 
 
-def test_reraise_timeout_maxretry_reason_none():
+def test_reraise_timeout_maxretry_reason_none() -> None:
     """_reraise_timeout handles MaxRetryError with reason=None."""
     from network import _reraise_timeout
 
@@ -226,7 +228,7 @@ def test_reraise_timeout_maxretry_reason_none():
 # ---------------------------------------------------------------------------
 
 
-def test_parse_retry_config_defaults():
+def test_parse_retry_config_defaults() -> None:
     """_parse_retry_config returns defaults when no env vars are set."""
     from network import _parse_retry_config
 
@@ -237,7 +239,7 @@ def test_parse_retry_config_defaults():
     assert 500 in statuses
 
 
-def test_parse_retry_config_invalid_total_fallback(monkeypatch):
+def test_parse_retry_config_invalid_total_fallback(monkeypatch) -> None:
     """Invalid NETWORK_RETRY_TOTAL falls back to default 3."""
     monkeypatch.setenv("NETWORK_RETRY_TOTAL", "not-a-number")
     from network import _parse_retry_config
@@ -247,7 +249,7 @@ def test_parse_retry_config_invalid_total_fallback(monkeypatch):
     assert backoff == 1.0
 
 
-def test_parse_retry_config_negative_total(monkeypatch):
+def test_parse_retry_config_negative_total(monkeypatch) -> None:
     """Negative NETWORK_RETRY_TOTAL raises ValueError."""
     monkeypatch.setenv("NETWORK_RETRY_TOTAL", "-1")
     from network import _parse_retry_config
@@ -256,7 +258,7 @@ def test_parse_retry_config_negative_total(monkeypatch):
         _parse_retry_config()
 
 
-def test_parse_retry_config_negative_backoff(monkeypatch):
+def test_parse_retry_config_negative_backoff(monkeypatch) -> None:
     """Negative NETWORK_RETRY_BACKOFF_FACTOR raises ValueError."""
     monkeypatch.setenv("NETWORK_RETRY_BACKOFF_FACTOR", "-2.0")
     from network import _parse_retry_config
@@ -265,7 +267,7 @@ def test_parse_retry_config_negative_backoff(monkeypatch):
         _parse_retry_config()
 
 
-def test_parse_retry_config_invalid_backoff_fallback(monkeypatch):
+def test_parse_retry_config_invalid_backoff_fallback(monkeypatch) -> None:
     """Invalid NETWORK_RETRY_BACKOFF_FACTOR falls back to default 1.0."""
     monkeypatch.setenv("NETWORK_RETRY_BACKOFF_FACTOR", "xyz")
     from network import _parse_retry_config
@@ -274,7 +276,7 @@ def test_parse_retry_config_invalid_backoff_fallback(monkeypatch):
     assert backoff == 1.0
 
 
-def test_parse_retry_config_invalid_status_code_in_list(monkeypatch):
+def test_parse_retry_config_invalid_status_code_in_list(monkeypatch) -> None:
     """Invalid entry in NETWORK_RETRY_STATUS_FORCELIST raises ValueError."""
     monkeypatch.setenv("NETWORK_RETRY_STATUS_FORCELIST", "429,9999")
     from network import _parse_retry_config
@@ -283,7 +285,7 @@ def test_parse_retry_config_invalid_status_code_in_list(monkeypatch):
         _parse_retry_config()
 
 
-def test_parse_retry_config_non_numeric_status(monkeypatch):
+def test_parse_retry_config_non_numeric_status(monkeypatch) -> None:
     """Non-numeric entries in NETWORK_RETRY_STATUS_FORCELIST are skipped, valid ones kept."""
     monkeypatch.setenv("NETWORK_RETRY_STATUS_FORCELIST", "429,abc,503")
     from network import _parse_retry_config
@@ -294,7 +296,7 @@ def test_parse_retry_config_non_numeric_status(monkeypatch):
     assert len(statuses) == 2
 
 
-def test_parse_retry_config_trailing_comma(monkeypatch):
+def test_parse_retry_config_trailing_comma(monkeypatch) -> None:
     """Trailing commas in NETWORK_RETRY_STATUS_FORCELIST are tolerated."""
     monkeypatch.setenv("NETWORK_RETRY_STATUS_FORCELIST", "429,500,")
     from network import _parse_retry_config
@@ -305,7 +307,7 @@ def test_parse_retry_config_trailing_comma(monkeypatch):
     assert len(statuses) == 2
 
 
-def test_parse_retry_config_negative_status_code(monkeypatch):
+def test_parse_retry_config_negative_status_code(monkeypatch) -> None:
     """Negative status code in NETWORK_RETRY_STATUS_FORCELIST raises ValueError."""
     monkeypatch.setenv("NETWORK_RETRY_STATUS_FORCELIST", "-1")
     from network import _parse_retry_config
@@ -314,7 +316,7 @@ def test_parse_retry_config_negative_status_code(monkeypatch):
         _parse_retry_config()
 
 
-def test_parse_retry_config_zero_status_code(monkeypatch):
+def test_parse_retry_config_zero_status_code(monkeypatch) -> None:
     """Status code 0 in NETWORK_RETRY_STATUS_FORCELIST raises ValueError."""
     monkeypatch.setenv("NETWORK_RETRY_STATUS_FORCELIST", "0")
     from network import _parse_retry_config
@@ -328,8 +330,8 @@ def test_parse_retry_config_zero_status_code(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-def testput_success(monkeypatch):
-    """put delegates to session."""
+def testput_success(monkeypatch) -> None:
+    """Put delegates to session."""
     from network import _SESSION, put
 
     class FakeResp:
@@ -338,7 +340,7 @@ def testput_success(monkeypatch):
         def json(self):
             return {"updated": True}
 
-        def raise_for_status(self):
+        def raise_for_status(self) -> None:
             pass
 
     monkeypatch.setattr(_SESSION, "put", lambda url, **kw: FakeResp())
@@ -346,15 +348,15 @@ def testput_success(monkeypatch):
     assert result.json() == {"updated": True}
 
 
-def testput_timeout_re_raise(monkeypatch):
-    """put re-raises ReadTimeout as requests.Timeout."""
+def testput_timeout_re_raise(monkeypatch) -> None:
+    """Put re-raises ReadTimeout as requests.Timeout."""
     from network import _SESSION, put
 
     read_err = ReadTimeoutError("pool", "url", "msg")
     max_retry = MaxRetryError("pool", "url", reason=read_err)
     conn_err = requests.ConnectionError(max_retry)
 
-    def _fail(*a, **kw):
+    def _fail(*a, **kw) -> Never:
         raise conn_err
 
     monkeypatch.setattr(_SESSION, "put", _fail)
@@ -362,8 +364,8 @@ def testput_timeout_re_raise(monkeypatch):
         put("http://example.com/api")
 
 
-def testpatch_success(monkeypatch):
-    """patch delegates to session."""
+def testpatch_success(monkeypatch) -> None:
+    """Patch delegates to session."""
     from network import _SESSION, patch
 
     class FakeResp:
@@ -372,7 +374,7 @@ def testpatch_success(monkeypatch):
         def json(self):
             return {"patched": True}
 
-        def raise_for_status(self):
+        def raise_for_status(self) -> None:
             pass
 
     monkeypatch.setattr(_SESSION, "patch", lambda url, **kw: FakeResp())
@@ -380,15 +382,15 @@ def testpatch_success(monkeypatch):
     assert result.json() == {"patched": True}
 
 
-def testpatch_timeout_re_raise(monkeypatch):
-    """patch re-raises ReadTimeout as requests.Timeout."""
+def testpatch_timeout_re_raise(monkeypatch) -> None:
+    """Patch re-raises ReadTimeout as requests.Timeout."""
     from network import _SESSION, patch
 
     read_err = ReadTimeoutError("pool", "url", "msg")
     max_retry = MaxRetryError("pool", "url", reason=read_err)
     conn_err = requests.ConnectionError(max_retry)
 
-    def _fail(*a, **kw):
+    def _fail(*a, **kw) -> Never:
         raise conn_err
 
     monkeypatch.setattr(_SESSION, "patch", _fail)
@@ -396,14 +398,14 @@ def testpatch_timeout_re_raise(monkeypatch):
         patch("http://example.com/api")
 
 
-def testput_connection_error_re_raise(monkeypatch):
-    """put re-raises ConnectionError when _reraise_timeout returns normally."""
+def testput_connection_error_re_raise(monkeypatch) -> None:
+    """Put re-raises ConnectionError when _reraise_timeout returns normally."""
     from network import _SESSION, put
 
     max_retry = MaxRetryError("pool", "url", reason=None)
     conn_err = requests.ConnectionError(max_retry)
 
-    def _fail(*a, **kw):
+    def _fail(*a, **kw) -> Never:
         raise conn_err
 
     monkeypatch.setattr(_SESSION, "put", _fail)
@@ -411,14 +413,14 @@ def testput_connection_error_re_raise(monkeypatch):
         put("http://example.com/api")
 
 
-def testpatch_connection_error_re_raise(monkeypatch):
-    """patch re-raises ConnectionError when _reraise_timeout returns normally."""
+def testpatch_connection_error_re_raise(monkeypatch) -> None:
+    """Patch re-raises ConnectionError when _reraise_timeout returns normally."""
     from network import _SESSION, patch
 
     max_retry = MaxRetryError("pool", "url", reason=None)
     conn_err = requests.ConnectionError(max_retry)
 
-    def _fail(*a, **kw):
+    def _fail(*a, **kw) -> Never:
         raise conn_err
 
     monkeypatch.setattr(_SESSION, "patch", _fail)

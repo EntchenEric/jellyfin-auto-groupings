@@ -1254,6 +1254,7 @@ def _create_or_preview_link(
 
     Returns:
         True if the link was (or would be) created successfully.
+
     """
     if dry_run:
         if len(preview_items) < _MAX_PREVIEW_ITEMS:
@@ -1552,7 +1553,7 @@ def _process_group(
 
     try:
         source_cover = _prepare_group_directory(
-            group_dir, group_name, target_base, dry_run
+            group_dir, group_name, target_base, dry_run,
         )
     except OSError as exc:
         return {"group": group_name, "links": 0, "error": f"Directory error: {exc!s}"}

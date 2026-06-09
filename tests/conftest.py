@@ -50,7 +50,7 @@ def mock_scheduler():
     patcher.stop()
 
 
-def pytest_configure(config):
+def pytest_configure(config) -> None:
     config.addinivalue_line(
         "markers",
         "e2e: end-to-end tests requiring real Jellyfin instance",

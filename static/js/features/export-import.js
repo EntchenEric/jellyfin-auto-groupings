@@ -20,17 +20,16 @@ export function openExportModal() {
             const cb = document.createElement('input');
             cb.type = 'checkbox';
             cb.checked = true;
-            cb.className = 'export-check';
+            cb.className = 'export-check item-checkbox';
             cb.dataset.index = i;
-            cb.setAttribute('style', 'width:18px; height:18px; accent-color: var(--accent-color);');
             item.appendChild(cb);
 
             const labelDiv = document.createElement('div');
             const nameDiv = document.createElement('div');
-            nameDiv.setAttribute('style', 'font-weight:600; font-size:0.95rem;');
+            nameDiv.className = 'item-name';
             nameDiv.textContent = g.name || 'Unnamed Group';
             const typeDiv = document.createElement('div');
-            typeDiv.setAttribute('style', 'font-size:0.8rem; color:var(--text-secondary);');
+            typeDiv.className = 'item-type';
             typeDiv.textContent = g.source_type || '';
             labelDiv.appendChild(nameDiv);
             labelDiv.appendChild(typeDiv);
@@ -132,17 +131,16 @@ function setupImportStep2(data) {
             const cb = document.createElement('input');
             cb.type = 'checkbox';
             cb.checked = true;
-            cb.className = 'import-check';
+            cb.className = 'import-check item-checkbox';
             cb.dataset.index = i;
-            cb.setAttribute('style', 'width:18px; height:18px; accent-color: var(--accent-color);');
             item.appendChild(cb);
 
             const labelDiv = document.createElement('div');
             const nameDiv = document.createElement('div');
-            nameDiv.setAttribute('style', 'font-weight:600; font-size:0.95rem;');
+            nameDiv.className = 'item-name';
             nameDiv.textContent = g.name || 'Unnamed Group';
             const typeDiv = document.createElement('div');
-            typeDiv.setAttribute('style', 'font-size:0.8rem; color:var(--text-secondary);');
+            typeDiv.className = 'item-type';
             typeDiv.textContent = `${g.source_type || ''}: ${g.source_value || ''}`;
             labelDiv.appendChild(nameDiv);
             labelDiv.appendChild(typeDiv);

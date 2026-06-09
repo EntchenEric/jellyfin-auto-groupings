@@ -729,6 +729,7 @@ def _delete_folder(
     Returns:
         ``(deleted, error_message)`` where *deleted* is True if the folder
         was removed successfully.
+
     """
     path = Path(target_base) / name
     if not path.exists() or not path.is_dir():

@@ -873,7 +873,7 @@ def set_item_image(item_id):
 
 
 @app.route("/", methods=["GET"])
-def dashboard():
+def dashboard() -> str:
     return f"""
     <!DOCTYPE html>
     <html>

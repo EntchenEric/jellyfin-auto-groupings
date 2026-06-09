@@ -6,7 +6,7 @@ from pathlib import Path
 from config import DEFAULT_CONFIG, load_config, save_config
 
 
-def test_default_config_has_required_keys():
+def test_default_config_has_required_keys() -> None:
     """DEFAULT_CONFIG must contain all essential keys."""
     required = [
         "jellyfin_url",
@@ -22,12 +22,12 @@ def test_default_config_has_required_keys():
         assert key in DEFAULT_CONFIG, f"Missing required key: {key}"
 
 
-def test_default_config_groups_is_list():
+def test_default_config_groups_is_list() -> None:
     """Groups must default to an empty list."""
     assert DEFAULT_CONFIG["groups"] == []
 
 
-def test_default_config_scheduler_has_defaults():
+def test_default_config_scheduler_has_defaults() -> None:
     """Scheduler defaults must be sane."""
     s = DEFAULT_CONFIG["scheduler"]
     assert "global_enabled" in s
@@ -39,7 +39,7 @@ def test_default_config_scheduler_has_defaults():
     assert s["cleanup_enabled"] is True
 
 
-def test_default_config_api_keys_are_empty():
+def test_default_config_api_keys_are_empty() -> None:
     """All API keys start empty."""
     assert DEFAULT_CONFIG["api_key"] == ""
     assert DEFAULT_CONFIG["trakt_client_id"] == ""
@@ -47,12 +47,12 @@ def test_default_config_api_keys_are_empty():
     assert DEFAULT_CONFIG["mal_client_id"] == ""
 
 
-def test_setup_done_defaults_false():
+def test_setup_done_defaults_false() -> None:
     """New configs must not be marked as setup complete."""
     assert DEFAULT_CONFIG["setup_done"] is False
 
 
-def test_save_config_preserves_structure(temp_config):
+def test_save_config_preserves_structure(temp_config) -> None:
     """Saving config should produce valid JSON with all required fields."""
     import copy
 
@@ -70,7 +70,7 @@ def test_save_config_preserves_structure(temp_config):
     assert isinstance(saved["scheduler"], dict)
 
 
-def test_load_config_fills_missing_nested_keys(temp_config):
+def test_load_config_fills_missing_nested_keys(temp_config) -> None:
     """When a stored config is missing nested keys, defaults should fill in."""
     minimal = {"jellyfin_url": "http://srv"}
     with Path(temp_config).open("w") as f:
@@ -83,7 +83,7 @@ def test_load_config_fills_missing_nested_keys(temp_config):
     assert "cleanup_schedule" in cfg["scheduler"]
 
 
-def test_load_config_does_not_lose_extra_keys(temp_config):
+def test_load_config_does_not_lose_extra_keys(temp_config) -> None:
     """Unknown keys in saved config should survive a load/save round-trip."""
     extra = {"jellyfin_url": "", "custom_field": "keep-me"}
     with Path(temp_config).open("w") as f:

@@ -13,7 +13,7 @@ from routes import _compute_common_root
 # ---------------------------------------------------------------------------
 
 
-def test_check_auth_bypass_index_endpoint(app, monkeypatch):
+def test_check_auth_bypass_index_endpoint(app, monkeypatch) -> None:
     """When APP_PASSWORD is set, the index page is accessible without auth."""
     import routes as routes_mod
 
@@ -22,7 +22,7 @@ def test_check_auth_bypass_index_endpoint(app, monkeypatch):
     assert response.status_code == 200
 
 
-def test_check_auth_bypass_removed_test_dashboard(app, monkeypatch):
+def test_check_auth_bypass_removed_test_dashboard(app, monkeypatch) -> None:
     """When APP_PASSWORD is set, the removed /test route returns 404 (no auth bypass needed)."""
     import routes as routes_mod
 
@@ -31,14 +31,14 @@ def test_check_auth_bypass_removed_test_dashboard(app, monkeypatch):
     assert response.status_code == 404
 
 
-def test_check_auth_valid_password(app, monkeypatch):
+def test_check_auth_valid_password(app, monkeypatch) -> None:
     """Correct password in Basic Auth header allows access."""
     import routes as routes_mod
 
     monkeypatch.setattr(routes_mod, "_APP_PASSWORD", "secret")
     from base64 import b64encode
 
-    creds = b64encode(":secret".encode()).decode()
+    creds = b64encode(b":secret").decode()
     response = app.test_client().get(
         "/api/config",
         headers={"Authorization": f"Basic {creds}"},
@@ -62,7 +62,7 @@ def test_auto_detect_skip_non_dir_root(
     mock_walk,
     mock_fetch,
     client,
-):
+) -> None:
     """Search roots that are not directories are skipped."""
     save_config({"jellyfin_url": "http://test", "api_key": "key"})
     mock_fetch.return_value = [{"Path": "/media/movies/M1.mkv"}]
@@ -92,7 +92,7 @@ def test_auto_detect_home_not_writable(
     mock_ismount,
     mock_access,
     client,
-):
+) -> None:
     """When home dir is not writable, suggested_target uses CWD fallback."""
     save_config({"jellyfin_url": "http://test", "api_key": "key"})
     mock_fetch.return_value = [{"Path": "/media/movies/M1.mkv"}]
@@ -111,7 +111,7 @@ def test_auto_detect_home_not_writable(
 # ---------------------------------------------------------------------------
 
 
-def test_translate_path_fallback(tmp_path):
+def test_translate_path_fallback(tmp_path) -> None:
     """_translate_path returns original path when translation fails."""
     from sync import _translate_path
 
@@ -125,7 +125,7 @@ def test_translate_path_fallback(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def test_auto_detect_multi_common_path():
+def test_auto_detect_multi_common_path() -> None:
     """Multiple trailing path components match."""
     result_j, result_h = _compute_common_root(
         "/media/movies/action/D.mkv",
@@ -138,14 +138,14 @@ def test_auto_detect_multi_common_path():
     assert result_h == "/jellyfin"
 
 
-def test_auto_detect_same_path():
+def test_auto_detect_same_path() -> None:
     """Identical paths return root as os.sep."""
     result_j, result_h = _compute_common_root("/a/b/c.mkv", "/a/b/c.mkv")
     assert result_j == os.sep
     assert result_h == os.sep
 
 
-def test_auto_detect_no_match():
+def test_auto_detect_no_match() -> None:
     """No matching trailing components returns None."""
     result_j, result_h = _compute_common_root("/a/b/x.mkv", "/c/d/y.mkv")
     assert result_j is None
@@ -157,7 +157,7 @@ def test_auto_detect_no_match():
 # ---------------------------------------------------------------------------
 
 
-def test_validate_config_types_non_string_fields():
+def test_validate_config_types_non_string_fields() -> None:
     """Non-string string fields are flagged."""
     from routes import _validate_config_types
 
@@ -172,7 +172,7 @@ def test_validate_config_types_non_string_fields():
         assert any(field in e for e in errors), f"Expected error for {field}"
 
 
-def test_validate_config_types_non_list_groups():
+def test_validate_config_types_non_list_groups() -> None:
     """Non-list groups field is flagged."""
     from routes import _validate_config_types
 
@@ -180,7 +180,7 @@ def test_validate_config_types_non_list_groups():
     assert any("'groups'" in e for e in errors)
 
 
-def test_validate_config_types_non_bool_fields():
+def test_validate_config_types_non_bool_fields() -> None:
     """Non-boolean bool fields are flagged."""
     from routes import _validate_config_types
 
@@ -189,7 +189,7 @@ def test_validate_config_types_non_bool_fields():
         assert any(field in e for e in errors), f"Expected error for {field}"
 
 
-def test_validate_config_types_scheduler_non_dict():
+def test_validate_config_types_scheduler_non_dict() -> None:
     """Scheduler must be a dict."""
     from routes import _validate_config_types
 
@@ -197,7 +197,7 @@ def test_validate_config_types_scheduler_non_dict():
     assert any("'scheduler' must be an object" in e for e in errors)
 
 
-def test_validate_config_types_scheduler_bool_mismatch():
+def test_validate_config_types_scheduler_bool_mismatch() -> None:
     """Scheduler bool fields are checked."""
     from routes import _validate_config_types
 
@@ -209,7 +209,7 @@ def test_validate_config_types_scheduler_bool_mismatch():
         )
 
 
-def test_validate_config_types_scheduler_str_mismatch():
+def test_validate_config_types_scheduler_str_mismatch() -> None:
     """Scheduler str fields are checked."""
     from routes import _validate_config_types
 
@@ -221,7 +221,7 @@ def test_validate_config_types_scheduler_str_mismatch():
         )
 
 
-def test_validate_config_types_scheduler_exclude_non_list():
+def test_validate_config_types_scheduler_exclude_non_list() -> None:
     """Scheduler global_exclude_ids must be a list."""
     from routes import _validate_config_types
 
@@ -229,7 +229,7 @@ def test_validate_config_types_scheduler_exclude_non_list():
     assert any("global_exclude_ids" in e for e in errors)
 
 
-def test_validate_config_types_group_non_dict():
+def test_validate_config_types_group_non_dict() -> None:
     """Group items must be dicts."""
     from routes import _validate_config_types
 
@@ -237,7 +237,7 @@ def test_validate_config_types_group_non_dict():
     assert any("groups[0] must be an object" in e for e in errors)
 
 
-def test_validate_config_types_group_name_non_string():
+def test_validate_config_types_group_name_non_string() -> None:
     """Group names must be strings."""
     from routes import _validate_config_types
 
@@ -245,7 +245,7 @@ def test_validate_config_types_group_name_non_string():
     assert any("groups[0].name must be a string" in e for e in errors)
 
 
-def test_validate_config_types_valid_passthrough():
+def test_validate_config_types_valid_passthrough() -> None:
     """Valid config produces no errors."""
     from routes import _validate_config_types
 
@@ -271,7 +271,7 @@ def test_validate_config_types_valid_passthrough():
     assert errors == []
 
 
-def test_validate_config_types_empty_config():
+def test_validate_config_types_empty_config() -> None:
     """Empty config produces no errors (all fields optional)."""
     from routes import _validate_config_types
 
@@ -279,7 +279,7 @@ def test_validate_config_types_empty_config():
     assert errors == []
 
 
-def test_update_config_rejects_bad_types(client, temp_config):
+def test_update_config_rejects_bad_types(client, temp_config) -> None:
     """POST /api/config with wrong type returns 400."""
     from config import save_config
 
@@ -297,7 +297,7 @@ def test_update_config_rejects_bad_types(client, temp_config):
     )
 
 
-def test_auto_detect_partial_match():
+def test_auto_detect_partial_match() -> None:
     """Only some trailing components match."""
     result_j, result_h = _compute_common_root(
         "/movies/action/D.mkv",

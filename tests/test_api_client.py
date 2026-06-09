@@ -11,7 +11,7 @@ TEST_API_KEY = "test-key"
 class TestServerConnection:
     """Tests for /api/test-server endpoint."""
 
-    def test_test_server_success(self, client):
+    def test_test_server_success(self, client) -> None:
         """Test that /api/test-server returns success with valid params."""
         with patch("routes.network.get") as mock_get:
             mock_resp = MagicMock()
@@ -29,7 +29,7 @@ class TestServerConnection:
             assert resp.status_code == 200
             assert data["status"] == "success"
 
-    def test_test_server_missing_params(self, client):
+    def test_test_server_missing_params(self, client) -> None:
         """Test that missing URL or API key returns error."""
         resp = client.post("/api/test-server", json={"jellyfin_url": ""})
         data = resp.get_json()
@@ -39,7 +39,7 @@ class TestServerConnection:
         data = resp.get_json()
         assert data["status"] == "error"
 
-    def test_test_server_auth_failure(self, client):
+    def test_test_server_auth_failure(self, client) -> None:
         """Test that invalid API key returns error."""
         with patch("routes.network.get") as mock_get:
             mock_get.side_effect = requests_lib.exceptions.RequestException(
@@ -60,7 +60,7 @@ class TestServerConnection:
 class TestMetadataEndpoints:
     """Tests for /api/jellyfin/metadata endpoint."""
 
-    def test_metadata_requires_valid_connection(self, client):
+    def test_metadata_requires_valid_connection(self, client) -> None:
         """Test metadata endpoint returns error when Jellyfin is unreachable."""
         with patch("routes.fetch_jellyfin_items") as mock_fetch:
             mock_fetch.side_effect = Exception("Connection refused")
@@ -68,7 +68,7 @@ class TestMetadataEndpoints:
             data = resp.get_json()
             assert data["status"] == "error"
 
-    def test_metadata_returns_categories(self, client):
+    def test_metadata_returns_categories(self, client) -> None:
         """Test successful metadata response has expected categories."""
         with (
             patch("routes.load_config") as mock_load,
@@ -120,13 +120,13 @@ class TestMetadataEndpoints:
 class TestPreviewEndpoint:
     """Tests for /api/grouping/preview endpoint."""
 
-    def test_preview_missing_params(self, client):
+    def test_preview_missing_params(self, client) -> None:
         """Preview requires type and value."""
         resp = client.post("/api/grouping/preview", json={})
         data = resp.get_json()
         assert data["status"] == "error"
 
-    def test_preview_with_valid_params(self, client):
+    def test_preview_with_valid_params(self, client) -> None:
         """Preview with genre type returns item count."""
         with (
             patch("routes.load_config") as mock_load,
