@@ -1025,15 +1025,12 @@ def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
 
     t0, v0 = _parse_item(parts[0])
     # Detect a bare NOT at position 0 so _eval_item can apply the negation.
-    # A bare "NOT" means the first keyword is literally "not", not a value.
-    # We check the original parts[0] to see if it starts with NOT as a standalone
-    # keyword (not as part of a value like "notebook").
+    # We inspect stripped_v0 (the v0 value trimmed from _parse_item) case-insensitively:
+    # if it starts with "NOT " or equals "NOT", it's a bare NOT operator
+    # (distinct from a value that merely starts with "not", e.g. "Notebook").
     stripped_v0 = v0.strip()
-    # Check if the query starts with "NOT" (case-insensitive)
     _is_bare_not = False
     if stripped_v0.upper().startswith("NOT ") or stripped_v0.upper() == "NOT":
-        # Verify that "NOT" isn't the actual value by checking if the
-        # original parts[0] doesn't resolve to a known type
         _is_bare_not = True
     first_op = "AND NOT" if _is_bare_not else "AND"
     if first_op == "AND NOT":

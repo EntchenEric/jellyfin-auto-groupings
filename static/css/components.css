@@ -115,6 +115,11 @@ h3 {
     box-shadow: none;
 }
 
+.toggle-password-btn.visible {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--accent);
+}
+
 /* ── Forms ──────────────────────────────────────────────── */
 .form-group {
     margin-bottom: 1rem;
