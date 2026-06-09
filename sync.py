@@ -1617,8 +1617,21 @@ def _parse_mmdd(value: str) -> tuple[int, int]:
 
     Validates that month is 1-12 and that *day* is valid for the given month.
     Returns ``(0, 0)`` for unparseable or out-of-range values so they never match.
+
+    Examples:
+        >>> _parse_mmdd("06-15")
+        (6, 15)
+        >>> _parse_mmdd("")
+        (0, 0)
+        >>> _parse_mmdd("13-01")
+        (0, 0)
+
     """
+    if not isinstance(value, str) or value.strip() == "":
+        return (0, 0)
     parts = value.strip().split("-", 1)
+    if len(parts) < 2:
+        return (0, 0)
     try:
         month = int(parts[0])
         day = int(parts[1])

@@ -65,21 +65,33 @@ def _schedule_global_sync(
 
 def _schedule_group_syncs(scheduler: BackgroundScheduler, groups: list[Any]) -> None:
     """Add per-group sync jobs for groups that have scheduling enabled."""
+    seen_ids: set[str] = set()
     for group in groups:
         if not isinstance(group, dict):
             continue
         group_name = group.get("name")
         if not group_name:
             continue
+        if not isinstance(group_name, str):
+            continue
         if group.get("schedule_enabled") and group.get("schedule"):
             cron_expr = group["schedule"]
+            job_id = f"group_sync_{group_name}"
+            if job_id in seen_ids:
+                logger.warning(
+                    "Duplicate group name %r — only one schedule job will run",
+                    group_name,
+                )
+                continue
+            seen_ids.add(job_id)
             try:
                 scheduler.add_job(
                     _run_group_sync_job,
                     CronTrigger.from_crontab(cron_expr),
-                    id=f"group_sync_{group_name}",
+                    id=job_id,
                     name=f"Sync Group: {group_name}",
                     args=[group_name],
+                    replace_existing=False,
                 )
                 logger.info("Scheduled sync for group '%s': %s", group_name, cron_expr)
             except ValueError:

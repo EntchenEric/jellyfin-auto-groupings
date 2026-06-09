@@ -254,8 +254,16 @@ See [`.env.example`](.env.example) for quick setup.
 ### Building from Source
 
 1. Clone the repo.
-2. Install dependencies: `pip install -r requirements.txt`.
-3. Run: `python app.py`.
+2. Create a virtual environment:
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
+3. Install the package (including dev extras):
+   ```bash
+   pip install -e .[dev]
+   ```
+4. Run: `python app.py`.
 
 ### 🧪 Testing
 
@@ -371,6 +379,19 @@ If the above doesn't resolve your issue, please [open a GitHub issue](https://gi
 - Steps to reproduce
 - Relevant logs or error messages
 
+### Keeping Your Fork Up-to-Date
+
+If you've forked the repo, you can pull latest changes from upstream:
+
+```bash
+git remote add upstream https://github.com/entcheneric/jellyfin-auto-groupings.git
+git fetch upstream
+git checkout main
+git rebase upstream/main
+```
+
+---
+
 ### API Error Reference
 
 The REST API returns standard HTTP status codes with JSON error bodies containing
@@ -400,11 +421,8 @@ scheduler, external list fetching, and configuration management.
 python3 -m venv venv
 source venv/bin/activate
 
-# Install dependencies
-pip install -r requirements.txt -r requirements-dev.txt
-
-# Install the package in editable mode
-pip install -e .
+# Install all dependencies (including dev extras like pytest, coverage)
+pip install -e .[dev]
 ```
 
 ### Run all tests
