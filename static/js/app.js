@@ -1,7 +1,7 @@
 // app.js – Application entry point
 
 import { state, metadataTypes } from './core/state.js';
-import { getEl, showToast, showErrorDialog, setLoading, showLoadingOverlay, updateLoadingStatus, hideLoadingOverlay } from './core/ui.js';
+import { getEl, showToast, showErrorDialog, setLoading, showLoadingOverlay, updateLoadingStatus, hideLoadingOverlay, hideModal } from './core/ui.js';
 
 import { initConfig, loadConfig, saveAllConfig, toggleGlobalScheduler, toggleCleanupScheduler } from './features/config.js';
 import { initWizard, openWizardManual } from './features/wizard.js';
@@ -84,7 +84,7 @@ function wireConfirmSyncDialog() {
 
     if (confirmGoBtn) {
         confirmGoBtn.onclick = async () => {
-            getEl('confirm-sync-modal').style.display = 'none';
+            hideModal('confirm-sync-modal');
             const topbarSyncBtn = getEl('topbar-sync-btn');
             setLoading(topbarSyncBtn, true);
             try { await syncAll(); }
@@ -94,7 +94,7 @@ function wireConfirmSyncDialog() {
 
     if (confirmPreviewBtn) {
         confirmPreviewBtn.onclick = async () => {
-            getEl('confirm-sync-modal').style.display = 'none';
+            hideModal('confirm-sync-modal');
             await previewSyncAll();
         };
     }

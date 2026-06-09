@@ -15,7 +15,6 @@ export function showToast(msg, type = 'success', duration = null) {
     const closeBtn = document.createElement('button');
     closeBtn.className = 'close-btn toast-close';
     closeBtn.innerHTML = '&times;';
-    closeBtn.style.cssText = 'position:absolute; top:4px; right:8px; font-size:1rem; color:inherit; width:auto; margin:0; padding:0; background:none; border:none; cursor:pointer;';
     closeBtn.onclick = () => { el.style.display = 'none'; clearTimeout(toastTimer); };
     // Remove existing close buttons
     el.querySelectorAll('.toast-close').forEach(b => b.remove());
@@ -105,7 +104,7 @@ function _updateProgressBar() {
     pctEl.textContent = `${pct}%`;
 
     if (etaEl && _progressStartTime > 0 && _progressStep > 0 && _progressStep < _progressTotal) {
-        const elapsed = (Date.now() - _progressStartTime) / 1000;
+        const elapsed = Math.max(0.001, (Date.now() - _progressStartTime) / 1000);
         const perStep = elapsed / _progressStep;
         const remaining = perStep * (_progressTotal - _progressStep);
         if (remaining > 2) {
