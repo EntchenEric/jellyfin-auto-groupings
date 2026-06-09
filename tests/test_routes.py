@@ -1266,6 +1266,8 @@ def test_check_auth_static_path_allowed(app, monkeypatch):
     import routes as routes_mod
 
     monkeypatch.setattr(routes_mod, "_APP_PASSWORD", "secret")
+    if hasattr(routes_mod._check_auth, "cache_clear"):
+        routes_mod._check_auth.cache_clear()
 
     # /static/ paths should bypass the password check
     response = app.test_client().get("/static/css/variables.css")
@@ -1294,6 +1296,8 @@ def test_check_auth_with_wrong_password(app, monkeypatch):
     import routes as routes_mod
 
     monkeypatch.setattr(routes_mod, "_APP_PASSWORD", "secret")
+    if hasattr(routes_mod._check_auth, "cache_clear"):
+        routes_mod._check_auth.cache_clear()
 
     response = app.test_client().get(
         "/api/config",
@@ -1309,6 +1313,8 @@ def test_check_auth_with_no_password(app, monkeypatch):
     import routes as routes_mod
 
     monkeypatch.setattr(routes_mod, "_APP_PASSWORD", "")
+    if hasattr(routes_mod._check_auth, "cache_clear"):
+        routes_mod._check_auth.cache_clear()
 
     # This should pass without auth even for protected endpoints
     response = app.test_client().get(

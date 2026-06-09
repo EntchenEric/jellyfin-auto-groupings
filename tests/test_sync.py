@@ -2251,7 +2251,7 @@ def test_create_group_symlinks_path_translation_log(tmp_path, caplog):
     output_dir.mkdir()
 
     items = [{"Id": "m1", "Name": "M1", "Path": str(item_path)}]
-    links, previews = _create_group_symlinks(
+    _, _ = _create_group_symlinks(
         items,
         str(output_dir),
         "TestGroup",
