@@ -316,3 +316,76 @@ def test_parse_retry_config_zero_status_code(monkeypatch):
     from network import _parse_retry_config
     with pytest.raises(ValueError, match="invalid HTTP status code: 0"):
         _parse_retry_config()
+
+
+# ---------------------------------------------------------------------------
+# put / patch helpers
+# ---------------------------------------------------------------------------
+
+
+def testput_success(monkeypatch):
+    """put delegates to session."""
+    from network import _SESSION, put
+
+    class FakeResp:
+        status_code = 200
+
+        def json(self):
+            return {"updated": True}
+
+        def raise_for_status(self):
+            pass
+
+    monkeypatch.setattr(_SESSION, "put", lambda url, **kw: FakeResp())
+    result = put("http://example.com/api")
+    assert result.json() == {"updated": True}
+
+
+def testput_timeout_re_raise(monkeypatch):
+    """put re-raises ReadTimeout as requests.Timeout."""
+    from network import _SESSION, put
+
+    read_err = ReadTimeoutError("pool", "url", "msg")
+    max_retry = MaxRetryError("pool", "url", reason=read_err)
+    conn_err = requests.ConnectionError(max_retry)
+
+    def _fail(*a, **kw):
+        raise conn_err
+
+    monkeypatch.setattr(_SESSION, "put", _fail)
+    with pytest.raises(requests.Timeout):
+        put("http://example.com/api")
+
+
+def testpatch_success(monkeypatch):
+    """patch delegates to session."""
+    from network import _SESSION, patch
+
+    class FakeResp:
+        status_code = 200
+
+        def json(self):
+            return {"patched": True}
+
+        def raise_for_status(self):
+            pass
+
+    monkeypatch.setattr(_SESSION, "patch", lambda url, **kw: FakeResp())
+    result = patch("http://example.com/api")
+    assert result.json() == {"patched": True}
+
+
+def testpatch_timeout_re_raise(monkeypatch):
+    """patch re-raises ReadTimeout as requests.Timeout."""
+    from network import _SESSION, patch
+
+    read_err = ReadTimeoutError("pool", "url", "msg")
+    max_retry = MaxRetryError("pool", "url", reason=read_err)
+    conn_err = requests.ConnectionError(max_retry)
+
+    def _fail(*a, **kw):
+        raise conn_err
+
+    monkeypatch.setattr(_SESSION, "patch", _fail)
+    with pytest.raises(requests.Timeout):
+        patch("http://example.com/api")

@@ -244,3 +244,71 @@ def test_run_cleanup_job(mock_load, mock_cleanup):
     mock_cleanup.return_value = 5
     _run_cleanup_job()
     mock_cleanup.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# _run_global_sync_job error resilience
+# ---------------------------------------------------------------------------
+
+
+@patch("scheduler.run_sync")
+@patch("scheduler.load_config")
+def test_run_global_sync_job_error(mock_load, mock_sync):
+    """_run_global_sync_job catches and logs sync exceptions."""
+    mock_load.return_value = {
+        "groups": [
+            {"name": "G1"},
+        ],
+    }
+    mock_sync.side_effect = RuntimeError("sync failure")
+    # Should not raise
+    _run_global_sync_job([])
+    mock_sync.assert_called_once()
+
+
+@patch("scheduler.run_sync")
+@patch("scheduler.load_config")
+def test_run_global_sync_job_empty_groups(mock_load, mock_sync):
+    """_run_global_sync_job handles empty groups list."""
+    mock_load.return_value = {
+        "groups": [],
+    }
+    _run_global_sync_job([])
+    mock_sync.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# _run_group_sync_job error resilience
+# ---------------------------------------------------------------------------
+
+
+@patch("scheduler.run_sync")
+@patch("scheduler.load_config")
+def test_run_group_sync_job_error(mock_load, mock_sync):
+    """_run_group_sync_job catches and logs sync exceptions."""
+    mock_sync.side_effect = ValueError("bad config")
+    _run_group_sync_job("G1")
+    mock_sync.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# _validate_data_key
+# ---------------------------------------------------------------------------
+
+
+def test_validate_data_key_missing():
+    from scheduler import _validate_data_key
+
+    assert _validate_data_key({}, "groups", list) is True
+
+
+def test_validate_data_key_correct():
+    from scheduler import _validate_data_key
+
+    assert _validate_data_key({"groups": []}, "groups", list) is True
+
+
+def test_validate_data_key_incorrect():
+    from scheduler import _validate_data_key
+
+    assert _validate_data_key({"groups": "not_a_list"}, "groups", list) is False

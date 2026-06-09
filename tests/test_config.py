@@ -85,3 +85,71 @@ def test_load_config_anilist_url_env_override(temp_config, monkeypatch):
     monkeypatch.setenv("ANILIST_API_URL", "https://custom.anilist.example/graphql")
     cfg = load_config()
     assert cfg["anilist_api_url"] == "https://custom.anilist.example/graphql"
+
+
+def test_load_config_empty_file(temp_config):
+    """Test that an empty config file falls back to defaults."""
+    with Path(temp_config).open("w") as f:
+        f.write("")
+
+    cfg = load_config()
+    assert cfg["jellyfin_url"] == ""
+    assert cfg["groups"] == []
+
+
+def test_load_config_all_env_overrides(temp_config, monkeypatch):
+    """Test all environment variable overrides take effect."""
+    monkeypatch.setenv("JELLYFIN_API_KEY", "env_api_key")
+    monkeypatch.setenv("TRAKT_CLIENT_ID", "env_trakt")
+    monkeypatch.setenv("TMDB_API_KEY", "env_tmdb")
+    monkeypatch.setenv("MAL_CLIENT_ID", "env_mal")
+    monkeypatch.setenv("ANILIST_API_URL", "https://env.anilist/graphql")
+    cfg = load_config()
+    assert cfg["api_key"] == "env_api_key"
+    assert cfg["trakt_client_id"] == "env_trakt"
+    assert cfg["tmdb_api_key"] == "env_tmdb"
+    assert cfg["mal_client_id"] == "env_mal"
+    assert cfg["anilist_api_url"] == "https://env.anilist/graphql"
+
+
+def test_save_config_backup_handling(temp_config):
+    """Test that save_config writes valid JSON that can be re-loaded."""
+    import json
+
+    cfg = {
+        "jellyfin_url": "http://example.com",
+        "api_key": "test",
+        "target_path": "/tmp/test",
+        "groups": [
+            {
+                "name": "Test Group",
+                "type": "genre",
+                "value": "Action",
+            },
+        ],
+    }
+    save_config(cfg)
+    with Path(temp_config).open("r") as f:
+        loaded = json.load(f)
+    assert loaded["jellyfin_url"] == "http://example.com"
+    assert len(loaded["groups"]) == 1
+    assert loaded["groups"][0]["name"] == "Test Group"
+
+
+def test_config_no_migration_needed(temp_config):
+    """Test that loading a config with modern keys doesn't apply migration."""
+    import json
+
+    cfg = {
+        "media_path_in_jellyfin": "/jellyfin/media",
+        "media_path_on_host": "/host/media",
+        "jellyfin_root": "/legacy/path",  # legacy key exists but migration already happened
+        "host_root": "/legacy/host",
+    }
+    with Path(temp_config).open("w") as f:
+        json.dump(cfg, f)
+
+    result = load_config()
+    # Modern keys should be kept
+    assert result["media_path_in_jellyfin"] == "/jellyfin/media"
+    assert result["media_path_on_host"] == "/host/media"
