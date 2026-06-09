@@ -260,7 +260,7 @@ See [`.env.example`](.env.example) for quick setup.
 ### 🧪 Testing
 
 ```bash
-# Run the full test suite (417+ tests, 99%+ coverage)
+# Run the full test suite (506+ tests, 99.7%+ coverage)
 python -m pytest
 
 # Run tests with coverage report
@@ -390,7 +390,7 @@ When preview or sync fails, the error is shown in a modal dialog within the UI.
 
 ## 🧪 Running Tests
 
-This project has a comprehensive test suite (417+ tests) covering sync logic, API routes,
+This project has a comprehensive test suite (**506+ tests, 99.7%+ coverage**) covering sync logic, API routes,
 scheduler, external list fetching, and configuration management.
 
 ### Setup for testing

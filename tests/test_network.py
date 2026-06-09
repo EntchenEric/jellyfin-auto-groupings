@@ -219,3 +219,100 @@ def test_reraise_timeout_maxretry_reason_none():
     max_retry = MaxRetryError("pool", "url", reason=None)
     conn_err = requests.ConnectionError(max_retry)
     _reraise_timeout(conn_err)  # should not raise
+
+
+# ---------------------------------------------------------------------------
+# network.py: _parse_retry_config edge cases
+# ---------------------------------------------------------------------------
+
+
+def test_parse_retry_config_defaults():
+    """_parse_retry_config returns defaults when no env vars are set."""
+    from network import _parse_retry_config
+
+    total, backoff, statuses = _parse_retry_config()
+    assert total == 3
+    assert backoff == 1.0
+    assert 429 in statuses
+    assert 500 in statuses
+
+
+def test_parse_retry_config_invalid_total_fallback(monkeypatch):
+    """Invalid NETWORK_RETRY_TOTAL falls back to default 3."""
+    monkeypatch.setenv("NETWORK_RETRY_TOTAL", "not-a-number")
+    from network import _parse_retry_config
+
+    total, backoff, _ = _parse_retry_config()
+    assert total == 3
+    assert backoff == 1.0
+
+
+def test_parse_retry_config_negative_total(monkeypatch):
+    """Negative NETWORK_RETRY_TOTAL raises ValueError."""
+    monkeypatch.setenv("NETWORK_RETRY_TOTAL", "-1")
+    from network import _parse_retry_config
+    with pytest.raises(ValueError, match="must be non-negative"):
+        _parse_retry_config()
+
+
+def test_parse_retry_config_negative_backoff(monkeypatch):
+    """Negative NETWORK_RETRY_BACKOFF_FACTOR raises ValueError."""
+    monkeypatch.setenv("NETWORK_RETRY_BACKOFF_FACTOR", "-2.0")
+    from network import _parse_retry_config
+    with pytest.raises(ValueError, match="must be non-negative"):
+        _parse_retry_config()
+
+
+def test_parse_retry_config_invalid_backoff_fallback(monkeypatch):
+    """Invalid NETWORK_RETRY_BACKOFF_FACTOR falls back to default 1.0."""
+    monkeypatch.setenv("NETWORK_RETRY_BACKOFF_FACTOR", "xyz")
+    from network import _parse_retry_config
+
+    _, backoff, _ = _parse_retry_config()
+    assert backoff == 1.0
+
+
+def test_parse_retry_config_invalid_status_code_in_list(monkeypatch):
+    """Invalid entry in NETWORK_RETRY_STATUS_FORCELIST raises ValueError."""
+    monkeypatch.setenv("NETWORK_RETRY_STATUS_FORCELIST", "429,9999")
+    from network import _parse_retry_config
+    with pytest.raises(ValueError, match="invalid HTTP status code: 9999"):
+        _parse_retry_config()
+
+
+def test_parse_retry_config_non_numeric_status(monkeypatch):
+    """Non-numeric entries in NETWORK_RETRY_STATUS_FORCELIST are skipped, valid ones kept."""
+    monkeypatch.setenv("NETWORK_RETRY_STATUS_FORCELIST", "429,abc,503")
+    from network import _parse_retry_config
+
+    _, _, statuses = _parse_retry_config()
+    assert 429 in statuses
+    assert 503 in statuses
+    assert len(statuses) == 2
+
+
+def test_parse_retry_config_trailing_comma(monkeypatch):
+    """Trailing commas in NETWORK_RETRY_STATUS_FORCELIST are tolerated."""
+    monkeypatch.setenv("NETWORK_RETRY_STATUS_FORCELIST", "429,500,")
+    from network import _parse_retry_config
+
+    _, _, statuses = _parse_retry_config()
+    assert 429 in statuses
+    assert 500 in statuses
+    assert len(statuses) == 2
+
+
+def test_parse_retry_config_negative_status_code(monkeypatch):
+    """Negative status code in NETWORK_RETRY_STATUS_FORCELIST raises ValueError."""
+    monkeypatch.setenv("NETWORK_RETRY_STATUS_FORCELIST", "-1")
+    from network import _parse_retry_config
+    with pytest.raises(ValueError, match="invalid HTTP status code: -1"):
+        _parse_retry_config()
+
+
+def test_parse_retry_config_zero_status_code(monkeypatch):
+    """Status code 0 in NETWORK_RETRY_STATUS_FORCELIST raises ValueError."""
+    monkeypatch.setenv("NETWORK_RETRY_STATUS_FORCELIST", "0")
+    from network import _parse_retry_config
+    with pytest.raises(ValueError, match="invalid HTTP status code: 0"):
+        _parse_retry_config()
