@@ -47,8 +47,7 @@
             <label for="source_value">Filter Value</label>
 
             <div id="metadata_rules_container" class="hidden-flex-col mb-0_5"></div>
-            <button type="button" onclick="addMetadataRule()" class="secondary-btn" id="add-rule-btn"
-                style="display: none; margin-bottom: 0.5rem; padding: 0.35rem 0.75rem; font-size: 0.82rem; width: fit-content; margin-top:0;">+ Add Condition</button>
+            <button type="button" onclick="addMetadataRule()" class="secondary-btn add-condition-btn" id="add-rule-btn">+ Add Condition</button>
 
             <div id="source_value_container" class="flex-col gap-0_5">
                 <input type="text" id="source_value" list="source_value_datalist"
@@ -86,7 +85,7 @@
                 <input type="checkbox" id="sort_order_enabled" onchange="toggleSortOrder(this)">
                 <span>Custom Sort Order <span class="badge-optional">(optional)</span></span>
             </label>
-            <div id="sort_order_panel" style="display: none; margin-top: 0.6rem;">
+            <div id="sort_order_panel" class="toggle-panel">
                 <select id="sort_order">
                     <option value="">None (filesystem order)</option>
                     <option value="imdb_list_order">IMDb List Order</option>
@@ -120,7 +119,7 @@
                 <input type="checkbox" id="schedule_enabled" onchange="toggleGroupScheduler(this)">
                 <span>Individual Sync Schedule <span class="badge-optional">(optional)</span></span>
             </label>
-            <div id="group_scheduler_panel" style="display: none; margin-top: 0.6rem;">
+            <div id="group_scheduler_panel" class="toggle-panel">
                 <input type="text" id="group_schedule" placeholder="0 12 * * * (Every day at noon)">
                 <small>Leave empty to use only the global schedule.</small>
             </div>
@@ -132,10 +131,10 @@
                 <input type="checkbox" id="seasonal_enabled" onchange="toggleSeasonal(this)">
                 <span>Seasonal Grouping <span class="badge-optional">(optional)</span></span>
             </label>
-            <div id="seasonal_panel" style="display: none; margin-top: 0.6rem;">
+            <div id="seasonal_panel" class="toggle-panel">
                 <div class="flex-row gap-1 align-items-center">
                     <div class="flex-1">
-                        <label class="label-sm" style="margin-bottom: 0.25rem;">Show From</label>
+                        <label class="label-sm-spaced">Show From</label>
                         <div class="flex-row gap-0_3">
                             <select id="seasonal_start_month" class="select-sm-2">
                                 <option value="01">Jan</option><option value="02">Feb</option><option value="03">Mar</option>
@@ -146,9 +145,9 @@
                             <select id="seasonal_start_day" class="select-sm"></select>
                         </div>
                     </div>
-                    <div class="text-secondary" style="padding-top: 1rem; flex-shrink:0;">to</div>
+                    <div class="text-secondary seasonal-separator">to</div>
                     <div class="flex-1">
-                        <label class="label-sm" style="margin-bottom: 0.25rem;">Delete On</label>
+                        <label class="label-sm-spaced">Delete On</label>
                         <div class="flex-row gap-0_3">
                             <select id="seasonal_end_month" class="select-sm-2">
                                 <option value="01">Jan</option><option value="02">Feb</option><option value="03">Mar</option>

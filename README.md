@@ -404,3 +404,53 @@ When preview or sync fails, the error is shown in a modal dialog within the UI.
 
 ---
 
+## ❓ FAQ
+
+### Can I use this alongside my existing Jellyfin libraries?
+
+Yes — the app creates *new* virtual directories and symlinks; it never modifies or removes your original media files. Jellyfin scans the new directories as independent libraries.
+
+### Does this duplicate my media files?
+
+No. Symlinks are tiny files that point to the original media. The Jellyfin Groupings app never copies, moves, or alters your media files.
+
+### Why aren't my groups appearing after syncing?
+
+1. Ensure the **target path** symlink folder is added as a library in Jellyfin.
+2. Perform a **Library Scan** in Jellyfin (or wait for the auto-scan).
+3. Groups with 0 items will not create symlinks — use the **Preview** button to check matches first.
+
+### Can I use the same media item in multiple groups?
+
+Yes. Since each group creates its own symlink (not a copy), the same movie can appear in as many virtual libraries as you like — for example "Action Movies", "90s Movies", and "Christopher Nolan" — all pointing to the same file on disk.
+
+### Can I hide the original libraries in Jellyfin?
+
+Yes. In Jellyfin Dashboard > Libraries, you can uncheck "Display library in home screen" or restrict access per user to keep the original libraries hidden while showing only the virtual groupings.
+
+### What happens if I rename/move a media file?
+
+The symlink will break (show as missing). Run the **Cleanup** operation in the app to remove broken symlinks, then re-sync affected groups. Consider making media files read-only via Docker volume mounts to prevent accidental moves.
+
+### Can I use this without Docker?
+
+Absolutely. See the **Building from Source** section above. You need Python 3.11+, Flask, and the dependencies listed in `pyproject.toml`.
+
+### Does the app need to run on the same machine as Jellyfin?
+
+It needs filesystem access to both your media files and the target symlink directory. If using Docker, both volumes must be mounted into the container. If running natively, the app needs read access to your media directory and write access to the target directory.
+
+### How do I back up my configuration?
+
+Your group definitions and settings are stored in `config/config.json`. Back up this file to preserve all your groups, schedules, and API keys.
+
+### Can multiple users access the web UI?
+
+Yes. You can optionally set an `APP_PASSWORD` environment variable to enable HTTP Basic Auth. Without it, the UI is accessible to anyone on your network.
+
+### Why is my cover image not updating?
+
+Jellyfin aggressively caches images. After uploading a new cover, trigger a **Library Scan** in Jellyfin or restart the container. Covers are stored in `{target_path}/.covers/`.
+
+---
+
