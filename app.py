@@ -27,7 +27,7 @@ from scheduler import start_scheduler
 
 
 def _configure_logging() -> None:
-    """Configure logging — call once at startup, not at import time."""
+    """Configure logging — call once at startup."""
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -40,6 +40,8 @@ def _configure_logging() -> None:
 # ---------------------------------------------------------------------------
 
 __all__ = ["app"]
+
+_configure_logging()
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.register_blueprint(bp)
@@ -54,8 +56,6 @@ if not app.testing and (not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == 
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    _configure_logging()
-
     # Create a default config file on first run so the UI has something to load
     if not Path(CONFIG_FILE).exists():
         save_config(DEFAULT_CONFIG.copy())

@@ -760,7 +760,7 @@ def get_system_info():
             "ServerName": "Virtual-Jellyfin-Mock",
             "Version": "10.8.10",
             "Id": "mock-server-id",
-        }
+        },
     )
 
 

@@ -45,7 +45,7 @@ class TestE2ESync:
                 "schedule": "",
                 "seasonal_enabled": False,
                 "watch_state": "",
-            }
+            },
         ]
         resp = requests.post(
             f"{e2e_session['app_url']}/api/config",
@@ -75,7 +75,7 @@ class TestE2ESync:
                 "schedule": "",
                 "seasonal_enabled": False,
                 "watch_state": "",
-            }
+            },
         ]
         requests.post(
             f"{e2e_session['app_url']}/api/config",

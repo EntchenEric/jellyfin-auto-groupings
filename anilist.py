@@ -12,13 +12,17 @@ ANILIST_API_URL = "https://graphql.anilist.co"
 _REQUEST_TIMEOUT: int = 15
 
 
-def fetch_anilist_list(username: str, status: str | None = None) -> list[int]:
+def fetch_anilist_list(
+    username: str, status: str | None = None, api_url: str | None = None,
+) -> list[int]:
     """Fetch anime IDs from a user's AniList profile.
 
     Args:
         username: The AniList username.
         status: The list status to fetch (e.g., "COMPLETED", "PLANNING", "CURRENT").
                 If None, all lists are fetched.
+        api_url: Override URL for the AniList GraphQL endpoint.
+                 Falls back to :data:`ANILIST_API_URL` when ``None``.
 
     Returns:
         A list of AniList anime IDs (integers).
@@ -56,8 +60,10 @@ def fetch_anilist_list(username: str, status: str | None = None) -> list[int]:
         if normalized_status:
             variables["status"] = normalized_status
 
+    resolved_url = api_url or ANILIST_API_URL
+
     response = network.post(
-        ANILIST_API_URL,
+        resolved_url,
         json={"query": query, "variables": variables},
         timeout=_REQUEST_TIMEOUT,
     )

@@ -135,7 +135,7 @@ def test_get_cover_path(tmp_path):
     lib_path = str(
         Path(target_base)
         / ".covers"
-        / (hashlib.md5(b"Existent", usedforsecurity=False).hexdigest() + ".jpg")
+        / (hashlib.md5(b"Existent", usedforsecurity=False).hexdigest() + ".jpg"),
     )
     with Path(lib_path).open("w") as f:
         f.write("test")
@@ -230,7 +230,7 @@ def test_preview_group(mock_jf):
     # Complex group (AND)
     _LIBRARY_CACHE.clear()  # Ensure _fetch_full_library calls mock
     items, _err, code = preview_group(
-        "genre", "Action AND NOT Comedy", "http://jf", "key"
+        "genre", "Action AND NOT Comedy", "http://jf", "key",
     )
     assert code == 200
     assert len(items) == 1
@@ -241,19 +241,19 @@ def test_fetch_items_for_metadata_group_with_watch_state(mock_jf):
     mock_jf.return_value = [{"Name": "M1"}]
     # Test 'unwatched' calls fetch with Filters=IsUnplayed
     _fetch_items_for_metadata_group(
-        "Group", "genre", "Action", "SortName", "http://jf", "key", "unwatched"
+        "Group", "genre", "Action", "SortName", "http://jf", "key", "unwatched",
     )
     args, _ = mock_jf.call_args
     assert args[2]["Filters"] == "IsUnplayed"
     # Test 'watched' calls fetch with Filters=IsPlayed
     _fetch_items_for_metadata_group(
-        "Group", "genre", "Action", "SortName", "http://jf", "key", "watched"
+        "Group", "genre", "Action", "SortName", "http://jf", "key", "watched",
     )
     args, _ = mock_jf.call_args
     assert args[2]["Filters"] == "IsPlayed"
     # Test default doesn't have Filters
     _fetch_items_for_metadata_group(
-        "Group", "genre", "Action", "SortName", "http://jf", "key", ""
+        "Group", "genre", "Action", "SortName", "http://jf", "key", "",
     )
     args, _ = mock_jf.call_args
     assert "Filters" not in args[2]
@@ -1175,7 +1175,7 @@ def test_process_collection_group_create_and_cover(
 @patch("sync.add_to_collection")
 @patch("sync.find_collection_by_name")
 def test_process_collection_group_cover_error(
-    mock_find, mock_add, mock_cover, mock_set, mock_exists
+    mock_find, mock_add, mock_cover, mock_set, mock_exists,
 ):
     mock_find.return_value = "col123"
     mock_cover.return_value = "/cover.jpg"
@@ -1474,7 +1474,7 @@ def test_process_group_library_already_exists(mock_meta, mock_add, tmp_path):
 @patch("sync._get_cover_path")
 @patch("sync._fetch_items_for_metadata_group")
 def test_process_group_auto_set_library_covers(
-    mock_meta, mock_cover, mock_set, tmp_path
+    mock_meta, mock_cover, mock_set, tmp_path,
 ):
     host = tmp_path / "movie.mkv"
     host.write_text("movie")
@@ -1567,7 +1567,7 @@ def test_run_sync_seasonal_cleanup(mock_libs, mock_season, mock_process, tmp_pat
 @patch("pathlib.Path.is_symlink")
 @patch("pathlib.Path.is_dir")
 def test_cleanup_broken_symlinks_unlink_error(
-    mock_isdir, mock_islink, mock_exists, mock_unlink
+    mock_isdir, mock_islink, mock_exists, mock_unlink,
 ):
     mock_isdir.return_value = True
     mock_islink.return_value = True
@@ -1787,7 +1787,7 @@ def test_process_collection_group_auto_cover_off(mock_find, mock_add, tmp_path):
 @patch("sync.add_to_collection")
 @patch("sync._fetch_items_for_metadata_group")
 def test_process_group_create_collection(
-    mock_meta, mock_add, mock_create, mock_find, tmp_path
+    mock_meta, mock_add, mock_create, mock_find, tmp_path,
 ):
     host = tmp_path / "movie.mkv"
     host.write_text("movie")

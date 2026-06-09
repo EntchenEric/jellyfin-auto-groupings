@@ -55,15 +55,16 @@ __all__ = ["bp"]
 bp = Blueprint("main", __name__)
 
 
-@bp.errorhandler(400)
-@bp.errorhandler(500)
-def _handle_config_error(exc: Exception) -> ResponseReturnValue:
+def _handle_http_error(exc: Exception) -> ResponseReturnValue:
     """Translate blueprint HTTP exceptions into JSON error responses."""
     if isinstance(exc, HTTPException):
         if exc.code is None:
             raise exc
         return jsonify({"status": "error", "message": exc.description}), exc.code
     raise exc
+
+
+bp.register_error_handler(HTTPException, _handle_http_error)
 
 
 def _error(message: str, status_code: int = 400, **extra: Any) -> ResponseReturnValue:
@@ -400,7 +401,7 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
             futures: dict[str, Any] = {
                 "genre": pool.submit(_fetch_jellyfin_endpoint, url, api_key, "Genres"),
                 "studio": pool.submit(
-                    _fetch_jellyfin_endpoint, url, api_key, "Studios"
+                    _fetch_jellyfin_endpoint, url, api_key, "Studios",
                 ),
                 "actor": pool.submit(
                     _fetch_jellyfin_endpoint,
@@ -419,7 +420,7 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
                     ]
                 except (RuntimeError, ValueError):
                     logger.warning(
-                        "Failed to process metadata key %r", key, exc_info=True
+                        "Failed to process metadata key %r", key, exc_info=True,
                     )
                     result[key] = []
                     failed += 1
@@ -602,7 +603,7 @@ def preview_grouping() -> ResponseReturnValue:
     try:
         # Resolve items using the public sync API
         items, error, status_code = preview_group(
-            type_name, val, url, api_key, watch_state
+            type_name, val, url, api_key, watch_state,
         )
 
         if error is not None:
@@ -704,7 +705,7 @@ def perform_cleanup() -> ResponseReturnValue:
             errors.append(f"Invalid folder name: {name}")
             continue
         removed, err = _delete_folder(
-            name, target_base, auto_create_libraries, url, api_key
+            name, target_base, auto_create_libraries, url, api_key,
         )
         if removed:
             deleted += 1
@@ -713,7 +714,7 @@ def perform_cleanup() -> ResponseReturnValue:
 
     if errors:
         return jsonify(
-            {"status": "partial_success", "deleted": deleted, "errors": errors}
+            {"status": "partial_success", "deleted": deleted, "errors": errors},
         ), 207
     return _success("", deleted=deleted)
 
@@ -770,7 +771,7 @@ def _search_local_filesystem(
 
 
 def _compute_common_root(
-    jellyfin_path: str, host_path: str
+    jellyfin_path: str, host_path: str,
 ) -> tuple[str | None, str | None]:
     """Infer the common root prefixes from a Jellyfin path and its host match.
 

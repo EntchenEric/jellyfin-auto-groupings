@@ -39,7 +39,7 @@ def start_scheduler() -> None:
 
 
 def _schedule_global_sync(
-    scheduler: BackgroundScheduler, sched_cfg: dict[str, Any]
+    scheduler: BackgroundScheduler, sched_cfg: dict[str, Any],
 ) -> None:
     """Add the global sync job if enabled."""
     if not sched_cfg.get("global_enabled"):
@@ -57,7 +57,7 @@ def _schedule_global_sync(
             args=[excluded_names],
         )
         logger.info(
-            "Scheduled global sync: %s (excluding: %s)", cron_expr, excluded_names
+            "Scheduled global sync: %s (excluding: %s)", cron_expr, excluded_names,
         )
     except ValueError:
         logger.exception("Failed to schedule global sync (invalid cron: %s)", cron_expr)
@@ -91,7 +91,7 @@ def _schedule_group_syncs(scheduler: BackgroundScheduler, groups: list[Any]) -> 
 
 
 def _schedule_cleanup(
-    scheduler: BackgroundScheduler, sched_cfg: dict[str, Any]
+    scheduler: BackgroundScheduler, sched_cfg: dict[str, Any],
 ) -> None:
     """Add the broken-symlink cleanup job if enabled."""
     if not sched_cfg.get("cleanup_enabled", True):
@@ -109,7 +109,7 @@ def _schedule_cleanup(
         logger.info("Scheduled cleanup job: %s", cleanup_cron)
     except ValueError:
         logger.exception(
-            "Failed to schedule cleanup job (invalid cron: %s)", cleanup_cron
+            "Failed to schedule cleanup job (invalid cron: %s)", cleanup_cron,
         )
 
 
@@ -145,7 +145,7 @@ def _run_global_sync_job(exclude_names: list[str]) -> None:
             run_sync(config, group_names=sync_names)
     else:
         logger.info(
-            "Background global sync skipped: no groups to sync after exclusions"
+            "Background global sync skipped: no groups to sync after exclusions",
         )
 
 
@@ -164,7 +164,7 @@ def _run_cleanup_job() -> None:
     with sync_lock:
         deleted = run_cleanup_broken_symlinks(config)
         logger.info(
-            "Background cleanup job finished: deleted %s broken symlinks", deleted
+            "Background cleanup job finished: deleted %s broken symlinks", deleted,
         )
 
 

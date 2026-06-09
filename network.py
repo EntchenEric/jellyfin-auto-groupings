@@ -51,7 +51,8 @@ def _parse_retry_config() -> tuple[int, float, list[int]]:
         logger.warning("Invalid NETWORK_RETRY_TOTAL value, falling back to default 3")
         total = 3
     if total < 0:
-        raise ValueError(f"NETWORK_RETRY_TOTAL must be non-negative, got: {total}")
+        msg = f"NETWORK_RETRY_TOTAL must be non-negative, got: {total}"
+        raise ValueError(msg)
 
     # Parse backoff factor
     try:
@@ -60,7 +61,8 @@ def _parse_retry_config() -> tuple[int, float, list[int]]:
         logger.warning("Invalid NETWORK_RETRY_BACKOFF_FACTOR value, falling back to default 1.0")
         backoff = 1.0
     if backoff < 0:
-        raise ValueError(f"NETWORK_RETRY_BACKOFF_FACTOR must be non-negative, got: {backoff}")
+        msg = f"NETWORK_RETRY_BACKOFF_FACTOR must be non-negative, got: {backoff}"
+        raise ValueError(msg)
 
     # Parse status forcelist
     raw = os.environ.get("NETWORK_RETRY_STATUS_FORCELIST", "429,500,502,503,504")
@@ -78,8 +80,9 @@ def _parse_retry_config() -> tuple[int, float, list[int]]:
             )
             continue
         if not (100 <= code <= 599):
+            msg = f"NETWORK_RETRY_STATUS_FORCELIST contains invalid HTTP status code: {code}"
             raise ValueError(
-                f"NETWORK_RETRY_STATUS_FORCELIST contains invalid HTTP status code: {code}"
+                msg,
             )
         statuses.append(code)
 

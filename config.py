@@ -28,6 +28,7 @@ _ENV_OVERRIDES: dict[str, str] = {
     "trakt_client_id": "TRAKT_CLIENT_ID",
     "tmdb_api_key": "TMDB_API_KEY",
     "mal_client_id": "MAL_CLIENT_ID",
+    "anilist_api_url": "ANILIST_API_URL",
 }
 
 # ---------------------------------------------------------------------------

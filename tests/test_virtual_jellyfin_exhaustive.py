@@ -68,7 +68,7 @@ def test_fetch_malformed_json(jellyfin_url):
 def test_fetch_extra_query_params(jellyfin_url):
     # The server ignores it, but we test requests is passing it
     items = fetch_jellyfin_items(
-        jellyfin_url, TEST_API_KEY, extra_params={"IncludeItemTypes": "Movie"}
+        jellyfin_url, TEST_API_KEY, extra_params={"IncludeItemTypes": "Movie"},
     )
     assert len(items) >= 2
 
@@ -119,7 +119,7 @@ def test_add_virtual_folder_400_paths(jellyfin_url):
 def test_add_virtual_folder_502_refresh(jellyfin_url):
     with pytest.raises(RuntimeError) as excinfo:
         add_virtual_folder(
-            jellyfin_url, "FAIL_REFRESH_KEY", "RefreshLib", ["/tmp/safe"]
+            jellyfin_url, "FAIL_REFRESH_KEY", "RefreshLib", ["/tmp/safe"],
         )
     assert "Failed to trigger library refresh" in str(excinfo.value)
     assert "Status 502" in str(excinfo.value)
@@ -128,7 +128,7 @@ def test_add_virtual_folder_502_refresh(jellyfin_url):
 def test_add_virtual_folder_invalid_collection(jellyfin_url):
     # Mixed should omit collectionType parameter.
     add_virtual_folder(
-        jellyfin_url, TEST_API_KEY, "MixedLib2", ["/tmp/safe"], collection_type="mixed"
+        jellyfin_url, TEST_API_KEY, "MixedLib2", ["/tmp/safe"], collection_type="mixed",
     )
     # if it doesn't fail, we consider it a success.
 
@@ -184,7 +184,7 @@ def test_set_virtual_folder_image_missing_id(jellyfin_url, tmp_path, caplog):
 
 def test_set_virtual_folder_image_oserror(jellyfin_url, caplog):
     set_virtual_folder_image(
-        jellyfin_url, TEST_API_KEY, "Movies", "/does/not/exist.jpg"
+        jellyfin_url, TEST_API_KEY, "Movies", "/does/not/exist.jpg",
     )
     assert "Failed to read image file" in caplog.text
 
