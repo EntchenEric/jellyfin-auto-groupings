@@ -164,10 +164,11 @@ export async function deleteGroup(index) {
     if (!confirm('Permanently remove this grouping?')) return;
     const groupName = state.currentConfig.groups[index]?.name;
     if (state.editingIndex === index) cancelEdit();
-    state.currentConfig.groups.splice(index, 1);
+    const removedGroup = state.currentConfig.groups.splice(index, 1)[0];
     try {
         await saveConfig(state.currentConfig);
     } catch (e) {
+        state.currentConfig.groups.splice(index, 0, removedGroup);
         showToast('Failed to save after deleting group', 'error');
         return;
     }
