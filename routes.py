@@ -151,7 +151,7 @@ def _check_auth() -> ResponseReturnValue | None:
 def _check_csrf() -> ResponseReturnValue | None:
     """Require X-Requested-With header on state-changing requests."""
     if request.method in ("POST", "PUT", "DELETE", "PATCH"):
-        if current_app.testing:
+        if current_app.config.get('TESTING', False):
             return None
         if request.headers.get("X-Requested-With") != "XMLHttpRequest":
             return _error("CSRF validation failed", 403)
@@ -729,6 +729,7 @@ def _delete_folder(
     Returns:
         ``(deleted, error_message)`` where *deleted* is True if the folder
         was removed successfully.
+
     """
     path = Path(target_base) / name
     if not path.exists() or not path.is_dir():
