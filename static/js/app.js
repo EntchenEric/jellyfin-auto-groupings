@@ -109,6 +109,23 @@ function wireImportFilePicker() {
     }
 }
 
+function wirePasswordToggles() {
+    const eyeSvg = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+    const eyeSlashSvg = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+    document.querySelectorAll('.toggle-password-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetId = btn.getAttribute('data-target');
+            const input = document.getElementById(targetId);
+            if (!input) return;
+            const isPassword = input.type === 'password';
+            input.type = isPassword ? 'text' : 'password';
+            btn.classList.toggle('visible', isPassword);
+            btn.setAttribute('aria-label', isPassword ? 'Hide API key' : 'Show API key');
+            btn.innerHTML = isPassword ? eyeSlashSvg : eyeSvg;
+        });
+    });
+}
+
 function wireMiscButtons() {
     const clearResultsBtn = getEl('clear-sync-results');
     if (clearResultsBtn) {
@@ -132,6 +149,7 @@ async function bootstrap() {
     wireTopbarButtons();
     wireConfirmSyncDialog();
     wireImportFilePicker();
+    wirePasswordToggles();
     wireMiscButtons();
 
     const groupForm = getEl('group-form');

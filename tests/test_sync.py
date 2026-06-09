@@ -51,6 +51,29 @@ def test_parse_complex_query():
     assert rules[1] == {"operator": "OR", "type": "genre", "value": "Drama"}
 
 
+def test_parse_complex_query_bare_not_at_start():
+    """Bare NOT at position 0 should be parsed as AND NOT with correct type."""
+    rules = parse_complex_query("NOT Comedy", "genre")
+    assert len(rules) == 1
+    assert rules[0] == {"operator": "AND NOT", "type": "genre", "value": "Comedy"}
+
+    rules = parse_complex_query("NOT genre:Horror", "tag")
+    assert len(rules) == 1
+    assert rules[0] == {"operator": "AND NOT", "type": "genre", "value": "Horror"}
+
+    rules = parse_complex_query("NOT actor:Tom Hanks AND genre:Drama", "tag")
+    assert len(rules) == 2
+    assert rules[0] == {"operator": "AND NOT", "type": "actor", "value": "Tom Hanks"}
+    assert rules[1] == {"operator": "AND", "type": "genre", "value": "Drama"}
+
+    # Starting a query with NOT but no other values should be handled gracefully
+    rules = parse_complex_query("NOT", "genre")
+    assert len(rules) == 1
+    assert rules[0]["operator"] == "AND NOT"
+    assert rules[0]["value"] == ""
+
+
+
 def test_match_condition():
     item = {
         "Genres": ["Action", "Thriller"],
