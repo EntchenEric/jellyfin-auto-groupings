@@ -91,11 +91,11 @@ export function renderMetadataRules() {
 
     window._currentMetadataRules.forEach((rule, index) => {
         const row = document.createElement('div');
-        row.setAttribute('style', 'display: flex; gap: 0.5rem; align-items: center; width: 100%;');
+        row.className = 'rule-row';
 
         if (index > 0) {
             const opSelect = document.createElement('select');
-            opSelect.setAttribute('style', 'flex: 0 0 auto; padding: 0.8rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 0.9rem; font-weight: 600;');
+            opSelect.className = 'rule-operator-select';
             ['AND', 'OR', 'AND NOT', 'OR NOT'].forEach(op => {
                 const o = document.createElement('option');
                 o.value = op; o.textContent = op;
@@ -108,7 +108,7 @@ export function renderMetadataRules() {
 
         if (type === 'complex') {
             const rowTypeSelect = document.createElement('select');
-            rowTypeSelect.setAttribute('style', 'flex: 0 0 auto; width: 110px; padding: 0.8rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 0.9rem;');
+            rowTypeSelect.className = 'rule-type-select';
             ['genre', 'actor', 'studio', 'tag'].forEach(t => {
                 const o = document.createElement('option');
                 o.value = t; o.textContent = t.charAt(0).toUpperCase() + t.slice(1);
@@ -123,7 +123,7 @@ export function renderMetadataRules() {
         const rowType = type === 'complex' ? (rule.type || 'genre') : type;
         const options = state.cachedMetadata[rowType] || [];
         const valSelect = document.createElement('select');
-        valSelect.setAttribute('style', 'flex: 1; padding: 0.8rem 1rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 1rem;');
+        valSelect.className = 'rule-value-select';
 
         const defaultOpt = document.createElement('option');
         defaultOpt.value = ''; defaultOpt.textContent = 'Select ' + rowType + '...'; defaultOpt.disabled = true; defaultOpt.selected = !rule.value;
@@ -148,9 +148,8 @@ export function renderMetadataRules() {
             const rmBtn = document.createElement('button');
             rmBtn.type = 'button';
             rmBtn.innerHTML = '<svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>';
-            rmBtn.className = 'delete-btn';
+            rmBtn.className = 'delete-btn rule-remove-btn';
             rmBtn.title = 'Remove condition';
-            rmBtn.setAttribute('style', 'padding: 0; width: 38px; height: 38px; display:flex; align-items:center; justify-content:center; margin: 0; flex-shrink: 0;');
             rmBtn.onclick = () => { window._currentMetadataRules.splice(index, 1); renderMetadataRules(); };
             row.appendChild(rmBtn);
         }
@@ -223,7 +222,7 @@ export function updateSourceValueUI(preValue = null) {
             if (!userSel) {
                 userSel = document.createElement('select');
                 userSel.id = 'source_value_user_select';
-                userSel.setAttribute('style', 'flex: 1; padding: 0.8rem 1rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 1rem; width: 100%;');
+                userSel.className = 'user-select';
                 userSel.onchange = (e) => { sourceValueInput.value = e.target.value; };
                 getEl('source_value_container').insertBefore(userSel, sourceValueInput);
             }
@@ -298,7 +297,7 @@ export async function previewGrouping() {
             resultDiv.appendChild(summary);
             if (res.count > 0 && res.preview_items) {
                 const ul = document.createElement('ul');
-                ul.setAttribute('style', 'margin-top:0.4rem; padding-left:1.5rem; color:var(--text-secondary);');
+                ul.className = 'metadata-results-list';
                 res.preview_items.forEach(item => {
                     const li = document.createElement('li');
                     li.textContent = item.Year ? `${item.Name} (${item.Year})` : item.Name;

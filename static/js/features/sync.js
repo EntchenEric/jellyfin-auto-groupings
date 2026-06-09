@@ -16,7 +16,7 @@ export async function syncAll() {
             resultsContent.innerHTML = '';
             result.results.forEach(r => {
                 const entry = document.createElement('div');
-                entry.setAttribute('style', 'display:flex; justify-content:space-between; padding:0.3rem 0; border-bottom:1px solid var(--glass-border); font-size:0.85rem;');
+                entry.className = 'sync-result-entry';
                 entry.innerHTML = `<span>${r.group}</span><span style="color:var(--accent-color); font-weight:600;">${r.links} links</span>`;
                 if (r.error) entry.innerHTML += `<span style="color:var(--error-color); margin-left:0.5rem;">(${r.error})</span>`;
                 resultsContent.appendChild(entry);

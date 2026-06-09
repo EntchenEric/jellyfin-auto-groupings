@@ -32,19 +32,19 @@ export function renderGroups() {
         h4.textContent = group.name || 'Unnamed Group';
         if (group.sort_order) {
             const badge = document.createElement('span');
-            badge.setAttribute('style', 'display:inline-block; margin-left:0.5rem; font-size:0.72rem; background:rgba(99,102,241,0.15); color:var(--accent-color); border:1px solid rgba(99,102,241,0.3); border-radius:4px; padding:0.1rem 0.4rem;');
+            badge.className = 'badge badge-sort';
             badge.textContent = sortLabels[group.sort_order] || group.sort_order;
             h4.appendChild(badge);
         }
         if (group.seasonal_enabled) {
             const badge = document.createElement('span');
-            badge.setAttribute('style', 'display:inline-block; margin-left:0.5rem; font-size:0.72rem; background:rgba(245,158,11,0.15); color:var(--warning-color); border:1px solid rgba(245,158,11,0.3); border-radius:4px; padding:0.1rem 0.4rem;');
+            badge.className = 'badge badge-seasonal';
             badge.textContent = `${group.seasonal_start} to ${group.seasonal_end}`;
             h4.appendChild(badge);
         }
         if (group.create_as_collection) {
             const badge = document.createElement('span');
-            badge.setAttribute('style', 'display:inline-block; margin-left:0.5rem; font-size:0.72rem; background:rgba(16,185,129,0.15); color:var(--success-color); border:1px solid rgba(16,185,129,0.3); border-radius:4px; padding:0.1rem 0.4rem;');
+            badge.className = 'badge badge-collection';
             badge.textContent = 'Collection';
             h4.appendChild(badge);
         }
@@ -53,7 +53,7 @@ export function renderGroups() {
         const metaDiv = document.createElement('div');
         metaDiv.className = 'group-meta';
         const catSpan = document.createElement('span');
-        catSpan.setAttribute('style', 'color: var(--accent-color); font-weight: 600;');
+        catSpan.className = 'group-category-label';
         catSpan.textContent = catLabel;
         metaDiv.appendChild(catSpan);
         metaDiv.appendChild(document.createTextNode(` • ${typeLabel}: ${group.source_value || ''}`));
@@ -64,17 +64,15 @@ export function renderGroups() {
         actionsDiv.className = 'group-actions';
 
         const coverBtn = document.createElement('button');
-        coverBtn.className = 'secondary-btn';
+        coverBtn.className = 'secondary-btn group-action-btn group-action-btn--cover';
         coverBtn.title = 'Group Cover';
-        coverBtn.setAttribute('style', 'padding: 0.5rem 0.8rem; font-size: 0.8rem; margin: 0; width: auto; border: 1px dashed var(--accent-color); color: var(--accent-color);');
         coverBtn.textContent = 'Cover';
         coverBtn.onclick = () => openCoverGenerator(index);
         actionsDiv.appendChild(coverBtn);
 
         const editBtn = document.createElement('button');
-        editBtn.className = 'secondary-btn';
+        editBtn.className = 'secondary-btn group-action-btn group-action-btn--edit';
         editBtn.title = 'Edit Group';
-        editBtn.setAttribute('style', 'padding: 0.5rem 0.8rem; font-size: 0.8rem; margin: 0; width: auto; border-color: var(--accent-color); color: var(--accent-color);');
         editBtn.textContent = 'Edit';
         editBtn.onclick = () => editGroup(index);
         actionsDiv.appendChild(editBtn);
@@ -82,7 +80,7 @@ export function renderGroups() {
         const delBtn = document.createElement('button');
         delBtn.className = 'delete-btn';
         delBtn.title = 'Remove Group';
-        delBtn.innerHTML = '<svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 4px;"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>';
+        delBtn.innerHTML = '<svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" class="icon-delete"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>';
         delBtn.appendChild(document.createTextNode(' Remove'));
         delBtn.onclick = () => deleteGroup(index);
         actionsDiv.appendChild(delBtn);
@@ -254,12 +252,11 @@ export function updateGlobalSyncExclusionsUI() {
     state.currentConfig.groups.forEach((group) => {
         if (!group.name) return;
         const label = document.createElement('label');
-        label.setAttribute('style', 'display: flex; align-items: center; gap: 0.6rem; cursor: pointer; font-size: 0.85rem; padding: 0.2rem 0;');
+        label.className = 'exclusion-checkbox-label';
 
         const cb = document.createElement('input');
         cb.type = 'checkbox';
         cb.checked = excludedIds.includes(group.name);
-        cb.setAttribute('style', 'width:16px; height:16px; accent-color: var(--accent-color);');
         cb.onchange = (e) => {
             const idx = excludedIds.indexOf(group.name);
             if (e.target.checked) {
