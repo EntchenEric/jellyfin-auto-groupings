@@ -1262,7 +1262,9 @@ pre {
     color: var(--warning-color);
 }
 
-/* Small margin helper */
+/* No margin helper */
+.no-margin { margin: 0; }
+/* @deprecated use .no-margin instead */
 .small-margin { margin: 0; }
 
 /* Modal card container */

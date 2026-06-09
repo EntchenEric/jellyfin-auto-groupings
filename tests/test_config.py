@@ -6,7 +6,7 @@ from config import DEFAULT_CONFIG, load_config, save_config
 TEST_URL = "http://localhost:8096"
 
 
-def test_load_config_defaults(temp_config):
+def test_load_config_defaults(temp_config) -> None:
     """Test that loading a non-existent config returns defaults."""
     cfg = load_config()
     assert cfg["jellyfin_url"] == ""
@@ -14,7 +14,7 @@ def test_load_config_defaults(temp_config):
     assert Path(temp_config).exists()
 
 
-def test_save_and_load_config(temp_config):
+def test_save_and_load_config(temp_config) -> None:
     """Test saving and then loading configuration."""
     import copy
 
@@ -26,7 +26,7 @@ def test_save_and_load_config(temp_config):
     assert loaded_cfg["jellyfin_url"] == TEST_URL
 
 
-def test_config_migration(temp_config):
+def test_config_migration(temp_config) -> None:
     """Test that legacy keys are migrated to new names."""
     legacy_cfg = {
         "jellyfin_root": "/jellyfin/path",
@@ -42,7 +42,7 @@ def test_config_migration(temp_config):
     assert "host_root" not in cfg
 
 
-def test_nested_defaults(temp_config):
+def test_nested_defaults(temp_config) -> None:
     """Test that nested keys gain defaults if missing."""
     partial_cfg = {
         "scheduler": {
@@ -63,7 +63,7 @@ def test_nested_defaults(temp_config):
 # ---------------------------------------------------------------------------
 
 
-def test_load_config_corrupt_file(temp_config):
+def test_load_config_corrupt_file(temp_config) -> None:
     """Test that a corrupt config file falls back to defaults."""
     with Path(temp_config).open("w") as f:
         f.write("this is not json{{{")
@@ -73,21 +73,21 @@ def test_load_config_corrupt_file(temp_config):
     assert cfg["groups"] == []
 
 
-def test_load_config_env_override(temp_config, monkeypatch):
+def test_load_config_env_override(temp_config, monkeypatch) -> None:
     """Test that environment variables override config values."""
     monkeypatch.setenv("JELLYFIN_API_KEY", "env_api_key")
     cfg = load_config()
     assert cfg["api_key"] == "env_api_key"
 
 
-def test_load_config_anilist_url_env_override(temp_config, monkeypatch):
+def test_load_config_anilist_url_env_override(temp_config, monkeypatch) -> None:
     """Test that ANILIST_API_URL environment variable overrides config."""
     monkeypatch.setenv("ANILIST_API_URL", "https://custom.anilist.example/graphql")
     cfg = load_config()
     assert cfg["anilist_api_url"] == "https://custom.anilist.example/graphql"
 
 
-def test_load_config_empty_file(temp_config):
+def test_load_config_empty_file(temp_config) -> None:
     """Test that an empty config file falls back to defaults."""
     with Path(temp_config).open("w") as f:
         f.write("")
@@ -97,7 +97,7 @@ def test_load_config_empty_file(temp_config):
     assert cfg["groups"] == []
 
 
-def test_load_config_all_env_overrides(temp_config, monkeypatch):
+def test_load_config_all_env_overrides(temp_config, monkeypatch) -> None:
     """Test all environment variable overrides take effect."""
     monkeypatch.setenv("JELLYFIN_API_KEY", "env_api_key")
     monkeypatch.setenv("TRAKT_CLIENT_ID", "env_trakt")
@@ -112,7 +112,7 @@ def test_load_config_all_env_overrides(temp_config, monkeypatch):
     assert cfg["anilist_api_url"] == "https://env.anilist/graphql"
 
 
-def test_save_config_backup_handling(temp_config):
+def test_save_config_backup_handling(temp_config) -> None:
     """Test that save_config writes valid JSON that can be re-loaded."""
     import json
 
@@ -136,7 +136,7 @@ def test_save_config_backup_handling(temp_config):
     assert loaded["groups"][0]["name"] == "Test Group"
 
 
-def test_config_no_migration_needed(temp_config):
+def test_config_no_migration_needed(temp_config) -> None:
     """Test that loading a config with modern keys doesn't apply migration."""
     import json
 

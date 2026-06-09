@@ -16,7 +16,7 @@ def test_run_sync_tmdb(
     _mock_exists,
     _mock_mkdir,
     _mock_rmtree,
-):
+) -> None:
     config = {
         "jellyfin_url": "http://jf",
         "api_key": "key",
@@ -55,7 +55,7 @@ def test_run_sync_anilist(
     _mock_exists,
     _mock_mkdir,
     _mock_rmtree,
-):
+) -> None:
     config = {
         "jellyfin_url": "http://jf",
         "api_key": "key",
@@ -93,7 +93,7 @@ def test_run_sync_trakt(
     _mock_exists,
     _mock_mkdir,
     _mock_rmtree,
-):
+) -> None:
     config = {
         "jellyfin_url": "http://jf",
         "api_key": "key",
@@ -131,7 +131,7 @@ def test_run_sync_mal(
     _mock_exists,
     _mock_mkdir,
     _mock_rmtree,
-):
+) -> None:
     config = {
         "jellyfin_url": "http://jf",
         "api_key": "key",
@@ -168,7 +168,7 @@ def test_run_sync_letterboxd(
     _mock_exists,
     _mock_mkdir,
     _mock_rmtree,
-):
+) -> None:
     config = {
         "jellyfin_url": "http://jf",
         "api_key": "key",
@@ -191,7 +191,7 @@ def test_run_sync_letterboxd(
     assert results[0]["links"] == 1
 
 
-def test_run_sync_invalid_group():
+def test_run_sync_invalid_group() -> None:
     config = {
         "jellyfin_url": "http://jf",
         "api_key": "key",
@@ -215,7 +215,7 @@ def test_run_sync_complex(
     _mock_exists,
     _mock_mkdir,
     _mock_rmtree,
-):
+) -> None:
     config = {
         "jellyfin_url": "http://jf",
         "api_key": "key",
@@ -247,7 +247,7 @@ def test_run_sync_dry_run(
     _mock_exists,
     _mock_mkdir,
     _mock_rmtree,
-):
+) -> None:
     config = {
         "jellyfin_url": "http://jf",
         "api_key": "key",
@@ -282,7 +282,7 @@ def test_run_sync_selective(
     _mock_exists,
     _mock_mkdir,
     _mock_rmtree,
-):
+) -> None:
     config = {
         "jellyfin_url": "http://jf",
         "api_key": "key",
@@ -300,7 +300,7 @@ def test_run_sync_selective(
     assert results[0]["group"] == "G1"
 
 
-def test_run_sync_missing_group(tmp_path):
+def test_run_sync_missing_group(tmp_path) -> None:
     target = tmp_path / "target"
     config = {
         "jellyfin_url": "http://jf",
@@ -315,7 +315,7 @@ def test_run_sync_missing_group(tmp_path):
 @patch("sync.shutil.rmtree")
 @patch("pathlib.Path.mkdir")
 @patch("sync.fetch_tmdb_list")
-def test_run_sync_tmdb_error(mock_tmdb, _mock_mkdir, _mock_rmtree):
+def test_run_sync_tmdb_error(mock_tmdb, _mock_mkdir, _mock_rmtree) -> None:
     config = {
         "jellyfin_url": "http://jf",
         "api_key": "key",
@@ -330,7 +330,7 @@ def test_run_sync_tmdb_error(mock_tmdb, _mock_mkdir, _mock_rmtree):
 
 
 @patch("sync._fetch_full_library")
-def test_preview_group_complex_error(mock_full):
+def test_preview_group_complex_error(mock_full) -> None:
     mock_full.return_value = (None, "Some error", 500)
     _items, err, code = preview_group("genre", "A AND B", "http://jf", "key")
     assert code == 500
@@ -338,7 +338,7 @@ def test_preview_group_complex_error(mock_full):
 
 
 @patch("sync.fetch_tmdb_list")
-def test_fetch_items_tmdb_no_key(mock_tmdb):
+def test_fetch_items_tmdb_no_key(mock_tmdb) -> None:
     from sync import _fetch_items_for_tmdb_group
 
     _items, err, code = _fetch_items_for_tmdb_group(
@@ -354,7 +354,7 @@ def test_fetch_items_tmdb_no_key(mock_tmdb):
 
 
 @patch("sync.fetch_tmdb_list")
-def test_fetch_items_tmdb_empty(mock_tmdb):
+def test_fetch_items_tmdb_empty(mock_tmdb) -> None:
     from sync import _fetch_items_for_tmdb_group
 
     mock_tmdb.return_value = []
@@ -371,7 +371,7 @@ def test_fetch_items_tmdb_empty(mock_tmdb):
 
 
 @patch("sync.fetch_anilist_list")
-def test_fetch_items_anilist_error(mock_ani):
+def test_fetch_items_anilist_error(mock_ani) -> None:
     from sync import _fetch_items_for_anilist_group
 
     mock_ani.side_effect = RuntimeError("AniList Error")
@@ -387,7 +387,7 @@ def test_fetch_items_anilist_error(mock_ani):
 
 
 @patch("sync.fetch_mal_list")
-def test_fetch_items_mal_no_id(mock_mal):
+def test_fetch_items_mal_no_id(mock_mal) -> None:
     from sync import _fetch_items_for_mal_group
 
     _items, err, code = _fetch_items_for_mal_group(
@@ -404,7 +404,7 @@ def test_fetch_items_mal_no_id(mock_mal):
 
 @patch("sync.fetch_mal_list")
 @patch("sync._fetch_full_library")
-def test_fetch_items_mal_with_status(mock_full, mock_mal):
+def test_fetch_items_mal_with_status(mock_full, mock_mal) -> None:
     from sync import _fetch_items_for_mal_group
 
     mock_mal.return_value = [1]
@@ -424,7 +424,7 @@ def test_fetch_items_mal_with_status(mock_full, mock_mal):
 
 
 @patch("sync.fetch_mal_list")
-def test_fetch_items_mal_error(mock_mal):
+def test_fetch_items_mal_error(mock_mal) -> None:
     from sync import _fetch_items_for_mal_group
 
     mock_mal.side_effect = RuntimeError("MAL Error")
@@ -441,7 +441,7 @@ def test_fetch_items_mal_error(mock_mal):
 
 
 @patch("sync.fetch_mal_list")
-def test_fetch_items_mal_empty(mock_mal):
+def test_fetch_items_mal_empty(mock_mal) -> None:
     from sync import _fetch_items_for_mal_group
 
     mock_mal.return_value = []
@@ -458,7 +458,7 @@ def test_fetch_items_mal_empty(mock_mal):
 
 
 @patch("sync.fetch_trakt_list")
-def test_fetch_items_trakt_error(mock_trakt):
+def test_fetch_items_trakt_error(mock_trakt) -> None:
     from sync import _fetch_items_for_trakt_group
 
     mock_trakt.side_effect = RuntimeError("Trakt Fail")
@@ -475,7 +475,7 @@ def test_fetch_items_trakt_error(mock_trakt):
 
 
 @patch("sync.fetch_trakt_list")
-def test_fetch_items_trakt_empty(mock_trakt):
+def test_fetch_items_trakt_empty(mock_trakt) -> None:
     from sync import _fetch_items_for_trakt_group
 
     mock_trakt.return_value = []
@@ -508,7 +508,7 @@ def test_run_sync_with_library_creation(
     _mock_exists,
     _mock_mkdir,
     _mock_rmtree,
-):
+) -> None:
     config = {
         "jellyfin_url": "http://jf",
         "api_key": "key",
@@ -567,7 +567,7 @@ def test_run_sync_with_auto_set_library_covers(
     mock_get_cover,
     mock_set_image,
     mock_copy2,
-):
+) -> None:
     config = {
         "jellyfin_url": "http://jf",
         "api_key": "key",
@@ -623,7 +623,7 @@ def test_run_sync_recommendations(
     _mock_exists,
     _mock_mkdir,
     _mock_rmtree,
-):
+) -> None:
     config = {
         "jellyfin_url": "http://jf",
         "api_key": "key",

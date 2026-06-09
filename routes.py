@@ -151,7 +151,7 @@ def _check_auth() -> ResponseReturnValue | None:
 def _check_csrf() -> ResponseReturnValue | None:
     """Require X-Requested-With header on state-changing requests."""
     if request.method in ("POST", "PUT", "DELETE", "PATCH"):
-        if current_app.config.get('TESTING', False):
+        if current_app.testing:
             return None
         if request.headers.get("X-Requested-With") != "XMLHttpRequest":
             return _error("CSRF validation failed", 403)

@@ -7,7 +7,7 @@ import pytest
 from sync import _translate_path, run_sync
 
 
-def test_translate_path_empty_root():
+def test_translate_path_empty_root() -> None:
     """_translate_path returns original path when jellyfin_root/host_root are empty."""
     result = _translate_path("/media/movie.mkv", "", "/host")
     assert result == "/media/movie.mkv"
@@ -15,13 +15,13 @@ def test_translate_path_empty_root():
     assert result == "/media/movie.mkv"
 
 
-def test_translate_path_not_relative():
+def test_translate_path_not_relative() -> None:
     """_translate_path returns original path when not relative to jellyfin_root."""
     result = _translate_path("/other/movie.mkv", "/media", "/host")
     assert result == "/other/movie.mkv"
 
 
-def test_run_sync_permission_error(tmp_path):
+def test_run_sync_permission_error(tmp_path) -> None:
     """run_sync raises ValueError when target directory cannot be created due to permission."""
     config = {
         "jellyfin_url": "http://jf:8096",
@@ -35,7 +35,7 @@ def test_run_sync_permission_error(tmp_path):
             run_sync(config, dry_run=False)
 
 
-def test_run_sync_permission_error_dry_run_skips(tmp_path):
+def test_run_sync_permission_error_dry_run_skips(tmp_path) -> None:
     """dry_run=True skips directory creation, so PermissionError is not raised."""
     config = {
         "jellyfin_url": "http://jf:8096",
@@ -51,10 +51,10 @@ def test_run_sync_permission_error_dry_run_skips(tmp_path):
         mock_mkdir.assert_not_called()
 
 
-def test_run_sync_no_url_or_api_key():
+def test_run_sync_no_url_or_api_key() -> None:
     """run_sync raises ValueError when url, api_key, or target_path not set."""
     with pytest.raises(
-        ValueError, match="Server settings or target path not configured"
+        ValueError, match="Server settings or target path not configured",
     ):
         run_sync({"jellyfin_url": "", "api_key": "", "target_path": ""})
 
@@ -64,14 +64,14 @@ def test_run_sync_no_url_or_api_key():
 # ---------------------------------------------------------------------------
 
 
-def test_parse_mmdd_non_string_value():
+def test_parse_mmdd_non_string_value() -> None:
     """Non-string input returns (0, 0)."""
     from sync import _parse_mmdd
 
     assert _parse_mmdd(None) == (0, 0)  # type: ignore[arg-type]
 
 
-def test_parse_mmdd_empty_string():
+def test_parse_mmdd_empty_string() -> None:
     """Empty or whitespace-only strings return (0, 0)."""
     from sync import _parse_mmdd
 
@@ -79,7 +79,7 @@ def test_parse_mmdd_empty_string():
     assert _parse_mmdd("   ") == (0, 0)
 
 
-def test_parse_mmdd_no_dash():
+def test_parse_mmdd_no_dash() -> None:
     """Missing dash separator returns (0, 0)."""
     from sync import _parse_mmdd
 
@@ -87,7 +87,7 @@ def test_parse_mmdd_no_dash():
     assert _parse_mmdd("nodash") == (0, 0)
 
 
-def test_parse_mmdd_valid():
+def test_parse_mmdd_valid() -> None:
     """Valid MM-DD returns parsed tuple."""
     from sync import _parse_mmdd
 
@@ -96,7 +96,7 @@ def test_parse_mmdd_valid():
     assert _parse_mmdd("12-31") == (12, 31)
 
 
-def test_parse_mmdd_invalid_month():
+def test_parse_mmdd_invalid_month() -> None:
     """Invalid month returns (0, 0)."""
     from sync import _parse_mmdd
 
@@ -104,7 +104,7 @@ def test_parse_mmdd_invalid_month():
     assert _parse_mmdd("00-15") == (0, 0)
 
 
-def test_parse_mmdd_invalid_day():
+def test_parse_mmdd_invalid_day() -> None:
     """Invalid day for month returns (0, 0)."""
     from sync import _parse_mmdd
 
@@ -112,7 +112,7 @@ def test_parse_mmdd_invalid_day():
     assert _parse_mmdd("04-31") == (0, 0)
 
 
-def test_parse_mmdd_non_numeric():
+def test_parse_mmdd_non_numeric() -> None:
     """Non-numeric month/day returns (0, 0)."""
     from sync import _parse_mmdd
 

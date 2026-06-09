@@ -270,7 +270,7 @@ See [`.env.example`](.env.example) for quick setup.
 ### 🧪 Testing
 
 ```bash
-# Run the full test suite (550+ tests, 98%+ coverage)
+# Run the full test suite (550+ tests, 100% coverage)
 python -m pytest
 
 # Run tests with coverage report
@@ -407,6 +407,14 @@ When preview or sync fails, the error is shown in a modal dialog within the UI.
 ---
 
 ## ❓ FAQ
+
+### Why does the app need both a Jellyfin-side path and a host-side path?
+
+Because Jellyfin often runs in a Docker container and sees your media at a different
+path than this app does. For example, Jellyfin might see files under `/data/movies`
+while this app sees them under `/mnt/user/media/movies`. The two path settings
+tell the app how to translate between the two views so symlinks point to the right
+files.
 
 ### Can I use this alongside my existing Jellyfin libraries?
 

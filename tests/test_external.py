@@ -20,7 +20,7 @@ from trakt import fetch_trakt_list
 
 
 @patch("network.get")
-def test_fetch_letterboxd_list(mock_get):
+def test_fetch_letterboxd_list(mock_get) -> None:
     # Mock main list page
     mock_list_resp = MagicMock()
     mock_list_resp.status_code = 200
@@ -38,7 +38,7 @@ def test_fetch_letterboxd_list(mock_get):
 
 
 @patch("network.get")
-def test_fetch_letterboxd_list_tmdb(mock_get):
+def test_fetch_letterboxd_list_tmdb(mock_get) -> None:
     # Test TMDb ID extraction and pagination stop
     mock_list_resp = MagicMock()
     mock_list_resp.status_code = 200
@@ -68,13 +68,13 @@ def test_fetch_letterboxd_list_tmdb(mock_get):
     assert ids == ["500", "600"]
 
 
-def test_fetch_letterboxd_invalid_url():
+def test_fetch_letterboxd_invalid_url() -> None:
     with pytest.raises(ValueError, match="Invalid Letterboxd URL"):
         fetch_letterboxd_list("https://not-lb-domain.com")
 
 
 @patch("network.get")
-def test_fetch_letterboxd_http_error(mock_get):
+def test_fetch_letterboxd_http_error(mock_get) -> None:
     mock_resp = MagicMock()
     mock_resp.status_code = 500
     mock_resp.raise_for_status.side_effect = requests.exceptions.HTTPError("HTTP Error")
@@ -89,7 +89,7 @@ def test_fetch_letterboxd_http_error(mock_get):
 
 
 @patch("network.get")
-def test_fetch_mal_list(mock_get):
+def test_fetch_mal_list(mock_get) -> None:
     mock_resp = MagicMock()
     mock_resp.status_code = 200
     mock_resp.json.return_value = {
@@ -106,7 +106,7 @@ def test_fetch_mal_list(mock_get):
 
 
 @patch("network.get")
-def test_fetch_mal_pagination(mock_get):
+def test_fetch_mal_pagination(mock_get) -> None:
     resp1 = MagicMock()
     resp1.status_code = 200
     resp1.json.return_value = {
@@ -130,7 +130,7 @@ def test_fetch_mal_pagination(mock_get):
 
 
 @patch("network.get")
-def test_fetch_trakt_list(mock_get):
+def test_fetch_trakt_list(mock_get) -> None:
     mock_resp = MagicMock()
     mock_resp.status_code = 200
     mock_resp.json.return_value = [
@@ -149,7 +149,7 @@ def test_fetch_trakt_list(mock_get):
 
 
 @patch("network.post")
-def test_fetch_anilist_all(mock_post):
+def test_fetch_anilist_all(mock_post) -> None:
     mock_resp = MagicMock()
     mock_resp.status_code = 200
     mock_resp.json.return_value = {"data": {"MediaListCollection": {"lists": []}}}
@@ -164,7 +164,7 @@ def test_fetch_anilist_all(mock_post):
 # ---------------------------------------------------------------------------
 
 
-def test_fetch_tmdb_invalid_args():
+def test_fetch_tmdb_invalid_args() -> None:
     with pytest.raises(
         ValueError,
         match=r"A TMDb API Key is required to fetch TMDb lists\.",
@@ -175,7 +175,7 @@ def test_fetch_tmdb_invalid_args():
 
 
 @patch("network.get")
-def test_fetch_tmdb_url_parsing(mock_get):
+def test_fetch_tmdb_url_parsing(mock_get) -> None:
     mock_resp = MagicMock()
     mock_resp.status_code = 200
     mock_resp.json.return_value = {"items": [], "total_pages": 1}
@@ -186,7 +186,7 @@ def test_fetch_tmdb_url_parsing(mock_get):
 
 
 @patch("network.get")
-def test_fetch_mal_error(mock_get):
+def test_fetch_mal_error(mock_get) -> None:
     mock_resp = MagicMock()
     mock_resp.status_code = 401
     mock_resp.raise_for_status.side_effect = requests.exceptions.HTTPError(
@@ -198,7 +198,7 @@ def test_fetch_mal_error(mock_get):
 
 
 @patch("network.get")
-def test_fetch_trakt_pagination(mock_get):
+def test_fetch_trakt_pagination(mock_get) -> None:
     resp1 = MagicMock()
     resp1.status_code = 200
     resp1.json.return_value = [{"type": "movie", "movie": {"ids": {"imdb": "tt1"}}}]
@@ -213,7 +213,7 @@ def test_fetch_trakt_pagination(mock_get):
 
 
 @patch("network.post")
-def test_fetch_anilist_empty_data(mock_post):
+def test_fetch_anilist_empty_data(mock_post) -> None:
     mock_resp = MagicMock()
     mock_resp.status_code = 200
     mock_resp.json.return_value = {"errors": [{"message": "Too bad"}]}
@@ -227,25 +227,25 @@ def test_fetch_anilist_empty_data(mock_post):
 # ---------------------------------------------------------------------------
 
 
-def test_extract_ids_tmdb_from_list_page():
+def test_extract_ids_tmdb_from_list_page() -> None:
     html = 'data-film-slug="film1" data-tmdb-id="123"'
     result = _extract_ids_from_list_page(html)
     assert result == {"film1": "123"}
 
 
-def test_extract_ids_imdb_from_list_page():
+def test_extract_ids_imdb_from_list_page() -> None:
     html = 'data-film-slug="film1" href="https://www.imdb.com/title/tt456/"'
     result = _extract_ids_from_list_page(html)
     assert result == {"film1": "tt456"}
 
 
-def test_extract_ids_themoviedb_from_list_page():
+def test_extract_ids_themoviedb_from_list_page() -> None:
     html = 'data-film-slug="film1" href="https://www.themoviedb.org/movie/789"'
     result = _extract_ids_from_list_page(html)
     assert result == {"film1": "789"}
 
 
-def test_extract_ids_priority_tmdb_over_imdb():
+def test_extract_ids_priority_tmdb_over_imdb() -> None:
     # If both tmdb and imdb present, tmdb should win (matches first)
     html = (
         'data-film-slug="film1" data-tmdb-id="111" '
@@ -256,7 +256,7 @@ def test_extract_ids_priority_tmdb_over_imdb():
 
 
 @patch("network.get")
-def test_fetch_id_for_slug_request_exception(mock_get):
+def test_fetch_id_for_slug_request_exception(mock_get) -> None:
     # _fetch_id_for_slug uses network.get now
     mock_get.side_effect = requests.exceptions.ConnectionError("Network down")
     result = _fetch_id_for_slug("some-film")
@@ -264,7 +264,7 @@ def test_fetch_id_for_slug_request_exception(mock_get):
 
 
 @patch("network.get")
-def test_letterboxd_404_on_page_two(mock_get):
+def test_letterboxd_404_on_page_two(mock_get) -> None:
     resp1 = MagicMock()
     resp1.status_code = 200
     resp1.text = 'data-film-slug="film1" class="next"'
@@ -283,7 +283,7 @@ def test_letterboxd_404_on_page_two(mock_get):
 
 
 @patch("network.get")
-def test_letterboxd_fallback_slug_regex(mock_get):
+def test_letterboxd_fallback_slug_regex(mock_get) -> None:
     resp = MagicMock()
     resp.status_code = 200
     resp.text = '<a href="/film/the-godfather/">Film</a>'
@@ -294,7 +294,7 @@ def test_letterboxd_fallback_slug_regex(mock_get):
 
 
 @patch("network.get")
-def test_letterboxd_no_slugs(mock_get):
+def test_letterboxd_no_slugs(mock_get) -> None:
     resp = MagicMock()
     resp.status_code = 200
     resp.text = "<html><body>No films here</body></html>"
@@ -306,7 +306,7 @@ def test_letterboxd_no_slugs(mock_get):
 
 @patch("letterboxd._fetch_id_for_slug")
 @patch("network.get")
-def test_letterboxd_threadpool_exception(mock_get, mock_fetch_slug):
+def test_letterboxd_threadpool_exception(mock_get, mock_fetch_slug) -> None:
     resp = MagicMock()
     resp.status_code = 200
     resp.text = 'data-film-slug="film1"'
@@ -318,7 +318,7 @@ def test_letterboxd_threadpool_exception(mock_get, mock_fetch_slug):
     assert ids == []
 
 
-def test_fetch_ids_for_slugs_empty():
+def test_fetch_ids_for_slugs_empty() -> None:
     """Cover letterboxd.py:80 — early return when slugs list is empty."""
     assert _fetch_ids_for_slugs([]) == {}
 
@@ -328,13 +328,13 @@ def test_fetch_ids_for_slugs_empty():
 # ---------------------------------------------------------------------------
 
 
-def test_fetch_mal_no_client_id():
+def test_fetch_mal_no_client_id() -> None:
     with pytest.raises(ValueError, match="MyAnimeList Client ID is required"):
         fetch_mal_list("user", "")
 
 
 @patch("network.get")
-def test_fetch_mal_status_current(mock_get):
+def test_fetch_mal_status_current(mock_get) -> None:
     mock_resp = MagicMock()
     mock_resp.status_code = 200
     mock_resp.json.return_value = {"data": [], "paging": {}}
@@ -346,7 +346,7 @@ def test_fetch_mal_status_current(mock_get):
 
 
 @patch("network.get")
-def test_fetch_mal_status_planning(mock_get):
+def test_fetch_mal_status_planning(mock_get) -> None:
     mock_resp = MagicMock()
     mock_resp.status_code = 200
     mock_resp.json.return_value = {"data": [], "paging": {}}
@@ -358,7 +358,7 @@ def test_fetch_mal_status_planning(mock_get):
 
 
 @patch("network.get")
-def test_fetch_mal_status_paused(mock_get):
+def test_fetch_mal_status_paused(mock_get) -> None:
     mock_resp = MagicMock()
     mock_resp.status_code = 200
     mock_resp.json.return_value = {"data": [], "paging": {}}
@@ -370,7 +370,7 @@ def test_fetch_mal_status_paused(mock_get):
 
 
 @patch("network.get")
-def test_fetch_mal_status_all(mock_get):
+def test_fetch_mal_status_all(mock_get) -> None:
     mock_resp = MagicMock()
     mock_resp.status_code = 200
     mock_resp.json.return_value = {"data": [], "paging": {}}
@@ -382,7 +382,7 @@ def test_fetch_mal_status_all(mock_get):
 
 
 @patch("network.get")
-def test_fetch_mal_status_unknown(mock_get):
+def test_fetch_mal_status_unknown(mock_get) -> None:
     mock_resp = MagicMock()
     mock_resp.status_code = 200
     mock_resp.json.return_value = {"data": [], "paging": {}}
@@ -398,13 +398,13 @@ def test_fetch_mal_status_unknown(mock_get):
 # ---------------------------------------------------------------------------
 
 
-def test_fetch_trakt_no_client_id():
+def test_fetch_trakt_no_client_id() -> None:
     with pytest.raises(ValueError, match="Trakt API Client ID"):
         fetch_trakt_list("user/list", "")
 
 
 @patch("network.get")
-def test_fetch_trakt_full_url(mock_get):
+def test_fetch_trakt_full_url(mock_get) -> None:
     mock_resp = MagicMock()
     mock_resp.status_code = 200
     mock_resp.json.return_value = [
@@ -417,13 +417,13 @@ def test_fetch_trakt_full_url(mock_get):
     assert ids == ["tt111"]
 
 
-def test_fetch_trakt_invalid_url():
+def test_fetch_trakt_invalid_url() -> None:
     with pytest.raises(ValueError, match="Invalid Trakt list URL"):
         fetch_trakt_list("not-a-valid-url", "client_id")
 
 
 @patch("network.get")
-def test_fetch_trakt_http_error(mock_get):
+def test_fetch_trakt_http_error(mock_get) -> None:
     mock_resp = MagicMock()
     mock_resp.status_code = 500
     mock_resp.raise_for_status.side_effect = requests.exceptions.HTTPError(
@@ -435,7 +435,7 @@ def test_fetch_trakt_http_error(mock_get):
 
 
 @patch("network.get")
-def test_fetch_trakt_empty_items(mock_get):
+def test_fetch_trakt_empty_items(mock_get) -> None:
     mock_resp = MagicMock()
     mock_resp.status_code = 200
     mock_resp.json.return_value = []
@@ -447,7 +447,7 @@ def test_fetch_trakt_empty_items(mock_get):
 
 
 @patch("network.get")
-def test_fetch_trakt_bad_pagination_header(mock_get):
+def test_fetch_trakt_bad_pagination_header(mock_get) -> None:
     mock_resp = MagicMock()
     mock_resp.status_code = 200
     mock_resp.json.return_value = [

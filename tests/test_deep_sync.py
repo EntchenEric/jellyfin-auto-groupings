@@ -18,14 +18,14 @@ def mock_filesystem():
         yield
 
 
-def test_mock_server_up(virtual_jellyfin):
+def test_mock_server_up(virtual_jellyfin) -> None:
     """Verify the mock server is actually reachable."""
     response = requests.get(f"{virtual_jellyfin}/System/Info", timeout=5)
     assert response.status_code == 200
     assert response.json()["ServerName"] == "Virtual-Jellyfin-Mock"
 
 
-def test_sync_with_diverse_data(virtual_jellyfin):
+def test_sync_with_diverse_data(virtual_jellyfin) -> None:
     """Test sync with the expanded dataset from virtual_jellyfin."""
     config = {
         "jellyfin_url": virtual_jellyfin,
@@ -57,7 +57,7 @@ def test_sync_with_diverse_data(virtual_jellyfin):
     assert modern_scifi["links"] >= 2
 
 
-def test_sync_robustness_missing_metadata(virtual_jellyfin):
+def test_sync_robustness_missing_metadata(virtual_jellyfin) -> None:
     """Test sync handles items with missing metadata gracefully."""
     config = {
         "jellyfin_url": virtual_jellyfin,
@@ -79,7 +79,7 @@ def test_sync_robustness_missing_metadata(virtual_jellyfin):
     assert results[0]["links"] >= 70
 
 
-def test_sync_large_volume(virtual_jellyfin):
+def test_sync_large_volume(virtual_jellyfin) -> None:
     """Test sync with a large volume of items (1000+)."""
     config = {
         "jellyfin_url": virtual_jellyfin,
@@ -99,7 +99,7 @@ def test_sync_large_volume(virtual_jellyfin):
     assert results[0]["links"] >= 4000
 
 
-def test_sync_complex_nested_queries(virtual_jellyfin):
+def test_sync_complex_nested_queries(virtual_jellyfin) -> None:
     """Test deep nested logical queries."""
     config = {
         "jellyfin_url": virtual_jellyfin,
@@ -118,7 +118,7 @@ def test_sync_complex_nested_queries(virtual_jellyfin):
     assert results[0]["links"] > 0
 
 
-def test_sync_chaos_robustness(virtual_jellyfin):
+def test_sync_chaos_robustness(virtual_jellyfin) -> None:
     """Test sync handles 'Digital Chaos' scenarios (duplicates, emojis, malformed data)."""
     config = {
         "jellyfin_url": virtual_jellyfin,
@@ -144,7 +144,7 @@ def test_sync_chaos_robustness(virtual_jellyfin):
     assert results[0]["links"] > 0
 
 
-def test_sync_mixed_character_encodings(virtual_jellyfin):
+def test_sync_mixed_character_encodings(virtual_jellyfin) -> None:
     """Test handles mixed LTR/RTL and emoji titles without encoding errors."""
     config = {
         "jellyfin_url": virtual_jellyfin,

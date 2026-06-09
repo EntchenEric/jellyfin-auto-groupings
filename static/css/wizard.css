@@ -256,6 +256,17 @@
     font-size: 0.68rem;
 }
 
+/* Sidebar label variants */
+.sidebar-label-muted {
+    opacity: 0.8;
+}
+
+.sidebar-howto-heading {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
 .sidebar-input-sm {
     font-size: 0.82rem;
     padding: 0.5rem 0.7rem;
@@ -293,6 +304,7 @@
     margin-left: 0.5rem;
 }
 
+.detect-badge {
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
