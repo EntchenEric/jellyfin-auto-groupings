@@ -49,22 +49,42 @@ export function hideModal(id) {
     if (el) el.style.display = 'none';
 }
 
-// Close modal on Escape key
+// Close modal on Escape key — hide the topmost visible modal
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-        const modals = document.querySelectorAll('.modal[style*="display: flex"], .modal[style*="display:flex"]');
-        if (modals.length > 0) {
-            const topModal = modals[modals.length - 1];
-            topModal.style.display = 'none';
+        const visibleModals = document.querySelectorAll('.modal');
+        // Find the last visible modal (topmost in stacking order)
+        let topmost = null;
+        for (const m of visibleModals) {
+            if (m.style.display === 'flex' || m.style.display === 'block') {
+                topmost = m;
+            }
         }
+        if (topmost) {
+            topmost.style.display = 'none';
+        }
+    }
+});
+
+// Close modal when clicking the backdrop (overlay) outside content area
+document.addEventListener('click', (e) => {
+    const modal = e.target.closest('.modal');
+    if (modal && e.target === modal) {
+        modal.style.display = 'none';
     }
 });
 
 // Generic click handler for .close-modal-btn class
 document.addEventListener('click', (e) => {
-    if (e.target.closest('.close-modal-btn')) {
-        const modal = e.target.closest('.modal');
-        if (modal) modal.style.display = 'none';
+    const closeBtn = e.target.closest('.close-modal-btn');
+    if (closeBtn) {
+        const modal = closeBtn.closest('.modal');
+        if (modal) {
+            modal.style.display = 'none';
+            // Return focus to the element that triggered the modal
+            const trigger = document.querySelector(`[data-modal="${modal.id}"], [onclick*="${modal.id}"]`);
+            if (trigger) trigger.focus();
+        }
     }
 });
 
