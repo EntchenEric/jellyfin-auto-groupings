@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import uuid
+from typing import Any
 
 from flask import Flask, jsonify, request
 
@@ -874,6 +877,10 @@ def set_item_image(item_id):
 
 @app.route("/", methods=["GET"])
 def dashboard() -> str:
+    items: list[dict[str, Any]] = data["items"]  # type: ignore[assignment]
+    libraries: list[dict[str, Any]] = data["libraries"]  # type: ignore[assignment]
+    users: list[dict[str, Any]] = data["users"]  # type: ignore[assignment]
+    lib_paths: dict[str, Any] = data["library_paths"]  # type: ignore[assignment]
     return f"""
     <!DOCTYPE html>
     <html>
@@ -897,8 +904,8 @@ def dashboard() -> str:
                 <tr><th>Name</th><th>ItemId</th><th>CollectionType</th><th>Paths</th></tr>
                 {
         "".join(
-            f"<tr><td>{lib.get('Name')}</td><td>{lib.get('ItemId')}</td><td>{lib.get('CollectionType')}</td><td>{data['library_paths'].get(lib.get('Name'), [])}</td></tr>"
-            for lib in data["libraries"]
+            f"<tr><td>{lib.get('Name', '')}</td><td>{lib.get('ItemId', '')}</td><td>{lib.get('CollectionType', '')}</td><td>{lib_paths.get(lib.get('Name', ''), [])}</td></tr>"
+            for lib in libraries
         )
     }
             </table>
@@ -911,7 +918,7 @@ def dashboard() -> str:
                 {
         "".join(
             f"<tr><td>{u.get('Name')}</td><td>{u.get('Id')}</td></tr>"
-            for u in data["users"]
+            for u in users
         )
     }
             </table>
@@ -928,7 +935,7 @@ def dashboard() -> str:
             f"<td>{i.get('Type')}</td>"
             f"<td>{i.get('ProductionYear')}</td>"
             f"<td>{i.get('ProviderIds', {}).get('Imdb', '')}</td></tr>"
-            for i in data["items"]
+            for i in items
         )
     }
             </table>

@@ -1378,25 +1378,6 @@ def _prepare_group_directory(
     return source_cover
 
 
-# Module-level dispatch table for external list source types.
-# Each entry maps a source_type string to a callable that accepts the
-# standard parameter signature for external list fetchers.
-_SOURCE_DISPATCH: dict[
-    str,
-    Callable[
-        ...,
-        tuple[list[dict[str, Any]], str | None, int],
-    ],
-] = {
-    "imdb_list": _fetch_items_for_imdb_group,
-    "trakt_list": _fetch_items_for_trakt_group,
-    "tmdb_list": _fetch_items_for_tmdb_group,
-    "anilist_list": _fetch_items_for_anilist_group,
-    "mal_list": _fetch_items_for_mal_group,
-    "letterboxd_list": _fetch_items_for_letterboxd_group,
-    "recommendations": _fetch_items_for_recommendations_group,
-}
-
 
 def _dispatch_list_source(
     source_type: str,
