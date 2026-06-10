@@ -93,6 +93,8 @@ def fetch_anilist_list(
 
     media_ids: list[int] = []
     for user_list in collection.get("lists") or []:
+        if not isinstance(user_list, dict):
+            continue
         entries = user_list.get("entries")
         if not isinstance(entries, list):
             continue
