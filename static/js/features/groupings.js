@@ -6,19 +6,32 @@ import { showToast, getEl, showErrorDialog } from '../core/ui.js';
 import { updateSourceTypeOptions, updateSourceValueUI, getFilterValue } from './metadata.js';
 import { openCoverGenerator } from './cover-generator.js';
 
+let _searchFilter = '';
+
 export function renderGroups() {
     const groupsList = getEl('groups-list');
     groupsList.innerHTML = '';
 
     if (!state.currentConfig.groups || state.currentConfig.groups.length === 0) {
-        groupsList.innerHTML = '<p style="color: var(--text-secondary); text-align: center; font-style: italic; margin-top: 2rem;">No groupings defined yet.</p>';
+        groupsList.innerHTML = '<div class="groups-empty-state"><p class="groups-empty-icon">📁</p><p class="groups-empty-title">No groupings defined yet</p><p class="groups-empty-desc">Create your first grouping above, or use the <strong>Wizard</strong> for a guided setup.</p></div>';
         updateGlobalSyncExclusionsUI();
+        updateGroupCount();
         return;
     }
 
     updateGlobalSyncExclusionsUI();
+    updateGroupCount();
+
+    let visibleCount = 0;
+    const filter = _searchFilter.toLowerCase().trim();
 
     state.currentConfig.groups.forEach((group, index) => {
+        const groupName = (group.name || '').toLowerCase();
+        if (filter && !groupName.includes(filter)) {
+            return;
+        }
+        visibleCount++;
+
         const card = document.createElement('div');
         card.className = 'group-card';
 
@@ -87,6 +100,35 @@ export function renderGroups() {
 
         card.appendChild(actionsDiv);
         groupsList.appendChild(card);
+    });
+
+    if (filter && visibleCount === 0) {
+        const emptyMsg = document.createElement('p');
+        emptyMsg.style.cssText = 'color: var(--text-secondary); text-align: center; font-style: italic; margin-top: 2rem;';
+        emptyMsg.textContent = `No groups match "${_searchFilter}".`;
+        groupsList.appendChild(emptyMsg);
+    }
+
+    updateGroupCount(visibleCount);
+}
+
+function updateGroupCount(visibleCount) {
+    const badge = getEl('groups-count-badge');
+    if (!badge) return;
+    const total = state.currentConfig.groups?.length || 0;
+    if (visibleCount !== undefined) {
+        badge.textContent = visibleCount === total ? `${total}` : `${visibleCount}/${total}`;
+    } else {
+        badge.textContent = `${total}`;
+    }
+}
+
+export function initGroupSearch() {
+    const searchInput = getEl('groups-search');
+    if (!searchInput) return;
+    searchInput.addEventListener('input', () => {
+        _searchFilter = searchInput.value;
+        renderGroups();
     });
 }
 

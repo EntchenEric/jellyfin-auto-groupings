@@ -13,7 +13,9 @@ TEST_API_KEY = "test_key"
 @patch("sync.shutil.rmtree")
 @patch("sync.os.symlink")
 @patch("sync.fetch_jellyfin_items")
-def test_run_sync_basic(mock_fetch, mock_symlink, mock_rmtree, mock_exists, mock_mkdir) -> None:
+def test_run_sync_basic(
+    mock_fetch, mock_symlink, mock_rmtree, mock_exists, mock_mkdir
+) -> None:
     """Test run_sync with a simple genre-based group."""
     config = {
         "jellyfin_url": TEST_URL,

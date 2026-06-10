@@ -54,7 +54,8 @@ def test_run_sync_permission_error_dry_run_skips(tmp_path) -> None:
 def test_run_sync_no_url_or_api_key() -> None:
     """run_sync raises ValueError when url, api_key, or target_path not set."""
     with pytest.raises(
-        ValueError, match="Server settings or target path not configured",
+        ValueError,
+        match="Server settings or target path not configured",
     ):
         run_sync({"jellyfin_url": "", "api_key": "", "target_path": ""})
 

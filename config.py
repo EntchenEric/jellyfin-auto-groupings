@@ -95,6 +95,10 @@ def _fill_defaults(cfg: dict[str, Any], defaults: dict[str, Any]) -> None:
         if isinstance(default_value, dict) and isinstance(cfg.get(key), dict):
             for sub_key, sub_val in default_value.items():
                 cfg[key].setdefault(sub_key, sub_val)
+        elif isinstance(default_value, dict):
+            # If the value exists but is not a dict (e.g. None, empty string),
+            # replace it with the default to avoid AttributeError downstream.
+            cfg[key] = default_value.copy()
 
 
 def _migrate_legacy_keys(cfg: dict[str, Any]) -> bool:

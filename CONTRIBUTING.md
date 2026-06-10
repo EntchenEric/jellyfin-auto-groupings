@@ -1,72 +1,105 @@
 # Contributing to Jellyfin Groupings
 
-Thanks for your interest! This is a small but active project, and contributions —
-bug reports, feature ideas, docs, or code — are very welcome.
+Thank you for considering contributing! Here are a few guidelines to help things go smoothly.
 
 ## Getting Started
 
-1. **Fork** the repo on GitHub.
-2. **Clone** your fork:
+1. Fork the repository.
+2. Clone your fork:
    ```bash
-   git clone https://github.com/<your-username>/jellyfin-auto-groupings.git
+   git clone https://github.com/your-username/jellyfin-auto-groupings.git
    cd jellyfin-auto-groupings
    ```
-3. **Set up** a development environment:
+3. Create a virtual environment and install dependencies:
    ```bash
-   python3 -m venv venv
-   source venv/bin/activate
-   pip install -e ".[dev]"
+   python -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+   pip install -r requirements-dev.txt
    ```
-4. **Run tests** before making changes:
+4. Create a branch for your changes:
    ```bash
-   python3 -m pytest --cov=. -m "not exhaustive"
+   git checkout -b my-feature-branch
    ```
 
-## Code Style
+## Development
 
-- This project uses **Ruff** for linting and formatting. Run `ruff check .` and `ruff format .` before committing.
-- **mypy** is used for static type checking: `mypy .`
-- All Python 3.11+ features are fair game (pattern matching, `|` union syntax, etc.).
+### Code Style
 
-## Commit Convention
+- Python: Follow [PEP 8](https://peps.python.org/pep-0008/). The project uses `ruff` for linting and formatting.
+- JavaScript: Follow standard ES module conventions. The project uses `eslint` for linting.
+- Run linting before committing:
+  ```bash
+  ruff check .
+  ruff format --check .
+  ```
 
-We follow **Conventional Commits**:
+### Type Hints
+
+All Python code should use type hints. The project targets Python 3.11+.
+
+### Testing
+
+- Tests live in the `tests/` directory and use `pytest`.
+- Run tests before opening a PR:
+  ```bash
+  pytest -v
+  ```
+- Aim to maintain or improve code coverage. New features should include tests.
+
+### Running Locally
+
+```bash
+python app.py
+```
+
+The app will be available at `http://localhost:5000`.
+
+## Making Changes
+
+### Priority Order
+
+When making improvements, consider this priority:
+
+1. **Fix bugs** — Open issues on GitHub take highest priority.
+2. **Merge PRs** — Review and merge open pull requests.
+3. **Documentation** — Improve README, add docstrings, clarify comments.
+4. **Code optimization** — Performance, type hints, error handling, edge cases.
+5. **Tests** — Unit tests, integration tests, edge cases, coverage.
+6. **UI/UX** — CSS improvements, responsive design, accessibility, dark mode.
+7. **Refactoring** — Clean up technical debt, split large files, improve structure.
+
+### Commit Messages
+
+Write clear, concise commit messages:
 
 ```
-feat: add support for Plex lists
-fix: handle empty API key gracefully
-docs: update README with new env vars
-refactor: extract path translation helper
-test: add edge-case tests for _parse_mmdd
+component: Brief description of the change
+
+Optional longer explanation of why the change was made and
+what it affects.
 ```
+
+Examples:
+- `docker: Add healthcheck timeout to prevent hung probes`
+- `docs: Add CONTRIBUTING.md with development guidelines`
+- `tests: Add edge case for empty provider IDs in match_by_provider`
 
 ## Pull Request Process
 
-1. Create a feature branch from `main`.
-2. Make your changes — keep PRs focused on a single concern.
-3. Update docs and tests if applicable.
-4. Ensure `ruff check .`, `mypy .`, and `pytest` all pass.
-5. Open the PR with a clear description of *what* and *why*.
+1. Ensure your branch is up to date with `main`.
+2. Run the full test suite and linting checks.
+3. Update documentation if your change affects the public API or configuration.
+4. Open a PR against the `main` branch with a clear title and description.
+5. A maintainer will review your PR. Please be patient — we'll get to it!
 
-## Testing
+## Reporting Issues
 
-- All new logic should have corresponding unit tests.
-- Tests use **pytest** with standard fixtures in `conftest.py`.
-- A **virtual Jellyfin server** is available for integration tests:
-  ```bash
-  python3 start_virtual_jellyfin.py &
-  python3 -m pytest tests/ -m "exhaustive"
-  ```
-- Coverage target is **100%**. Run `pytest --cov=. --cov-report=html` to check.
+- Use the [GitHub issue tracker](https://github.com/entcheneric/jellyfin-auto-groupings/issues).
+- Include steps to reproduce, expected behavior, and actual behavior.
+- Include relevant logs (from `logs/jellyfin-groupings.log`) if applicable.
+- Include your Jellyfin version and deployment method (Docker, native, etc.).
 
-## Feature Requests & Bug Reports
+## Code of Conduct
 
-Open a [GitHub issue](https://github.com/entcheneric/jellyfin-auto-groupings/issues) with:
-
-- A clear title and description
-- For bugs: your setup (Docker / native, Jellyfin version), steps to reproduce, and logs
-- For features: the use case you're trying to solve
-
-## Questions?
-
-Feel free to open a [Discussion](https://github.com/entcheneric/jellyfin-auto-groupings/discussions) or tag `@entcheneric` in an issue.
+Be respectful and constructive. We're all here to make something useful.

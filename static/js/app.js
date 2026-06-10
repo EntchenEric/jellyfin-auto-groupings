@@ -13,7 +13,7 @@ import { initExportImport, openExportModal, openImportModal, handleFileSelected 
 import { initCoverGenerator } from './features/cover-generator.js';
 import { initPathPicker, openPathPicker, closePicker, confirmPicker, pickerOutsideClick } from './features/path-picker.js';
 import { initSidebarResizer } from './features/sidebar-resizer.js';
-import { renderGroups, cancelEdit, toggleSortOrder, toggleSeasonal, toggleGroupScheduler, populateSeasonalDays, resetFormUI } from './features/groupings.js';
+import { renderGroups, cancelEdit, toggleSortOrder, toggleSeasonal, toggleGroupScheduler, populateSeasonalDays, resetFormUI, initGroupSearch } from './features/groupings.js';
 
 // Listen for cross-module events
 document.addEventListener('groups-changed', () => renderGroups());
@@ -26,6 +26,50 @@ window.openPathPicker = openPathPicker;
 
 // Expose for JS-injected buttons (group edit inline)
 window.cancelEdit = cancelEdit;
+
+// Keyboard shortcuts — scoped so they don't fire when typing in inputs
+function wireKeyboardShortcuts() {
+    document.addEventListener('keydown', (e) => {
+        // Don't trigger shortcuts when user is typing in an input/textarea/select
+        const tag = e.target.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+        // Don't trigger when a modal is open
+        const visibleModal = document.querySelector('.modal[style*="display: flex"], .modal[style*="display: block"]');
+        if (visibleModal) return;
+
+        switch (e.key.toLowerCase()) {
+            case 's':
+                // S = Sync (only when not holding modifier keys)
+                if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+                    e.preventDefault();
+                    const topbarSyncBtn = getEl('topbar-sync-btn');
+                    if (topbarSyncBtn) {
+                        setLoading(topbarSyncBtn, true);
+                        syncAll().finally(() => setLoading(topbarSyncBtn, false));
+                    }
+                }
+                break;
+            case 'd':
+                // D = Dry-run / Preview
+                if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+                    e.preventDefault();
+                    const topbarPreviewBtn = getEl('topbar-preview-btn');
+                    if (topbarPreviewBtn) {
+                        setLoading(topbarPreviewBtn, true);
+                        previewSyncAll().finally(() => setLoading(topbarPreviewBtn, false));
+                    }
+                }
+                break;
+            case 'c':
+                // C = Cleanup
+                if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+                    e.preventDefault();
+                    openCleanupModal();
+                }
+                break;
+        }
+    });
+}
 
 function wireTopbarButtons() {
     // Sync button → confirmation dialog first
@@ -210,7 +254,9 @@ async function bootstrap() {
     initCoverGenerator();
     initPathPicker();
     initSidebarResizer();
+    initGroupSearch();
 
+    wireKeyboardShortcuts();
     wireTopbarButtons();
     wireConfirmSyncDialog();
     wireImportFilePicker();

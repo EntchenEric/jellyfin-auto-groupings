@@ -17,7 +17,7 @@ from config import load_config
 from sync import run_cleanup_broken_symlinks, run_sync
 
 # Initialize the scheduler
-_scheduler = BackgroundScheduler()
+_scheduler: BackgroundScheduler = BackgroundScheduler()
 sync_lock = threading.Lock()
 logger = logging.getLogger(__name__)
 

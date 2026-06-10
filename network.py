@@ -56,7 +56,11 @@ def _parse_retry_config() -> tuple[int, float, list[int]]:
     try:
         total = int(os.environ.get("NETWORK_RETRY_TOTAL", "3"))
     except ValueError:
-        logger.warning("Invalid NETWORK_RETRY_TOTAL value, falling back to default 3")
+        raw_val = os.environ.get("NETWORK_RETRY_TOTAL", "")
+        logger.warning(
+            "Invalid NETWORK_RETRY_TOTAL value %r, falling back to default 3",
+            raw_val,
+        )
         total = 3
     if total < 0:
         msg = f"NETWORK_RETRY_TOTAL must be non-negative, got: {total}"
@@ -66,9 +70,10 @@ def _parse_retry_config() -> tuple[int, float, list[int]]:
     try:
         backoff = float(os.environ.get("NETWORK_RETRY_BACKOFF_FACTOR", "1.0"))
     except ValueError:
+        raw_val = os.environ.get("NETWORK_RETRY_BACKOFF_FACTOR", "")
         logger.warning(
             "Invalid NETWORK_RETRY_BACKOFF_FACTOR value %r, falling back to default 1.0",
-            os.environ.get("NETWORK_RETRY_BACKOFF_FACTOR"),
+            raw_val,
         )
         backoff = 1.0
     if backoff < 0:

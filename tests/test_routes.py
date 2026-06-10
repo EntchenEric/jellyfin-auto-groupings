@@ -861,7 +861,9 @@ def test_preview_grouping_runtime_error(mock_preview, client) -> None:
 @patch("routes.delete_virtual_folder")
 @patch("routes.os.path.exists")
 @pytest.mark.usefixtures("temp_config")
-def test_perform_cleanup_with_auto_create(mock_exists, mock_delete, client, tmp_path) -> None:
+def test_perform_cleanup_with_auto_create(
+    mock_exists, mock_delete, client, tmp_path
+) -> None:
     target = tmp_path / "target"
     target.mkdir()
     (target / "Action").mkdir()
@@ -1116,8 +1118,16 @@ def test_handle_http_error_bad_request_json() -> None:
     }
 
 
-def test_handle_http_error_non_http() -> None:
-    with pytest.raises(Exception, match="not http"):
+def test_handle_http_error_non_http_attr_error() -> None:
+    """Passing a non-HTTPException to _handle_http_error raises AttributeError.
+
+    The function signature now accepts only HTTPException, so passing
+    a plain Exception is a type error at runtime. This is intentional
+    — the blueprint error handler only dispatches HTTPException subclasses.
+    """
+    from routes import _handle_http_error
+
+    with pytest.raises(AttributeError):
         _handle_http_error(Exception("not http"))
 
 
@@ -1191,7 +1201,9 @@ def test_perform_cleanup_folder_not_found(client, tmp_path) -> None:
 
 @patch("routes.os.path.exists")
 @pytest.mark.usefixtures("temp_config")
-def test_perform_cleanup_auto_create_missing_settings(mock_exists, client, tmp_path) -> None:
+def test_perform_cleanup_auto_create_missing_settings(
+    mock_exists, client, tmp_path
+) -> None:
     target = tmp_path / "target"
     target.mkdir()
     (target / "Action").mkdir()

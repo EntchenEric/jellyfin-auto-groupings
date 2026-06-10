@@ -18,6 +18,8 @@ services:
       - TRAKT_CLIENT_ID=${TRAKT_CLIENT_ID:-}
       - TMDB_API_KEY=${TMDB_API_KEY:-}
       - MAL_CLIENT_ID=${MAL_CLIENT_ID:-}
+      # Override the AniList GraphQL API URL (e.g., for self-hosted proxies):
+      # - ANILIST_API_URL=https://graphql.anilist.co
       # Set a password to enable HTTP Basic Auth on the web UI:
       # - APP_PASSWORD=${APP_PASSWORD:-}
       # Uncomment to disable debug mode in production:

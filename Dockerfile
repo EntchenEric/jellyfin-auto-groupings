@@ -15,7 +15,9 @@ ENV PATH="/opt/venv/bin:$PATH"
 COPY requirements.txt requirements-dev.txt pyproject.toml README.md ./
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir gunicorn
+    pip install --no-cache-dir gunicorn && \
+    # Verify key dependencies are importable
+    python -c "import flask; import requests; import apscheduler"
 
 # ---------------------------------------------------------------------------
 # Final stage — copy only what is needed to run the application
@@ -49,7 +51,7 @@ LABEL org.opencontainers.image.title="Jellyfin Groupings" \
 EXPOSE 5000
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/')" || exit 1
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/', timeout=3)" || exit 1
 
 USER appuser
 

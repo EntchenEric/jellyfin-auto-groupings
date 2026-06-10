@@ -8,25 +8,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- Improved `network.py` error logging to include the actual invalid value when
+  `NETWORK_RETRY_TOTAL` or `NETWORK_RETRY_BACKOFF_FACTOR` fails to parse.
+- Stricter `_handle_http_error` signature in `routes.py` to accept `HTTPException`
+  instead of the generic `Exception`, eliminating a dead re-raise branch.
+- Explicit type annotation for `_scheduler` in `scheduler.py`.
 - `_prepare_group_directory` now resolves the cover path even during dry runs,
   so callers can access `source_cover` for preview purposes regardless of mode.
-- Improved `network.py` error logging to include the actual invalid value when
-  `NETWORK_RETRY_BACKOFF_FACTOR` fails to parse.
-
-### Fixed
-- Fixed order-dependent `test_clear_library_cache` test in `test_sync_more_edges.py`
-  by clearing the module-level cache before populating it.
-
-### Added
-- Documented Makefile targets in README.md (test, lint, typecheck, run, format, etc.)
-  for contributor discoverability.
-
-### Changed
-- Merged PR #496: Add Makefile for common dev commands; address CodeRabbit review comments.
+- Merged PR #496: Add Makefile for common dev commands; address CodeRabbit review
+  comments.
 - Fixed `.PHONY` declaration in Makefile to match actual targets (removed `dev`/`docs`,
   added `docker-build`/`docker-run`).
 - Simplified `_parse_mmdd` in sync.py by removing redundant `day <= 0` check
   (already covered by `calendar.monthrange` validation).
+
+### Fixed
+- Fixed `_fill_defaults` in `config.py` to replace non-dict values (e.g. `None` or
+  a string) for nested keys like `scheduler` with the full default dict, preventing
+  `AttributeError` downstream when accessing sub-keys.
+- Fixed order-dependent `test_clear_library_cache` test in `test_sync_more_edges.py`
+  by clearing the module-level cache before populating it.
+
+### Added
+- `ANILIST_API_URL` environment variable example in `docker-compose.yml`.
+- Tests for `_fill_defaults` resilience when `scheduler` is `null` or a non-dict
+  value in the stored config.
+- Documented Makefile targets in README.md (test, lint, typecheck, run, format, etc.)
+  for contributor discoverability.
 
 ### Added
 - Initial CHANGELOG.md for project tracking.

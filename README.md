@@ -391,6 +391,13 @@ If symlinks point to non-existent files, verify your path mapping:
 ### "Permission denied" when creating virtual directories
 - Ensure the target path is writable by the container/process.
 - On Docker, verify the volume mount for the virtual output directory has correct permissions.
+- If running as a non-root user, ensure the container user has write access to the mounted volume. You may need to set the user/group ID in your Docker Compose file:
+  ```yaml
+  services:
+    jellyfin-groupings:
+      image: ghcr.io/entcheneric/jellyfin-groupings:latest
+      user: "1000:1000"  # Match your host user's UID/GID
+  ```
 
 ### Jellyfin Connection Errors
 1. Confirm your Jellyfin server is accessible from the app container.
@@ -405,9 +412,12 @@ If symlinks point to non-existent files, verify your path mapping:
 ### Cover Images Not Showing
 - Jellyfin caches images aggressively — try a **Library Scan** or restart Jellyfin.
 - Covers are stored in `{target_path}/.covers/` — ensure the directory persists across restarts.
+- If using the legacy `config/covers/` directory, migrate covers to `{target_path}/.covers/` for better persistence.
 
 ### Nothing Happens When I Click Sync
 - Check the browser console (F12) for JavaScript errors.
+- Verify the Jellyfin server is reachable from the app container.
+- Check the app logs (`logs/jellyfin-groupings.log`) for detailed error messages.
 - Verify the Flask backend is running (`docker logs jellyfin-groupings`).
 - Ensure you have at least one group configured.
 
