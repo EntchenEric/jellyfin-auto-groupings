@@ -25,6 +25,8 @@ Instead of messing with Jellyfin's internal collections or duplicating multi-gig
 
 - 📂 **Metadata-based Groups**: Filter by genre, actor, studio, tag, or year directly from your library.
 - 📜 **External List Support**: Sync with **IMDb**, **Trakt**, **TMDb**, **Letterboxd**, **AniList**, or **MyAnimeList** lists.
+- 🤖 **TMDb Recommendations**: Generate groups from TMDb content-based recommendations.
+- 🎬 **Watch State Filtering**: Filter by watched/unwatched status per user.
 - ⚡ **Complex Logic**: Combine filters with `AND`, `OR`, and `NOT` (e.g., `Genre: Action AND NOT Genre: Sci-Fi`).
 - 🔢 **Smart Sorting**: Prefix filenames with a numeric index based on Rating, Year, Name, or List Order.
 - 🐳 **Docker-First**: Designed to run alongside your Jellyfin container with easy path mapping.
@@ -108,6 +110,31 @@ You can use the **Complex** source type to build highly specific libraries. The 
 
 **Example:**
 `actor:Tom Cruise AND genre:Action AND NOT genre:Sci-Fi`
+
+## 🎬 Watch State Filtering
+
+Each group can optionally filter by watch state, based on a specific Jellyfin user's
+playback history:
+
+| Setting | Effect |
+|---|---|
+| `Unwatched` | Only include items that the specified user has **not** watched |
+| `Watched` | Only include items the specified user **has** watched |
+| `(default)` | Include all items regardless of watch state |
+
+To use this, expand **Advanced Settings** in the group editor and select a
+Jellyfin user and watch state filter.
+
+## 🤖 TMDb Recommendations
+
+You can generate a group from **TMDb content-based recommendations**.
+
+1. Select the **Recommendations** source type.
+2. Add one or more seed items (by TMDb ID) to get recommendations from.
+3. The app calls the TMDb `/recommendations` endpoint for each seed item and
+   aggregates the results, weighted by position (top recommendations score higher).
+
+Requires a valid `TMDB_API_KEY` in the server settings.
 
 ## ⏰ Scheduler Configuration
 

@@ -1729,7 +1729,7 @@ def _parse_mmdd(value: str) -> tuple[int, int]:
         return (0, 0)
     if not (1 <= month <= 12):
         return (0, 0)
-    _, max_day = calendar.monthrange(2000, month)
+    _, max_day = calendar.monthrange(2024, month)
     if not (1 <= day <= max_day):
         return (0, 0)
     return (month, day)
