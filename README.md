@@ -343,6 +343,7 @@ services:
       - ANILIST_API_URL=            # optional: custom AniList API endpoint
       - NETWORK_RETRY_TOTAL=3         # optional: HTTP retry count for external APIs
       - NETWORK_RETRY_BACKOFF_FACTOR=1.0 # optional: retry backoff multiplier
+      - NETWORK_RETRY_STATUS_FORCELIST=429,500,502,503,504 # optional: retry status codes
     restart: unless-stopped
 ```
 

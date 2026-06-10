@@ -1759,7 +1759,14 @@ def _maybe_handle_seasonal(
                 name,
                 group_dir,
             )
-            shutil.rmtree(group_dir)
+            try:
+                shutil.rmtree(group_dir)
+            except OSError:
+                logger.exception(
+                    "Failed to delete directory for out-of-season group %r: %s",
+                    name,
+                    group_dir,
+                )
     return {"group": name or "(unnamed)", "links": 0, "status": "out_of_season"}
 
 
