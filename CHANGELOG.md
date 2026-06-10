@@ -21,6 +21,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   target base directory.
 - `config.py` `_fill_defaults` now recursively populates nested defaults
   (e.g. scheduler sub-keys) instead of only one level deep.
+- Added tests for the new code paths:
+  - `test_parse_retry_config_module_level_fallback` covers the `ValueError`
+    fallback in `network.py` at module import time.
+  - `test_delete_folder_invalid_name` covers invalid folder name rejection
+    in `_delete_folder`.
+  - `test_delete_folder_path_traversal_via_symlink` covers the path-traversal
+    detection via symlink resolution.
+  - `test_delete_folder_resolve_oserror` covers OSError from `Path.resolve()`.
+  - `test_search_filesystem_ismount_oserror` covers OSError from
+    `os.path.ismount()` in `_search_local_filesystem`.
 
 ### Changed
 - Scrollbar thumb colors now use `color-mix(in srgb, var(--text-secondary) …%,

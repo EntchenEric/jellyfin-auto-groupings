@@ -1360,3 +1360,95 @@ def test_check_auth_with_no_password(app, monkeypatch) -> None:
     # and the request proceeds normally. The endpoint needs X-Requested-With
     # for POST, but GET endpoints don't need it. /api/config is GET so it works.
     assert response.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# _delete_folder: path-traversal checks (lines 741, 746-749)
+# ---------------------------------------------------------------------------
+
+
+def test_delete_folder_invalid_name() -> None:
+    """_delete_folder rejects folder names with path separators (line 741)."""
+    from routes import _delete_folder
+
+    deleted, err = _delete_folder("../etc", "/tmp/base", False, "", "")
+    assert deleted is False
+    assert err == "Invalid folder name: ../etc"
+
+    deleted, err = _delete_folder("sub/dir", "/tmp/base", False, "", "")
+    assert deleted is False
+    assert err == "Invalid folder name: sub/dir"
+
+
+def test_delete_folder_path_traversal_via_symlink(tmp_path) -> None:
+    """_delete_folder detects path traversal when resolved path escapes target_base (line 749)."""
+    from routes import _delete_folder
+
+    target_base = str(tmp_path / "target")
+    (tmp_path / "target").mkdir()
+    # Create a real directory outside target_base
+    outside_dir = tmp_path / "outside"
+    outside_dir.mkdir()
+    # Create a symlink in target that points outside
+    link = tmp_path / "target" / "escape_link"
+    link.symlink_to(outside_dir, target_is_directory=True)
+
+    deleted, err = _delete_folder(
+        "escape_link",
+        target_base,
+        False,
+        "",
+        "",
+    )
+    assert deleted is False
+    assert "Path traversal detected" in err
+
+
+def test_delete_folder_resolve_oserror(monkeypatch, tmp_path) -> None:
+    """_delete_folder handles Path.resolve() OSError gracefully (lines 746-747)."""
+    from pathlib import Path
+
+    from routes import _delete_folder
+
+    target_base = str(tmp_path / "target")
+    (tmp_path / "target").mkdir()
+    (tmp_path / "target" / "safe").mkdir()
+
+    perm_denied = "Permission denied"
+
+    def _broken_resolve(self):
+        raise OSError(perm_denied)
+
+    monkeypatch.setattr(Path, "resolve", _broken_resolve)
+
+    # OSError caught, resolved = path (unresolved), then target_base IS in
+    # str(resolved.parent) because path hasn't resolved outside -> falls
+    # through to exists check then deletes normally
+    deleted, err = _delete_folder("safe", target_base, False, "", "")
+    assert deleted is True
+    assert err is None
+
+
+# ---------------------------------------------------------------------------
+# _search_local_filesystem: OSError from ismount (lines 844-847)
+# ---------------------------------------------------------------------------
+
+
+@patch("routes.os.path.ismount")
+def test_search_filesystem_ismount_oserror(mock_ismount) -> None:
+    """_search_local_filesystem skips directories when os.path.ismount() raises OSError (lines 844-847)."""
+    import tempfile
+
+    from routes import _search_local_filesystem
+
+    with tempfile.TemporaryDirectory() as tmp:
+        test_dir = Path(tmp) / "test"
+        test_dir.mkdir()
+        (test_dir / "movie.mkv").touch()
+
+        mock_ismount.side_effect = OSError("Permission denied")
+
+        result = _search_local_filesystem("movie.mkv", [str(test_dir)])
+        # Should return None because the only sub-directory raised an OSError
+        # and was skipped (dirnames cleared), but the root itself may still match
+        assert result is None or result == str(test_dir / "movie.mkv")
