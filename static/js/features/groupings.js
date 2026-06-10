@@ -2,7 +2,7 @@
 
 import { state, sourceOptions, sortLabels } from '../core/state.js';
 import { saveConfig } from '../core/api.js';
-import { showToast, getEl } from '../core/ui.js';
+import { showToast, getEl, showErrorDialog } from '../core/ui.js';
 import { updateSourceTypeOptions, updateSourceValueUI, getFilterValue } from './metadata.js';
 import { openCoverGenerator } from './cover-generator.js';
 

@@ -17,3 +17,20 @@
     --sidebar-width: 340px;
     --topbar-height: 58px;
 }
+
+/* Respect OS dark mode — fallback to dark theme if unspecified */
+@media (prefers-color-scheme: light) {
+    :root {
+        --bg-color: #f1f5f9;
+        --surface-color: #ffffff;
+        --accent-color: #6366f1;
+        --accent-hover: #4f46e5;
+        --text-primary: #0f172a;
+        --text-secondary: #475569;
+        --glass-bg: rgba(0, 0, 0, 0.02);
+        --glass-border: rgba(0, 0, 0, 0.08);
+        --success-color: #059669;
+        --error-color: #dc2626;
+        --warning-color: #d97706;
+    }
+}

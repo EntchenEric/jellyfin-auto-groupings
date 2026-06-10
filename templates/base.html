@@ -19,6 +19,8 @@
 </head>
 
 <body>
+    <a href="#main-content" class="skip-to-content" role="button">Skip to main content</a>
+
     <div id="loading-overlay" class="loading-overlay" role="dialog" aria-modal="true" aria-labelledby="loading-overlay-title">
         <div class="loading-overlay-card">
             <span class="loading-spinner" aria-hidden="true"></span>
@@ -33,6 +35,12 @@
             </div>
         </div>
     </div>
+
+    <noscript>
+        <div style="background: var(--error-color, #ef4444); color: #fff; padding: 1rem; text-align: center;">
+            JavaScript is required for Jellyfin Groupings to function.
+        </div>
+    </noscript>
 
     <div class="bg-blob bg-blob-1"></div>
     <div class="bg-blob bg-blob-2"></div>

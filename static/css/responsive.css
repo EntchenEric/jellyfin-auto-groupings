@@ -193,6 +193,25 @@
     outline-offset: 2px;
 }
 
+/* ── High contrast mode ─── */
+@media (prefers-contrast: high) {
+    * {
+        border-color: currentColor !important;
+    }
+    .glass-card,
+    .modal-content,
+    .group-card {
+        background: var(--surface-color);
+        border-width: 1px;
+    }
+    .badge {
+        border: 1px solid currentColor;
+    }
+    .text-secondary {
+        color: var(--text-primary);
+    }
+}
+
 /* ─────────────────────────────────────────────────────────
    REDUCED MOTION
 ───────────────────────────────────────────────────────── */

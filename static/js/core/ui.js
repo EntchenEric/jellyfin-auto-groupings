@@ -1,6 +1,7 @@
 // ui.js – UI utility functions (toasts, loading states, modals)
 
 let toastTimer = null;
+let _toastMsgId = 0;
 
 export function showToast(msg, type = 'success', duration = null) {
     // Increase duration for error messages so users have time to read them
@@ -9,6 +10,8 @@ export function showToast(msg, type = 'success', duration = null) {
     }
     const el = document.getElementById('status-msg');
     if (!el) return;
+    const msgId = ++_toastMsgId;
+    el.dataset.toastId = msgId;
     el.textContent = msg;
     el.className = `status-msg ${type}`;
     // Add close button
@@ -23,7 +26,8 @@ export function showToast(msg, type = 'success', duration = null) {
     el.style.position = 'relative';
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => {
-        if (el.textContent.includes(msg) || el.textContent.startsWith(msg)) {
+        // Only dismiss if no newer toast replaced this one
+        if (el.dataset.toastId === String(msgId)) {
             el.style.display = 'none';
         }
     }, duration);
@@ -89,7 +93,11 @@ document.addEventListener('click', (e) => {
 });
 
 export function renderEmptyState(container, message) {
-    container.innerHTML = `<p style="color: var(--text-secondary); text-align: center; font-style: italic; margin-top: 2rem;">${message}</p>`;
+    container.innerHTML = '';
+    const p = document.createElement('p');
+    p.style.cssText = 'color: var(--text-secondary); text-align: center; font-style: italic; margin-top: 2rem;';
+    p.textContent = message;
+    container.appendChild(p);
 }
 
 export function getEl(id) {
