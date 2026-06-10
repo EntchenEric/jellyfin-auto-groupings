@@ -137,26 +137,6 @@ function wireSchedulerToggles() {
 }
 
 function wireGroupFormEvents() {
-    // Wire source type category change
-    const sourceCategory = getEl('source_category');
-    if (sourceCategory) {
-        sourceCategory.addEventListener('change', () => {
-            if (typeof window.updateSourceTypeOptions === 'function') {
-                window.updateSourceTypeOptions();
-            }
-        });
-    }
-
-    // Wire source type change
-    const sourceType = getEl('source_type');
-    if (sourceType) {
-        sourceType.addEventListener('change', () => {
-            if (typeof window.updateSourceValueUI === 'function') {
-                window.updateSourceValueUI();
-            }
-        });
-    }
-
     // Wire sort order toggle
     const sortOrderToggle = getEl('sort_order_enabled');
     if (sortOrderToggle) {
