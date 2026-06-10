@@ -130,6 +130,16 @@ def test_start_scheduler(mock_sched, mock_load) -> None:
     mock_sched.start.assert_called_once()
 
 
+@patch("scheduler.load_config")
+@patch("scheduler._scheduler")
+def test_start_scheduler_already_running(mock_sched, mock_load) -> None:
+    """Scheduler already running — should not call start() again."""
+    mock_load.return_value = {}
+    mock_sched.running = True
+    start_scheduler()
+    mock_sched.start.assert_not_called()
+
+
 @patch("scheduler.CronTrigger.from_crontab")
 @patch("scheduler._scheduler")
 @patch("scheduler.load_config")

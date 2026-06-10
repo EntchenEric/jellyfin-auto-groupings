@@ -123,3 +123,39 @@ def test_fetch_anilist_empty_collection(mock_post) -> None:
     mock_post.return_value = mock_resp
     ids = fetch_anilist_list("user")
     assert ids == []
+
+
+@patch("anilist.network.post")
+def test_fetch_anilist_data_not_dict(mock_post) -> None:
+    """Anilist response where 'data' is not a dict (uncovered branch)."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"data": "not a dict"}
+    mock_post.return_value = mock_resp
+    ids = fetch_anilist_list("user")
+    assert ids == []
+
+
+@patch("anilist.network.post")
+def test_fetch_anilist_list_entry_not_dict(mock_post) -> None:
+    """Anilist response where a list entry or its wrapper is not a dict (uncovered branches)."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "data": {
+            "MediaListCollection": {
+                "lists": [
+                    "not a dict",
+                    {"entries": None},
+                    {"entries": [
+                        "not a dict",
+                        {"mediaId": 12345},
+                        {},
+                    ]},
+                ],
+            },
+        },
+    }
+    mock_post.return_value = mock_resp
+    ids = fetch_anilist_list("user")
+    assert ids == [12345]
