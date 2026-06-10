@@ -1552,6 +1552,7 @@ def _process_group(
         auto_set_library_covers: Whether to set library cover images.
         existing_libraries: List of libraries already created this run.
         target_path_in_jellyfin: Path prefix for Jellyfin library paths.
+        anilist_api_url: AniList API URL (may be None).
 
     Returns:
         A result dict with keys ``"group"``, ``"links"``, optionally ``"error"``,
