@@ -1014,14 +1014,16 @@ def health_check() -> ResponseReturnValue:
     api_key: str = str(config.get("api_key") or "")
     configured: bool = bool(url and api_key and config.get("target_path"))
 
-    return jsonify({
-        "status": "ok",
-        "healthcheck": {
-            "ok": True,
-            "configured": configured,
-            "groups": len(config.get("groups", [])),
-        },
-    })
+    return jsonify(
+        {
+            "status": "ok",
+            "healthcheck": {
+                "ok": True,
+                "configured": configured,
+                "groups": len(config.get("groups", [])),
+            },
+        }
+    )
 
 
 # ---------------------------------------------------------------------------

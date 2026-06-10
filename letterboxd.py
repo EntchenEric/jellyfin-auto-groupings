@@ -217,7 +217,9 @@ def fetch_letterboxd_list(list_url: str) -> list[str]:
             logger.warning("No film slugs found on Letterboxd page %d", page)
             consecutive_empty += 1
             if consecutive_empty >= _MAX_EMPTY_CONSECUTIVE:
-                logger.info("Stopping after %d empty consecutive pages", consecutive_empty)
+                logger.info(
+                    "Stopping after %d empty consecutive pages", consecutive_empty
+                )
                 break
             page += 1
             time.sleep(0.5)

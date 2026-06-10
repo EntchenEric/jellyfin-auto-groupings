@@ -88,7 +88,9 @@ def fetch_anilist_list(
         return []
     collection = root.get("MediaListCollection")
     if not isinstance(collection, dict):
-        logger.warning("AniList returned empty MediaListCollection for user=%r", username)
+        logger.warning(
+            "AniList returned empty MediaListCollection for user=%r", username
+        )
         return []
 
     media_ids: list[int] = []

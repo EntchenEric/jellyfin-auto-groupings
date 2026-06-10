@@ -47,6 +47,9 @@ e2e/test_output/
 # Node
 node_modules/
 
+# Coverage artifacts (from ``coverage.py`` with ``source=``)
+*.py,cover
+
 # Build artifacts
 *.egg-info/
 dist/
