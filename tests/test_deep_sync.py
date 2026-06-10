@@ -1,3 +1,9 @@
+"""Deep integration tests against the virtual Jellyfin mock server.
+
+Exercises ``run_sync`` with diverse, large-volume, edge-case, and
+chaos data sets served by the virtual (mock) Jellyfin API.
+"""
+
 from unittest.mock import patch
 
 import pytest

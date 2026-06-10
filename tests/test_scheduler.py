@@ -1,3 +1,10 @@
+"""Tests for scheduler.py — job scheduling, cron validation, and lifecycle.
+
+Verifies that the APScheduler integration correctly schedules, updates,
+and runs global sync, per-group sync, and cleanup jobs, including
+edge cases like invalid cron expressions and scheduler stop/start.
+"""
+
 from unittest.mock import patch
 
 import pytest

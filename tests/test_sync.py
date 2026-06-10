@@ -1,3 +1,11 @@
+"""Tests for core sync logic in sync.py.
+
+Covers all major components: item matching by provider ID, metadata
+filters, complex queries, path translation, cover image resolution,
+watch-state filtering, preview, full sync runs, seasonal groups,
+collection mode, and error/corner-case handling.
+"""
+
 import hashlib
 from datetime import datetime
 from pathlib import Path

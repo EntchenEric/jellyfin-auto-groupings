@@ -1,3 +1,10 @@
+"""Tests for the Jellyfin API client layer (jellyfin.py).
+
+Covers all public API functions: item fetching, pagination, library
+management, collections, images, and error handling — all with mocked
+HTTP responses.
+"""
+
 import logging
 from unittest.mock import MagicMock, patch
 
