@@ -1,3 +1,9 @@
+"""Tests for broken-symlink cleanup in sync.py.
+
+Covers ``run_cleanup_broken_symlinks`` with both broken and healthy symlinks,
+as well as non-existent target paths.
+"""
+
 from sync import run_cleanup_broken_symlinks
 
 

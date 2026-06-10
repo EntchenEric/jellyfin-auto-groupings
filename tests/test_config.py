@@ -1,3 +1,10 @@
+"""Tests for configuration loading, saving, migration, and env-override logic.
+
+Verifies default config generation, file I/O, legacy key migration,
+corrupt/empty file recovery, and all environment variable overrides
+(including the ``_env_flag`` helper).
+"""
+
 import json
 from pathlib import Path
 
@@ -114,8 +121,6 @@ def test_load_config_all_env_overrides(temp_config, monkeypatch) -> None:
 
 def test_save_config_backup_handling(temp_config) -> None:
     """Test that save_config writes valid JSON that can be re-loaded."""
-    import json
-
     cfg = {
         "jellyfin_url": "http://example.com",
         "api_key": "test",
@@ -138,8 +143,6 @@ def test_save_config_backup_handling(temp_config) -> None:
 
 def test_config_no_migration_needed(temp_config) -> None:
     """Test that loading a config with modern keys doesn't apply migration."""
-    import json
-
     cfg = {
         "media_path_in_jellyfin": "/jellyfin/media",
         "media_path_on_host": "/host/media",

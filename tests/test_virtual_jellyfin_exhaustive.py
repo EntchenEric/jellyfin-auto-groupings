@@ -1,3 +1,5 @@
+"""Exhaustive integration tests against the virtual Jellyfin mock server."""
+
 import logging
 
 import pytest

@@ -9,28 +9,26 @@ trim_trailing_whitespace = true
 indent_style = space
 indent_size = 4
 
+# Python — 4-space indentation is the standard
 [*.py]
+max_line_length = 88
 
-[*.yml]
+# Shell scripts
+[*.{sh,bash}]
 indent_size = 2
 
-[*.yaml]
+# YAML / JSON
+[*.{yml,yaml,json,json5,jsonc}]
 indent_size = 2
 
-[*.{json,json5,jsonc}]
-indent_size = 2
-
-[*.css]
+# CSS / JS / HTML
+[*.{css,js,html}]
 indent_size = 4
 
-[*.js]
-indent_size = 4
-
-[*.html]
-indent_size = 4
-
+# Makefiles require tabs
 [Makefile]
 indent_style = tab
 
+# Markdown — allow trailing spaces (hard line breaks)
 [*.md]
 trim_trailing_whitespace = false

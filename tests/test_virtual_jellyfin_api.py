@@ -1,3 +1,5 @@
+"""Tests for virtual Jellyfin mock server API operations."""
+
 import pytest
 
 from jellyfin import (

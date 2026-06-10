@@ -9,13 +9,13 @@ repos:
         always_run: true
     -   id: mypy
         name: mypy type checking
-        entry: bash -c "mypy --ignore-missing-imports --exclude tests --exclude venv --exclude __pycache__ --exclude node_modules ."
+        entry: bash -c "mypy --ignore-missing-imports --exclude tests --exclude venv --exclude __pycache__ --exclude node_modules --no-incremental ."
         language: system
         pass_filenames: false
         always_run: true
     -   id: pytest-coverage
         name: check code coverage
-        entry: bash -c "export PYTHONPATH=$PYTHONPATH:. && pytest --cov=. --cov-fail-under=99 tests/"
+        entry: bash -c "export PYTHONPATH=$PYTHONPATH:. && pytest --cov=. --cov-fail-under=100 --no-header -q tests/"
         language: system
         pass_filenames: false
         always_run: true

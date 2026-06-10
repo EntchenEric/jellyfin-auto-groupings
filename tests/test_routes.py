@@ -1,3 +1,10 @@
+"""Tests for all Flask route handlers in routes.py.
+
+Covers config CRUD, Jellyfin API proxy endpoints, sync/preview,
+cleanup, file browsing, path auto-detection, authentication,
+CSRF protection, and error handling — all with mocked dependencies.
+"""
+
 import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch
