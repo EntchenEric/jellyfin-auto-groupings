@@ -19,7 +19,8 @@ def main() -> None:
     os.environ["PYTHONPATH"] = (
         f"{existing}{os.pathsep}{repo_root}" if existing else str(repo_root)
     )
-    with Path("test_results.txt").open("w", encoding="utf-8") as f:
+    output_file = repo_root / "test_results.txt"
+    with output_file.open("w", encoding="utf-8") as f:
         try:
             # Running all tests with coverage
             f.write("Starting test run...\n")
