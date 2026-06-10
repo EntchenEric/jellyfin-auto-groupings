@@ -94,12 +94,24 @@ export function handleFileSelected(event) {
     const reader = new FileReader();
     reader.onload = (e) => {
         try {
-            const data = JSON.parse(e.target.result);
+            const text = e.target.result;
+            if (!text || text.trim().length === 0) {
+                showErrorDialog('The selected file is empty');
+                return;
+            }
+            const data = JSON.parse(text);
             state.pendingImportData = data;
             setupImportStep2(data);
         } catch (err) {
-            showErrorDialog('Invalid JSON file');
+            if (err instanceof SyntaxError) {
+                showErrorDialog('Invalid JSON file — please check the file format');
+            } else {
+                showErrorDialog('Failed to process import file: ' + err.message);
+            }
         }
+    };
+    reader.onerror = () => {
+        showErrorDialog('Failed to read the selected file');
     };
     reader.readAsText(file);
     event.target.value = '';

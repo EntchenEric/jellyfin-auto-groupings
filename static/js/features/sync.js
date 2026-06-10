@@ -21,15 +21,13 @@ export async function syncAll() {
                 groupSpan.textContent = r.group;
                 entry.appendChild(groupSpan);
                 const linksSpan = document.createElement('span');
+                linksSpan.className = 'sync-result-links';
                 linksSpan.textContent = `${r.links} links`;
-                linksSpan.style.color = 'var(--accent-color)';
-                linksSpan.style.fontWeight = '600';
                 entry.appendChild(linksSpan);
                 if (r.error) {
                     const errorSpan = document.createElement('span');
+                    errorSpan.className = 'sync-result-error';
                     errorSpan.textContent = `(${r.error})`;
-                    errorSpan.style.color = 'var(--error-color)';
-                    errorSpan.style.marginLeft = '0.5rem';
                     entry.appendChild(errorSpan);
                 }
                 resultsContent.appendChild(entry);
@@ -50,18 +48,18 @@ export async function previewSyncAll() {
         if (result.results && result.results.length > 0) {
             result.results.forEach(groupResult => {
                 const groupCard = document.createElement('div');
-                groupCard.style.cssText = 'background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 1rem;';
+                groupCard.className = 'sync-preview-card';
 
                 const header = document.createElement('div');
-                header.style.cssText = 'display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 0.5rem;';
+                header.className = 'sync-preview-header';
 
                 const name = document.createElement('strong');
+                name.className = 'sync-preview-name';
                 name.textContent = groupResult.group;
-                name.style.fontSize = '1.1rem';
 
                 const badge = document.createElement('span');
+                badge.className = 'sync-preview-badge';
                 badge.textContent = `${groupResult.links} items`;
-                badge.style.cssText = 'background: var(--accent-color); color: #fff; padding: 0.3rem 0.6rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; white-space: nowrap;';
 
                 header.appendChild(name);
                 header.appendChild(badge);
@@ -69,12 +67,12 @@ export async function previewSyncAll() {
 
                 if (groupResult.error) {
                     const err = document.createElement('div');
-                    err.style.cssText = 'color: var(--error-color); font-size: 0.85rem; margin-top: 0.5rem;';
+                    err.className = 'sync-preview-error';
                     err.textContent = `Error: ${groupResult.error}`;
                     groupCard.appendChild(err);
                 } else if (groupResult.items && groupResult.items.length > 0) {
                     const list = document.createElement('ul');
-                    list.style.cssText = 'margin: 0; padding-left: 1.2rem; font-size: 0.85rem; color: var(--text-secondary); max-height: 150px; overflow-y: auto;';
+                    list.className = 'sync-preview-list';
                     groupResult.items.forEach((item) => {
                         const li = document.createElement('li');
                         li.textContent = item.Year ? `${item.Name} (${item.Year})` : item.Name;
@@ -83,7 +81,7 @@ export async function previewSyncAll() {
                     groupCard.appendChild(list);
                 } else {
                     const empty = document.createElement('div');
-                    empty.style.cssText = 'color: var(--text-secondary); font-size: 0.85rem; font-style: italic;';
+                    empty.className = 'sync-preview-empty';
                     empty.textContent = 'No items found for this group.';
                     groupCard.appendChild(empty);
                 }
@@ -91,7 +89,10 @@ export async function previewSyncAll() {
                 container.appendChild(groupCard);
             });
         } else {
-            container.innerHTML = '<div style="color: var(--text-secondary); font-style: italic; padding: 1rem;">No groupings configured.</div>';
+            const emptyDiv = document.createElement('div');
+            emptyDiv.className = 'sync-preview-empty';
+            emptyDiv.textContent = 'No groupings configured.';
+            container.appendChild(emptyDiv);
         }
 
         getEl('preview-sync-modal').style.display = 'flex';
