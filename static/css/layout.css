@@ -47,7 +47,7 @@
     align-items: center;
     gap: 1rem;
     padding: 0 1.5rem;
-    background: rgba(13, 13, 18, 0.85);
+    background: color-mix(in srgb, var(--bg-color) 85%, transparent);
     backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--glass-border);
 }
@@ -206,7 +206,7 @@
 }
 
 #sidebar::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
+    background: color-mix(in srgb, var(--text-secondary) 12%, transparent);
     border-radius: 3px;
 }
 
@@ -227,7 +227,7 @@
 }
 
 #main-content::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.08);
+    background: color-mix(in srgb, var(--text-secondary) 10%, transparent);
     border-radius: 3px;
 }
 
@@ -236,7 +236,8 @@
     margin-top: auto;
     padding-top: 1rem;
     font-size: 0.72rem;
-    color: rgba(148, 163, 184, 0.45);
+    color: var(--text-secondary);
+    opacity: 0.45;
     text-align: center;
 }
 
