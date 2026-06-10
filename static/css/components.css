@@ -14,7 +14,7 @@
 
 h2,
 h3 {
-    font-family: 'Outfit', sans-serif;
+    font-family: Outfit, sans-serif;
     color: var(--text-primary);
 }
 
@@ -265,6 +265,73 @@ button:disabled {
     margin-top: 0;
 }
 
+/* Search input for groups list */
+.groups-list-header {
+    margin-bottom: 0.75rem;
+}
+
+.groups-search-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.groups-search-input {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.82rem;
+    transition: var(--transition);
+}
+
+.groups-search-input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.groups-search-input::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+.groups-count-badge {
+    flex-shrink: 0;
+    margin-left: 0;
+}
+
+/* Empty state for groups */
+.groups-empty-state {
+    text-align: center;
+    padding: 2.5rem 1rem;
+    color: var(--text-secondary);
+}
+
+.groups-empty-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+    opacity: 0.6;
+}
+
+.groups-empty-title {
+    font-family: Outfit, sans-serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.groups-empty-desc {
+    font-size: 0.85rem;
+    line-height: 1.5;
+    max-width: 340px;
+    margin: 0 auto;
+}
+
 /* ── Group cards (responsive grid) ─────────────────────── */
 #groups-list {
     display: grid;
@@ -507,7 +574,7 @@ button:disabled {
 }
 
 .modal-title {
-    font-family: 'Outfit', sans-serif;
+    font-family: Outfit, sans-serif;
     font-size: 1.2rem;
     font-weight: 600;
     color: var(--text-primary);
@@ -761,7 +828,7 @@ button:disabled {
 
 /* ── Code / pre blocks ──────────────────────────────────── */
 code, pre {
-    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-family: JetBrains Mono, Fira Code, monospace;
     font-size: 0.82rem;
     background: rgba(0, 0, 0, 0.3);
     border-radius: 4px;

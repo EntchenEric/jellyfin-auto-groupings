@@ -3,24 +3,51 @@
 ## Supported Versions
 
 | Version | Supported          |
-|---------|--------------------|
-| latest  | ✅ Yes             |
-| < 1.x   | ❌ No              |
+| ------- | ------------------ |
+| latest  | :white_check_mark: |
 
-We recommend always running the latest published Docker image or building from the latest `main` commit.
+Only the latest release receives security updates.
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in Jellyfin Groupings, please report it by opening a [GitHub Security Advisory](https://github.com/entcheneric/jellyfin-auto-groupings/security/advisories/new).
+If you discover a security vulnerability, please report it privately by emailing the maintainer or opening a [GitHub Security Advisory](https://github.com/entcheneric/jellyfin-auto-groupings/security/advisories/new).
 
-Do **not** open a public issue for security vulnerabilities.
+Please **do not** open a public issue for security vulnerabilities.
 
-We aim to acknowledge reports within 48 hours and will work on a fix as quickly as possible.
+### What to include
 
-## Best Practices for Deployments
+- A description of the vulnerability
+- Steps to reproduce
+- Affected versions
+- Any potential impact
 
-1. **Use environment variables for secrets** — API keys, passwords, and tokens set via `JELLYFIN_API_KEY`, `APP_PASSWORD`, etc. are preferred over storing them in `config.json`.
-2. **Enable authentication** — Set `APP_PASSWORD` to enable HTTP Basic Auth for the web UI.
-3. **Restrict network access** — Do not expose the web UI (port 5000) to the public internet without a VPN or reverse proxy with authentication.
-4. **Run as non-root** — The Docker container runs as `appuser` (UID 1000) by default. Avoid running as root.
-5. **Keep dependencies updated** — Regularly rebuild the Docker image to pick up the latest security patches.
+You should receive a response within 48 hours. If the vulnerability is confirmed, we will work on a fix and release it as soon as possible.
+
+## Security Considerations
+
+### API Keys
+
+- Jellyfin API keys, Trakt client IDs, and TMDb API keys are stored in `config/config.json`.
+- These values can also be set via environment variables (`JELLYFIN_API_KEY`, `TRAKT_CLIENT_ID`, `TMDB_API_KEY`, `MAL_CLIENT_ID`), which take precedence over the config file.
+- The `config/` directory is excluded from Docker builds via `.dockerignore`.
+
+### App Password
+
+- Set the `APP_PASSWORD` environment variable to enable HTTP Basic Auth for the web UI.
+- When enabled, all state-changing API endpoints require authentication.
+- The main UI page and static assets are accessible without authentication.
+
+### CSRF Protection
+
+- All state-changing requests (POST, PUT, DELETE, PATCH) require the `X-Requested-With: XMLHttpRequest` header.
+- This prevents simple cross-site request forgery attacks.
+
+### Filesystem Access
+
+- The filesystem browser is restricted to whitelisted roots (home directory, `/media`, `/mnt`).
+- Symlinks are excluded from the browser to prevent path traversal.
+
+### Docker
+
+- The Docker image runs as a non-root user (`appuser`, UID 1000).
+- Health checks are configured to detect unresponsive containers.

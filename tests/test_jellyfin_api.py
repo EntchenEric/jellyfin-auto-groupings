@@ -781,7 +781,9 @@ def test_set_collection_image_os_error(mock_open, caplog) -> None:
 @patch("mimetypes.guess_type")
 @patch("jellyfin.Path.open")
 @patch("jellyfin.network.post")
-def test_set_collection_image_unknown_mime(mock_post, mock_open, mock_guess, caplog) -> None:
+def test_set_collection_image_unknown_mime(
+    mock_post, mock_open, mock_guess, caplog
+) -> None:
     mock_guess.return_value = (None, None)
     mock_open.return_value.__enter__.return_value.read.return_value = b"data"
     mock_response = MagicMock()
@@ -798,7 +800,9 @@ def test_set_collection_image_unknown_mime(mock_post, mock_open, mock_guess, cap
 @patch("mimetypes.guess_type")
 @patch("jellyfin.Path.open")
 @patch("jellyfin.network.post")
-def test_set_collection_image_http_error(mock_post, mock_open, mock_guess, caplog) -> None:
+def test_set_collection_image_http_error(
+    mock_post, mock_open, mock_guess, caplog
+) -> None:
     mock_guess.return_value = ("image/jpeg", None)
     mock_open.return_value.__enter__.return_value.read.return_value = b"jpeg_data"
     mock_response = MagicMock()

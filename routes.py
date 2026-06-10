@@ -54,13 +54,11 @@ __all__ = ["bp"]
 bp = Blueprint("main", __name__)
 
 
-def _handle_http_error(exc: Exception) -> ResponseReturnValue:
+def _handle_http_error(exc: HTTPException) -> ResponseReturnValue:
     """Translate blueprint HTTP exceptions into JSON error responses."""
-    if isinstance(exc, HTTPException):
-        if exc.code is None:
-            raise exc
-        return jsonify({"status": "error", "message": exc.description}), exc.code
-    raise exc
+    if exc.code is None:
+        raise exc
+    return jsonify({"status": "error", "message": exc.description}), exc.code
 
 
 bp.register_error_handler(HTTPException, _handle_http_error)

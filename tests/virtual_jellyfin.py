@@ -917,8 +917,7 @@ def dashboard() -> str:
                 <tr><th>Name</th><th>Id</th></tr>
                 {
         "".join(
-            f"<tr><td>{u.get('Name')}</td><td>{u.get('Id')}</td></tr>"
-            for u in users
+            f"<tr><td>{u.get('Name')}</td><td>{u.get('Id')}</td></tr>" for u in users
         )
     }
             </table>

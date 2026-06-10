@@ -93,3 +93,47 @@ def test_load_config_does_not_lose_extra_keys(temp_config) -> None:
     # The config module's load_config uses dict union, extra keys may or may not be kept
     # depending on merge direction. If kept, verifies preservation.
     assert cfg["jellyfin_url"] == ""
+
+
+def test_load_config_fills_scheduler_none_value(temp_config) -> None:
+    """When stored config has scheduler=None, defaults should restore the full scheduler dict.
+
+    A legacy config or manual edit could produce a null value for the
+    scheduler key. _fill_defaults must handle this by replacing the
+    non-dict value with the full scheduler default dict.
+    """
+    bad = {
+        "jellyfin_url": "http://srv",
+        "api_key": "key",
+        "target_path": "/groupings",
+        "scheduler": None,
+        "groups": [],
+    }
+    with Path(temp_config).open("w") as f:
+        json.dump(bad, f)
+
+    cfg = load_config()
+    assert isinstance(cfg["scheduler"], dict)
+    assert "global_enabled" in cfg["scheduler"]
+    assert "global_exclude_ids" in cfg["scheduler"]
+    assert "cleanup_schedule" in cfg["scheduler"]
+    assert cfg["scheduler"]["global_enabled"] is False
+    assert cfg["scheduler"]["global_exclude_ids"] == []
+
+
+def test_load_config_fills_scheduler_non_dict_value(temp_config) -> None:
+    """When stored config has scheduler set to a string, defaults should replace it."""
+    bad = {
+        "jellyfin_url": "http://srv",
+        "api_key": "key",
+        "target_path": "/groupings",
+        "scheduler": "broken",
+        "groups": [],
+    }
+    with Path(temp_config).open("w") as f:
+        json.dump(bad, f)
+
+    cfg = load_config()
+    assert isinstance(cfg["scheduler"], dict)
+    assert cfg["scheduler"]["global_enabled"] is False
+    assert cfg["scheduler"]["cleanup_enabled"] is True

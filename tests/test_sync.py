@@ -1483,7 +1483,9 @@ def test_process_group_library_creation_error(mock_meta, mock_add, tmp_path) -> 
 
 @patch("sync.add_virtual_folder")
 @patch("sync._fetch_items_for_metadata_group")
-def test_process_group_library_with_jellyfin_path(mock_meta, mock_add, tmp_path) -> None:
+def test_process_group_library_with_jellyfin_path(
+    mock_meta, mock_add, tmp_path
+) -> None:
     host = tmp_path / "movie.mkv"
     host.write_text("movie")
     mock_meta.return_value = ([{"Id": "1", "Name": "M1", "Path": str(host)}], None, 200)
@@ -1611,7 +1613,9 @@ def test_run_sync_get_libraries_error(mock_process, mock_libs, tmp_path) -> None
 @patch("sync._process_group")
 @patch("sync._is_in_season")
 @patch("sync.get_libraries")
-def test_run_sync_seasonal_cleanup(mock_libs, mock_season, mock_process, tmp_path) -> None:
+def test_run_sync_seasonal_cleanup(
+    mock_libs, mock_season, mock_process, tmp_path
+) -> None:
     mock_libs.return_value = []
     mock_season.return_value = False
     mock_process.return_value = {"group": "Test", "links": 0}
@@ -1976,7 +1980,9 @@ def test_is_in_season_invalid_date() -> None:
 @patch("sync._process_group")
 @patch("sync._is_in_season")
 @patch("sync.get_libraries")
-def test_run_sync_seasonal_dry_run(mock_libs, mock_season, mock_process, tmp_path) -> None:
+def test_run_sync_seasonal_dry_run(
+    mock_libs, mock_season, mock_process, tmp_path
+) -> None:
     mock_libs.return_value = []
     mock_season.return_value = False
     mock_process.return_value = {"group": "Test", "links": 0}
@@ -2002,7 +2008,9 @@ def test_run_sync_seasonal_dry_run(mock_libs, mock_season, mock_process, tmp_pat
 @patch("sync._process_group")
 @patch("sync._is_in_season")
 @patch("sync.get_libraries")
-def test_run_sync_seasonal_no_dir(mock_libs, mock_season, mock_process, tmp_path) -> None:
+def test_run_sync_seasonal_no_dir(
+    mock_libs, mock_season, mock_process, tmp_path
+) -> None:
     mock_libs.return_value = []
     mock_season.return_value = False
     mock_process.return_value = {"group": "Test", "links": 0}
@@ -2029,7 +2037,9 @@ def test_run_sync_seasonal_no_dir(mock_libs, mock_season, mock_process, tmp_path
 @patch("sync._process_group")
 @patch("sync._is_in_season")
 @patch("sync.get_libraries")
-def test_run_sync_seasonal_in_season(mock_libs, mock_season, mock_process, tmp_path) -> None:
+def test_run_sync_seasonal_in_season(
+    mock_libs, mock_season, mock_process, tmp_path
+) -> None:
     """Cover line 1398: seasonal group that is in season returns None and is processed normally."""
     mock_libs.return_value = []
     mock_season.return_value = True
@@ -2300,7 +2310,9 @@ def test_create_group_symlinks_path_translation_log(tmp_path, caplog) -> None:
 
 @patch("sync._process_group")
 @patch("sync._fetch_existing_libraries")
-def test_run_sync_path_translation_active(mock_libs, mock_process, tmp_path, caplog) -> None:
+def test_run_sync_path_translation_active(
+    mock_libs, mock_process, tmp_path, caplog
+) -> None:
     """run_sync logs when path translation is configured (line 1725)."""
     import logging
 
