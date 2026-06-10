@@ -1,3 +1,5 @@
+"""Shared pytest fixtures and configuration for the test suite."""
+
 import logging
 import threading
 import time
