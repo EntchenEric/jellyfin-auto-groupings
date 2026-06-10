@@ -26,7 +26,8 @@ test_results.txt
 current_test_out.txt
 test_api_out.txt
 
-# Test artifacts
+# Coverage data (coverage.py may create .cover files)
+*.py,cover
 test_error.log
 coverage_report.txt
 pytest_verbose.log
