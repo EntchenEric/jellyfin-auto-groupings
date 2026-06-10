@@ -1,4 +1,5 @@
-"""trakt.py - Trakt API list fetching utilities.
+"""
+trakt.py - Trakt API list fetching utilities.
 
 Provides a single public function for fetching ordered IMDb IDs from a
 Trakt list via the official Trakt v2 API.
@@ -47,7 +48,8 @@ def _parse_trakt_list_url(list_url: str) -> tuple[str, str]:
 
 
 def fetch_trakt_list(list_url: str, client_id: str) -> list[str]:
-    """Fetch a Trakt list and return its items as IMDb title IDs in list order.
+    """
+    Fetch a Trakt list and return its items as IMDb title IDs in list order.
 
     *list_url* may be a full Trakt URL
     (``https://trakt.tv/users/jane/lists/my-list``) or a shorthand

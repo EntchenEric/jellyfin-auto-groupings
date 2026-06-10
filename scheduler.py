@@ -1,4 +1,5 @@
-"""scheduler.py - Background scheduling for Jellyfin Groupings.
+"""
+scheduler.py - Background scheduling for Jellyfin Groupings.
 
 Manages a BackgroundScheduler that triggers library synchronisation according
 to either a global schedule (with exclusions) or per-group schedules.
@@ -29,7 +30,8 @@ __all__ = [
 
 
 def start_scheduler() -> None:
-    """Start the background scheduler and load jobs from config.
+    """
+    Start the background scheduler and load jobs from config.
 
     If the scheduler was already started (e.g., start_scheduler() is called
     multiple times within the same process, during tests, or via reloader
@@ -204,7 +206,8 @@ def _run_cleanup_job() -> None:
 
 
 def validate_cron(expr: str) -> str | None:
-    """Validate a cron expression.
+    """
+    Validate a cron expression.
 
     Args:
         expr: A 5-field cron expression (e.g. ``"0 0 * * *"``).

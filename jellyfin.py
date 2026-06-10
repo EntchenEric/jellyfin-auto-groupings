@@ -1,4 +1,5 @@
-"""jellyfin.py - Jellyfin API client helpers.
+"""
+jellyfin.py - Jellyfin API client helpers.
 
 Contains the sort-order mapping used across the application and a thin
 convenience wrapper around ``requests.get`` for fetching items from the
@@ -118,7 +119,8 @@ def _get_json(
     params: dict[str, Any] | None = None,
     timeout: int = _DEFAULT_TIMEOUT,
 ) -> Any:
-    """GET *url* and return the parsed JSON response.
+    """
+    GET *url* and return the parsed JSON response.
 
     Raises:
         RuntimeError: If the request fails or the response body is not valid JSON.
@@ -148,7 +150,8 @@ def _request_or_raise(
     timeout: int = _DEFAULT_TIMEOUT,
     error_prefix: str = "",
 ) -> requests.Response:
-    """Send a *method* request to *url* and return the response, translating errors into ``RuntimeError``.
+    """
+    Send a *method* request to *url* and return the response, translating errors into ``RuntimeError``.
 
     Raises:
         RuntimeError: On any ``RequestException``.
@@ -260,7 +263,8 @@ def fetch_jellyfin_items(
     *,
     timeout: int = _DEFAULT_TIMEOUT,
 ) -> list[dict[str, Any]]:
-    """Fetch the ``Items`` list from the Jellyfin ``/Items`` endpoint.
+    """
+    Fetch the ``Items`` list from the Jellyfin ``/Items`` endpoint.
 
     Builds query parameters, performs a GET request, and returns the parsed
     ``Items`` list from the JSON response.
@@ -306,7 +310,8 @@ def fetch_all_jellyfin_items(
     timeout: int = _DEFAULT_TIMEOUT,
     _fetch_page: Callable[..., list[dict[str, Any]]] | None = None,
 ) -> list[dict[str, Any]]:
-    """Fetch all items from the Jellyfin ``/Items`` endpoint, handling pagination.
+    """
+    Fetch all items from the Jellyfin ``/Items`` endpoint, handling pagination.
 
     Args:
         base_url: Jellyfin server base URL.
@@ -350,7 +355,8 @@ def _paginate_jellyfin(
     limit: int = _PAGE_LIMIT,
     timeout: int = _DEFAULT_TIMEOUT,
 ) -> Iterator[list[dict[str, Any]]]:
-    """Yield pages of items from a Jellyfin endpoint.
+    """
+    Yield pages of items from a Jellyfin endpoint.
 
     Handles ``StartIndex`` / ``Limit`` pagination automatically.
 
@@ -395,7 +401,8 @@ def _paginate_jellyfin(
 
 
 def get_libraries(base_url: str, api_key: str, timeout: int = 30) -> list[str]:
-    """Fetch the list of virtual folder (library) names from Jellyfin.
+    """
+    Fetch the list of virtual folder (library) names from Jellyfin.
 
     Args:
         base_url: Jellyfin server base URL.
@@ -418,7 +425,8 @@ def get_libraries(base_url: str, api_key: str, timeout: int = 30) -> list[str]:
 
 
 def get_users(base_url: str, api_key: str, timeout: int = 30) -> list[dict[str, Any]]:
-    """Fetch the list of users from Jellyfin.
+    """
+    Fetch the list of users from Jellyfin.
 
     Args:
         base_url: Jellyfin server base URL.
@@ -446,7 +454,8 @@ def get_user_recent_items(
     limit: int = 20,
     timeout: int = _DEFAULT_TIMEOUT,
 ) -> list[dict[str, Any]]:
-    """Fetch a user's recently played movies and shows.
+    """
+    Fetch a user's recently played movies and shows.
 
     Args:
         base_url: Jellyfin server base URL.
@@ -488,7 +497,8 @@ def add_virtual_folder(
     refresh_library: bool = True,
     timeout: int = _DEFAULT_TIMEOUT,
 ) -> None:
-    """Create a new virtual folder (library) in Jellyfin.
+    """
+    Create a new virtual folder (library) in Jellyfin.
 
     Args:
         base_url: Jellyfin server base URL.
@@ -554,7 +564,8 @@ def delete_virtual_folder(
     name: str,
     timeout: int = 30,
 ) -> None:
-    """Delete a virtual folder (library) from Jellyfin.
+    """
+    Delete a virtual folder (library) from Jellyfin.
 
     Args:
         base_url: Jellyfin server base URL.
@@ -589,7 +600,8 @@ def get_library_id(
     name: str,
     timeout: int = 30,
 ) -> str | None:
-    """Get the ItemId of a virtual folder (library) from Jellyfin by name.
+    """
+    Get the ItemId of a virtual folder (library) from Jellyfin by name.
 
     Args:
         base_url: Jellyfin server base URL.
@@ -621,7 +633,8 @@ def _upload_image(
     image_path: str,
     timeout: int = _DEFAULT_TIMEOUT,
 ) -> None:
-    """Upload *image_path* to Jellyfin as the primary image for *item_id*.
+    """
+    Upload *image_path* to Jellyfin as the primary image for *item_id*.
 
     Args:
         base_url: Jellyfin server base URL.
@@ -651,7 +664,8 @@ def set_virtual_folder_image(
     image_path: str,
     timeout: int = _DEFAULT_TIMEOUT,
 ) -> None:
-    """Set the primary image for a virtual folder (library) in Jellyfin.
+    """
+    Set the primary image for a virtual folder (library) in Jellyfin.
 
     Args:
         base_url: Jellyfin server base URL.
@@ -687,7 +701,8 @@ def create_collection(
     item_ids: list[str],
     timeout: int = _DEFAULT_TIMEOUT,
 ) -> str:
-    """Create a new Jellyfin Collection (Boxset) with the given items.
+    """
+    Create a new Jellyfin Collection (Boxset) with the given items.
 
     Args:
         base_url: Jellyfin server base URL.
@@ -724,7 +739,8 @@ def find_collection_by_name(
     name: str,
     timeout: int = _DEFAULT_TIMEOUT,
 ) -> str | None:
-    """Find an existing Jellyfin Collection (Boxset) by name.
+    """
+    Find an existing Jellyfin Collection (Boxset) by name.
 
     Args:
         base_url: Jellyfin server base URL.
@@ -764,7 +780,8 @@ def add_to_collection(
     item_ids: list[str],
     timeout: int = _DEFAULT_TIMEOUT,
 ) -> None:
-    """Add items to an existing Jellyfin Collection.
+    """
+    Add items to an existing Jellyfin Collection.
 
     Args:
         base_url: Jellyfin server base URL.
@@ -797,7 +814,8 @@ def remove_from_collection(
     item_ids: list[str],
     timeout: int = _DEFAULT_TIMEOUT,
 ) -> None:
-    """Remove items from a Jellyfin Collection.
+    """
+    Remove items from a Jellyfin Collection.
 
     Args:
         base_url: Jellyfin server base URL.
@@ -829,7 +847,8 @@ def delete_collection(
     collection_id: str,
     timeout: int = _DEFAULT_TIMEOUT,
 ) -> None:
-    """Delete a Jellyfin Collection (Boxset) by ID.
+    """
+    Delete a Jellyfin Collection (Boxset) by ID.
 
     Args:
         base_url: Jellyfin server base URL.
@@ -856,7 +875,8 @@ def set_collection_image(
     image_path: str,
     timeout: int = _DEFAULT_TIMEOUT,
 ) -> None:
-    """Set the primary image for a Jellyfin Collection.
+    """
+    Set the primary image for a Jellyfin Collection.
 
     Args:
         base_url: Jellyfin server base URL.

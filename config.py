@@ -1,4 +1,5 @@
-"""config.py - Configuration persistence helpers.
+"""
+config.py - Configuration persistence helpers.
 
 Handles loading and saving the application's ``config.json`` file, including
 backwards-compatible key migration and first-run default creation.
@@ -73,7 +74,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
 
 
 def _env_flag(name: str, *, default: bool = False) -> bool:
-    """Parse an environment variable as a boolean flag.
+    """
+    Parse an environment variable as a boolean flag.
 
     Accepts ``"true"``, ``"1"``, ``"yes"`` (case-insensitive) as truthy.
     Accepts ``"false"``, ``"0"``, ``"no"`` (case-insensitive) as falsy.
@@ -98,7 +100,8 @@ def _fill_defaults(cfg: dict[str, Any], defaults: dict[str, Any]) -> None:
 
 
 def _migrate_legacy_keys(cfg: dict[str, Any]) -> bool:
-    """Migrate legacy keys to their new names. Returns True if any changes were made.
+    """
+    Migrate legacy keys to their new names. Returns True if any changes were made.
 
     The caller is responsible for persisting changes when this returns True.
     """
@@ -116,7 +119,8 @@ def _migrate_legacy_keys(cfg: dict[str, Any]) -> bool:
 
 
 def load_config() -> dict[str, Any]:
-    """Load configuration from disk.
+    """
+    Load configuration from disk.
 
     If the config file does not exist it is created from :data:`DEFAULT_CONFIG`
     and that default dict is returned.  When loading an existing file:
@@ -161,7 +165,8 @@ def load_config() -> dict[str, Any]:
 
 
 def save_config(config: dict[str, Any]) -> None:
-    """Persist *config* to :data:`CONFIG_FILE` as pretty-printed JSON.
+    """
+    Persist *config* to :data:`CONFIG_FILE` as pretty-printed JSON.
 
     Args:
         config: The configuration dictionary to write.

@@ -1,4 +1,5 @@
-"""app.py - Application entry-point for Jellyfin Groupings.
+"""
+app.py - Application entry-point for Jellyfin Groupings.
 
 Creates the Flask application, registers the route Blueprint defined in
 :mod:`routes`, and starts the development server when run directly.

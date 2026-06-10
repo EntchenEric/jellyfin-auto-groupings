@@ -1,4 +1,5 @@
-"""imdb.py - IMDb list scraping utilities.
+"""
+imdb.py - IMDb list scraping utilities.
 
 Provides a single public function for fetching ordered IMDb IDs from a
 public IMDb list page via regex extraction over the rendered HTML.
@@ -33,7 +34,8 @@ _REQUEST_HEADERS: dict[str, str] = {
 
 
 def fetch_imdb_list(list_id: str) -> list[str]:
-    r"""Fetch an IMDb list and return its IMDb title IDs in list order.
+    r"""
+    Fetch an IMDb list and return its IMDb title IDs in list order.
 
     *list_id* may be a full URL (e.g. ``https://www.imdb.com/list/ls000024390/``)
     or a bare list ID (e.g. ``ls000024390``).  The function paginates

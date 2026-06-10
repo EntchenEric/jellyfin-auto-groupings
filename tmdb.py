@@ -1,4 +1,5 @@
-"""tmdb.py - TMDb API list fetching utilities.
+"""
+tmdb.py - TMDb API list fetching utilities.
 
 Provides a single public function for fetching TMDb IDs from a
 TMDb v3 list.
@@ -24,7 +25,8 @@ _MAX_TMDB_PAGES: int = 50
 
 
 def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
-    """Fetch a TMDb v3 list and return its items as TMDb IDs in list order.
+    """
+    Fetch a TMDb v3 list and return its items as TMDb IDs in list order.
 
     Args:
         list_id: TMDb list ID (numeric or alphanumeric).
@@ -93,7 +95,8 @@ def get_tmdb_recommendations(
     items_with_type: list[tuple[str, str]],
     api_key: str,
 ) -> list[str]:
-    """Fetch recommendations for a list of TMDb IDs.
+    """
+    Fetch recommendations for a list of TMDb IDs.
 
     Args:
         items_with_type: A list of tuples (tmdb_id, media_type) where media_type is "movie" or "tv".

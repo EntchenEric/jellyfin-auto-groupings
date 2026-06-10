@@ -1,4 +1,5 @@
-"""network.py - Retry-aware HTTP for external API calls.
+"""
+network.py - Retry-aware HTTP for external API calls.
 
 Provides explicit :func:`get`, :func:`post`, and :func:`delete` helpers
 that delegate to a shared :class:`requests.Session` configured with
@@ -40,7 +41,8 @@ _HTTP_STATUS_MAX: int = 599
 
 
 def _parse_retry_config() -> tuple[int, float, list[int]]:
-    """Parse retry configuration from environment variables with validation.
+    """
+    Parse retry configuration from environment variables with validation.
 
     Returns
     -------
@@ -132,7 +134,8 @@ _SESSION = _build_retry_session()
 
 
 def _reraise_timeout(exc: requests.ConnectionError) -> None:
-    """Re-raise a retry timeout as :class:`requests.Timeout`.
+    """
+    Re-raise a retry timeout as :class:`requests.Timeout`.
 
     If *exc* wraps a read-timeout from the retry adapter, re-raise it so callers
     see the expected exception type.

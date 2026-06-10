@@ -21,7 +21,8 @@ def fetch_anilist_list(
     status: str | None = None,
     api_url: str | None = None,
 ) -> list[int]:
-    """Fetch anime IDs from a user's AniList profile.
+    """
+    Fetch anime IDs from a user's AniList profile.
 
     Args:
         username: The AniList username.
@@ -88,7 +89,9 @@ def fetch_anilist_list(
         return []
     collection = root.get("MediaListCollection")
     if not isinstance(collection, dict):
-        logger.warning("AniList returned empty MediaListCollection for user=%r", username)
+        logger.warning(
+            "AniList returned empty MediaListCollection for user=%r", username
+        )
         return []
 
     media_ids: list[int] = []

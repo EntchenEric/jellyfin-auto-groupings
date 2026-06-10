@@ -37,7 +37,8 @@ def fetch_mal_list(
     client_id: str,
     status: str | None = None,
 ) -> list[int]:
-    """Fetch anime IDs from a user's MyAnimeList profile.
+    """
+    Fetch anime IDs from a user's MyAnimeList profile.
 
     Args:
         username: The MAL username.

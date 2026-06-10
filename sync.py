@@ -1,4 +1,5 @@
-"""sync.py - Core synchronisation logic for Jellyfin Groupings.
+"""
+sync.py - Core synchronisation logic for Jellyfin Groupings.
 
 This module contains :func:`run_sync`, which drives the per-group loop
 responsible for:
@@ -141,7 +142,8 @@ def _translate_path(
     jellyfin_root: str,
     host_root: str,
 ) -> str:
-    """Translate a Jellyfin-side path to the equivalent host filesystem path.
+    """
+    Translate a Jellyfin-side path to the equivalent host filesystem path.
 
     If *jellyfin_path* does not start with *jellyfin_root* the original path
     is returned unchanged.
@@ -179,7 +181,8 @@ def _get_cover_path(
     target_base: str,
     check_exists: bool = True,
 ) -> str | None:
-    """Compute the expected cover image path for a group, resolving storage priority.
+    """
+    Compute the expected cover image path for a group, resolving storage priority.
 
     Resolution order:
     1. Library-local ``.covers/`` directory under *target_base* (new storage location).
@@ -230,7 +233,8 @@ _LIBRARY_CACHE_LOCK = threading.RLock()
 
 
 def clear_library_cache() -> None:
-    """Clear the cached Jellyfin library data.
+    """
+    Clear the cached Jellyfin library data.
 
     Called by routes when the configuration changes to prevent stale
     cached data from being used after a server URL or API key update.
@@ -244,7 +248,8 @@ def _filter_by_watch_state(
     items: list[dict[str, Any]],
     watch_state: str,
 ) -> list[dict[str, Any]]:
-    """Filter *items* by Jellyfin watch state.
+    """
+    Filter *items* by Jellyfin watch state.
 
     Args:
         items: Jellyfin item dicts (must contain ``UserData.Played``).
@@ -267,7 +272,8 @@ def _fetch_full_library(
     api_key: str,
     group_name: str,
 ) -> tuple[list[dict[str, Any]], str | None, int]:
-    """Fetch the full Jellyfin library once per run for matching.
+    """
+    Fetch the full Jellyfin library once per run for matching.
 
     Uses double-checked locking with a reentrant lock to avoid redundant
     fetches when multiple groups share the same Jellyfin server.
@@ -324,7 +330,8 @@ def _match_jellyfin_items_by_provider(
     group_name: str,
     watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
-    """Fetch all Jellyfin items and match them against a list of external IDs.
+    """
+    Fetch all Jellyfin items and match them against a list of external IDs.
 
     Args:
         external_ids: List of IDs from the external provider (IMDb, TMDb, etc.).
@@ -376,7 +383,8 @@ def _sort_items_in_memory(
     items: list[dict[str, Any]],
     sort_order: str,
 ) -> list[dict[str, Any]]:
-    """Sort *items* in-memory using :data:`jellyfin.SORT_MAP`.
+    """
+    Sort *items* in-memory using :data:`jellyfin.SORT_MAP`.
 
     Used for external-list sources (IMDb / Trakt) when a non-list-order sort
     is requested, because Jellyfin cannot sort them server-side.
@@ -397,7 +405,8 @@ def _sort_items_in_memory(
     reverse = sort_dir_str.split(",")[0] == "Descending"
 
     def _key(item: dict[str, Any]) -> tuple[int, Any]:
-        """Sorting key - pushes items missing the field to the end.
+        """
+        Sorting key - pushes items missing the field to the end.
 
         The *missing* component is set so that tuples for absent values are
         always larger than tuples for present values, regardless of whether
@@ -426,7 +435,8 @@ def _fetch_and_resolve(
     source_label: str,
     log_msg_fn: Callable[[int], str],
 ) -> tuple[list[dict[str, Any]], str | None, int]:
-    """Fetch external IDs via *fetch_fn*, then match against the Jellyfin library.
+    """
+    Fetch external IDs via *fetch_fn*, then match against the Jellyfin library.
 
     Args:
         group_name: Human-readable group name.
@@ -639,7 +649,8 @@ def _fetch_items_for_letterboxd_group(
     api_key: str,
     watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
-    """Resolve Jellyfin items for a Letterboxd-list-backed group.
+    """
+    Resolve Jellyfin items for a Letterboxd-list-backed group.
 
     Args:
         group_name: Human-readable group name (used for logging).
@@ -726,7 +737,8 @@ def _fetch_items_for_recommendations_group(
     tmdb_api_key: str,
     watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
-    """Resolve Jellyfin items for a User Recommendations group.
+    """
+    Resolve Jellyfin items for a User Recommendations group.
 
     Args:
         group_name: Human-readable group name.
@@ -794,7 +806,8 @@ def _fetch_items_for_recommendations_group(
 
 
 def _match_condition(item: dict[str, Any], r_type: str, r_val: str) -> bool:
-    """Check if a Jellyfin item matches a single rule condition.
+    """
+    Check if a Jellyfin item matches a single rule condition.
 
     Args:
         item: The Jellyfin item dictionary.
@@ -840,7 +853,8 @@ def _match_condition(item: dict[str, Any], r_type: str, r_val: str) -> bool:
 
 
 def _eval_item(item: dict[str, Any], rules: list[dict[str, Any]]) -> bool:
-    """Evaluate a stacked list of rules against a single Jellyfin item.
+    """
+    Evaluate a stacked list of rules against a single Jellyfin item.
 
     Args:
         item: The Jellyfin item dictionary.
@@ -892,7 +906,8 @@ def _fetch_items_for_complex_group(
     api_key: str,
     watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
-    """Resolve Jellyfin items by evaluating a stacked list of rules.
+    """
+    Resolve Jellyfin items by evaluating a stacked list of rules.
 
     Args:
         group_name: Human-readable group name.
@@ -949,7 +964,8 @@ def _fetch_items_for_metadata_group(
     api_key: str,
     watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
-    """Resolve Jellyfin items for a metadata-filter-backed group.
+    """
+    Resolve Jellyfin items for a metadata-filter-backed group.
 
     Handles ``genre``, ``actor``, ``studio``, ``tag``, and unfiltered
     (general) groups.  Sorting is applied server-side via Jellyfin query
@@ -1005,7 +1021,8 @@ def _fetch_items_for_metadata_group(
 
 
 def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
-    """Parse a complex textual rule query into a list of structured rules.
+    """
+    Parse a complex textual rule query into a list of structured rules.
 
     The query can contain logical operators like AND, OR, AND NOT, OR NOT.
     Each part of the query is assigned the *default_type* unless a specific
@@ -1081,7 +1098,8 @@ def preview_group(
     api_key: str,
     watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
-    """Resolve items for a grouping preview.
+    """
+    Resolve items for a grouping preview.
 
     If the *val* contains logical operators (AND, OR, etc.), it is parsed as a
     complex query. Otherwise, it is treated as a simple metadata filter.
@@ -1127,7 +1145,8 @@ def _process_collection_group(
     dry_run: bool,
     auto_set_library_covers: bool,
 ) -> dict[str, Any]:
-    """Sync items into a Jellyfin Collection (Boxset) instead of creating symlinks.
+    """
+    Sync items into a Jellyfin Collection (Boxset) instead of creating symlinks.
 
     Finds or creates a collection named *group_name*, then adds all resolved
     item IDs to it.  Jellyfin ignores duplicate additions, so we do not need
@@ -1197,7 +1216,8 @@ def _auto_create_library(
     existing_libraries: list[str] | None,
     target_path_in_jellyfin: str,
 ) -> dict[str, Any]:
-    """Create a Jellyfin library for the group if configured.
+    """
+    Create a Jellyfin library for the group if configured.
 
     Mutates *existing_libraries* to prevent double creation in the same run.
     """
@@ -1262,7 +1282,8 @@ def _create_or_preview_link(
     dry_run: bool,
     preview_items: list[dict[str, Any]],
 ) -> bool:
-    """Create a symlink or append a preview item.
+    """
+    Create a symlink or append a preview item.
 
     Returns:
         True if the link was (or would be) created successfully.
@@ -1291,7 +1312,8 @@ def _create_group_symlinks(
     sort_order: str,
     dry_run: bool,
 ) -> tuple[int, list[dict[str, Any]]]:
-    """Create symlinks (or preview items) for *items* inside *group_dir*.
+    """
+    Create symlinks (or preview items) for *items* inside *group_dir*.
 
     Returns:
         A tuple of ``(links_created, preview_items)``.
@@ -1349,7 +1371,8 @@ def _prepare_group_directory(
     target_base: str,
     dry_run: bool,
 ) -> str | None:
-    """Clean up and recreate the group directory, copying a cover image if available.
+    """
+    Clean up and recreate the group directory, copying a cover image if available.
 
     If *dry_run* is ``True`` the directory is not modified, but the cover path
     is still resolved (if any) so callers can use it for preview purposes.
@@ -1385,7 +1408,6 @@ def _prepare_group_directory(
     return source_cover
 
 
-
 def _dispatch_list_source(
     source_type: str,
     group_name: str,
@@ -1400,7 +1422,8 @@ def _dispatch_list_source(
     mal_client_id: str = "",
     anilist_api_url: str | None = None,
 ) -> tuple[list[dict[str, Any]], str | None, int]:
-    """Dispatch to the correct external-list fetch function based on *source_type*.
+    """
+    Dispatch to the correct external-list fetch function based on *source_type*.
 
     Each external list source has a slightly different parameter signature;
     this helper normalises the call site so the dispatch table can remain
@@ -1409,36 +1432,71 @@ def _dispatch_list_source(
     match source_type:
         case "imdb_list":
             return _fetch_items_for_imdb_group(
-                group_name, source_value, sort_order, url, api_key, watch_state,
+                group_name,
+                source_value,
+                sort_order,
+                url,
+                api_key,
+                watch_state,
             )
         case "trakt_list":
             return _fetch_items_for_trakt_group(
-                group_name, source_value, sort_order, url, api_key,
-                trakt_client_id, watch_state,
+                group_name,
+                source_value,
+                sort_order,
+                url,
+                api_key,
+                trakt_client_id,
+                watch_state,
             )
         case "tmdb_list":
             return _fetch_items_for_tmdb_group(
-                group_name, source_value, sort_order, url, api_key,
-                tmdb_api_key, watch_state,
+                group_name,
+                source_value,
+                sort_order,
+                url,
+                api_key,
+                tmdb_api_key,
+                watch_state,
             )
         case "anilist_list":
             return _fetch_items_for_anilist_group(
-                group_name, source_value, sort_order, url, api_key,
-                watch_state, anilist_api_url=anilist_api_url,
+                group_name,
+                source_value,
+                sort_order,
+                url,
+                api_key,
+                watch_state,
+                anilist_api_url=anilist_api_url,
             )
         case "mal_list":
             return _fetch_items_for_mal_group(
-                group_name, source_value, sort_order, url, api_key,
-                mal_client_id, watch_state,
+                group_name,
+                source_value,
+                sort_order,
+                url,
+                api_key,
+                mal_client_id,
+                watch_state,
             )
         case "letterboxd_list":
             return _fetch_items_for_letterboxd_group(
-                group_name, source_value, sort_order, url, api_key, watch_state,
+                group_name,
+                source_value,
+                sort_order,
+                url,
+                api_key,
+                watch_state,
             )
         case "recommendations":
             return _fetch_items_for_recommendations_group(
-                group_name, source_value, sort_order, url, api_key,
-                tmdb_api_key, watch_state,
+                group_name,
+                source_value,
+                sort_order,
+                url,
+                api_key,
+                tmdb_api_key,
+                watch_state,
             )
         case _:
             return [], f"Unknown source type: {source_type}", 400
@@ -1458,7 +1516,8 @@ def _resolve_group_source(
     watch_state: str,
     anilist_api_url: str | None = None,
 ) -> tuple[list[dict[str, Any]], str | None, int]:
-    """Resolve items for a group based on its source configuration.
+    """
+    Resolve items for a group based on its source configuration.
 
     Dispatches to the appropriate fetch function based on *source_type*.
     External list sources (IMDb, Trakt, etc.) use their dedicated fetchers;
@@ -1532,7 +1591,8 @@ def _process_group(
     target_path_in_jellyfin: str = "",
     anilist_api_url: str | None = None,
 ) -> dict[str, Any]:
-    """Process a single grouping: fetch items, then create symlinks.
+    """
+    Process a single grouping: fetch items, then create symlinks.
 
     The group directory is wiped and re-created on each run to ensure it
     reflects the current list contents.
@@ -1577,7 +1637,10 @@ def _process_group(
 
     try:
         source_cover = _prepare_group_directory(
-            group_dir, group_name, target_base, dry_run,
+            group_dir,
+            group_name,
+            target_base,
+            dry_run,
         )
     except OSError as exc:
         return {"group": group_name, "links": 0, "error": f"Directory error: {exc!s}"}
@@ -1666,7 +1729,8 @@ def _process_group(
 
 
 def _parse_mmdd(value: str) -> tuple[int, int]:
-    """Parse an ``MM-DD`` string into a ``(month, day)`` tuple.
+    """
+    Parse an ``MM-DD`` string into a ``(month, day)`` tuple.
 
     Validates that month is 1-12 and that *day* is valid for the given month.
     Returns ``(0, 0)`` for unparseable or out-of-range values so they never match.
@@ -1699,7 +1763,8 @@ def _parse_mmdd(value: str) -> tuple[int, int]:
 
 
 def _is_in_season(start_str: Any, end_str: Any) -> bool:
-    """Check if the current date is within the seasonal window [start, end).
+    """
+    Check if the current date is within the seasonal window [start, end).
 
     Both start and end must be ``MM-DD`` strings.  The window is **inclusive**
     of *start* and **exclusive** of *end* so that two windows can cleanly
@@ -1749,7 +1814,8 @@ def _maybe_handle_seasonal(
     target_base: str,
     dry_run: bool,
 ) -> dict[str, Any] | None:
-    """If the group is seasonal and out of season, clean up and return a result.
+    """
+    If the group is seasonal and out of season, clean up and return a result.
 
     Returns ``None`` when the group should be processed normally.
     """
@@ -1783,7 +1849,8 @@ def run_sync(
     dry_run: bool = False,
     group_names: list[str] | None = None,
 ) -> list[dict[str, Any]]:
-    """Run the synchronisation process for configured groups.
+    """
+    Run the synchronisation process for configured groups.
 
     Iterates over groups in *config* and delegates to :func:`_process_group`.
     If *group_names* is provided, only groups with matching names are synced.
@@ -1891,7 +1958,8 @@ def run_sync(
 
 
 def run_cleanup_broken_symlinks(config: dict[str, Any]) -> int:
-    """Scan the target directory for broken symlinks and remove them.
+    """
+    Scan the target directory for broken symlinks and remove them.
 
     Args:
         config: The application configuration dict.

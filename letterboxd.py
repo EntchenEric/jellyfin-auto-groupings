@@ -1,4 +1,5 @@
-"""letterboxd.py - Letterboxd list scraping utilities.
+"""
+letterboxd.py - Letterboxd list scraping utilities.
 
 Provides a single public function for fetching ordered IMDb or TMDb IDs from a
 Letterboxd list by parsing the HTML.
@@ -40,7 +41,8 @@ _REQUEST_HEADERS: dict[str, str] = {
 
 
 def _extract_ids_from_list_page(html: str) -> dict[str, str]:
-    """Extract IMDb/TMDb IDs embedded in list-page HTML.
+    """
+    Extract IMDb/TMDb IDs embedded in list-page HTML.
 
     Returns a mapping of ``slug -> id`` for films where an ID was found
     directly on the list page, avoiding a per-film page fetch.
@@ -119,7 +121,8 @@ def _merge_page_results(
 
 
 def _fetch_id_for_slug(slug: str) -> str | None:
-    """Fetch the IMDb or TMDb ID from a film's detail page.
+    """
+    Fetch the IMDb or TMDb ID from a film's detail page.
 
     Args:
         slug: The Letterboxd film slug (e.g., ``"the-godfather"``).
@@ -162,7 +165,8 @@ def _fetch_id_for_slug(slug: str) -> str | None:
 
 
 def fetch_letterboxd_list(list_url: str) -> list[str]:
-    """Fetch a Letterboxd list and return its IMDb or TMDb IDs in list order.
+    """
+    Fetch a Letterboxd list and return its IMDb or TMDb IDs in list order.
 
     Extracts IDs embedded in list-page HTML where possible; remaining slugs
     are resolved via parallel film-page requests.
@@ -217,7 +221,9 @@ def fetch_letterboxd_list(list_url: str) -> list[str]:
             logger.warning("No film slugs found on Letterboxd page %d", page)
             consecutive_empty += 1
             if consecutive_empty >= _MAX_EMPTY_CONSECUTIVE:
-                logger.info("Stopping after %d empty consecutive pages", consecutive_empty)
+                logger.info(
+                    "Stopping after %d empty consecutive pages", consecutive_empty
+                )
                 break
             page += 1
             time.sleep(0.5)

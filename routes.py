@@ -1,4 +1,5 @@
-"""routes.py - Flask Blueprint containing all HTTP route handlers.
+"""
+routes.py - Flask Blueprint containing all HTTP route handlers.
 
 Every route is registered on the ``bp`` Blueprint which is imported and
 registered with the Flask application in ``app.py``.  Route handlers are
@@ -181,7 +182,8 @@ _BROWSE_ROOTS: tuple[str, ...] = tuple(
 
 
 def _path_is_allowed(path: str) -> bool:
-    """Return ``True`` only if *path* is at or below one of the whitelisted roots.
+    """
+    Return ``True`` only if *path* is at or below one of the whitelisted roots.
 
     Args:
         path: Absolute filesystem path to check.
@@ -197,7 +199,8 @@ def _path_is_allowed(path: str) -> bool:
 def _get_jellyfin_config(
     missing_msg: str = "Server settings not configured",
 ) -> tuple[str, str]:
-    """Load and validate Jellyfin URL + API key from the active config.
+    """
+    Load and validate Jellyfin URL + API key from the active config.
 
     Raises:
         werkzeug.exceptions.HTTPException: 400 or 500 if the config is missing or invalid.
@@ -223,7 +226,8 @@ def _get_jellyfin_config(
 
 @bp.route("/api/config", methods=["GET"])
 def get_config() -> ResponseReturnValue:
-    """Return the current application configuration as JSON.
+    """
+    Return the current application configuration as JSON.
 
     Returns:
         JSON-serialised configuration dictionary.
@@ -309,7 +313,8 @@ def _validate_config_types(new_config: dict[str, Any]) -> list[str]:
 
 @bp.route("/api/config", methods=["POST"])
 def update_config() -> ResponseReturnValue:
-    """Persist a new application configuration supplied in the request body.
+    """
+    Persist a new application configuration supplied in the request body.
 
     The entire configuration object is replaced with the POSTed JSON.
 
@@ -359,7 +364,8 @@ def update_config() -> ResponseReturnValue:
 
 @bp.route("/api/test-server", methods=["POST"])
 def test_server() -> ResponseReturnValue:
-    """Verify connectivity to a Jellyfin server.
+    """
+    Verify connectivity to a Jellyfin server.
 
     Expects a JSON body with ``jellyfin_url`` and ``api_key`` fields.
 
@@ -402,7 +408,8 @@ def _fetch_jellyfin_endpoint(
     timeout: int = 15,
     extra_params: dict[str, str] | None = None,
 ) -> list[dict[str, Any]]:
-    """Fetch all items from a Jellyfin list endpoint (Genres, Studios, etc.).
+    """
+    Fetch all items from a Jellyfin list endpoint (Genres, Studios, etc.).
 
     Handles paginated responses, collecting all items across all pages.
     If a request fails part-way through, already-fetched items are returned
@@ -439,7 +446,8 @@ def _fetch_jellyfin_endpoint(
 
 @bp.route("/api/jellyfin/metadata", methods=["GET"])
 def get_jellyfin_metadata() -> ResponseReturnValue:
-    """Return aggregated metadata (genres, studios, tags, actors) from Jellyfin.
+    """
+    Return aggregated metadata (genres, studios, tags, actors) from Jellyfin.
 
     Uses Jellyfin's dedicated ``/Genres``, ``/Studios``, ``/Persons``, and
     ``/Tags`` endpoints fetched in parallel, which is orders of magnitude
@@ -505,7 +513,8 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
 
 @bp.route("/api/jellyfin/users", methods=["GET"])
 def get_jellyfin_users() -> ResponseReturnValue:
-    """Return a list of users from Jellyfin.
+    """
+    Return a list of users from Jellyfin.
 
     Returns:
         JSON with ``status`` and a ``users`` object containing ``id`` and ``name``.
@@ -530,7 +539,8 @@ def get_jellyfin_users() -> ResponseReturnValue:
 
 @bp.route("/api/upload_cover", methods=["POST"])
 def upload_cover() -> ResponseReturnValue:
-    """Save a base64-encoded cover image for a group.
+    """
+    Save a base64-encoded cover image for a group.
 
     Expects a JSON body with ``group_name`` and ``image`` (data URL).
     Decodes and saves the image to a location determined by
@@ -607,7 +617,8 @@ def _run_sync_handler(dry_run: bool = False) -> ResponseReturnValue:
 
 @bp.route("/api/sync", methods=["POST"])
 def sync_groupings() -> ResponseReturnValue:
-    """Trigger a full synchronisation of all configured groupings.
+    """
+    Trigger a full synchronisation of all configured groupings.
 
     Reads the current configuration, delegates to :func:`sync.run_sync`, and
     returns per-group results.
@@ -617,7 +628,8 @@ def sync_groupings() -> ResponseReturnValue:
 
 @bp.route("/api/sync/preview_all", methods=["POST"])
 def preview_all_sync() -> ResponseReturnValue:
-    """Preview a full synchronisation of all configured groupings without creating symlinks.
+    """
+    Preview a full synchronisation of all configured groupings without creating symlinks.
 
     Reads the current configuration, delegates to :func:`sync.run_sync` with dry_run=True,
     and returns per-group preview results.
@@ -627,7 +639,8 @@ def preview_all_sync() -> ResponseReturnValue:
 
 @bp.route("/api/grouping/preview", methods=["POST"])
 def preview_grouping() -> ResponseReturnValue:
-    """Preview what items a grouping rule would include.
+    """
+    Preview what items a grouping rule would include.
 
     Accepts a JSON body with 'type' and 'value'. If the 'value' contains
     logical operators (AND, OR, etc.), it is parsed as a complex query.
@@ -724,7 +737,8 @@ def _delete_folder(
     url: str,
     api_key: str,
 ) -> tuple[bool, str | None]:
-    """Delete a single folder and optionally its Jellyfin library.
+    """
+    Delete a single folder and optionally its Jellyfin library.
 
     Returns:
         ``(deleted, error_message)`` where *deleted* is True if the folder
@@ -804,7 +818,8 @@ def _search_local_filesystem(
     timeout: int = _AUTO_DETECT_TIMEOUT,
     max_files: int = _AUTO_DETECT_MAX_FILES,
 ) -> str | None:
-    """Walk *search_roots* looking for *filename*.
+    """
+    Walk *search_roots* looking for *filename*.
 
     Prunes mount points (except the root itself), enforces a *timeout* and
     *max_files* cap, and stops at _AUTO_DETECT_MAX_DEPTH path-component depth.
@@ -847,7 +862,8 @@ def _compute_common_root(
     jellyfin_path: str,
     host_path: str,
 ) -> tuple[str | None, str | None]:
-    """Infer the common root prefixes from a Jellyfin path and its host match.
+    """
+    Infer the common root prefixes from a Jellyfin path and its host match.
 
     Counts matching trailing path components and returns the inferred
     ``(jellyfin_root, host_root)`` pair.
@@ -873,7 +889,8 @@ def _compute_common_root(
 
 @bp.route("/api/jellyfin/auto-detect-paths", methods=["POST"])
 def auto_detect_paths() -> ResponseReturnValue:
-    """Attempt to automatically detect Jellyfin and host media root paths.
+    """
+    Attempt to automatically detect Jellyfin and host media root paths.
 
     Fetches a sample of movie paths from Jellyfin and then searches the local
     filesystem (home directory, ``/media``, ``/mnt``) for the matching files.
@@ -949,7 +966,8 @@ def auto_detect_paths() -> ResponseReturnValue:
 
 @bp.route("/api/browse", methods=["GET"])
 def browse_directory() -> ResponseReturnValue:
-    """Return the immediate (non-hidden) subdirectories of a given path.
+    """
+    Return the immediate (non-hidden) subdirectories of a given path.
 
     Used by the frontend folder picker to navigate the host filesystem.
     Access is restricted to paths under the whitelisted roots (home directory,
@@ -999,7 +1017,8 @@ def browse_directory() -> ResponseReturnValue:
 
 @bp.route("/api/health", methods=["GET"])
 def health_check() -> ResponseReturnValue:
-    """Provide a simple health check endpoint for Docker / Kubernetes probes.
+    """
+    Provide a simple health check endpoint for Docker / Kubernetes probes.
 
     Returns a lightweight JSON response with service status, uptime
     (Flask app start time), and a quick config sanity check.
@@ -1014,14 +1033,16 @@ def health_check() -> ResponseReturnValue:
     api_key: str = str(config.get("api_key") or "")
     configured: bool = bool(url and api_key and config.get("target_path"))
 
-    return jsonify({
-        "status": "ok",
-        "healthcheck": {
-            "ok": True,
-            "configured": configured,
-            "groups": len(config.get("groups", [])),
-        },
-    })
+    return jsonify(
+        {
+            "status": "ok",
+            "healthcheck": {
+                "ok": True,
+                "configured": configured,
+                "groups": len(config.get("groups", [])),
+            },
+        }
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1053,7 +1074,8 @@ def get_test_results() -> ResponseReturnValue:
 
 @bp.route("/")
 def index() -> ResponseReturnValue:
-    """Serve the single-page frontend.
+    """
+    Serve the single-page frontend.
 
     Returns:
         The rendered ``templates/base.html`` Jinja2 template.
