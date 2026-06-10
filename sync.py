@@ -181,15 +181,18 @@ def _get_cover_path(
 ) -> str | None:
     """Compute the expected cover image path for a group, resolving storage priority.
 
-    Priority:
-    1. Library-local .covers/ directory (new storage location).
-    2. Internal config/covers/ directory (legacy storage location).
+    Resolution order:
+    1. Library-local ``.covers/`` directory under *target_base* (new storage location).
+    2. Internal ``config/covers/`` directory (legacy storage location).
 
     Args:
         group_name: The human-readable name of the group.
-        target_base: The root library directory where .covers/ resides.
+        target_base: The root library directory where ``.covers/`` resides.
         check_exists: If True, return None if the file doesn't exist on disk.
-            If False, return the prioritized path regardless of existence (useful for saving).
+            If False, return the prioritized path regardless of disk presence
+            (useful for saving new covers — prefers the library-local path
+            when *target_base* is a directory, falling back to the legacy
+            config location otherwise).
 
     Returns:
         The absolute path to the cover image, or None if not found/possible.
@@ -209,7 +212,7 @@ def _get_cover_path(
     )
 
     if not check_exists:
-        # If we are just resolving where to SAVE, we prefer the library-local path if target_base exists
+        # Resolving where to SAVE: prefer library-local if target_base exists
         if target_base and Path(target_base).is_dir():
             return lib_cover_path
         return legacy_cover_path
@@ -1348,21 +1351,25 @@ def _prepare_group_directory(
 ) -> str | None:
     """Clean up and recreate the group directory, copying a cover image if available.
 
+    If *dry_run* is ``True`` the directory is not modified, but the cover path
+    is still resolved (if any) so callers can use it for preview purposes.
+
     Returns:
-        The path to the source cover image (or ``None`` if none found / dry run).
+        The path to the source cover image (or ``None`` if none found).
 
     Raises:
-        OSError: If the directory cannot be cleaned or created.
+        OSError: If the directory cannot be cleaned or created (only in
+            non-dry-run mode).
 
     """
-    source_cover: str | None = None
+    source_cover: str | None = _get_cover_path(group_name, target_base)
+
     if not dry_run:
         if Path(group_dir).exists():
             logger.info("Cleaning existing directory: %s", group_dir)
             shutil.rmtree(group_dir)
         Path(group_dir).mkdir(parents=True, exist_ok=True)
 
-        source_cover = _get_cover_path(group_name, target_base)
         if source_cover:
             poster_dest = str(Path(group_dir) / "poster.jpg")
             try:

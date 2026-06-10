@@ -67,7 +67,8 @@ def _parse_retry_config() -> tuple[int, float, list[int]]:
         backoff = float(os.environ.get("NETWORK_RETRY_BACKOFF_FACTOR", "1.0"))
     except ValueError:
         logger.warning(
-            "Invalid NETWORK_RETRY_BACKOFF_FACTOR value, falling back to default 1.0",
+            "Invalid NETWORK_RETRY_BACKOFF_FACTOR value %r, falling back to default 1.0",
+            os.environ.get("NETWORK_RETRY_BACKOFF_FACTOR"),
         )
         backoff = 1.0
     if backoff < 0:
