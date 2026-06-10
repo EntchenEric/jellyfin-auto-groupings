@@ -999,7 +999,7 @@ def browse_directory() -> ResponseReturnValue:
 
 @bp.route("/api/health", methods=["GET"])
 def health_check() -> ResponseReturnValue:
-    """Simple health check endpoint for Docker / Kubernetes probes.
+    """Provide a simple health check endpoint for Docker / Kubernetes probes.
 
     Returns a lightweight JSON response with service status, uptime
     (Flask app start time), and a quick config sanity check.

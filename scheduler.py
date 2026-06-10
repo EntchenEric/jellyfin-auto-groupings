@@ -167,11 +167,9 @@ def _run_global_sync_job(exclude_names: list[str]) -> None:
         with sync_lock:
             try:
                 run_sync(config, group_names=sync_names)
-            except (ValueError, OSError, RuntimeError) as exc:
-                logger.error(
-                    "Background global sync failed: %s",
-                    exc,
-                    exc_info=True,
+            except (ValueError, OSError, RuntimeError):
+                logger.exception(
+                    "Background global sync failed",
                 )
     else:
         logger.info(
@@ -186,12 +184,10 @@ def _run_group_sync_job(group_name: str) -> None:
     with sync_lock:
         try:
             run_sync(config, group_names=[group_name])
-        except (ValueError, OSError, RuntimeError) as exc:
-            logger.error(
-                "Background sync failed for group '%s': %s",
+        except (ValueError, OSError, RuntimeError):
+            logger.exception(
+                "Background sync failed for group '%s'",
                 group_name,
-                exc,
-                exc_info=True,
             )
 
 

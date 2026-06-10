@@ -72,7 +72,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
 # ---------------------------------------------------------------------------
 
 
-def _env_flag(name: str, default: bool = False) -> bool:
+def _env_flag(name: str, *, default: bool = False) -> bool:
     """Parse an environment variable as a boolean flag.
 
     Accepts ``"true"``, ``"1"``, ``"yes"`` (case-insensitive) as truthy.
