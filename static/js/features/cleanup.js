@@ -1,6 +1,6 @@
 // cleanup.js – Cleanup modal logic
 
-import { showToast, getEl } from '../core/ui.js';
+import { showToast, showErrorDialog, getEl } from '../core/ui.js';
 
 export async function openCleanupModal() {
     getEl('cleanup-modal').style.display = 'flex';
@@ -105,16 +105,18 @@ export async function execCleanup() {
         updateCleanupCount();
 
         if (result.status === 'success' || result.status === 'partial_success') {
-            getEl('cleanup-modal').style.display = 'none';
-            alert(`Successfully deleted ${result.deleted} folder(s). ${result.errors ? 'Errors: ' + result.errors.join(', ') : ''}`);
+            showToast(`Successfully deleted ${result.deleted} folder(s).${result.errors ? ' Errors: ' + result.errors.join(', ') : ''}`, result.status === 'partial_success' ? 'warning' : 'success');
+            // Refresh the modal list instead of closing
+            openCleanupModal();
         } else {
-            alert('Error deleting folders: ' + result.message);
+            showErrorDialog('Error deleting folders: ' + result.message);
+            updateCleanupCount();
         }
     } catch (err) {
         btn.innerHTML = 'Delete Selected <span id="cleanup-count"></span>';
         btn.disabled = false;
         updateCleanupCount();
-        alert('Network error while deleting folders.');
+        showErrorDialog('Network error while deleting folders.');
     }
 }
 
