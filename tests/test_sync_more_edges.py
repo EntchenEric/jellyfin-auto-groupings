@@ -13,10 +13,7 @@ Covers:
 - run_sync with invalid group entries (non-dict)
 """
 
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from sync import (
     _filter_by_watch_state,
@@ -25,7 +22,6 @@ from sync import (
     run_cleanup_broken_symlinks,
     run_sync,
 )
-
 
 # ---------------------------------------------------------------------------
 # _parse_mmdd additional edge cases

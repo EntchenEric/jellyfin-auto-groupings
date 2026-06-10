@@ -1,109 +1,72 @@
-# Contributing
+# Contributing to Jellyfin Groupings
 
-Thanks for your interest in contributing to Jellyfin Auto Groupings! 🎉
+Thanks for your interest! This is a small but active project, and contributions —
+bug reports, feature ideas, docs, or code — are very welcome.
 
 ## Getting Started
 
-1. Fork the repository
-2. Clone your fork: `git clone https://github.com/YOUR-USERNAME/jellyfin-auto-groupings.git`
-3. Create a virtual environment: `python -m venv venv && source venv/bin/activate`
-4. Install dependencies:
+1. **Fork** the repo on GitHub.
+2. **Clone** your fork:
    ```bash
+   git clone https://github.com/<your-username>/jellyfin-auto-groupings.git
+   cd jellyfin-auto-groupings
+   ```
+3. **Set up** a development environment:
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
    pip install -e ".[dev]"
-   pre-commit install
+   ```
+4. **Run tests** before making changes:
+   ```bash
+   python3 -m pytest -n auto --cov=. -m "not exhaustive"
    ```
 
-## Development Workflow
+## Code Style
 
-### Code Style
+- This project uses **Ruff** for linting and formatting. Run `ruff check .` and `ruff format .` before committing.
+- **mypy** is used for static type checking: `mypy .`
+- All Python 3.11+ features are fair game (pattern matching, `|` union syntax, etc.).
 
-This project uses **ruff** for both linting and formatting.
+## Commit Convention
 
-```bash
-# Check for lint issues
-ruff check .
+We follow **Conventional Commits**:
 
-# Auto-fix where possible
-ruff check --fix .
-
-# Format code
-ruff format .
 ```
-
-### Type Checking
-
-We use **mypy** for static type analysis:
-
-```bash
-mypy .
+feat: add support for Plex lists
+fix: handle empty API key gracefully
+docs: update README with new env vars
+refactor: extract path translation helper
+test: add edge-case tests for _parse_mmdd
 ```
-
-### Testing
-
-```bash
-# Run the full test suite
-python -m pytest
-
-# Run with coverage
-python -m pytest --cov=.
-
-# Run a specific test file
-python -m pytest tests/test_network.py -v
-
-# Skip slow external tests
-python -m pytest -m "not exhaustive" tests/
-```
-
-### Commit Structure
-
-We follow [Conventional Commits](https://www.conventionalcommits.org/):
-
-- `fix:` — bug fixes or code corrections
-- `feat:` — new features
-- `chore:` — maintenance, formatting, tooling
-- `docs:` — documentation changes
-- `refactor:` — code restructuring without behaviour change
-- `test:` — adding or modifying tests
-- `style:` — formatting-only changes
 
 ## Pull Request Process
 
-1. Create a branch from `main` with a descriptive name:
-   - `fix/` — bug fixes
-   - `feat/` — new features
-   - `docs/` — documentation
-   - `test/` — test improvements
-2. Make your changes, keeping them focused on one concern
-3. Ensure tests pass: `python -m pytest`
-4. Ensure linting passes: `ruff check . && ruff format --check .`
-5. Ensure type checking passes: `mypy .`
-6. Open a PR against `main` with a clear title and description
+1. Create a feature branch from `main`.
+2. Make your changes — keep PRs focused on a single concern.
+3. Update docs and tests if applicable.
+4. Ensure `ruff check .`, `mypy .`, and `pytest` all pass.
+5. Open the PR with a clear description of *what* and *why*.
 
-### PR Checklist
+## Testing
 
-- [ ] Tests pass
-- [ ] No new ruff/mypy warnings
-- [ ] Changes are focused on a single purpose
-- [ ] Commit messages follow conventional commits
-- [ ] Documentation updated if applicable
+- All new logic should have corresponding unit tests.
+- Tests use **pytest** with standard fixtures in `conftest.py`.
+- A **virtual Jellyfin server** is available for integration tests:
+  ```bash
+  python3 start_virtual_jellyfin.py &
+  python3 -m pytest tests/ -m "exhaustive"
+  ```
+- Coverage target is **100%**. Run `pytest --cov=. --cov-report=html` to check.
 
-## Project Structure
+## Feature Requests & Bug Reports
 
-```
-jellyfin-auto-groupings/
-├── app.py              # Flask application entrypoint
-├── config.py           # Configuration management
-├── jellyfin.py         # Jellyfin API client helpers
-├── network.py          # Retry-aware HTTP helpers
-├── routes.py           # Flask route definitions
-├── scheduler.py        # Background task scheduling
-├── sync.py             # Core sync logic
-├── static/             # Frontend assets (CSS, JS)
-├── templates/          # Jinja2 templates
-├── tests/              # Test suite
-└── Dockerfile          # Container build
-```
+Open a [GitHub issue](https://github.com/entcheneric/jellyfin-auto-groupings/issues) with:
+
+- A clear title and description
+- For bugs: your setup (Docker / native, Jellyfin version), steps to reproduce, and logs
+- For features: the use case you're trying to solve
 
 ## Questions?
 
-Open an issue or start a discussion on GitHub.
+Feel free to open a [Discussion](https://github.com/entcheneric/jellyfin-auto-groupings/discussions) or tag `@entcheneric` in an issue.
