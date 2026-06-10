@@ -166,6 +166,10 @@ def _request_or_raise(
     try:
         if method == "POST":
             response = network.post(url, timeout=timeout, **kwargs)
+        elif method == "PUT":
+            response = network.put(url, timeout=timeout, **kwargs)
+        elif method == "PATCH":
+            response = network.patch(url, timeout=timeout, **kwargs)
         elif method == "DELETE":
             response = network.delete(url, timeout=timeout, **kwargs)
         else:

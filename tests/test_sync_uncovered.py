@@ -118,3 +118,22 @@ def test_parse_mmdd_non_numeric() -> None:
 
     assert _parse_mmdd("ab-cd") == (0, 0)
     assert _parse_mmdd("01-XX") == (0, 0)
+
+
+def test_dispatch_list_source_unknown_type() -> None:
+    """_dispatch_list_source returns ( [], error_msg, 400 ) for unknown source_type."""
+    from sync import _dispatch_list_source
+
+    items, error, code = _dispatch_list_source(
+        "nonexistent_source",
+        "test-group",
+        "val",
+        "name",
+        "http://jf:8096",
+        "key",
+        "",
+    )
+    assert items == []
+    assert error is not None
+    assert "Unknown source type" in error
+    assert code == 400
