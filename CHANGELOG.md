@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Merged PR #496: Add Makefile for common dev commands; address CodeRabbit review comments.
+- Fixed `.PHONY` declaration in Makefile to match actual targets (removed `dev`/`docs`,
+  added `docker-build`/`docker-run`).
 - Simplified `_parse_mmdd` in sync.py by removing redundant `day <= 0` check
   (already covered by `calendar.monthrange` validation).
 
