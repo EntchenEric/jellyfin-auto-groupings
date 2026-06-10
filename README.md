@@ -250,7 +250,7 @@ The application reads the following environment variables (which take precedence
 | `ANILIST_API_URL` | AniList GraphQL endpoint (default: `https://graphql.anilist.co`) |
 | `NETWORK_RETRY_TOTAL` | Max HTTP retries (default: `3`; set `0` to disable) |
 | `NETWORK_RETRY_BACKOFF_FACTOR` | Sleep multiplier between retries (default: `1.0`) |
-| `NETWORK_RETRY_STATUS_FORCELIST` | Status codes that trigger reretry (default: `429,500,502,503,504`) |
+| `NETWORK_RETRY_STATUS_FORCELIST` | Status codes that trigger retry (default: `429,500,502,503,504`) |
 
 > **Note**: Environment variable overrides are *never* persisted back to `config.json`. They only affect the current process.
 
