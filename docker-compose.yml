@@ -22,6 +22,10 @@ services:
       # - APP_PASSWORD=${APP_PASSWORD:-}
       # Uncomment to disable debug mode in production:
       # - FLASK_DEBUG=false
+      # Override HTTP retry behaviour for external API calls:
+      # - NETWORK_RETRY_TOTAL=3
+      # - NETWORK_RETRY_BACKOFF_FACTOR=1.0
+      # - NETWORK_RETRY_STATUS_FORCELIST=429,500,502,503,504
     volumes:
       # 1. Config persistence
       # Stores your API keys and group definitions. 
@@ -44,7 +48,7 @@ services:
       # - ./config/covers:/app/config/covers
 
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/')"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/')"]
       interval: 30s
       timeout: 10s
       retries: 3
