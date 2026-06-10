@@ -304,6 +304,18 @@ See [`.env.example`](.env.example) for quick setup.
    ```
 4. Run: `python3 app.py`.
 
+### Print-Friendly Pages
+
+The UI includes a print stylesheet that:
+- Hides navigation chrome (sidebar, topbar, modals, toasts), so you get clean
+  printed output of setup guides, API docs, or troubleshooting sections.
+- Shows link URLs after anchor text so printed references are still useful.
+- Prevents page breaks inside cards and headings.
+- Displays code blocks with visible borders for readability.
+
+Use your browser's **Print** function on any page to see the print-optimized
+layout.
+
 ### Makefile Targets
 
 A `Makefile` is provided for common development tasks:
