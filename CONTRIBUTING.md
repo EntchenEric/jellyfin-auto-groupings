@@ -43,9 +43,13 @@ All Python code should use type hints. The project targets Python 3.11+.
 - Tests live in the `tests/` directory and use `pytest`.
 - Run tests before opening a PR:
   ```bash
-  pytest -v
+  pytest
   ```
-- Aim to maintain or improve code coverage. New features should include tests.
+- The project requires 100% code coverage (CI uses `--cov-fail-under=100`). New features must include tests.
+- Run type checking before opening a PR:
+  ```bash
+  mypy .
+  ```
 
 ### Running Locally
 

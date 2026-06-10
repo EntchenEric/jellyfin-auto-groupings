@@ -21,37 +21,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   added `docker-build`/`docker-run`).
 - Simplified `_parse_mmdd` in sync.py by removing redundant `day <= 0` check
   (already covered by `calendar.monthrange` validation).
-
-### Fixed
-- Fixed `_fill_defaults` in `config.py` to replace non-dict values (e.g. `None` or
-  a string) for nested keys like `scheduler` with the full default dict, preventing
-  `AttributeError` downstream when accessing sub-keys.
-- Fixed order-dependent `test_clear_library_cache` test in `test_sync_more_edges.py`
-  by clearing the module-level cache before populating it.
-
-### Added
-- `ANILIST_API_URL` environment variable example in `docker-compose.yml`.
-- Tests for `_fill_defaults` resilience when `scheduler` is `null` or a non-dict
-  value in the stored config.
-- Documented Makefile targets in README.md (test, lint, typecheck, run, format, etc.)
-  for contributor discoverability.
-- Initial CHANGELOG.md for project tracking.
-- Added `anilist_api_url` to `DEFAULT_CONFIG` to prevent KeyError when config
-  is accessed before the key is explicitly set.
-- Documented `NETWORK_RETRY_*` environment variables in the README env vars table
-  and added them to `.env.example` and `docker-compose.yml` for discoverability.
-- Add test coverage for `/api/health` endpoint (configured and unconfigured cases)
-  via PR #494.
-
-### Fixed
-- Improved CSRF testing check in `routes.py` to use the standard Flask
-  `current_app.config.get("TESTING")` pattern instead of `current_app.testing`.
-- Better type handling for seasonal start/end strings in `_is_in_season` when
-  passed non-string types (already handled gracefully as a fallback).
-- Fixed double-checked locking pattern in `_fetch_full_library()` so the cache
-  is not overwritten if another thread populated it during the fetch.
-
-### Changed
 - Standardised README example commands to use `python3` for consistency with
   system defaults.
 - Healthcheck in `docker-compose.yml` uses `python3` for consistency.
@@ -70,6 +39,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Mypy type fixes in `tests/virtual_jellyfin.py` dashboard helper.
 - Fixed CONTRIBUTING.md to remove `-n auto` flag from the recommended test
   command, since `pytest-xdist` is not included in dev dependencies.
+- Removed unnecessary single quotes from font-family declarations in CSS
+  (Inter, Outfit, JetBrains Mono) for valid CSS identifier syntax.
+- Fixed `currentcolor` typo → `currentColor` in `responsive.css` high-contrast
+  media query for standards compliance.
+
+### Fixed
+- Fixed `_fill_defaults` in `config.py` to use `copy.deepcopy` for nested
+  default dicts instead of `dict.copy()`, preventing shallow-copy issues.
+  a string) for nested keys like `scheduler` with the full default dict, preventing
+  `AttributeError` downstream when accessing sub-keys.
+- Fixed order-dependent `test_clear_library_cache` test in `test_sync_more_edges.py`
+  by clearing the module-level cache before populating it.
+- Improved CSRF testing check in `routes.py` to use the standard Flask
+  `current_app.config.get("TESTING")` pattern instead of `current_app.testing`.
+- Better type handling for seasonal start/end strings in `_is_in_season` when
+  passed non-string types (already handled gracefully as a fallback).
+- Fixed double-checked locking pattern in `_fetch_full_library()` so the cache
+  is not overwritten if another thread populated it during the fetch.
+
+### Added
+- `ANILIST_API_URL` environment variable example in `docker-compose.yml`.
+- Tests for `_fill_defaults` resilience when `scheduler` is `null` or a non-dict
+  value in the stored config.
+- Documented Makefile targets in README.md (test, lint, typecheck, run, format, etc.)
+  for contributor discoverability.
+- Initial CHANGELOG.md for project tracking.
+- Added `anilist_api_url` to `DEFAULT_CONFIG` to prevent KeyError when config
+  is accessed before the key is explicitly set.
+- Documented `NETWORK_RETRY_*` environment variables in the README env vars table
+  and added them to `.env.example` and `docker-compose.yml` for discoverability.
+- Add test coverage for `/api/health` endpoint (configured and unconfigured cases)
+  via PR #494.
+- Added SVG favicon (`🎬` emoji) to base template for better browser tabs.
 
 ## [1.0.0] - 2025-03-01
 

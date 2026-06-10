@@ -6,6 +6,7 @@ backwards-compatible key migration and first-run default creation.
 
 from __future__ import annotations
 
+import copy
 import json
 import logging
 import os
@@ -98,7 +99,7 @@ def _fill_defaults(cfg: dict[str, Any], defaults: dict[str, Any]) -> None:
         elif isinstance(default_value, dict):
             # If the value exists but is not a dict (e.g. None, empty string),
             # replace it with the default to avoid AttributeError downstream.
-            cfg[key] = default_value.copy()
+            cfg[key] = copy.deepcopy(default_value)
 
 
 def _migrate_legacy_keys(cfg: dict[str, Any]) -> bool:
