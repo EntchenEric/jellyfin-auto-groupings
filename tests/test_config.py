@@ -153,3 +153,49 @@ def test_config_no_migration_needed(temp_config) -> None:
     # Modern keys should be kept
     assert result["media_path_in_jellyfin"] == "/jellyfin/media"
     assert result["media_path_on_host"] == "/host/media"
+
+
+def test_env_flag_default() -> None:
+    """_env_flag returns False when the env var is not set."""
+    from config import _env_flag
+
+    assert _env_flag("THIS_VAR_SHOULD_NOT_EXIST_12345") is False
+
+
+def test_env_flag_true(monkeypatch) -> None:
+    """_env_flag returns True for "true"."""
+    from config import _env_flag
+
+    monkeypatch.setenv("TEST_ENV_FLAG", "true")
+    assert _env_flag("TEST_ENV_FLAG") is True
+
+
+def test_env_flag_case_insensitive(monkeypatch) -> None:
+    """_env_flag treats "True", "TRUE", "Yes" as truthy."""
+    from config import _env_flag
+
+    monkeypatch.setenv("TEST_ENV_FLAG_2", "TRUE")
+    assert _env_flag("TEST_ENV_FLAG_2") is True
+
+    monkeypatch.setenv("TEST_ENV_FLAG_3", "Yes")
+    assert _env_flag("TEST_ENV_FLAG_3") is True
+
+    monkeypatch.setenv("TEST_ENV_FLAG_4", "1")
+    assert _env_flag("TEST_ENV_FLAG_4") is True
+
+
+def test_env_flag_false_values(monkeypatch) -> None:
+    """_env_flag returns False for falsy values."""
+    from config import _env_flag
+
+    monkeypatch.setenv("TEST_ENV_FLAG_5", "false")
+    assert _env_flag("TEST_ENV_FLAG_5") is False
+
+    monkeypatch.setenv("TEST_ENV_FLAG_6", "0")
+    assert _env_flag("TEST_ENV_FLAG_6") is False
+
+    monkeypatch.setenv("TEST_ENV_FLAG_7", "no")
+    assert _env_flag("TEST_ENV_FLAG_7") is False
+
+    monkeypatch.setenv("TEST_ENV_FLAG_8", "")
+    assert _env_flag("TEST_ENV_FLAG_8") is False
