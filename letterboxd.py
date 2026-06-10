@@ -10,6 +10,7 @@ import logging
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from http import HTTPStatus
 
 import requests
 
@@ -22,6 +23,8 @@ logger = logging.getLogger(__name__)
 # Request timeouts (seconds)
 _FILM_PAGE_TIMEOUT: int = 10
 _LIST_PAGE_TIMEOUT: int = 15
+
+_MAX_EMPTY_CONSECUTIVE: int = 3
 
 _MAX_PAGES: int = 10
 _MAX_WORKERS: int = 6
@@ -194,7 +197,7 @@ def fetch_letterboxd_list(list_url: str) -> list[str]:
                 headers=_REQUEST_HEADERS,
                 timeout=_LIST_PAGE_TIMEOUT,
             )
-            if resp.status_code == 404 and page > 1:
+            if resp.status_code == HTTPStatus.NOT_FOUND and page > 1:
                 break
             resp.raise_for_status()
         except requests.exceptions.RequestException as exc:
@@ -213,7 +216,7 @@ def fetch_letterboxd_list(list_url: str) -> list[str]:
         if not unique_slugs:
             logger.warning("No film slugs found on Letterboxd page %d", page)
             consecutive_empty += 1
-            if consecutive_empty >= 3:
+            if consecutive_empty >= _MAX_EMPTY_CONSECUTIVE:
                 logger.info("Stopping after %d empty consecutive pages", consecutive_empty)
                 break
             page += 1
