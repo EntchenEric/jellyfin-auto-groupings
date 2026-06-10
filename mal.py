@@ -13,10 +13,6 @@ MAL_API_BASE_URL = "https://api.myanimelist.net/v2"
 # Request timeout (seconds)
 _REQUEST_TIMEOUT: int = 15
 
-_VALID_MAL_STATUSES: frozenset[str] = frozenset(
-    {"watching", "completed", "on_hold", "dropped", "plan_to_watch"},
-)
-
 
 def _normalize_mal_status(status: str | None) -> str | None:
     """Normalize a user-provided MAL status string to the API's expected values."""
