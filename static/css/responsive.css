@@ -196,7 +196,7 @@
 /* ── High contrast mode ─── */
 @media (prefers-contrast: high) {
     * {
-        border-color: currentColor !important;
+        border-color: currentcolor !important;
     }
     .glass-card,
     .modal-content,
@@ -205,7 +205,7 @@
         border-width: 1px;
     }
     .badge {
-        border: 1px solid currentColor;
+        border: 1px solid currentcolor;
     }
     .text-secondary {
         color: var(--text-primary);

@@ -89,7 +89,10 @@ export async function previewSyncAll() {
                 container.appendChild(groupCard);
             });
         } else {
-            container.innerHTML = '<div class="sync-preview-empty">No groupings configured.</div>';
+            const emptyDiv = document.createElement('div');
+            emptyDiv.className = 'sync-preview-empty';
+            emptyDiv.textContent = 'No groupings configured.';
+            container.appendChild(emptyDiv);
         }
 
         getEl('preview-sync-modal').style.display = 'flex';

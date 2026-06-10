@@ -18,7 +18,7 @@
     --topbar-height: 58px;
 }
 
-/* Respect OS dark mode — fallback to dark theme if unspecified */
+/* Apply light theme when OS/browser requests light mode; default to dark theme otherwise */
 @media (prefers-color-scheme: light) {
     :root {
         --bg-color: #f1f5f9;

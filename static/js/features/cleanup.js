@@ -17,7 +17,10 @@ export async function openCleanupModal() {
             listContainer.innerHTML = '';
 
             if (!result.items || result.items.length === 0) {
-                listContainer.innerHTML = '<div class="cleanup-empty">No folders found in Target Directory.</div>';
+                const emptyDiv = document.createElement('div');
+                emptyDiv.className = 'cleanup-empty';
+                emptyDiv.textContent = 'No folders found in Target Directory.';
+                listContainer.appendChild(emptyDiv);
             } else {
                 result.items.forEach(item => {
                     const row = document.createElement('label');

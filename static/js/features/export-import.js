@@ -106,7 +106,7 @@ export function handleFileSelected(event) {
             if (err instanceof SyntaxError) {
                 showErrorDialog('Invalid JSON file — please check the file format');
             } else {
-                showErrorDialog('Failed to read import file: ' + err.message);
+                showErrorDialog('Failed to process import file: ' + err.message);
             }
         }
     };
