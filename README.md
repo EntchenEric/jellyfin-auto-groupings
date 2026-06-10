@@ -224,6 +224,7 @@ are prefixed with `/api/`.
 
 | Endpoint | Method | Description |
 |---|---|---|
+| `/api/health` | `GET` | Health check endpoint for Docker/Kubernetes probes |
 | `/api/test/results` | `GET` | Return the latest test output logs |
 
 ---

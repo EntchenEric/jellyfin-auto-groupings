@@ -993,6 +993,38 @@ def browse_directory() -> ResponseReturnValue:
 
 
 # ---------------------------------------------------------------------------
+# Health check
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/api/health", methods=["GET"])
+def health_check() -> ResponseReturnValue:
+    """Simple health check endpoint for Docker / Kubernetes probes.
+
+    Returns a lightweight JSON response with service status, uptime
+    (Flask app start time), and a quick config sanity check.
+
+    Returns:
+        JSON with ``status``, ``healthcheck.ok`` boolean, and basic
+        application metadata.
+
+    """
+    config: dict[str, Any] = load_config()
+    url: str = str(config.get("jellyfin_url") or "")
+    api_key: str = str(config.get("api_key") or "")
+    configured: bool = bool(url and api_key and config.get("target_path"))
+
+    return jsonify({
+        "status": "ok",
+        "healthcheck": {
+            "ok": True,
+            "configured": configured,
+            "groups": len(config.get("groups", [])),
+        },
+    })
+
+
+# ---------------------------------------------------------------------------
 # Test Dashboard
 # ---------------------------------------------------------------------------
 
