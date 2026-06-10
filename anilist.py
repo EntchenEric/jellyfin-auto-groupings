@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import logging
+
 import network
 
 __all__ = ["fetch_anilist_list"]
+
+logger = logging.getLogger(__name__)
 
 ANILIST_API_URL = "https://graphql.anilist.co"
 
@@ -64,6 +68,12 @@ def fetch_anilist_list(
 
     resolved_url = api_url or ANILIST_API_URL
 
+    logger.debug(
+        "Fetching AniList list for user=%r status=%s",
+        username,
+        variables.get("status", "ALL"),
+    )
+
     response = network.post(
         resolved_url,
         json={"query": query, "variables": variables},
@@ -74,14 +84,25 @@ def fetch_anilist_list(
     data = response.json()
     root = data.get("data")
     if not isinstance(root, dict):
+        logger.warning("Unexpected AniList response structure: 'data' is not a dict")
         return []
-    collection = root.get("MediaListCollection") or {}
-    if not collection:
+    collection = root.get("MediaListCollection")
+    if not isinstance(collection, dict):
+        logger.warning("AniList returned empty MediaListCollection for user=%r", username)
         return []
 
-    return [
-        entry["mediaId"]
-        for user_list in collection.get("lists", [])
-        for entry in user_list.get("entries", [])
-        if entry.get("mediaId")
-    ]
+    media_ids: list[int] = []
+    for user_list in collection.get("lists") or []:
+        if not isinstance(user_list, dict):
+            continue
+        entries = user_list.get("entries")
+        if not isinstance(entries, list):
+            continue
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            media_id = entry.get("mediaId")
+            if isinstance(media_id, int):
+                media_ids.append(media_id)
+
+    return media_ids

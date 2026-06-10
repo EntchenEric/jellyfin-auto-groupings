@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is accessed before the key is explicitly set.
 - Documented `NETWORK_RETRY_*` environment variables in the README env vars table
   and added them to `.env.example` and `docker-compose.yml` for discoverability.
+- Add test coverage for `/api/health` endpoint (configured and unconfigured cases)
+  via PR #494.
 
 ### Fixed
 - Improved CSRF testing check in `routes.py` to use the standard Flask
@@ -39,6 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed redundant cache clear at end of `run_sync` (the cache is already
   cleared at the start of each sync run).
 - Mypy type fixes in `tests/virtual_jellyfin.py` dashboard helper.
+- Fixed CONTRIBUTING.md to remove `-n auto` flag from the recommended test
+  command, since `pytest-xdist` is not included in dev dependencies.
 
 ## [1.0.0] - 2025-03-01
 

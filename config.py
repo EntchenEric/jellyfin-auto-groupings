@@ -76,10 +76,16 @@ def _env_flag(name: str, default: bool = False) -> bool:
     """Parse an environment variable as a boolean flag.
 
     Accepts ``"true"``, ``"1"``, ``"yes"`` (case-insensitive) as truthy.
-    All other values (including the default *False*) are falsy.
+    Accepts ``"false"``, ``"0"``, ``"no"`` (case-insensitive) as falsy.
+    If the variable is unset or empty, return *default*.
+    All other values return *default*.
     """
-    raw = os.environ.get(name, "")
-    return raw.strip().lower() in ("true", "1", "yes")
+    raw = os.environ.get(name, "").strip().lower()
+    if raw in ("true", "1", "yes"):
+        return True
+    if raw in ("false", "0", "no"):
+        return False
+    return default
 
 
 def _fill_defaults(cfg: dict[str, Any], defaults: dict[str, Any]) -> None:

@@ -19,7 +19,7 @@ bug reports, feature ideas, docs, or code — are very welcome.
    ```
 4. **Run tests** before making changes:
    ```bash
-   python3 -m pytest -n auto --cov=. -m "not exhaustive"
+   python3 -m pytest --cov=. -m "not exhaustive"
    ```
 
 ## Code Style
