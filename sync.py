@@ -1385,7 +1385,6 @@ def _prepare_group_directory(
     return source_cover
 
 
-
 def _dispatch_list_source(
     source_type: str,
     group_name: str,
@@ -1409,36 +1408,71 @@ def _dispatch_list_source(
     match source_type:
         case "imdb_list":
             return _fetch_items_for_imdb_group(
-                group_name, source_value, sort_order, url, api_key, watch_state,
+                group_name,
+                source_value,
+                sort_order,
+                url,
+                api_key,
+                watch_state,
             )
         case "trakt_list":
             return _fetch_items_for_trakt_group(
-                group_name, source_value, sort_order, url, api_key,
-                trakt_client_id, watch_state,
+                group_name,
+                source_value,
+                sort_order,
+                url,
+                api_key,
+                trakt_client_id,
+                watch_state,
             )
         case "tmdb_list":
             return _fetch_items_for_tmdb_group(
-                group_name, source_value, sort_order, url, api_key,
-                tmdb_api_key, watch_state,
+                group_name,
+                source_value,
+                sort_order,
+                url,
+                api_key,
+                tmdb_api_key,
+                watch_state,
             )
         case "anilist_list":
             return _fetch_items_for_anilist_group(
-                group_name, source_value, sort_order, url, api_key,
-                watch_state, anilist_api_url=anilist_api_url,
+                group_name,
+                source_value,
+                sort_order,
+                url,
+                api_key,
+                watch_state,
+                anilist_api_url=anilist_api_url,
             )
         case "mal_list":
             return _fetch_items_for_mal_group(
-                group_name, source_value, sort_order, url, api_key,
-                mal_client_id, watch_state,
+                group_name,
+                source_value,
+                sort_order,
+                url,
+                api_key,
+                mal_client_id,
+                watch_state,
             )
         case "letterboxd_list":
             return _fetch_items_for_letterboxd_group(
-                group_name, source_value, sort_order, url, api_key, watch_state,
+                group_name,
+                source_value,
+                sort_order,
+                url,
+                api_key,
+                watch_state,
             )
         case "recommendations":
             return _fetch_items_for_recommendations_group(
-                group_name, source_value, sort_order, url, api_key,
-                tmdb_api_key, watch_state,
+                group_name,
+                source_value,
+                sort_order,
+                url,
+                api_key,
+                tmdb_api_key,
+                watch_state,
             )
         case _:
             return [], f"Unknown source type: {source_type}", 400
@@ -1577,7 +1611,10 @@ def _process_group(
 
     try:
         source_cover = _prepare_group_directory(
-            group_dir, group_name, target_base, dry_run,
+            group_dir,
+            group_name,
+            target_base,
+            dry_run,
         )
     except OSError as exc:
         return {"group": group_name, "links": 0, "error": f"Directory error: {exc!s}"}
