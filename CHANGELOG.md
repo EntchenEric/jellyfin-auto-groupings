@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Print-friendly stylesheet with hidden UI chrome, expanded link URLs, and
+  readable code blocks when printing docs/setup guides.
+
+### Changed
+- Scrollbar thumb colors now use `color-mix(in srgb, var(--text-secondary) …%,
+  transparent)` instead of hardcoded `rgba(255,255,255,…)` — adapts correctly
+  in light theme.
+- `#topbar` and `#sidebar::-webkit-scrollbar-thumb` backgrounds use
+  `color-mix()` with theme variables for light-mode compatibility.
+- Footer color uses `var(--text-secondary)` with `opacity` instead of hardcoded
+  `rgba(148, 163, 184, 0.45)`.
+- `.pre-commit-config.yaml` splits ruff into `ruff-lint` and `ruff-format`
+  hooks to match `make lint` target.
+- Removed deprecated `page-break-*` CSS properties (courtesy of CodeRabbit
+  review) — using modern `break-*` equivalents only.
+
 ### Changed
 - Improved `network.py` error logging to include the actual invalid value when
   `NETWORK_RETRY_TOTAL` or `NETWORK_RETRY_BACKOFF_FACTOR` fails to parse.

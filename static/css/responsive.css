@@ -224,3 +224,63 @@
         transition-duration: 0.01ms !important;
     }
 }
+
+/* ─────────────────────────────────────────────────────────
+   PRINT  (docs, setup guides, troubleshooting)
+───────────────────────────────────────────────────────── */
+@media print {
+    * {
+        background: transparent !important;
+        color: #000 !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+    }
+
+    #sidebar,
+    #topbar,
+    .modal,
+    #status-msg,
+    .bg-blob,
+    #loading-overlay,
+    .skip-to-content {
+        display: none !important;
+    }
+
+    #app-layout {
+        position: static;
+        display: block;
+        margin-top: 0;
+        height: auto;
+    }
+
+    #main-content {
+        height: auto;
+        overflow: visible;
+        padding: 0;
+    }
+
+    .card,
+    .group-card {
+        border: 1px solid #ccc !important;
+        break-inside: avoid;
+    }
+
+    a[href]::after {
+        content: " (" attr(href) ")";
+        font-size: 0.75em;
+        color: #555 !important;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4 {
+        break-after: avoid;
+    }
+
+    pre,
+    code {
+        border: 1px solid #ccc !important;
+        font-size: 0.8rem;
+    }
+}
