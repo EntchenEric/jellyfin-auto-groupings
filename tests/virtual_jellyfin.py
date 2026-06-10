@@ -1,3 +1,10 @@
+"""A lightweight Flask mock of the Jellyfin API for end-to-end testing.
+
+Provides stubbed endpoints for libraries, items, and user views so that
+the test suite can exercise the full sync pipeline without a live Jellyfin
+server.
+"""
+
 from __future__ import annotations
 
 import uuid
