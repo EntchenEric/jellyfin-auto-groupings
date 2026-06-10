@@ -28,10 +28,9 @@ Thank you for considering contributing! Here are a few guidelines to help things
 
 - Python: Follow [PEP 8](https://peps.python.org/pep-0008/). The project uses `ruff` for linting and formatting.
 - JavaScript: Follow standard ES module conventions. The project uses `eslint` for linting.
-- Run linting before committing:
+- Run linting and format-checking before committing:
   ```bash
-  ruff check .
-  ruff format --check .
+  make lint
   ```
 
 ### Type Hints
