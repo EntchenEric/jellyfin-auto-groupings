@@ -306,3 +306,47 @@ def test_auto_detect_partial_match() -> None:
     # Trailing matches: D.mkv, action = 2 components
     assert result_j == "/movies"
     assert result_h == "/host/media"
+
+
+# ---------------------------------------------------------------------------
+# Health endpoint coverage
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.usefixtures("temp_config")
+def test_health_check_configured(client) -> None:
+    """
+    GET /api/health returns ok status, configured=True when
+    jellyfin_url, api_key, and target_path are all set.
+    """
+    from config import save_config
+
+    save_config({
+        "jellyfin_url": "http://jellyfin:8096",
+        "api_key": "test-key-123",
+        "target_path": "/media/groupings",
+        "groups": [{"name": "Movies"}, {"name": "Shows"}],
+    })
+    response = client.get("/api/health")
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["status"] == "ok"
+    assert data["healthcheck"]["ok"] is True
+    assert data["healthcheck"]["configured"] is True
+    assert data["healthcheck"]["groups"] == 2
+
+
+@pytest.mark.usefixtures("temp_config")
+def test_health_check_unconfigured(client) -> None:
+    """
+    GET /api/health returns configured=False when config is empty.
+    """
+    from config import save_config
+
+    save_config({})
+    response = client.get("/api/health")
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["status"] == "ok"
+    assert data["healthcheck"]["configured"] is False
+    assert data["healthcheck"]["groups"] == 0
