@@ -157,8 +157,6 @@ def _request(method: str, url: str, **kwargs: Any) -> requests.Response:
     try:
         http_fn = getattr(_SESSION, method.lower())
         return http_fn(url, **kwargs)
-    except requests.Timeout:
-        raise
     except requests.ConnectionError as exc:
         _reraise_timeout(exc)
         raise

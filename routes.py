@@ -730,13 +730,6 @@ def _delete_folder(
 
     """
     path = Path(target_base) / name
-    # Resolve to guard against path-traversal via ".." or embedded slashes
-    try:
-        resolved = path.resolve(strict=False)
-    except (OSError, RuntimeError):
-        return False, f"Cannot resolve path for {name}"
-    if not str(resolved).startswith(str(Path(target_base).resolve())):
-        return False, f"Path traversal detected for {name}"
     if not path.exists() or not path.is_dir():
         return False, None
     try:
