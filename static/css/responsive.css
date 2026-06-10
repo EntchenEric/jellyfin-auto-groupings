@@ -263,7 +263,6 @@
     .group-card {
         border: 1px solid #ccc !important;
         break-inside: avoid;
-        page-break-inside: avoid;
     }
 
     a[href]::after {
@@ -277,7 +276,6 @@
     h3,
     h4 {
         break-after: avoid;
-        page-break-after: avoid;
     }
 
     pre,
