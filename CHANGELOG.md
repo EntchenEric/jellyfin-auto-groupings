@@ -28,6 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Healthcheck in `docker-compose.yml` uses `python3` for consistency.
 - Updated README Docker environment example to include `NETWORK_RETRY_*` vars.
 - Fixed output path in `run_tests_to_file.py` to use absolute repo-root path.
+- Added PUT and PATCH method support to `_request_or_raise` in jellyfin.py
+  (future-proofing — network.py already provides retry-aware helpers for these).
+- Achieved 100% code coverage across all 12 source modules (1881/1881 lines).
 - Moved `_SOURCE_DISPATCH` routing from a module-level dict of lambdas to a
   `match/case`-based `_dispatch_list_source` function, removing the unused
   dispatch table.

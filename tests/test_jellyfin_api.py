@@ -844,8 +844,34 @@ def test_post_or_raise_with_data(mock_post) -> None:
 def test_request_or_raise_unsupported_method() -> None:
     from jellyfin import _request_or_raise
 
-    with pytest.raises(ValueError, match="Unsupported HTTP method: PUT"):
-        _request_or_raise("PUT", "http://test")
+    with pytest.raises(ValueError, match="Unsupported HTTP method: OPTIONS"):
+        _request_or_raise("OPTIONS", "http://test")
+
+
+@patch("jellyfin.network.put")
+@patch("jellyfin.network.get")
+def test_request_or_raise_put(mock_get, mock_put) -> None:
+    """PUT method delegates to network.put."""
+    mock_put.return_value = MagicMock()
+    mock_put.return_value.raise_for_status.return_value = None
+    from jellyfin import _request_or_raise
+
+    resp = _request_or_raise("PUT", "http://test")
+    assert resp is mock_put.return_value
+    mock_put.assert_called_once()
+
+
+@patch("jellyfin.network.patch")
+@patch("jellyfin.network.get")
+def test_request_or_raise_patch(mock_get, mock_patch) -> None:
+    """PATCH method delegates to network.patch."""
+    mock_patch.return_value = MagicMock()
+    mock_patch.return_value.raise_for_status.return_value = None
+    from jellyfin import _request_or_raise
+
+    resp = _request_or_raise("PATCH", "http://test")
+    assert resp is mock_patch.return_value
+    mock_patch.assert_called_once()
 
 
 @patch("jellyfin.network.get")
