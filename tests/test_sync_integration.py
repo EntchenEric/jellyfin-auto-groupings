@@ -1,3 +1,5 @@
+"""Integration tests for sync.py with mocked Jellyfin API responses."""
+
 from unittest.mock import patch
 
 from sync import run_sync

@@ -1,3 +1,5 @@
+"""Extended tests for sync.py — preview and run_sync with mock data."""
+
 from unittest.mock import patch
 
 from sync import preview_group, run_sync

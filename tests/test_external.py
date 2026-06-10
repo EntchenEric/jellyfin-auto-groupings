@@ -1,3 +1,5 @@
+"""Tests for external list-fetcher modules (Letterboxd, MAL, Trakt, AniList, TMDb)."""
+
 from unittest.mock import MagicMock, patch
 
 import pytest

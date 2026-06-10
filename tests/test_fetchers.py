@@ -1,3 +1,5 @@
+"""Tests for external list fetcher modules (IMDb, AniList, TMDb, Jellyfin)."""
+
 from unittest.mock import MagicMock, patch
 
 import pytest

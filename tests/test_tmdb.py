@@ -1,3 +1,5 @@
+"""Tests for TMDb API client (fetch_tmdb_list, get_tmdb_recommendations)."""
+
 from unittest.mock import MagicMock, patch
 
 import pytest
