@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Documented Makefile targets in README.md (test, lint, typecheck, run, format, etc.)
+  for contributor discoverability.
+
+### Changed
+- Merged PR #496: Add Makefile for common dev commands; address CodeRabbit review comments.
+- Fixed `.PHONY` declaration in Makefile to match actual targets (removed `dev`/`docs`,
+  added `docker-build`/`docker-run`).
+- Simplified `_parse_mmdd` in sync.py by removing redundant `day <= 0` check
+  (already covered by `calendar.monthrange` validation).
+
+### Added
 - Initial CHANGELOG.md for project tracking.
 - Added `anilist_api_url` to `DEFAULT_CONFIG` to prevent KeyError when config
   is accessed before the key is explicitly set.

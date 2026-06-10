@@ -277,6 +277,33 @@ See [`.env.example`](.env.example) for quick setup.
    ```
 4. Run: `python3 app.py`.
 
+### Makefile Targets
+
+A `Makefile` is provided for common development tasks:
+
+| Target | Description |
+|---|---|
+| `install` | Install the package (`pip install -e .`) |
+| `install-dev` | Install with dev extras (`pip install -e ".[dev]"`) |
+| `test` | Run the test suite (skips slow integration tests) |
+| `test-all` | Run the full test suite including integration tests |
+| `test-cov` | Run tests with a coverage report |
+| `lint` | Run Ruff linter (`ruff check .`) |
+| `typecheck` | Run mypy type checker (`mypy .`) |
+| `format` | Auto-format code with Ruff (`ruff format .`) |
+| `clean` | Remove `__pycache__`, `.pytest_cache`, and build artifacts |
+| `run` | Start the Flask development server (`python app.py`) |
+| `virtual-jellyfin` | Start the mock Jellyfin server for testing |
+| `docker-build` | Build the Docker image |
+| `docker-run` | Run the Docker container |
+
+```bash
+# Quick start after cloning
+make install-dev
+make test
+make run
+```
+
 ### 🧪 Testing
 
 ```bash

@@ -1682,10 +1682,10 @@ def _parse_mmdd(value: str) -> tuple[int, int]:
         day = int(parts[1])
     except (ValueError, IndexError):
         return (0, 0)
-    if not (1 <= month <= 12) or day <= 0:
+    if not (1 <= month <= 12):
         return (0, 0)
     _, max_day = calendar.monthrange(2000, month)
-    if not (day <= max_day):
+    if not (1 <= day <= max_day):
         return (0, 0)
     return (month, day)
 
