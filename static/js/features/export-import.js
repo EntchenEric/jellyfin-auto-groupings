@@ -68,7 +68,7 @@ export function execExport() {
             .map(cb => parseInt(cb.dataset.index));
 
         if (selectedIndices.length === 0) {
-            alert('Please select at least one grouping.');
+            showErrorDialog('Please select at least one grouping.');
             return;
         }
         dataToExport = { groups: selectedIndices.map(i => state.currentConfig.groups[i]) };
