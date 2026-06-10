@@ -77,11 +77,24 @@ def _schedule_group_syncs(scheduler: BackgroundScheduler, groups: list[Any]) -> 
     seen_ids: set[str] = set()
     for group in groups:
         if not isinstance(group, dict):
+            logger.warning(
+                "Skipping invalid group entry (expected dict, got %s): %s",
+                type(group).__name__,
+                group,
+            )
             continue
         group_name = group.get("name")
         if not group_name:
+            logger.warning(
+                "Skipping group with schedule_enabled but missing name: %s",
+                group,
+            )
             continue
         if not isinstance(group_name, str):
+            logger.warning(
+                "Skipping group with schedule_enabled but non-string name: %s",
+                group_name,
+            )
             continue
         if group.get("schedule_enabled") and group.get("schedule"):
             cron_expr = group["schedule"]

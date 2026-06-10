@@ -90,16 +90,22 @@ def _env_flag(name: str, *, default: bool = False) -> bool:
 
 
 def _fill_defaults(cfg: dict[str, Any], defaults: dict[str, Any]) -> None:
-    """Fill missing keys in *cfg* from *defaults*, including nested dicts."""
+    """Fill missing keys in *cfg* from *defaults*, recursing into nested dicts.
+
+    Recursively walks *defaults* so that deeply nested structures (e.g.
+    scheduler config with arbitrary sub-keys) are properly populated without
+    requiring the caller to specify every intermediate level.
+    """
     for key, default_value in defaults.items():
         cfg.setdefault(key, default_value)
-        if isinstance(default_value, dict) and isinstance(cfg.get(key), dict):
-            for sub_key, sub_val in default_value.items():
-                cfg[key].setdefault(sub_key, sub_val)
-        elif isinstance(default_value, dict):
-            # If the value exists but is not a dict (e.g. None, empty string),
-            # replace it with the default to avoid AttributeError downstream.
-            cfg[key] = copy.deepcopy(default_value)
+        if isinstance(default_value, dict):
+            current = cfg.get(key)
+            if isinstance(current, dict):
+                _fill_defaults(current, default_value)
+            else:
+                # Value exists but is not a dict (e.g. None, empty string) —
+                # replace with a deep copy to avoid AttributeError downstream.
+                cfg[key] = copy.deepcopy(default_value)
 
 
 def _migrate_legacy_keys(cfg: dict[str, Any]) -> bool:

@@ -10,6 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Print-friendly stylesheet with hidden UI chrome, expanded link URLs, and
   readable code blocks when printing docs/setup guides.
+- `network.py` now gracefully falls back to default retry settings when
+  environment variables contain invalid values (previously raised `ValueError`
+  at module import time).
+- `sync.py` logs a warning when the config contains no groups to sync.
+- `scheduler.py` now logs warnings when a group with `schedule_enabled` is
+  missing a name or has a non-string name.
+- Path-traversal protection in `routes.py` `_delete_folder`: rejects names
+  with path separators and validates the resolved path stays within the
+  target base directory.
+- `config.py` `_fill_defaults` now recursively populates nested defaults
+  (e.g. scheduler sub-keys) instead of only one level deep.
 
 ### Changed
 - Scrollbar thumb colors now use `color-mix(in srgb, var(--text-secondary) …%,
