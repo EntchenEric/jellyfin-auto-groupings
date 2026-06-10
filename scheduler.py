@@ -29,10 +29,16 @@ __all__ = [
 
 
 def start_scheduler() -> None:
-    """Start the background scheduler and load jobs from config."""
+    """Start the background scheduler and load jobs from config.
+
+    If the scheduler was already started (e.g., in reloader child process),
+    this is a no-op for the running instance but will re-add jobs.
+    """
     if not _scheduler.running:
         _scheduler.start()
         logger.info("Background scheduler started")
+    else:
+        logger.debug("Background scheduler already running — refreshing jobs")
     update_scheduler_jobs()
 
 

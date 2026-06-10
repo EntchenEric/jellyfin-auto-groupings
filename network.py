@@ -146,46 +146,36 @@ def _reraise_timeout(exc: requests.ConnectionError) -> None:
         raise requests.Timeout(msg) from reason
 
 
-def get(url: str, **kwargs: Any) -> requests.Response:
-    """GET *url* through the retry-enabled session."""
+def _request(method: str, url: str, **kwargs: Any) -> requests.Response:
+    """Send a *method* request to *url* through the retry-enabled session."""
     try:
-        return _SESSION.get(url, **kwargs)
+        http_fn = getattr(_SESSION, method.lower())
+        return http_fn(url, **kwargs)
     except requests.ConnectionError as exc:
         _reraise_timeout(exc)
         raise
+
+
+def get(url: str, **kwargs: Any) -> requests.Response:
+    """GET *url* through the retry-enabled session."""
+    return _request("get", url, **kwargs)
 
 
 def post(url: str, **kwargs: Any) -> requests.Response:
     """POST to *url* through the retry-enabled session."""
-    try:
-        return _SESSION.post(url, **kwargs)
-    except requests.ConnectionError as exc:
-        _reraise_timeout(exc)
-        raise
+    return _request("post", url, **kwargs)
 
 
 def put(url: str, **kwargs: Any) -> requests.Response:
     """PUT *url* through the retry-enabled session."""
-    try:
-        return _SESSION.put(url, **kwargs)
-    except requests.ConnectionError as exc:
-        _reraise_timeout(exc)
-        raise
+    return _request("put", url, **kwargs)
 
 
 def patch(url: str, **kwargs: Any) -> requests.Response:
     """PATCH *url* through the retry-enabled session."""
-    try:
-        return _SESSION.patch(url, **kwargs)
-    except requests.ConnectionError as exc:
-        _reraise_timeout(exc)
-        raise
+    return _request("patch", url, **kwargs)
 
 
 def delete(url: str, **kwargs: Any) -> requests.Response:
     """DELETE *url* through the retry-enabled session."""
-    try:
-        return _SESSION.delete(url, **kwargs)
-    except requests.ConnectionError as exc:
-        _reraise_timeout(exc)
-        raise
+    return _request("delete", url, **kwargs)
