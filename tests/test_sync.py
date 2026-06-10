@@ -1417,13 +1417,13 @@ def test_process_group_missing_path(mock_meta, tmp_path) -> None:
     assert result["links"] == 0
 
 
-@patch("sync.os.symlink")
+@patch("pathlib.Path.symlink_to")
 @patch("sync._fetch_items_for_metadata_group")
-def test_process_group_symlink_error(mock_meta, mock_symlink, tmp_path) -> None:
+def test_process_group_symlink_error(mock_meta, mock_symlink_to, tmp_path) -> None:
     host = tmp_path / "movie.mkv"
     host.write_text("movie")
     mock_meta.return_value = ([{"Id": "1", "Name": "M1", "Path": str(host)}], None, 200)
-    mock_symlink.side_effect = OSError("Permission denied")
+    mock_symlink_to.side_effect = OSError("Permission denied")
     group = {
         "name": "Test",
         "source_type": "genre",
@@ -1642,11 +1642,13 @@ def test_run_sync_seasonal_cleanup(
 # --- run_cleanup_broken_symlinks ---
 
 
-@patch("sync.os.unlink")
+@patch("pathlib.Path.unlink")
 @patch("pathlib.Path.exists")
 @patch("pathlib.Path.is_symlink")
 @patch("pathlib.Path.is_dir")
+@patch("pathlib.Path.rglob")
 def test_cleanup_broken_symlinks_unlink_error(
+    mock_rglob,
     mock_isdir,
     mock_islink,
     mock_exists,
@@ -1656,9 +1658,9 @@ def test_cleanup_broken_symlinks_unlink_error(
     mock_islink.return_value = True
     mock_exists.return_value = False
     mock_unlink.side_effect = OSError("Permission denied")
+    mock_rglob.return_value = [Path("/target/link")]
     config = {"target_path": "/target"}
-    with patch("sync.os.walk", return_value=[("/target", [], ["link"])]):
-        count = run_cleanup_broken_symlinks(config)
+    count = run_cleanup_broken_symlinks(config)
     assert count == 0
 
 

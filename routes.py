@@ -730,6 +730,13 @@ def _delete_folder(
 
     """
     path = Path(target_base) / name
+    # Resolve to guard against path-traversal via ".." or embedded slashes
+    try:
+        resolved = path.resolve(strict=False)
+    except (OSError, RuntimeError):
+        return False, f"Cannot resolve path for {name}"
+    if not str(resolved).startswith(str(Path(target_base).resolve())):
+        return False, f"Path traversal detected for {name}"
     if not path.exists() or not path.is_dir():
         return False, None
     try:
@@ -767,7 +774,14 @@ def perform_cleanup() -> ResponseReturnValue:
 
     deleted: int = 0
     errors: list[str] = []
+    seen: set[str] = set()
     for name in folders:
+        if not isinstance(name, str):
+            errors.append("Folder name must be a string")
+            continue
+        if name in seen:
+            continue
+        seen.add(name)
         if not _is_valid_folder_name(name):
             errors.append(f"Invalid folder name: {name}")
             continue

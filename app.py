@@ -29,7 +29,7 @@ from scheduler import start_scheduler
 
 def _configure_logging() -> None:
     """Configure logging with both console and rotating file output."""
-    log_dir = Path("logs")
+    log_dir = Path(__file__).parent / "logs"
     log_dir.mkdir(exist_ok=True)
 
     file_handler = RotatingFileHandler(
