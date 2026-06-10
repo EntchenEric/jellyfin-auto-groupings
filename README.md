@@ -315,7 +315,8 @@ A `Makefile` is provided for common development tasks:
 | `test` | Run the test suite (skips slow integration tests) |
 | `test-all` | Run the full test suite including integration tests |
 | `test-cov` | Run tests with a coverage report |
-| `lint` | Run Ruff linter (`ruff check .`) |
+| `lint` | Run Ruff linter and format check (`ruff check .` + `ruff format --check .`) |
+| `format-check` | Check code formatting without auto-fixing (`ruff format --check .`) |
 | `typecheck` | Run mypy type checker (`mypy .`) |
 | `format` | Auto-format code with Ruff (`ruff format .`) |
 | `clean` | Remove `__pycache__`, `.pytest_cache`, and build artifacts |

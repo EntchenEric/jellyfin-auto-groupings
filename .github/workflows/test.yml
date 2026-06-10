@@ -21,6 +21,8 @@ jobs:
         pip install -r requirements-dev.txt
     - name: Run ruff linter
       run: ruff check .
+    - name: Check ruff formatting
+      run: ruff format --check .
 
   typecheck:
     runs-on: ubuntu-latest

@@ -1,4 +1,4 @@
-.PHONY: install install-dev test test-all test-cov lint typecheck clean format run virtual-jellyfin docker-build docker-run
+.PHONY: install install-dev test test-all test-cov lint format-check typecheck clean format run virtual-jellyfin docker-build docker-run
 
 # ── Installation ────────────────────────────────────────────────────────────
 
@@ -23,6 +23,10 @@ test-cov:
 
 lint:
 	ruff check .
+	ruff format --check .
+
+format-check:
+	ruff format --check .
 
 typecheck:
 	mypy .

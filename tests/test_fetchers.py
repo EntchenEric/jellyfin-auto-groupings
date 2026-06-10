@@ -147,11 +147,13 @@ def test_fetch_anilist_list_entry_not_dict(mock_post) -> None:
                 "lists": [
                     "not a dict",
                     {"entries": None},
-                    {"entries": [
-                        "not a dict",
-                        {"mediaId": 12345},
-                        {},
-                    ]},
+                    {
+                        "entries": [
+                            "not a dict",
+                            {"mediaId": 12345},
+                            {},
+                        ]
+                    },
                 ],
             },
         },
