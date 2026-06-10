@@ -573,12 +573,28 @@ def test_perform_cleanup_invalid_folder_name(client, tmp_path) -> None:
 
 
 @pytest.mark.usefixtures("temp_config")
-def test_perform_cleanup_success(client, tmp_path) -> None:
+def test_perform_cleanup_dedup(client, tmp_path) -> None:
     target = tmp_path / "target"
     target.mkdir()
     (target / "Action").mkdir()
     save_config({"target_path": str(target)})
-    response = client.post("/api/cleanup", json={"folders": ["Action"]})
+    response = client.post("/api/cleanup", json={"folders": ["Action", "Action"]})
+    assert response.status_code == 200
+    assert response.get_json()["deleted"] == 1
+
+
+@pytest.mark.usefixtures("temp_config")
+def test_perform_cleanup_success(client, tmp_path) -> None:
+    """Test successful folder deletion."""
+    target = tmp_path / "target"
+    target.mkdir()
+    (target / "Action").mkdir()
+    save_config({"target_path": str(target)})
+    response = client.post(
+        "/api/cleanup",
+        json={"folders": ["Action"]},
+        headers={"X-Requested-With": "XMLHttpRequest"},
+    )
     assert response.status_code == 200
     assert response.get_json()["deleted"] == 1
 

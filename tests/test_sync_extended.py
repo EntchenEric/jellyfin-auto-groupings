@@ -8,7 +8,7 @@ from sync import preview_group, run_sync
 @patch("sync.shutil.rmtree")
 @patch("pathlib.Path.mkdir")
 @patch("pathlib.Path.exists")
-@patch("sync.os.symlink")
+@patch("pathlib.Path.symlink_to")
 @patch("sync.fetch_jellyfin_items")
 @patch("sync.fetch_tmdb_list")
 def test_run_sync_tmdb(
@@ -47,7 +47,7 @@ def test_run_sync_tmdb(
 @patch("sync.shutil.rmtree")
 @patch("pathlib.Path.mkdir")
 @patch("pathlib.Path.exists")
-@patch("sync.os.symlink")
+@patch("pathlib.Path.symlink_to")
 @patch("sync.fetch_jellyfin_items")
 @patch("sync.fetch_anilist_list")
 def test_run_sync_anilist(
@@ -84,7 +84,7 @@ def test_run_sync_anilist(
 @patch("pathlib.Path.mkdir")
 @patch("pathlib.Path.exists")
 @patch("pathlib.Path.is_dir")
-@patch("sync.os.symlink")
+@patch("pathlib.Path.symlink_to")
 @patch("sync.fetch_jellyfin_items")
 @patch("sync.fetch_trakt_list")
 def test_run_sync_trakt(
@@ -123,7 +123,7 @@ def test_run_sync_trakt(
 @patch("sync.shutil.rmtree")
 @patch("pathlib.Path.mkdir")
 @patch("pathlib.Path.exists")
-@patch("sync.os.symlink")
+@patch("pathlib.Path.symlink_to")
 @patch("sync.fetch_jellyfin_items")
 @patch("sync.fetch_mal_list")
 def test_run_sync_mal(
@@ -160,7 +160,7 @@ def test_run_sync_mal(
 @patch("sync.shutil.rmtree")
 @patch("pathlib.Path.mkdir")
 @patch("pathlib.Path.exists")
-@patch("sync.os.symlink")
+@patch("pathlib.Path.symlink_to")
 @patch("sync.fetch_jellyfin_items")
 @patch("sync.fetch_letterboxd_list")
 def test_run_sync_letterboxd(
@@ -209,7 +209,7 @@ def test_run_sync_invalid_group() -> None:
 @patch("sync.shutil.rmtree")
 @patch("pathlib.Path.mkdir")
 @patch("pathlib.Path.exists")
-@patch("sync.os.symlink")
+@patch("pathlib.Path.symlink_to")
 @patch("sync.fetch_jellyfin_items")
 def test_run_sync_complex(
     mock_jf_fetch,
@@ -241,7 +241,7 @@ def test_run_sync_complex(
 @patch("sync.shutil.rmtree")
 @patch("pathlib.Path.mkdir")
 @patch("pathlib.Path.exists")
-@patch("sync.os.symlink")
+@patch("pathlib.Path.symlink_to")
 @patch("sync.fetch_jellyfin_items")
 def test_run_sync_dry_run(
     mock_jf_fetch,
@@ -276,7 +276,7 @@ def test_run_sync_dry_run(
 @patch("sync.shutil.rmtree")
 @patch("pathlib.Path.mkdir")
 @patch("pathlib.Path.exists")
-@patch("sync.os.symlink")
+@patch("pathlib.Path.symlink_to")
 @patch("sync.fetch_jellyfin_items")
 def test_run_sync_selective(
     mock_jf_fetch,
@@ -497,7 +497,7 @@ def test_fetch_items_trakt_empty(mock_trakt) -> None:
 @patch("pathlib.Path.mkdir")
 @patch("pathlib.Path.exists")
 @patch("pathlib.Path.is_dir")
-@patch("sync.os.symlink")
+@patch("pathlib.Path.symlink_to")
 @patch("sync.fetch_jellyfin_items")
 @patch("sync.get_libraries")
 @patch("sync.add_virtual_folder")
@@ -557,7 +557,7 @@ def test_run_sync_with_library_creation(
 @patch("pathlib.Path.mkdir")
 @patch("pathlib.Path.exists")
 @patch("pathlib.Path.is_dir")
-@patch("sync.os.symlink")
+@patch("pathlib.Path.symlink_to")
 @patch("sync.fetch_jellyfin_items")
 def test_run_sync_with_auto_set_library_covers(
     mock_jf_fetch,
@@ -613,7 +613,7 @@ def test_run_sync_with_auto_set_library_covers(
 @patch("sync.shutil.rmtree")
 @patch("pathlib.Path.mkdir")
 @patch("pathlib.Path.exists")
-@patch("sync.os.symlink")
+@patch("pathlib.Path.symlink_to")
 @patch("sync.fetch_jellyfin_items")
 @patch("sync.get_tmdb_recommendations")
 @patch("sync.get_user_recent_items")

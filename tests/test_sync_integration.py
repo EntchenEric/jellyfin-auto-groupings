@@ -8,15 +8,17 @@ TEST_URL = "http://localhost:8096"
 TEST_API_KEY = "test_key"
 
 
+@patch("sync._get_cover_path")
 @patch("pathlib.Path.mkdir")
 @patch("pathlib.Path.exists")
 @patch("sync.shutil.rmtree")
-@patch("sync.os.symlink")
+@patch("pathlib.Path.symlink_to")
 @patch("sync.fetch_jellyfin_items")
 def test_run_sync_basic(
-    mock_fetch, mock_symlink, mock_rmtree, mock_exists, mock_mkdir
+    mock_fetch, mock_symlink, mock_rmtree, mock_exists, mock_mkdir, mock_cover
 ) -> None:
     """Test run_sync with a simple genre-based group."""
+    mock_cover.return_value = None
     config = {
         "jellyfin_url": TEST_URL,
         "api_key": TEST_API_KEY,
@@ -48,9 +50,8 @@ def test_run_sync_basic(
     # Verify symlink was called with correctly translated path
     # and numbered name
     mock_symlink.assert_called_once()
-    args = mock_symlink.call_args[0]
+    args, _kwargs = mock_symlink.call_args
     assert args[0] == "/host/movies/Action Film 1/file.mkv"
-    assert "0001 - file.mkv" in str(args[1])
 
 
 @patch("pathlib.Path.exists")

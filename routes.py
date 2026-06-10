@@ -767,7 +767,14 @@ def perform_cleanup() -> ResponseReturnValue:
 
     deleted: int = 0
     errors: list[str] = []
+    seen: set[str] = set()
     for name in folders:
+        if not isinstance(name, str):
+            errors.append("Folder name must be a string")
+            continue
+        if name in seen:
+            continue
+        seen.add(name)
         if not _is_valid_folder_name(name):
             errors.append(f"Invalid folder name: {name}")
             continue

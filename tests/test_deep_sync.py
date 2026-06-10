@@ -18,7 +18,7 @@ def mock_filesystem():
     with (
         patch("pathlib.Path.exists", return_value=True),
         patch("pathlib.Path.mkdir"),
-        patch("sync.os.symlink"),
+        patch("pathlib.Path.symlink_to"),
         patch("sync.shutil.rmtree"),
     ):
         yield

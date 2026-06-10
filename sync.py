@@ -14,7 +14,6 @@ from __future__ import annotations
 import calendar
 import hashlib
 import logging
-import os
 import re
 import shutil
 import threading
@@ -1930,6 +1929,11 @@ def run_sync(
 def run_cleanup_broken_symlinks(config: dict[str, Any]) -> int:
     """Scan the target directory for broken symlinks and remove them.
 
+    Handles both broken file symlinks and broken symlink directories.
+    Uses ``pathlib.Path.rglob`` to traverse all entries regardless of
+    symlink target validity, which catches broken directory symlinks
+    that ``os.walk`` would silently skip.
+
     Args:
         config: The application configuration dict.
 
@@ -1945,16 +1949,22 @@ def run_cleanup_broken_symlinks(config: dict[str, Any]) -> int:
 
     deleted_count = 0
 
-    for root, _dirs, files in os.walk(target_base):
-        for name in files:
-            path = Path(root) / name
-            if path.is_symlink() and not path.exists():
-                # The symlink is broken
-                try:
-                    path.unlink()
-                    logger.info("Deleted broken symlink: %s", path)
-                    deleted_count += 1
-                except OSError:
-                    logger.exception("Error deleting broken symlink %s", path)
+    # Use rglob to catch broken symlink directories that os.walk would miss
+    for path in Path(target_base).rglob("*"):
+        if path.is_symlink() and not path.exists():
+            try:
+                path.unlink()
+                logger.info("Deleted broken symlink: %s", path)
+                deleted_count += 1
+            except OSError:
+                logger.exception("Error deleting broken symlink %s", path)
+
+    if deleted_count:
+        logger.info(
+            "Cleanup complete: deleted %s broken symlink(s)",
+            deleted_count,
+        )
+    else:
+        logger.debug("Cleanup complete: no broken symlinks found")
 
     return deleted_count
