@@ -182,43 +182,49 @@ are prefixed with `/api/`.
 | Endpoint | Method | Description |
 |---|---|---|
 | `/api/config` | `GET` | Load the current configuration |
-| `/api/config` | `POST` | Save the configuration (requires JSON body with config fields) |
-| `/api/config/export` | `POST` | Export configuration as a download |
-| `/api/config/import` | `POST` | Import configuration from a JSON file upload |
-| `/api/settings` | `GET` | Get current server/path settings |
+| `/api/config` | `POST` | Save the configuration (requires JSON body with config fields)
+
+### Server / Connection
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/test-server` | `POST` | Test connectivity to a Jellyfin server |
+| `/api/upload_cover` | `POST` | Upload a cover image for a group (base64-encoded data URL) |
 
 ### Jellyfin
 
 | Endpoint | Method | Description |
 |---|---|---|
-| `/api/jellyfin/metadata` | `POST` | Fetch available metadata (genres, actors, studios, tags, years) |
+| `/api/jellyfin/metadata` | `GET` | Fetch available metadata (genres, actors, studios, tags) |
+| `/api/jellyfin/users` | `GET` | Fetch the list of Jellyfin users (for recommendations) |
 | `/api/jellyfin/auto-detect-paths` | `POST` | Auto-detect path mappings between Jellyfin and host |
-| `/api/jellyfin/test-connection` | `POST` | Test the Jellyfin server connection |
 
 ### Sync & Preview
 
 | Endpoint | Method | Description |
 |---|---|---|
-| `/api/sync/preview` | `POST` | Preview which items would be matched for a single group |
-| `/api/sync/preview_all` | `POST` | Preview all configured groups without syncing |
-| `/api/sync` | `POST` | Execute a full synchronisation (creates symlinks/collections) |
-| `/api/sync/cleanup` | `POST` | Remove broken symlinks from the target directory |
+| `/api/grouping/preview` | `POST` | Preview which items match a single grouping rule |
+| `/api/sync/preview_all` | `POST` | Preview all configured groups without making changes |
+| `/api/sync` | `POST` | Execute a full synchronisation (creates symlinks / collections) |
 
-### Groups
-
-| Endpoint | Method | Description |
-|---|---|---|
-| `/api/groups` | `GET` | Get the list of configured groups |
-| `/api/groups` | `POST` | Add a new group |
-| `/api/groups/<id>` | `PUT` | Update an existing group |
-| `/api/groups/<id>` | `DELETE` | Delete a group and optionally its symlinks |
-
-### Export/Import
+### Cleanup
 
 | Endpoint | Method | Description |
 |---|---|---|
-| `/api/export-import/export` | `POST` | Export group configurations as JSON |
-| `/api/export-import/import` | `POST` | Import group configurations from JSON |
+| `/api/cleanup` | `GET` | List logical folders in the target directory |
+| `/api/cleanup` | `POST` | Delete selected folders and optionally their Jellyfin libraries |
+
+### Filesystem
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/browse` | `GET` | Browse the host filesystem (restricted to home + `/media` + `/mnt`) |
+
+### Diagnostics
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/test/results` | `GET` | Return the latest test output logs |
 
 ---
 

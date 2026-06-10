@@ -72,6 +72,16 @@ DEFAULT_CONFIG: dict[str, Any] = {
 # ---------------------------------------------------------------------------
 
 
+def _env_flag(name: str, default: bool = False) -> bool:
+    """Parse an environment variable as a boolean flag.
+
+    Accepts ``"true"``, ``"1"``, ``"yes"`` (case-insensitive) as truthy.
+    All other values (including the default *False*) are falsy.
+    """
+    raw = os.environ.get(name, "")
+    return raw.strip().lower() in ("true", "1", "yes")
+
+
 def _fill_defaults(cfg: dict[str, Any], defaults: dict[str, Any]) -> None:
     """Fill missing keys in *cfg* from *defaults*, including nested dicts."""
     for key, default_value in defaults.items():

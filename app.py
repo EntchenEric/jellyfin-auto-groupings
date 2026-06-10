@@ -21,7 +21,7 @@ from pathlib import Path
 
 from flask import Flask
 
-from config import CONFIG_FILE, DEFAULT_CONFIG, save_config
+from config import CONFIG_FILE, DEFAULT_CONFIG, _env_flag, save_config
 from routes import bp
 from scheduler import start_scheduler
 
@@ -61,5 +61,5 @@ if __name__ == "__main__":
         save_config(DEFAULT_CONFIG.copy())
 
     port = int(os.environ.get("FLASK_PORT", "5000"))
-    debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
+    debug = _env_flag("FLASK_DEBUG")
     app.run(host="0.0.0.0", debug=debug, port=port)
