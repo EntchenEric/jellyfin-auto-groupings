@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- `_prepare_group_directory` now resolves the cover path even during dry runs,
+  so callers can access `source_cover` for preview purposes regardless of mode.
+- Improved `network.py` error logging to include the actual invalid value when
+  `NETWORK_RETRY_BACKOFF_FACTOR` fails to parse.
+
+### Fixed
+- Fixed order-dependent `test_clear_library_cache` test in `test_sync_more_edges.py`
+  by clearing the module-level cache before populating it.
+
 ### Added
 - Documented Makefile targets in README.md (test, lint, typecheck, run, format, etc.)
   for contributor discoverability.
