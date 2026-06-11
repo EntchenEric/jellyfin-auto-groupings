@@ -12,7 +12,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 # Only copy what pip needs — .py source files are not required to
 # resolve dependencies.  The final layer copies everything anyway.
-COPY requirements.txt requirements-dev.txt pyproject.toml README.md ./
+COPY requirements.txt pyproject.toml README.md ./
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt && \
     pip install --no-cache-dir gunicorn && \
@@ -50,9 +50,9 @@ LABEL org.opencontainers.image.title="Jellyfin Groupings" \
 
 EXPOSE 5000
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/', timeout=3)" || exit 1
 
 USER appuser
 
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "--preload", "app:app"]
