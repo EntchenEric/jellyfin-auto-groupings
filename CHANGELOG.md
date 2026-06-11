@@ -127,6 +127,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (Inter, Outfit, JetBrains Mono) for valid CSS identifier syntax.
 - Fixed `currentcolor` typo → `currentColor` in `responsive.css` high-contrast
   media query for standards compliance.
+- `letterboxd.py` `_extract_ids_from_list_page`: DRY three similar regex loops
+  into a single `_ID_LIST_PAGE_PATTERNS` list with documented priority ordering.
+- `config.py` `_fill_defaults`: replace `elif not isinstance(current, dict)` with
+  plain `else` (the missing-key case is already handled by the prior membership
+  check).
+- `scheduler.py` `validate_cron`: call `expr.strip()` once instead of twice.
 
 ### Fixed
 - Fixed `_fill_defaults` in `config.py` to use `copy.deepcopy` for nested

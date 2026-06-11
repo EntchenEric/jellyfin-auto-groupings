@@ -39,6 +39,19 @@ _REQUEST_HEADERS: dict[str, str] = {
 }
 
 
+# Ordered sequence of (regex, id_group_index) for extracting IDs from list-page HTML.
+# Higher-priority patterns (TMDb data attribute) are checked first so that
+# they take precedence over lower-priority ones (IMDb / TMDb href).
+_ID_LIST_PAGE_PATTERNS: list[tuple[str, int]] = [
+    # data-tmdb-id attribute directly on the film element (fastest, no href match)
+    (r'data-film-slug="([^"]+)".*?data-tmdb-id="(\d+)"', 2),
+    # IMDb URL in a link
+    (r'data-film-slug="([^"]+)".*?imdb\.com/title/(tt\d+)', 2),
+    # TMDb URL in a link
+    (r'data-film-slug="([^"]+)".*?themoviedb\.org/movie/(\d+)', 2),
+]
+
+
 def _extract_ids_from_list_page(html: str) -> dict[str, str]:
     """Extract IMDb/TMDb IDs embedded in list-page HTML.
 
@@ -47,27 +60,11 @@ def _extract_ids_from_list_page(html: str) -> dict[str, str]:
     """
     found: dict[str, str] = {}
 
-    for match in re.finditer(
-        r'data-film-slug="([^"]+)".*?data-tmdb-id="(\d+)"',
-        html,
-    ):
-        found[match.group(1)] = match.group(2)
-
-    for match in re.finditer(
-        r'data-film-slug="([^"]+)".*?imdb\.com/title/(tt\d+)',
-        html,
-    ):
-        slug = match.group(1)
-        if slug not in found:
-            found[slug] = match.group(2)
-
-    for match in re.finditer(
-        r'data-film-slug="([^"]+)".*?themoviedb\.org/movie/(\d+)',
-        html,
-    ):
-        slug = match.group(1)
-        if slug not in found:
-            found[slug] = match.group(2)
+    for pattern, id_group in _ID_LIST_PAGE_PATTERNS:
+        for match in re.finditer(pattern, html):
+            slug = match.group(1)
+            if slug not in found:
+                found[slug] = match.group(id_group)
 
     return found
 
