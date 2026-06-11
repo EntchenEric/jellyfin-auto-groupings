@@ -699,18 +699,26 @@ def _build_letterboxd_items(
     items_by_tmdb: dict[str, dict[str, Any]],
     sort_order: str,
 ) -> list[dict[str, Any]]:
-    """Map external Letterboxd IDs to Jellyfin items, respecting sort order."""
+    """Map external Letterboxd IDs to Jellyfin items, respecting sort order.
+
+    When *sort_order* is ``"letterboxd_list_order"`` the external list order
+    is preserved and duplicates (same Jellyfin item matched via both IMDb and
+    TMDb ID) are skipped to avoid duplicate symlinks.
+    """
     items: list[dict[str, Any]] = []
-    if sort_order == "letterboxd_list_order":
-        for eid in external_ids:
-            match = _match_letterboxd_id(eid, items_by_imdb, items_by_tmdb)
-            if match:
+    seen_jf_ids: set[str] = set()
+    for eid in external_ids:
+        match = _match_letterboxd_id(eid, items_by_imdb, items_by_tmdb)
+        if not match:
+            continue
+        if sort_order == "letterboxd_list_order":
+            # Preserve list order but skip duplicates (same Jellyfin item
+            # matched via both IMDb and TMDb ID from the same Letterboxd entry)
+            if match["Id"] not in seen_jf_ids:
                 items.append(match)
-    else:
-        seen_jf_ids: set[str] = set()
-        for eid in external_ids:
-            match = _match_letterboxd_id(eid, items_by_imdb, items_by_tmdb)
-            if match and match["Id"] not in seen_jf_ids:
+                seen_jf_ids.add(match["Id"])
+        else:
+            if match["Id"] not in seen_jf_ids:
                 items.append(match)
                 seen_jf_ids.add(match["Id"])
     return items
@@ -1728,6 +1736,7 @@ def _parse_mmdd(value: str | None) -> tuple[int, int]:
         return (0, 0)
     if not (1 <= month <= 12):
         return (0, 0)
+    # Use a leap year (2024) for monthrange so Feb 29 is valid
     _, max_day = calendar.monthrange(2024, month)
     if not (1 <= day <= max_day):
         return (0, 0)
