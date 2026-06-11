@@ -105,9 +105,9 @@ def _fill_defaults(cfg: dict[str, Any], defaults: dict[str, Any]) -> None:
             current = cfg.get(key)
             if isinstance(current, dict):
                 _fill_defaults(current, default_value)
-            elif not isinstance(current, dict):
-                # Value exists but is not a dict — replace with a deep copy
-                # to avoid AttributeError downstream.
+            else:
+                # Value exists but is not a dict (or is None) — replace with
+                # a deep copy to avoid AttributeError downstream.
                 cfg[key] = copy.deepcopy(default_value)
 
 

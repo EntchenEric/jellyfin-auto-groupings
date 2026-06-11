@@ -226,10 +226,10 @@ def validate_cron(expr: str) -> str | None:
         ``None`` if valid, otherwise an error message string.
 
     """
-    if not expr or not expr.strip():
+    expr = expr.strip()
+    if not expr:
         return "Cron expression must not be empty"
 
-    expr = expr.strip()
     fields = expr.split()
     if len(fields) != 5:
         return f"Cron expression must have 5 fields (minute hour day month weekday), got {len(fields)}"
