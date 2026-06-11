@@ -50,6 +50,9 @@ node_modules/
 # Claude Code sessions
 .claude/
 
+# Coverage artifacts
+*.py,cover
+
 # Misc
 *.egg-info/
 dist/

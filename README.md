@@ -31,6 +31,7 @@ Instead of messing with Jellyfin's internal collections or duplicating multi-gig
 - 🔢 **Smart Sorting**: Prefix filenames with a numeric index based on Rating, Year, Name, or List Order.
 - 🐳 **Docker-First**: Designed to run alongside your Jellyfin container with easy path mapping.
 - 🛠️ **Auto-Detect**: Scans your filesystem to help you configure path translations automatically.
+- ⌨️ **Keyboard Shortcuts**: Press <kbd>S</kbd> to sync, <kbd>D</kbd> for a dry-run preview, <kbd>C</kbd> to clean up broken symlinks, or <kbd>R</kbd> to reload the groups list — no mouse needed.
 
 ---
 
@@ -349,7 +350,7 @@ make run
 ### 🧪 Testing
 
 ```bash
-# Run the full test suite (642+ tests, 100% coverage)
+# Run the full test suite (658+ tests, 100% coverage)
 python3 -m pytest
 
 # Run tests with coverage report
