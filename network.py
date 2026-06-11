@@ -16,7 +16,7 @@ from typing import Any
 
 import requests
 from requests.adapters import HTTPAdapter
-from urllib3.exceptions import MaxRetryError, ReadTimeoutError
+from urllib3.exceptions import ConnectTimeoutError, MaxRetryError, ReadTimeoutError
 from urllib3.util.retry import Retry
 
 logger = logging.getLogger(__name__)
@@ -145,10 +145,11 @@ _SESSION = _build_retry_session()
 
 
 def _reraise_timeout(exc: requests.ConnectionError) -> None:
-    """Re-raise a retry timeout as :class:`requests.Timeout`.
+    """Re-raise a retry timeout as :class:`requests.Timeout`, regardless of reason.
 
-    If *exc* wraps a read-timeout from the retry adapter, re-raise it so callers
-    see the expected exception type.
+    Detects both ``ReadTimeoutError`` and ``ConnectTimeoutError`` wrapped by
+    the retry adapter's ``MaxRetryError``, and re-raises them as the standard
+    ``requests.Timeout`` exception so callers see the expected exception type.
     """
     inner = exc.args[0] if exc.args else None
     if not isinstance(inner, MaxRetryError):
@@ -157,6 +158,9 @@ def _reraise_timeout(exc: requests.ConnectionError) -> None:
     reason = getattr(inner, "reason", None)
     if isinstance(reason, ReadTimeoutError):
         msg = "Read timed out."
+        raise requests.Timeout(msg) from reason
+    if isinstance(reason, ConnectTimeoutError):
+        msg = "Connection timed out."
         raise requests.Timeout(msg) from reason
 
 

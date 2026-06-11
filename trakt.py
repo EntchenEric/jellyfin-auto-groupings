@@ -82,6 +82,7 @@ def fetch_trakt_list(list_url: str, client_id: str) -> list[str]:
     }
 
     ids: list[str] = []
+    seen: set[str] = set()
     page: int = 1
 
     while True:
@@ -104,7 +105,8 @@ def fetch_trakt_list(list_url: str, client_id: str) -> list[str]:
             item_type: str | None = entry.get("type")  # "movie" or "show"
             media: dict[str, Any] = entry.get(item_type, {}) if item_type else {}
             imdb_id: str | None = media.get("ids", {}).get("imdb")
-            if imdb_id and imdb_id not in ids:
+            if imdb_id and imdb_id not in seen:
+                seen.add(imdb_id)
                 ids.append(imdb_id)
 
         try:
