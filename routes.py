@@ -890,16 +890,14 @@ def _search_local_filesystem(
                     timeout,
                     files_scanned,
                 )
-                dirnames.clear()
-                break
+                return None
             files_scanned += len(filenames)
             if files_scanned > max_files:
                 logger.warning(
                     "auto-detect hit file limit (%d), stopping scan",
                     max_files,
                 )
-                dirnames.clear()
-                break
+                return None
             if filename in filenames:
                 return str(Path(dirpath) / filename)
             if len(Path(dirpath).parts) > _AUTO_DETECT_MAX_DEPTH:
