@@ -74,6 +74,10 @@
         display: flex;
     }
 
+    #sidebar-resizer {
+        display: none; /* sidebar fills full width on mobile, no drag-resize needed */
+    }
+
     #main-content {
         height: auto;
         overflow: visible;
@@ -172,6 +176,13 @@
         overflow: hidden;
         position: fixed;
         width: 100%;
+    }
+
+    /* ── Sidebar resizer: hidden on touch-first devices via pointer media query ─── */
+    @media (pointer: coarse) {
+        #sidebar-resizer {
+            display: none;
+        }
     }
 }
 

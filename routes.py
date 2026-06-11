@@ -80,6 +80,11 @@ def _success(message: str, status_code: int = 200, **extra: Any) -> ResponseRetu
     return jsonify(payload), status_code
 
 
+# Allowed image MIME types for cover upload
+_ALLOWED_COVER_MIME_TYPES: frozenset[str] = frozenset(
+    {"image/jpeg", "image/png", "image/webp", "image/gif"},
+)
+
 # Max size for base64 encoded cover image (approx 4MB)
 MAX_B64_SIZE = 4 * 1024 * 1024
 
@@ -655,7 +660,16 @@ def upload_cover() -> ResponseReturnValue:
         return _error("group_name and image must be strings", 400)
 
     if not image_data.startswith("data:image/"):
-        return _error("Invalid image format", 400)
+        return _error("Invalid image format — must be a data URL", 400)
+
+    # Validate MIME type against allowed list
+    mime_type = image_data[5:].split(",", 1)[0].split(";", 1)[0].strip()
+    if mime_type not in _ALLOWED_COVER_MIME_TYPES:
+        return _error(
+            f"Unsupported image type '{mime_type}'. "
+            f"Allowed: {', '.join(sorted(_ALLOWED_COVER_MIME_TYPES))}",
+            400,
+        )
 
     try:
         _header, encoded = image_data.split(",", 1)
@@ -1141,28 +1155,46 @@ def health_check() -> ResponseReturnValue:
     """Provide a simple health check endpoint for Docker / Kubernetes probes.
 
     Returns a lightweight JSON response with service status, uptime
-    (Flask app start time), and a quick config sanity check.
+    (application start time), and a quick config sanity check.
 
     Returns:
         JSON with ``status``, ``healthcheck.ok`` boolean, and basic
         application metadata.
 
     """
-    config: dict[str, Any] = load_config()
-    url: str = str(config.get("jellyfin_url") or "")
-    api_key: str = str(config.get("api_key") or "")
-    configured: bool = bool(url and api_key and config.get("target_path"))
+    try:
+        config: dict[str, Any] = load_config()
+        url: str = str(config.get("jellyfin_url") or "")
+        api_key: str = str(config.get("api_key") or "")
+        configured: bool = bool(url and api_key and config.get("target_path"))
 
-    return jsonify(
-        {
-            "status": "ok",
-            "healthcheck": {
-                "ok": True,
-                "configured": configured,
-                "groups": len(config.get("groups", [])),
+        return jsonify(
+            {
+                "status": "ok",
+                "healthcheck": {
+                    "ok": True,
+                    "configured": configured,
+                    "groups": len(config.get("groups", [])),
+                },
+                "server": {
+                    "uptime": os.environ.get(
+                        "JELLYFIN_GROUPINGS_START_TIME",
+                        "",
+                    ),
+                },
             },
-        },
-    )
+        )
+    except Exception as exc:
+        logger.exception("Health check failed")
+        return jsonify(
+            {
+                "status": "error",
+                "healthcheck": {
+                    "ok": False,
+                    "error": str(exc),
+                },
+            },
+        ), 500
 
 
 # ---------------------------------------------------------------------------
