@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `tmdb.py`: add O(1) dedup set in `fetch_tmdb_list` for defensive duplicate filtering.
 - Dockerfile: add `--preload` to gunicorn CMD for memory sharing between workers.
 - Dockerfile: increase healthcheck `--start-period` from 10s to 15s for slower gunicorn boot times.
+- `anilist.py`: validate user-provided AniList list status against known values; unknown statuses now raise `ValueError` with valid options in the message.
+- `routes.py`: add `_ALLOWED_NON_CSRF_REQUESTS` frozenset so endpoints can opt out of the CSRF `X-Requested-With` check (for non-browser clients).
+- `tests/test_external.py`: add tests for `_resolve_anilist_status` — valid, invalid, and parametrized invalid values.
+- `tests/test_routes.py`: add test confirming CSRF-exempted endpoints can POST without the required header.
+- `routes.py`: add `ALLOWED_NON_CSRF_ENDPOINTS` env var support to configure CSRF-exempt endpoints at process start.
+- `.env.example`: document the `ALLOWED_NON_CSRF_ENDPOINTS` env var under a new CSRF/Security section.
+- `README.md`: document `ALLOWED_NON_CSRF_ENDPOINTS` in env vars table and Docker compose snippet.
+- `tests/test_routes.py`: add test verifying env-var parsing populates `_ALLOWED_NON_CSRF_REQUESTS` correctly.
 
 ### Changed
 - `docker-compose.yml`: sync healthcheck `start_period` from 10s → 15s to match the Dockerfile.

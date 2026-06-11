@@ -285,6 +285,7 @@ The application reads the following environment variables (which take precedence
 | `NETWORK_RETRY_TOTAL` | Max HTTP retries for external API calls (default: `3`; set `0` to disable) |
 | `NETWORK_RETRY_BACKOFF_FACTOR` | Sleep multiplier between retries (default: `1.0`) |
 | `NETWORK_RETRY_STATUS_FORCELIST` | Status codes that trigger retry (default: `429,500,502,503,504`) |
+| `ALLOWED_NON_CSRF_ENDPOINTS` | Comma-separated endpoints exempt from the CSRF header check (default: none) |
 
 > **Note**: Environment variable overrides are *never* persisted back to `config.json`. They only affect the current process.
 
@@ -412,6 +413,7 @@ services:
       - NETWORK_RETRY_TOTAL=3         # optional: HTTP retry count for external APIs
       - NETWORK_RETRY_BACKOFF_FACTOR=1.0 # optional: retry backoff multiplier
       - NETWORK_RETRY_STATUS_FORCELIST=429,500,502,503,504 # optional: retry status codes
+      - ALLOWED_NON_CSRF_ENDPOINTS= # optional: comma-separated endpoints exempt from CSRF check
     restart: unless-stopped
 ```
 

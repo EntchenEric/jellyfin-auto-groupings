@@ -148,7 +148,15 @@ def _check_auth() -> ResponseReturnValue | None:
 # Endpoints that are exempted from the CSRF X-Requested-With check.
 # Add endpoint names here when you need to POST from non-browser clients
 # that cannot set the ``X-Requested-With: XMLHttpRequest`` header.
-_ALLOWED_NON_CSRF_REQUESTS: frozenset[str] = frozenset()
+#
+# Set the ``ALLOWED_NON_CSRF_ENDPOINTS`` environment variable to a
+# comma-separated list of endpoint names (e.g. ``"main.webhook,main.callback"``)
+# to override the default (empty) set at process start.
+_ALLOWED_NON_CSRF_REQUESTS: frozenset[str] = frozenset(
+    _split.strip()
+    for _split in os.environ.get("ALLOWED_NON_CSRF_ENDPOINTS", "").split(",")
+    if _split.strip()
+)
 
 
 @bp.before_request
@@ -161,7 +169,9 @@ def _check_csrf() -> ResponseReturnValue | None:
 
     To permit a specific endpoint to accept requests **without** this header
     (e.g. for external scripts), add its endpoint name to
-    :data:`_ALLOWED_NON_CSRF_REQUESTS`.
+    :data:`_ALLOWED_NON_CSRF_REQUESTS` or set the
+    ``ALLOWED_NON_CSRF_ENDPOINTS`` environment variable to a
+    comma-separated list of endpoint names.
     """
     if request.method in ("POST", "PUT", "DELETE", "PATCH"):
         if current_app.config.get("TESTING"):
