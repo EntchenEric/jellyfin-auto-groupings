@@ -1,4 +1,4 @@
-.PHONY: install install-dev test test-all test-cov lint format-check typecheck clean format run virtual-jellyfin docker-build docker-run
+.PHONY: install install-dev test test-all test-cov test-to-file lint format-check typecheck clean format run virtual-jellyfin docker-build docker-run
 
 # ── Installation ────────────────────────────────────────────────────────────
 
@@ -18,6 +18,9 @@ test-all:
 
 test-cov:
 	python -m pytest --cov=. --cov-report=term-missing
+
+test-to-file:
+	python run_tests_to_file.py
 
 # ── Linting & Type Checking ─────────────────────────────────────────────────
 

@@ -11,17 +11,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `tmdb.py`: add O(1) dedup set in `fetch_tmdb_list` for defensive duplicate filtering.
 - Dockerfile: add `--preload` to gunicorn CMD for memory sharing between workers.
 - Dockerfile: increase healthcheck `--start-period` from 10s to 15s for slower gunicorn boot times.
-
-### Changed
-- `docker-compose.yml`: sync healthcheck `start_period` from 10s → 15s to match the Dockerfile.
-- Dockerfile: remove `requirements-dev.txt` copy from builder stage (unused in production).
-
-### Added
+- `anilist.py`: validate user-provided AniList list status against known values; unknown statuses now raise `ValueError` with valid options in the message.
+- `routes.py`: add `_ALLOWED_NON_CSRF_REQUESTS` frozenset so endpoints can opt out of the CSRF `X-Requested-With` check (for non-browser clients).
+- `tests/test_external.py`: add tests for `_resolve_anilist_status` — valid, invalid, and parametrized invalid values.
+- `tests/test_routes.py`: add test confirming CSRF-exempted endpoints can POST without the required header.
+- `routes.py`: add `ALLOWED_NON_CSRF_ENDPOINTS` env var support to configure CSRF-exempt endpoints at process start.
+- `.env.example`: document the `ALLOWED_NON_CSRF_ENDPOINTS` env var under a new CSRF/Security section.
+- `README.md`: document `ALLOWED_NON_CSRF_ENDPOINTS` in env vars table and Docker compose snippet.
+- `tests/test_routes.py`: add test verifying env-var parsing populates `_ALLOWED_NON_CSRF_REQUESTS` correctly.
 - `.gitignore` now excludes `.ruff_cache/`, `.coverage`, and `htmlcov/`.
 - `pyproject.toml` now includes a `[tool.ruff.format]` section with explicit
   quote-style, indent-style, and line-ending settings.
 
 ### Changed
+- `docker-compose.yml`: sync healthcheck `start_period` from 10s → 15s to match the Dockerfile.
+- Dockerfile: remove `requirements-dev.txt` copy from builder stage (unused in production).
+- `routes.py`: extract CSRF-mutating method check into `_CSRF_MUTATING_METHODS`
+  module-level tuple to avoid re-creating the tuple on every request.
+- `routes.py`: use walrus operator in `_ALLOWED_NON_CSRF_REQUESTS` frozenset
+  to avoid calling `strip()` twice per env-var element.
+- `Makefile`: add `test-to-file` target wrapping `run_tests_to_file.py` for
+  developer convenience.
 - `pyproject.toml` ruff lint config reverted from `select`/`ignore` back to
   `extend-select`/`extend-ignore`. The change was reverted because `select`
   overrides Ruff's default rule sets (E, F, W, etc.), while `extend-select`
@@ -31,8 +41,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that were never executed.
 - `letterboxd.py` `_extract_ids_from_list_page`: removed unnecessary
   `re.DOTALL` flags from single-line regex patterns.
-
-### Added
 - `ANILIST_API_URL` environment variable example in `docker-compose.yml`.
 - Tests for `_fill_defaults` resilience when `scheduler` is `null` or a non-dict
   value in the stored config.
@@ -73,8 +81,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `resolved.relative_to(base_resolved)` instead of substring matching.
 - `config.py` `_fill_defaults` now uses `copy.deepcopy` for missing nested
   keys via membership check, eliminating aliasing with `DEFAULT_CONFIG`.
-
-### Changed
 - Scrollbar thumb colors now use `color-mix(in srgb, var(--text-secondary) …%,
   transparent)` instead of hardcoded `rgba(255,255,255,…)` — adapts correctly
   in light theme.

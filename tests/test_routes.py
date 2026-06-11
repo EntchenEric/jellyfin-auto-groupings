@@ -1212,6 +1212,35 @@ def test_csrf_protection_with_header(client) -> None:
         current_app.testing = old_testing
 
 
+def test_csrf_allowed_endpoints_env_var(monkeypatch) -> None:
+    """ALLOWED_NON_CSRF_ENDPOINTS env var populates _ALLOWED_NON_CSRF_REQUESTS correctly."""
+    import importlib
+
+    import routes as routes_module
+
+    # Capture original env value so we can restore it later
+    orig = os.environ.get("ALLOWED_NON_CSRF_ENDPOINTS")
+
+    # Reload the module with a specific env var
+    monkeypatch.setenv("ALLOWED_NON_CSRF_ENDPOINTS", "main.foo,main.bar")
+    importlib.reload(routes_module)
+    assert (
+        frozenset({"main.foo", "main.bar"}) == routes_module._ALLOWED_NON_CSRF_REQUESTS
+    )
+
+    # Empty env var should result in empty frozenset
+    monkeypatch.delenv("ALLOWED_NON_CSRF_ENDPOINTS")
+    importlib.reload(routes_module)
+    assert frozenset() == routes_module._ALLOWED_NON_CSRF_REQUESTS
+
+    # Restore original env var and re-read to avoid leaking test state
+    if orig is not None:
+        monkeypatch.setenv("ALLOWED_NON_CSRF_ENDPOINTS", orig)
+    else:
+        monkeypatch.delenv("ALLOWED_NON_CSRF_ENDPOINTS", raising=False)
+    importlib.reload(routes_module)
+
+
 @pytest.mark.usefixtures("temp_config")
 def test_update_config_valid_cron(client) -> None:
     response = client.post(
