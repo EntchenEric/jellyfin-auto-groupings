@@ -53,6 +53,7 @@ def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
         list_id = parsed.path.strip("/").split("/")[-1]
 
     ids: list[str] = []
+    seen: set[str] = set()
     page: int = 1
 
     while True:
@@ -79,7 +80,10 @@ def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
         for item in items:
             tmdb_id = item.get("id")
             if tmdb_id:
-                ids.append(str(tmdb_id))
+                str_id = str(tmdb_id)
+                if str_id not in seen:
+                    seen.add(str_id)
+                    ids.append(str_id)
 
         total_pages: int = data.get("total_pages", 1)
         if page >= total_pages or page >= _MAX_TMDB_PAGES:  # Safety cap
