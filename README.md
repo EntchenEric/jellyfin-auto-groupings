@@ -285,7 +285,7 @@ The application reads the following environment variables (which take precedence
 | `NETWORK_RETRY_TOTAL` | Max HTTP retries for external API calls (default: `3`; set `0` to disable) |
 | `NETWORK_RETRY_BACKOFF_FACTOR` | Sleep multiplier between retries (default: `1.0`) |
 | `NETWORK_RETRY_STATUS_FORCELIST` | Status codes that trigger retry (default: `429,500,502,503,504`) |
-| `ALLOWED_NON_CSRF_ENDPOINTS` | Comma-separated endpoints exempt from the CSRF header check (default: none) |
+| `ALLOWED_NON_CSRF_ENDPOINTS` | Comma-separated list of [Flask endpoint names](https://flask.palletsprojects.com/quickstart/#about-responses) exempt from the CSRF header check. These are `blueprint.view` names (e.g., `"main.webhook,main.callback"`), **not** URL paths like `/api/...`. Default: none |
 
 > **Note**: Environment variable overrides are *never* persisted back to `config.json`. They only affect the current process.
 
@@ -328,6 +328,7 @@ A `Makefile` is provided for common development tasks:
 | `test` | Run the test suite (skips slow integration tests) |
 | `test-all` | Run the full test suite including integration tests |
 | `test-cov` | Run tests with a coverage report |
+| `test-to-file` | Run tests and write output to a file (`python run_tests_to_file.py`) |
 | `lint` | Run Ruff linter and format check (`ruff check .` + `ruff format --check .`) |
 | `format-check` | Check code formatting without auto-fixing (`ruff format --check .`) |
 | `typecheck` | Run mypy type checker (`mypy .`) |
@@ -413,7 +414,7 @@ services:
       - NETWORK_RETRY_TOTAL=3         # optional: HTTP retry count for external APIs
       - NETWORK_RETRY_BACKOFF_FACTOR=1.0 # optional: retry backoff multiplier
       - NETWORK_RETRY_STATUS_FORCELIST=429,500,502,503,504 # optional: retry status codes
-      - ALLOWED_NON_CSRF_ENDPOINTS= # optional: comma-separated endpoints exempt from CSRF check
+      - ALLOWED_NON_CSRF_ENDPOINTS= # optional: comma-separated Flask endpoint names (e.g. "main.webhook,main.callback") exempt from CSRF check
     restart: unless-stopped
 ```
 

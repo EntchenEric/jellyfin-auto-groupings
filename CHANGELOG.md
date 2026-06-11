@@ -22,8 +22,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `.gitignore` now excludes `.ruff_cache/`, `.coverage`, and `htmlcov/`.
 - `pyproject.toml` now includes a `[tool.ruff.format]` section with explicit
   quote-style, indent-style, and line-ending settings.
-- Consolidated duplicate `### Added` and `### Changed` headings under
-  `[Unreleased]` (Keep a Changelog format).
 
 ### Changed
 - `docker-compose.yml`: sync healthcheck `start_period` from 10s → 15s to match the Dockerfile.
@@ -43,8 +41,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that were never executed.
 - `letterboxd.py` `_extract_ids_from_list_page`: removed unnecessary
   `re.DOTALL` flags from single-line regex patterns.
-
-### Added
 - `ANILIST_API_URL` environment variable example in `docker-compose.yml`.
 - Tests for `_fill_defaults` resilience when `scheduler` is `null` or a non-dict
   value in the stored config.
@@ -85,8 +81,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `resolved.relative_to(base_resolved)` instead of substring matching.
 - `config.py` `_fill_defaults` now uses `copy.deepcopy` for missing nested
   keys via membership check, eliminating aliasing with `DEFAULT_CONFIG`.
-
-### Changed
 - Scrollbar thumb colors now use `color-mix(in srgb, var(--text-secondary) …%,
   transparent)` instead of hardcoded `rgba(255,255,255,…)` — adapts correctly
   in light theme.

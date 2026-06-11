@@ -1218,6 +1218,9 @@ def test_csrf_allowed_endpoints_env_var(monkeypatch) -> None:
 
     import routes as routes_module
 
+    # Capture original env value so we can restore it later
+    orig = os.environ.get("ALLOWED_NON_CSRF_ENDPOINTS")
+
     # Reload the module with a specific env var
     monkeypatch.setenv("ALLOWED_NON_CSRF_ENDPOINTS", "main.foo,main.bar")
     importlib.reload(routes_module)
@@ -1229,6 +1232,13 @@ def test_csrf_allowed_endpoints_env_var(monkeypatch) -> None:
     monkeypatch.delenv("ALLOWED_NON_CSRF_ENDPOINTS")
     importlib.reload(routes_module)
     assert frozenset() == routes_module._ALLOWED_NON_CSRF_REQUESTS
+
+    # Restore original env var and re-read to avoid leaking test state
+    if orig is not None:
+        monkeypatch.setenv("ALLOWED_NON_CSRF_ENDPOINTS", orig)
+    else:
+        monkeypatch.delenv("ALLOWED_NON_CSRF_ENDPOINTS", raising=False)
+    importlib.reload(routes_module)
 
 
 @pytest.mark.usefixtures("temp_config")
