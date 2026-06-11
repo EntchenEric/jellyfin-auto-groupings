@@ -1160,12 +1160,22 @@ def test_handle_http_error_http_none_code() -> None:
 # --- Remaining branch coverage for routes.py ---
 
 
-def test_csrf_exempted_endpoint_skips_csrf_without_header(app, client) -> None:
+def test_csrf_exempted_endpoint_skips_csrf_without_header(
+    app, client, monkeypatch
+) -> None:
     """Endpoints listed in _ALLOWED_NON_CSRF_REQUESTS bypass the CSRF check."""
     import routes as routes_module
 
     old_allowed = routes_module._ALLOWED_NON_CSRF_REQUESTS
+    old_testing = app.config.get("TESTING")
     app.config["TESTING"] = False
+
+    # Mock the outbound network call so the test doesn't hit a real server.
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {}
+    monkeypatch.setattr(routes_module.network, "get", MagicMock(return_value=mock_resp))
+
     try:
         # Exempt a real POST endpoint from CSRF
         routes_module._ALLOWED_NON_CSRF_REQUESTS = frozenset({"main.test_server"})
@@ -1182,7 +1192,7 @@ def test_csrf_exempted_endpoint_skips_csrf_without_header(app, client) -> None:
         )
     finally:
         routes_module._ALLOWED_NON_CSRF_REQUESTS = old_allowed
-        app.config["TESTING"] = True
+        app.config["TESTING"] = old_testing
 
 
 def test_csrf_protection_with_header(client) -> None:
