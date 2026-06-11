@@ -9,15 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `tmdb.py`: add O(1) dedup set in `fetch_tmdb_list` for defensive duplicate filtering.
-
-### Changed
-- `docker-compose.yml`: sync healthcheck `start_period` from 10s → 15s to match the Dockerfile.
-
-### Added
 - Dockerfile: add `--preload` to gunicorn CMD for memory sharing between workers.
 - Dockerfile: increase healthcheck `--start-period` from 10s to 15s for slower gunicorn boot times.
 
 ### Changed
+- `docker-compose.yml`: sync healthcheck `start_period` from 10s → 15s to match the Dockerfile.
 - Dockerfile: remove `requirements-dev.txt` copy from builder stage (unused in production).
 
 ### Added
