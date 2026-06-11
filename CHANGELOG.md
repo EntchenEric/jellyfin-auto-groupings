@@ -19,17 +19,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `.env.example`: document the `ALLOWED_NON_CSRF_ENDPOINTS` env var under a new CSRF/Security section.
 - `README.md`: document `ALLOWED_NON_CSRF_ENDPOINTS` in env vars table and Docker compose snippet.
 - `tests/test_routes.py`: add test verifying env-var parsing populates `_ALLOWED_NON_CSRF_REQUESTS` correctly.
+- `.gitignore` now excludes `.ruff_cache/`, `.coverage`, and `htmlcov/`.
+- `pyproject.toml` now includes a `[tool.ruff.format]` section with explicit
+  quote-style, indent-style, and line-ending settings.
+- Consolidated duplicate `### Added` and `### Changed` headings under
+  `[Unreleased]` (Keep a Changelog format).
 
 ### Changed
 - `docker-compose.yml`: sync healthcheck `start_period` from 10s → 15s to match the Dockerfile.
 - Dockerfile: remove `requirements-dev.txt` copy from builder stage (unused in production).
-
-### Added
-- `.gitignore` now excludes `.ruff_cache/`, `.coverage`, and `htmlcov/`.
-- `pyproject.toml` now includes a `[tool.ruff.format]` section with explicit
-  quote-style, indent-style, and line-ending settings.
-
-### Changed
+- `routes.py`: extract CSRF-mutating method check into `_CSRF_MUTATING_METHODS`
+  module-level tuple to avoid re-creating the tuple on every request.
+- `routes.py`: use walrus operator in `_ALLOWED_NON_CSRF_REQUESTS` frozenset
+  to avoid calling `strip()` twice per env-var element.
+- `Makefile`: add `test-to-file` target wrapping `run_tests_to_file.py` for
+  developer convenience.
 - `pyproject.toml` ruff lint config reverted from `select`/`ignore` back to
   `extend-select`/`extend-ignore`. The change was reverted because `select`
   overrides Ruff's default rule sets (E, F, W, etc.), while `extend-select`

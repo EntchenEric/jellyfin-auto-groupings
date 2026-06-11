@@ -153,10 +153,13 @@ def _check_auth() -> ResponseReturnValue | None:
 # comma-separated list of endpoint names (e.g. ``"main.webhook,main.callback"``)
 # to override the default (empty) set at process start.
 _ALLOWED_NON_CSRF_REQUESTS: frozenset[str] = frozenset(
-    _split.strip()
+    e
     for _split in os.environ.get("ALLOWED_NON_CSRF_ENDPOINTS", "").split(",")
-    if _split.strip()
+    if (e := _split.strip())
 )
+
+# HTTP methods that require CSRF protection
+_CSRF_MUTATING_METHODS: tuple[str, ...] = ("POST", "PUT", "DELETE", "PATCH")
 
 
 @bp.before_request
@@ -173,7 +176,7 @@ def _check_csrf() -> ResponseReturnValue | None:
     ``ALLOWED_NON_CSRF_ENDPOINTS`` environment variable to a
     comma-separated list of endpoint names.
     """
-    if request.method in ("POST", "PUT", "DELETE", "PATCH"):
+    if request.method in _CSRF_MUTATING_METHODS:
         if current_app.config.get("TESTING"):
             return None
         if request.endpoint and request.endpoint in _ALLOWED_NON_CSRF_REQUESTS:
