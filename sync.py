@@ -1721,6 +1721,8 @@ def _parse_mmdd(value: str | None) -> tuple[int, int]:
         (0, 0)
         >>> _parse_mmdd("13-01")
         (0, 0)
+        >>> _parse_mmdd(None)
+        (0, 0)
 
     """
     if not isinstance(value, str) or value.strip() == "":

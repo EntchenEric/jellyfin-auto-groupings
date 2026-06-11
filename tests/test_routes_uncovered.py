@@ -247,7 +247,7 @@ def test_validate_config_types_group_name_non_string() -> None:
     from routes import _validate_config_types
 
     errors = _validate_config_types({"groups": [{"name": 123}]})
-    assert any("groups[0].name must be a string" in e for e in errors)
+    assert any("'groups[0].name' must be a str" in e for e in errors)
 
 
 def test_validate_config_types_group_source_type_non_string() -> None:
@@ -255,7 +255,7 @@ def test_validate_config_types_group_source_type_non_string() -> None:
     from routes import _validate_config_types
 
     errors = _validate_config_types({"groups": [{"name": "G", "source_type": 123}]})
-    assert any("groups[0].source_type" in e for e in errors)
+    assert any("'groups[0].source_type' must be a str" in e for e in errors)
 
 
 def test_validate_config_types_group_source_value_non_string() -> None:
@@ -263,7 +263,7 @@ def test_validate_config_types_group_source_value_non_string() -> None:
     from routes import _validate_config_types
 
     errors = _validate_config_types({"groups": [{"name": "G", "source_value": 123}]})
-    assert any("groups[0].source_value" in e for e in errors)
+    assert any("'groups[0].source_value' must be a str" in e for e in errors)
 
 
 def test_validate_config_types_group_sort_order_non_string() -> None:
@@ -271,7 +271,7 @@ def test_validate_config_types_group_sort_order_non_string() -> None:
     from routes import _validate_config_types
 
     errors = _validate_config_types({"groups": [{"name": "G", "sort_order": 123}]})
-    assert any("groups[0].sort_order" in e for e in errors)
+    assert any("'groups[0].sort_order' must be a str" in e for e in errors)
 
 
 def test_validate_config_types_group_watch_state_non_string() -> None:
@@ -279,7 +279,7 @@ def test_validate_config_types_group_watch_state_non_string() -> None:
     from routes import _validate_config_types
 
     errors = _validate_config_types({"groups": [{"name": "G", "watch_state": 123}]})
-    assert any("groups[0].watch_state" in e for e in errors)
+    assert any("'groups[0].watch_state' must be a str" in e for e in errors)
 
 
 def test_validate_config_types_group_schedule_non_string() -> None:
@@ -287,7 +287,7 @@ def test_validate_config_types_group_schedule_non_string() -> None:
     from routes import _validate_config_types
 
     errors = _validate_config_types({"groups": [{"name": "G", "schedule": 123}]})
-    assert any("groups[0].schedule" in e for e in errors)
+    assert any("'groups[0].schedule' must be a str" in e for e in errors)
 
 
 def test_validate_config_types_group_bool_fields() -> None:

@@ -227,7 +227,7 @@ def test_fetch_mal_error(mock_get) -> None:
         "Unauthorized",
     )
     mock_get.return_value = mock_resp
-    with pytest.raises(requests.exceptions.HTTPError):
+    with pytest.raises(RuntimeError, match="Failed to fetch MAL list"):
         fetch_mal_list("u", "c")
 
 
@@ -417,14 +417,9 @@ def test_fetch_mal_status_all(mock_get) -> None:
 
 @patch("network.get")
 def test_fetch_mal_status_unknown(mock_get) -> None:
-    mock_resp = MagicMock()
-    mock_resp.status_code = 200
-    mock_resp.json.return_value = {"data": [], "paging": {}}
-    mock_get.return_value = mock_resp
-
-    fetch_mal_list("user", "cid", "custom_status")
-    _args, kwargs = mock_get.call_args
-    assert kwargs["params"]["status"] == "custom_status"
+    """Unknown MAL status raises ValueError."""
+    with pytest.raises(ValueError, match="Unknown MAL status"):
+        fetch_mal_list("user", "cid", "custom_status")
 
 
 # ---------------------------------------------------------------------------
