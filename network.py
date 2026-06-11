@@ -145,11 +145,14 @@ _SESSION = _build_retry_session()
 
 
 def _reraise_timeout(exc: requests.ConnectionError) -> None:
-    """Re-raise a retry timeout as :class:`requests.Timeout`, regardless of reason.
+    """Re-raise a retry timeout as the appropriate exception type.
 
-    Detects both ``ReadTimeoutError`` and ``ConnectTimeoutError`` wrapped by
-    the retry adapter's ``MaxRetryError``, and re-raises them as the standard
-    ``requests.Timeout`` exception so callers see the expected exception type.
+    Detects ``ReadTimeoutError`` and ``ConnectTimeoutError`` wrapped by the
+    retry adapter's ``MaxRetryError``, and re-raises them as their natural
+    exception type so callers see the expected signal:
+
+    - ``ReadTimeoutError`` -> :class:`requests.Timeout`
+    - ``ConnectTimeoutError`` -> :class:`requests.ConnectionError`
     """
     inner = exc.args[0] if exc.args else None
     if not isinstance(inner, MaxRetryError):
@@ -161,7 +164,7 @@ def _reraise_timeout(exc: requests.ConnectionError) -> None:
         raise requests.Timeout(msg) from reason
     if isinstance(reason, ConnectTimeoutError):
         msg = "Connection timed out."
-        raise requests.Timeout(msg) from reason
+        raise requests.ConnectionError(msg) from reason
 
 
 def _request(method: str, url: str, **kwargs: Any) -> requests.Response:
