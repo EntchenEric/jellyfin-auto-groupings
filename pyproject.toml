@@ -50,8 +50,8 @@ exclude = [
 warn_redundant_casts = true
 
 [tool.ruff.lint]
-select = ["I", "F401", "PTH", "B", "SIM", "C4", "RET", "PERF", "TCH", "TRY300", "TRY400", "EM", "TRY401", "RUF"]
-ignore = ["PT019"]
+extend-select = ["I", "F401", "PTH", "B", "SIM", "C4", "RET", "PERF", "TCH", "TRY300", "TRY400", "EM", "TRY401", "RUF"]
+extend-ignore = ["PT019"]
 
 [tool.ruff.format]
 quote-style = "double"

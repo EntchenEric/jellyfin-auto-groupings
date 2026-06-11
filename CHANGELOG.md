@@ -13,8 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   quote-style, indent-style, and line-ending settings.
 
 ### Changed
-- `pyproject.toml` ruff lint config updated from deprecated `extend-select`/
-  `extend-ignore` to the current `select`/`ignore` keys.
+- `pyproject.toml` ruff lint config reverted from `select`/`ignore` back to
+  `extend-select`/`extend-ignore`. The change was reverted because `select`
+  overrides Ruff's default rule sets (E, F, W, etc.), while `extend-select`
+  adds custom rules on top of defaults. `extend-ignore` remains the correct
+  key for suppressing rules; `extend-ignore`/`select` were never deprecated.
 - `scheduler.py` `validate_cron` docstring: removed skipped doctest examples
   that were never executed.
 - `letterboxd.py` `_extract_ids_from_list_page`: removed unnecessary
