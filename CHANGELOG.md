@@ -17,6 +17,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `static/js/core/state.js`: add ``recommendations_list_order`` display label.
 - `templates/partials/main/groupings.html`: add ``recommendations_list_order``
   sort-order dropdown option.
+- `routes.py`: add type validation for config fields (`api_key`, `anilist_api_url`,
+  `trakt_client_id`, `tmdb_api_key`, `mal_client_id`) and group-level fields
+  (`source_type`, `source_value`, `sort_order`, `watch_state`, `schedule`,
+  `schedule_enabled`, `seasonal_enabled`, `create_as_collection`, `seasonal_start`,
+  `seasonal_end`, `rules`). Validate `jellyfin_url` format (must start with
+  `http://` or `https://`). Check file in mount-point directory before pruning
+  subdirectories during filesystem search.
+- `tests/test_routes_uncovered.py`: 18 new tests covering config type validation
+  edge cases (group boolean fields, seasonal date format, rules structure,
+  jellyfin_url format).
+- `tests/test_routes.py`: 2 new mount-point edge-case tests for
+  `_search_local_filesystem` in mount-point directories.
+- `.github/CODEOWNERS`: add default code owner (`@entcheneric`).
 
 ### Changed
 - (empty)
