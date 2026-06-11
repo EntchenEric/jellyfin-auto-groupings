@@ -724,12 +724,35 @@ def _delete_folder(
 ) -> tuple[bool, str | None]:
     """Delete a single folder and optionally its Jellyfin library.
 
+    Args:
+        name: Folder name (validated against path traversal).
+        target_base: Absolute base path for the target directory.
+        auto_create_libraries: Whether to also clean up the Jellyfin library.
+        url: Jellyfin server URL.
+        api_key: Jellyfin API key.
+
     Returns:
         ``(deleted, error_message)`` where *deleted* is True if the folder
         was removed successfully.
 
     """
+    # Prevent path-traversal attacks: reject names with separators
+    if not _is_valid_folder_name(name):
+        return False, f"Invalid folder name: {name}"
     path = Path(target_base) / name
+    # Resolve the path to ensure it is still within target_base (symlink-safe)
+    try:
+        resolved = path.resolve()
+    except (OSError, RuntimeError):
+        resolved = path
+    try:
+        base_resolved = Path(target_base).resolve()
+    except (OSError, RuntimeError):
+        base_resolved = Path(target_base)
+    try:
+        resolved.relative_to(base_resolved)
+    except ValueError:
+        return False, f"Path traversal detected for: {name}"
     if not path.exists() or not path.is_dir():
         return False, None
     try:
@@ -822,7 +845,13 @@ def _search_local_filesystem(
         if not Path(root).is_dir():
             continue
         for dirpath, dirnames, filenames in os.walk(root):
-            if os.path.ismount(dirpath) and dirpath != root:
+            try:
+                is_mount = os.path.ismount(dirpath)
+            except OSError:
+                # Permission denied or inaccessible — skip this directory
+                dirnames.clear()
+                continue
+            if is_mount and dirpath != root:
                 dirnames.clear()
                 continue
             if time.monotonic() - walk_start > timeout:

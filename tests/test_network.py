@@ -426,3 +426,32 @@ def testpatch_connection_error_re_raise(monkeypatch) -> None:
     monkeypatch.setattr(_SESSION, "patch", _fail)
     with pytest.raises(requests.ConnectionError):
         patch("http://example.com/api")
+
+
+# ---------------------------------------------------------------------------
+# Module-level default retry fallback (lines 112-118)
+# ---------------------------------------------------------------------------
+
+
+def test_parse_retry_config_module_level_fallback(monkeypatch) -> None:
+    """When _parse_retry_config raises at import, module-level defaults are used.
+
+    This tests the ``except ValueError`` fallback at the bottom of network.py
+    by setting an invalid env var and re-importing the module.
+    """
+    import importlib
+
+    import network as network_mod
+
+    monkeypatch.setenv("NETWORK_RETRY_TOTAL", "-1")
+    importlib.reload(network_mod)
+
+    assert network_mod._RETRY_TOTAL == 3
+    assert network_mod._RETRY_BACKOFF_FACTOR == 1.0
+    assert 429 in network_mod._RETRY_STATUS_FORCELIST
+    assert network_mod._RETRY_STATUS_FORCELIST == [429, 500, 502, 503, 504]
+
+    # Reload again with valid settings so subsequent tests are unaffected
+    monkeypatch.delenv("NETWORK_RETRY_TOTAL", raising=False)
+    importlib.reload(network_mod)
+    assert network_mod._RETRY_TOTAL == 3

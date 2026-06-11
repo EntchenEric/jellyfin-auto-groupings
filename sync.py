@@ -1890,6 +1890,10 @@ def run_sync(
         _LIBRARY_CACHE.clear()
 
     results: list[dict[str, Any]] = []
+    if not groups:
+        logger.warning("No groups configured — nothing to sync")
+        return results
+
     for group in groups:
         if not isinstance(group, dict):
             logger.info("Skipping invalid group entry: %s", group)

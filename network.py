@@ -105,7 +105,15 @@ def _parse_retry_config() -> tuple[int, float, list[int]]:
     return total, backoff, statuses
 
 
-_RETRY_TOTAL, _RETRY_BACKOFF_FACTOR, _RETRY_STATUS_FORCELIST = _parse_retry_config()
+try:
+    _RETRY_TOTAL, _RETRY_BACKOFF_FACTOR, _RETRY_STATUS_FORCELIST = _parse_retry_config()
+except ValueError:
+    logger.exception(
+        "Invalid retry configuration in environment — falling back to defaults"
+    )
+    _RETRY_TOTAL = 3
+    _RETRY_BACKOFF_FACTOR = 1.0
+    _RETRY_STATUS_FORCELIST = [429, 500, 502, 503, 504]
 _ALLOWED_RETRY_METHODS: frozenset[str] = frozenset(
     {"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD"},
 )
