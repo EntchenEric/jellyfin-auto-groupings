@@ -1193,7 +1193,7 @@ def health_check() -> ResponseReturnValue:
                 },
             },
         )
-    except Exception as exc:
+    except Exception:
         logger.exception("Health check failed")
         return jsonify(
             {

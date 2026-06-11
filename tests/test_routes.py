@@ -512,8 +512,8 @@ def test_upload_cover_unsupported_mime(client) -> None:
 
 def test_upload_cover_mime_extension_mapping(client, tmp_path) -> None:
     """Upload with a non-JPEG MIME type uses the correct file extension."""
-    from routes import _get_cover_path
     from config import save_config
+    from routes import _get_cover_path
 
     save_config({"target_path": str(tmp_path)})
     img_data = (
