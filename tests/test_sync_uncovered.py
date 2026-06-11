@@ -138,3 +138,65 @@ def test_dispatch_list_source_unknown_type() -> None:
     assert error is not None
     assert "Unknown source type" in error
     assert code == 400
+
+
+def test_dispatch_list_source_letterboxd_list() -> None:
+    """_dispatch_list_source dispatches letterboxd_list to _fetch_items_for_letterboxd_group."""
+    from sync import _dispatch_list_source
+
+    items, error, code = _dispatch_list_source(
+        "letterboxd_list",
+        "LB-Group",
+        "https://letterboxd.com/user/list/my-list",
+        "name",
+        "http://jf:8096",
+        "testkey",
+        "",
+    )
+    # Without a patched fetch_letterboxd_list, it will return error
+    # but the dispatch itself should not raise and should reach the handler
+    assert error is not None
+    assert code != 200
+    assert isinstance(items, list)
+
+
+# ---------------------------------------------------------------------------
+# _build_letterboxd_items dedup edge cases
+# ---------------------------------------------------------------------------
+
+
+def test_build_letterboxd_items_list_order_dedup() -> None:
+    """letterboxd_list_order skips duplicates when same Jellyfin item matched via both IMDb and TMDb."""
+    from sync import _build_letterboxd_items
+
+    # External IDs: two entries that both map to the same Jellyfin item
+    external_ids = ["tt999", "123"]
+    items_by_imdb = {"tt999": {"Id": "item1", "Name": "Movie A"}}
+    items_by_tmdb = {"123": {"Id": "item1", "Name": "Movie A"}}
+
+    result = _build_letterboxd_items(
+        external_ids,
+        items_by_imdb,
+        items_by_tmdb,
+        "letterboxd_list_order",
+    )
+    assert len(result) == 1
+    assert result[0]["Id"] == "item1"
+
+
+def test_build_letterboxd_items_priority_order_dedup() -> None:
+    """Priority sort order also deduplicates entries."""
+    from sync import _build_letterboxd_items
+
+    external_ids = ["tt999", "123"]
+    items_by_imdb = {"tt999": {"Id": "item1", "Name": "Movie A"}}
+    items_by_tmdb = {"123": {"Id": "item1", "Name": "Movie A"}}
+
+    result = _build_letterboxd_items(
+        external_ids,
+        items_by_imdb,
+        items_by_tmdb,
+        "SortName",
+    )
+    assert len(result) == 1
+    assert result[0]["Id"] == "item1"
