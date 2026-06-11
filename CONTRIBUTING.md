@@ -12,10 +12,9 @@ Thank you for considering contributing! Here are a few guidelines to help things
    ```
 3. Create a virtual environment and install dependencies:
    ```bash
-   python -m venv .venv
+   python3 -m venv .venv
    source .venv/bin/activate
-   pip install -r requirements.txt
-   pip install -r requirements-dev.txt
+   make install-dev
    ```
 4. Create a branch for your changes:
    ```bash
@@ -27,7 +26,7 @@ Thank you for considering contributing! Here are a few guidelines to help things
 ### Code Style
 
 - Python: Follow [PEP 8](https://peps.python.org/pep-0008/). The project uses `ruff` for linting and formatting.
-- JavaScript: Follow standard ES module conventions. The project uses `eslint` for linting.
+- JavaScript: Follow standard ES module conventions. The project uses `ruff` for linting (no separate ESLint config is needed).
 - Run linting and format-checking before committing:
   ```bash
   make lint
@@ -53,7 +52,7 @@ All Python code should use type hints. The project targets Python 3.11+.
 ### Running Locally
 
 ```bash
-python app.py
+python3 app.py
 ```
 
 The app will be available at `http://localhost:5000`.
