@@ -59,7 +59,7 @@ def _resolve_anilist_status(status: str | None) -> str | None:
     return normalized
 
 
-def _extract_media_ids(data: dict) -> list[int]:
+def _extract_media_ids(data: dict[str, Any]) -> list[int]:
     """Extract integer media IDs from parsed AniList API response."""
     root = data.get("data")
     if not isinstance(root, dict):
