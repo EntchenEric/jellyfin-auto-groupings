@@ -27,7 +27,6 @@ from config import CONFIG_FILE, DEFAULT_CONFIG, _env_flag, save_config
 from routes import bp
 from scheduler import start_scheduler
 
-
 # Record application start time for health check uptime reporting
 os.environ.setdefault(
     "JELLYFIN_GROUPINGS_START_TIME",

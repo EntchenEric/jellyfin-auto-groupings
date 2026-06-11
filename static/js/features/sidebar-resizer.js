@@ -67,17 +67,21 @@ export function initSidebarResizer() {
     /* ── Touch support (tablet / touchscreen laptops) ── */
     resizer.addEventListener('touchstart', (e) => {
         startResize();
-        /* Pass through so the browser doesn't wait to see if this is a scroll */
+        /* Prevent default touch behavior (scrolling) during resize gesture;
+           { passive: false } is required to allow preventDefault(). */
         e.preventDefault();
     }, { passive: false });
 
     document.addEventListener('touchmove', (e) => {
         if (!isResizing) return;
+        /* Block scrolling during touch resize for consistent drag UX,
+           matching how mouse drags block text selection via userSelect. */
+        e.preventDefault();
         const touch = e.touches[0];
         if (touch) {
             updateSidebarWidth(touch.clientX);
         }
-    }, { passive: true });
+    }, { passive: false });
 
     document.addEventListener('touchend', endResize);
     document.addEventListener('touchcancel', endResize);

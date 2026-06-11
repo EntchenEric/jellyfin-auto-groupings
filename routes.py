@@ -671,6 +671,15 @@ def upload_cover() -> ResponseReturnValue:
             400,
         )
 
+    # Map MIME type to file extension
+    _MIME_TO_EXT: dict[str, str] = {
+        "image/jpeg": "jpg",
+        "image/png": "png",
+        "image/webp": "webp",
+        "image/gif": "gif",
+    }
+    ext = _MIME_TO_EXT.get(mime_type, "jpg")
+
     try:
         _header, encoded = image_data.split(",", 1)
 
@@ -683,7 +692,7 @@ def upload_cover() -> ResponseReturnValue:
         cfg = load_config()
         target_path = str(cfg.get("target_path", ""))
 
-        cover_path = _get_cover_path(group_name, target_path, check_exists=False)
+        cover_path = _get_cover_path(group_name, target_path, check_exists=False, ext=ext)
         if cover_path is None:
             return _error("Could not resolve cover storage path", 500)
 
@@ -1191,7 +1200,7 @@ def health_check() -> ResponseReturnValue:
                 "status": "error",
                 "healthcheck": {
                     "ok": False,
-                    "error": str(exc),
+                    "error": "internal_error",
                 },
             },
         ), 500

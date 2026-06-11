@@ -177,12 +177,12 @@
         position: fixed;
         width: 100%;
     }
+}
 
-    /* ── Sidebar resizer: hidden on touch-first devices via pointer media query ─── */
-    @media (pointer: coarse) {
-        #sidebar-resizer {
-            display: none;
-        }
+/* ── Sidebar resizer: hidden on touch-first devices ─── */
+@media (pointer: coarse) {
+    #sidebar-resizer {
+        display: none;
     }
 }
 
