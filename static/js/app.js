@@ -67,6 +67,13 @@ function wireKeyboardShortcuts() {
                     openCleanupModal();
                 }
                 break;
+            case 'r':
+                // R = Reload (refresh groups list)
+                if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+                    e.preventDefault();
+                    renderGroups();
+                }
+                break;
         }
     });
 }
