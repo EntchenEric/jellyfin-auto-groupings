@@ -163,10 +163,15 @@ def test_validate_config_types_non_string_fields() -> None:
 
     for field in (
         "jellyfin_url",
+        "api_key",
         "target_path",
         "media_path_in_jellyfin",
         "media_path_on_host",
         "target_path_in_jellyfin",
+        "anilist_api_url",
+        "trakt_client_id",
+        "tmdb_api_key",
+        "mal_client_id",
     ):
         errors = _validate_config_types({field: 123})
         assert any(field in e for e in errors), f"Expected error for {field}"
@@ -243,6 +248,166 @@ def test_validate_config_types_group_name_non_string() -> None:
 
     errors = _validate_config_types({"groups": [{"name": 123}]})
     assert any("groups[0].name must be a string" in e for e in errors)
+
+
+def test_validate_config_types_group_source_type_non_string() -> None:
+    """Group source_type must be a string."""
+    from routes import _validate_config_types
+
+    errors = _validate_config_types({"groups": [{"name": "G", "source_type": 123}]})
+    assert any("groups[0].source_type" in e for e in errors)
+
+
+def test_validate_config_types_group_source_value_non_string() -> None:
+    """Group source_value must be a string."""
+    from routes import _validate_config_types
+
+    errors = _validate_config_types({"groups": [{"name": "G", "source_value": 123}]})
+    assert any("groups[0].source_value" in e for e in errors)
+
+
+def test_validate_config_types_group_sort_order_non_string() -> None:
+    """Group sort_order must be a string."""
+    from routes import _validate_config_types
+
+    errors = _validate_config_types({"groups": [{"name": "G", "sort_order": 123}]})
+    assert any("groups[0].sort_order" in e for e in errors)
+
+
+def test_validate_config_types_group_watch_state_non_string() -> None:
+    """Group watch_state must be a string."""
+    from routes import _validate_config_types
+
+    errors = _validate_config_types({"groups": [{"name": "G", "watch_state": 123}]})
+    assert any("groups[0].watch_state" in e for e in errors)
+
+
+def test_validate_config_types_group_schedule_non_string() -> None:
+    """Group schedule must be a string."""
+    from routes import _validate_config_types
+
+    errors = _validate_config_types({"groups": [{"name": "G", "schedule": 123}]})
+    assert any("groups[0].schedule" in e for e in errors)
+
+
+def test_validate_config_types_group_bool_fields() -> None:
+    """Group boolean fields are checked."""
+    from routes import _validate_config_types
+
+    for field in ("schedule_enabled", "seasonal_enabled", "create_as_collection"):
+        errors = _validate_config_types({"groups": [{"name": "G", field: "not_bool"}]})
+        assert any(f"groups[0].{field}" in e for e in errors), (
+            f"Expected error for groups[0].{field}"
+        )
+
+
+def test_validate_config_types_group_seasonal_date_invalid() -> None:
+    """Invalid seasonal date format is flagged."""
+    from routes import _validate_config_types
+
+    for field in ("seasonal_start", "seasonal_end"):
+        errors = _validate_config_types({"groups": [{"name": "G", field: "bad-date"}]})
+        assert any(field in e for e in errors), f"Expected error for {field}"
+
+
+def test_validate_config_types_group_seasonal_date_valid() -> None:
+    """Valid seasonal date format passes."""
+    from routes import _validate_config_types
+
+    for field in ("seasonal_start", "seasonal_end"):
+        errors = _validate_config_types({"groups": [{"name": "G", field: "10-31"}]})
+        assert not any(field in e for e in errors), (
+            f"No error expected for valid {field}"
+        )
+
+
+def test_validate_config_types_group_seasonal_date_non_string() -> None:
+    """Non-string seasonal date is flagged."""
+    from routes import _validate_config_types
+
+    for field in ("seasonal_start", "seasonal_end"):
+        errors = _validate_config_types({"groups": [{"name": "G", field: 123}]})
+        assert any(field in e for e in errors), f"Expected error for {field}"
+
+
+def test_validate_config_types_group_rules_non_list() -> None:
+    """Group rules must be a list."""
+    from routes import _validate_config_types
+
+    errors = _validate_config_types({"groups": [{"name": "G", "rules": "not_list"}]})
+    assert any("groups[0].rules" in e for e in errors)
+
+
+def test_validate_config_types_group_rules_item_non_dict() -> None:
+    """Each item in rules must be a dict."""
+    from routes import _validate_config_types
+
+    errors = _validate_config_types({"groups": [{"name": "G", "rules": ["not_dict"]}]})
+    assert any("groups[0].rules[0]" in e for e in errors)
+
+
+def test_validate_config_types_group_rules_type_non_string() -> None:
+    """Rule type field must be a string."""
+    from routes import _validate_config_types
+
+    errors = _validate_config_types(
+        {"groups": [{"name": "G", "rules": [{"type": 123}]}]}
+    )
+    assert any("groups[0].rules[0].type" in e for e in errors)
+
+
+def test_validate_config_types_group_rules_value_non_string() -> None:
+    """Rule value field must be a string."""
+    from routes import _validate_config_types
+
+    errors = _validate_config_types(
+        {"groups": [{"name": "G", "rules": [{"value": 123}]}]}
+    )
+    assert any("groups[0].rules[0].value" in e for e in errors)
+
+
+def test_validate_config_types_group_rules_operator_non_string() -> None:
+    """Rule operator field must be a string."""
+    from routes import _validate_config_types
+
+    errors = _validate_config_types(
+        {"groups": [{"name": "G", "rules": [{"operator": 123}]}]}
+    )
+    assert any("groups[0].rules[0].operator" in e for e in errors)
+
+
+def test_validate_config_types_group_rules_not_non_bool() -> None:
+    """Rule not field must be a boolean."""
+    from routes import _validate_config_types
+
+    errors = _validate_config_types(
+        {"groups": [{"name": "G", "rules": [{"not": "not_bool"}]}]}
+    )
+    assert any("groups[0].rules[0].not" in e for e in errors)
+
+
+def test_validate_config_types_jellyfin_url_bad_format() -> None:
+    """jellyfin_url without http(s):// prefix is flagged."""
+    from routes import _validate_config_types
+
+    errors = _validate_config_types({"jellyfin_url": "localhost:8096"})
+    assert any("jellyfin_url" in e and "http" in e.lower() for e in errors)
+
+
+def test_validate_config_types_jellyfin_url_valid_http() -> None:
+    """jellyfin_url with http:// passes."""
+    from routes import _validate_config_types
+
+    errors = _validate_config_types({"jellyfin_url": "http://localhost:8096"})
+    assert not any("jellyfin_url" in e for e in errors)
+
+
+def test_validate_config_types_jellyfin_url_valid_https() -> None:
+    """jellyfin_url with https:// passes."""
+    from routes import _validate_config_types
+
+    errors = _validate_config_types({"jellyfin_url": "https://jellyfin.example.com"})
+    assert not any("jellyfin_url" in e for e in errors)
 
 
 def test_validate_config_types_valid_passthrough() -> None:

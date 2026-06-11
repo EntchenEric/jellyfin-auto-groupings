@@ -1521,3 +1521,58 @@ def test_search_filesystem_ismount_oserror(mock_ismount) -> None:
         # ismount OSError on the root causes continue before checking filenames,
         # so the file is never found
         assert result is None
+
+
+@patch("routes.os.path.ismount")
+def test_search_filesystem_mount_point_finds_file(mock_ismount) -> None:
+    """_search_local_filesystem finds a file inside a mount-point subdirectory (lines 962-963)."""
+    import tempfile
+
+    from routes import _search_local_filesystem
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root_dir = Path(tmp) / "root"
+        mount_dir = root_dir / "mount"
+        mount_dir.mkdir(parents=True)
+        target_file = mount_dir / "movie.mkv"
+        target_file.touch()
+
+        # Make ismount return True ONLY for the mount subdir (not root)
+        def _fake_ismount(path: str) -> bool:
+            p = Path(path)
+            return p == mount_dir and p != root_dir
+
+        mock_ismount.side_effect = _fake_ismount
+
+        result = _search_local_filesystem("movie.mkv", [str(root_dir)])
+        assert result == str(target_file)
+
+
+@patch("routes.os.path.ismount")
+def test_search_filesystem_mount_point_file_not_found(mock_ismount) -> None:
+    """_search_local_filesystem prunes mount-point subdirectories when file is not found there (lines 962-963)."""
+    import tempfile
+
+    from routes import _search_local_filesystem
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root_dir = Path(tmp) / "root"
+        mount_dir = root_dir / "mount"
+        mount_dir.mkdir(parents=True)
+        # Create a different file so the target is NOT in the mount dir
+        mount_dir / "other.mkv"
+        # Target file is in a deeper sub-directory of the mount
+        deep_dir = mount_dir / "sub"
+        deep_dir.mkdir()
+        target_file = deep_dir / "movie.mkv"
+        target_file.touch()
+
+        def _fake_ismount(path: str) -> bool:
+            p = Path(path)
+            return p == mount_dir and p != root_dir
+
+        mock_ismount.side_effect = _fake_ismount
+
+        # Should NOT find the file because mount dir's subdirectories are pruned
+        result = _search_local_filesystem("movie.mkv", [str(root_dir)])
+        assert result is None
