@@ -135,6 +135,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scheduler.py` `validate_cron`: call `expr.strip()` once instead of twice.
 
 ### Fixed
+- Fixed `_search_local_filesystem` returning `None` on timeout/file-limit
+  instead of continuing to the next search root (prevents unbounded filesystem
+  scanning after the limit is reached).
+- Fixed `_build_letterboxd_items` deduplication: both branches (priority and
+  list-order) now use a shared `seen_jf_ids` set to prevent duplicate symlinks
+  when a Letterboxd entry matches both IMDb and TMDb provider IDs.
 - Fixed `_fill_defaults` in `config.py` to use `copy.deepcopy` for nested
   default dicts instead of `dict.copy()`, preventing shallow-copy issues
   and aliasing with `DEFAULT_CONFIG`.
