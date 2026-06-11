@@ -1160,6 +1160,41 @@ def test_handle_http_error_http_none_code() -> None:
 # --- Remaining branch coverage for routes.py ---
 
 
+def test_csrf_exempted_endpoint_skips_csrf_without_header(
+    app, client, monkeypatch
+) -> None:
+    """Endpoints listed in _ALLOWED_NON_CSRF_REQUESTS bypass the CSRF check."""
+    import routes as routes_module
+
+    old_allowed = routes_module._ALLOWED_NON_CSRF_REQUESTS
+    old_testing = app.config.get("TESTING")
+    app.config["TESTING"] = False
+
+    # Mock the outbound network call so the test doesn't hit a real server.
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {}
+    monkeypatch.setattr(routes_module.network, "get", MagicMock(return_value=mock_resp))
+
+    try:
+        # Exempt a real POST endpoint from CSRF
+        routes_module._ALLOWED_NON_CSRF_REQUESTS = frozenset({"main.test_server"})
+        response = client.post(
+            "/api/test-server",
+            json={"jellyfin_url": "http://jf:8096", "api_key": "abc123"},
+        )
+        # Should NOT get 403 (CSRF failure) — instead we get whatever the view returns
+        assert response.status_code != 403, (
+            "CSRF exemption should have allowed the request without X-Requested-With header"
+        )
+        assert not response.is_json or "CSRF" not in response.get_json().get(
+            "message", ""
+        )
+    finally:
+        routes_module._ALLOWED_NON_CSRF_REQUESTS = old_allowed
+        app.config["TESTING"] = old_testing
+
+
 def test_csrf_protection_with_header(client) -> None:
     from flask import current_app
 

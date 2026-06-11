@@ -145,11 +145,28 @@ def _check_auth() -> ResponseReturnValue | None:
     )
 
 
+# Endpoints that are exempted from the CSRF X-Requested-With check.
+# Add endpoint names here when you need to POST from non-browser clients
+# that cannot set the ``X-Requested-With: XMLHttpRequest`` header.
+_ALLOWED_NON_CSRF_REQUESTS: frozenset[str] = frozenset()
+
+
 @bp.before_request
 def _check_csrf() -> ResponseReturnValue | None:
-    """Require X-Requested-With header on state-changing requests."""
+    """Require ``X-Requested-With`` header on state-changing requests.
+
+    POST, PUT, DELETE, and PATCH requests from the browser must include the
+    ``X-Requested-With: XMLHttpRequest`` header (set automatically by
+    JavaScript ``fetch``/``XMLHttpRequest``).
+
+    To permit a specific endpoint to accept requests **without** this header
+    (e.g. for external scripts), add its endpoint name to
+    :data:`_ALLOWED_NON_CSRF_REQUESTS`.
+    """
     if request.method in ("POST", "PUT", "DELETE", "PATCH"):
         if current_app.config.get("TESTING"):
+            return None
+        if request.endpoint and request.endpoint in _ALLOWED_NON_CSRF_REQUESTS:
             return None
         if request.headers.get("X-Requested-With") != "XMLHttpRequest":
             return _error("CSRF validation failed", 403)
