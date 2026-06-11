@@ -121,6 +121,48 @@ def test_parse_mmdd_non_numeric() -> None:
     assert _parse_mmdd("01-XX") == (0, 0)
 
 
+# ---------------------------------------------------------------------------
+# _is_in_season edge cases
+# ---------------------------------------------------------------------------
+
+
+def test_is_in_season_missing_inputs() -> None:
+    """Missing or non-string inputs return True (graceful degradation)."""
+    from sync import _is_in_season
+
+    assert _is_in_season(None, "06-15") is True  # type: ignore[arg-type]
+    assert _is_in_season("06-15", None) is True  # type: ignore[arg-type]
+    assert _is_in_season(None, None) is True  # type: ignore[arg-type]
+
+
+def test_is_in_season_malformed_ranges() -> None:
+    """Malformed dates return True (graceful degradation)."""
+    from sync import _is_in_season
+
+    assert _is_in_season("invalid", "06-15") is True
+    assert _is_in_season("06-15", "invalid") is True
+    assert _is_in_season("13-01", "06-15") is True
+    assert _is_in_season("", "") is True
+
+
+def test_is_in_season_same_year_window() -> None:
+    """Same-year window (Jun-Aug) — current value in range."""
+    from datetime import UTC, datetime
+
+    from sync import _is_in_season
+
+    # June 15 should be in season for Jun 1 - Sep 1
+    with patch("sync.datetime") as mock_dt:
+        mock_dt.now.return_value = datetime(2025, 6, 15, tzinfo=UTC)
+        mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+        assert _is_in_season("06-01", "09-01") is True
+
+
+# ---------------------------------------------------------------------------
+# _dispatch_list_source edge cases
+# ---------------------------------------------------------------------------
+
+
 def test_dispatch_list_source_unknown_type() -> None:
     """_dispatch_list_source returns ( [], error_msg, 400 ) for unknown source_type."""
     from sync import _dispatch_list_source
@@ -200,3 +242,54 @@ def test_build_letterboxd_items_priority_order_dedup() -> None:
     )
     assert len(result) == 1
     assert result[0]["Id"] == "item1"
+
+
+# ---------------------------------------------------------------------------
+# parse_complex_query edge cases
+# ---------------------------------------------------------------------------
+
+
+def test_parse_complex_query_bare_not_with_value() -> None:
+    """Bare NOT at start produces an AND NOT rule with parsed value."""
+    from sync import parse_complex_query
+
+    rules = parse_complex_query("NOT Comedy", "genre")
+    assert len(rules) == 1
+    assert rules[0]["operator"] == "AND NOT"
+    assert rules[0]["type"] == "genre"
+    assert rules[0]["value"] == "Comedy"
+
+
+def test_parse_complex_query_bare_not_with_type() -> None:
+    """Bare NOT followed by a typed negation (NOT actor:Tom)."""
+    from sync import parse_complex_query
+
+    rules = parse_complex_query("NOT actor:Tom", "genre")
+    assert len(rules) == 1
+    assert rules[0]["operator"] == "AND NOT"
+    assert rules[0]["type"] == "actor"
+    assert rules[0]["value"] == "Tom"
+
+
+def test_parse_complex_query_bare_not_only() -> None:
+    """Just 'NOT' with no value is parsed gracefully."""
+    from sync import parse_complex_query
+
+    rules = parse_complex_query("NOT", "genre")
+    assert len(rules) == 1
+    assert rules[0]["operator"] == "AND NOT"
+    assert rules[0]["value"] == ""
+
+
+def test_parse_complex_query_mixed_operators() -> None:
+    """Complex query with AND and OR."""
+    from sync import parse_complex_query
+
+    rules = parse_complex_query("Action AND NOT Comedy OR Drama", "genre")
+    assert len(rules) == 3
+    assert rules[0]["operator"] == "AND"
+    assert rules[0]["value"] == "Action"
+    assert rules[1]["operator"] == "AND NOT"
+    assert rules[1]["value"] == "Comedy"
+    assert rules[2]["operator"] == "OR"
+    assert rules[2]["value"] == "Drama"

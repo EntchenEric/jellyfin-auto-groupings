@@ -361,7 +361,7 @@ def _match_jellyfin_items_by_provider(
             if key in jf_by_provider:
                 items.append(jf_by_provider[key])
     else:
-        matched_ids = {
+        matched_ids: set[str] = {
             str(eid).lower() if case_insensitive else str(eid) for eid in external_ids
         }
         items = [v for k, v in jf_by_provider.items() if k in matched_ids]
@@ -711,16 +711,9 @@ def _build_letterboxd_items(
         match = _match_letterboxd_id(eid, items_by_imdb, items_by_tmdb)
         if not match:
             continue
-        if sort_order == "letterboxd_list_order":
-            # Preserve list order but skip duplicates (same Jellyfin item
-            # matched via both IMDb and TMDb ID from the same Letterboxd entry)
-            if match["Id"] not in seen_jf_ids:
-                items.append(match)
-                seen_jf_ids.add(match["Id"])
-        else:
-            if match["Id"] not in seen_jf_ids:
-                items.append(match)
-                seen_jf_ids.add(match["Id"])
+        if match["Id"] not in seen_jf_ids:
+            items.append(match)
+            seen_jf_ids.add(match["Id"])
     return items
 
 
@@ -1042,23 +1035,27 @@ def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
                 return t, v.strip()
         return default_type, item_str.strip()
 
-    t0, v0 = _parse_item(parts[0])
-    # Detect a bare NOT at position 0 so _eval_item can apply the negation.
-    # We inspect stripped_v0 (the v0 value trimmed from _parse_item) case-insensitively:
-    # if it starts with "NOT " or equals "NOT", it's a bare NOT operator
-    # (distinct from a value that merely starts with "not", e.g. "Notebook").
-    stripped_v0 = v0.strip()
-    _is_bare_not = False
-    if stripped_v0.upper().startswith("NOT ") or stripped_v0.upper() == "NOT":
-        _is_bare_not = True
-    first_op = "AND NOT" if _is_bare_not else "AND"
-    if first_op == "AND NOT":
-        # Strip the NOT keyword and re-parse the remainder
-        remainder = stripped_v0[3:].strip()
-        if remainder:
-            t0, v0 = _parse_item(remainder)
-        else:
-            v0 = remainder
+    def _detect_bare_not(val: str) -> tuple[bool, str]:
+        """Check if *val* starts with a bare NOT operator.
+
+        Returns (is_not, remainder) where *remainder* is the text after
+        the "NOT " prefix (or empty if just "NOT").
+        """
+        upper_val = val.upper()
+        if upper_val == "NOT":
+            return True, ""
+        if upper_val.startswith("NOT "):
+            return True, val[3:].strip()
+        return False, val
+
+    is_bare_not, remainder = _detect_bare_not(parts[0])
+    first_op = "AND NOT" if is_bare_not else "AND"
+
+    first_item = (
+        remainder if is_bare_not and remainder else ("" if is_bare_not else parts[0])
+    )
+
+    t0, v0 = _parse_item(first_item)
     rules.append(
         {
             "operator": first_op,

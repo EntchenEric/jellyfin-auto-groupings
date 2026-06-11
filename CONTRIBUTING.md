@@ -36,7 +36,7 @@ Thank you for considering contributing! Here are a few guidelines to help things
 
 All Python code should use type hints. The project targets Python 3.11+.
 
-### Testing
+### Running Tests and Coverage
 
 - Tests live in the `tests/` directory and use `pytest`.
 - Run tests before opening a PR:
@@ -44,10 +44,38 @@ All Python code should use type hints. The project targets Python 3.11+.
   pytest
   ```
 - The project requires 100% code coverage (CI uses `--cov-fail-under=100`). New features must include tests.
+- Run individual test files during development:
+  ```bash
+  pytest tests/test_sync.py -v
+  ```
 - Run type checking before opening a PR:
   ```bash
   mypy .
   ```
+
+### Using the Virtual Jellyfin Server
+
+For development without a real Jellyfin instance, you can run a mock Jellyfin server:
+
+```bash
+python3 start_virtual_jellyfin.py
+```
+
+Then configure Jellyfin Groupings to use `http://localhost:8096` as the server URL with any API key.
+
+### Linting and Formatting
+
+Before committing, run:
+
+```bash
+make lint
+```
+
+To auto-format code:
+
+```bash
+make format
+```
 
 ### Running Locally
 
