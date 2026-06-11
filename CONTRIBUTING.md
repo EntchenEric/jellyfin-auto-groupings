@@ -21,6 +21,20 @@ Thank you for considering contributing! Here are a few guidelines to help things
    git checkout -b my-feature-branch
    ```
 
+### Pre-commit Hooks (Recommended)
+
+The project ships a `.pre-commit-config.yaml` that runs ruff linting, ruff format
+checking, mypy type checking, and a pytest coverage check automatically before
+each commit.  To install the hooks:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+Once installed, the checks run on every ``git commit``.  To bypass them for a
+single commit use ``git commit --no-verify`` (not recommended).
+
 ## Development
 
 ### Code Style

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `network.py`: guard against NaN/Inf `NETWORK_RETRY_BACKOFF_FACTOR` values
+  that parses as valid ``float`` but produce unusable retry behaviour.
+
+### Added
+- `tests/test_network.py`: add tests for NaN, +Inf, and -Inf backoff factor
+  fallback values.
+- `static/js/core/state.js`: add ``recommendations_list_order`` display label.
+- `templates/partials/main/groupings.html`: add ``recommendations_list_order``
+  sort-order dropdown option.
+
+### Changed
+- (empty)
+
 ### Added
 - `tests/test_sync_uncovered.py`: add `test_build_letterboxd_items_unmatched_id_skipped`
   to cover the `continue` branch when `_match_letterboxd_id` returns `None`.

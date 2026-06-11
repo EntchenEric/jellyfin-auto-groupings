@@ -11,6 +11,7 @@ to benefit from retry logic with **zero monkey-patching**.
 from __future__ import annotations
 
 import logging
+import math
 import os
 from typing import Any
 
@@ -70,6 +71,13 @@ def _parse_retry_config() -> tuple[int, float, list[int]]:
     raw_backoff = os.environ.get("NETWORK_RETRY_BACKOFF_FACTOR", "1.0")
     try:
         backoff = float(raw_backoff)
+        if math.isnan(backoff) or math.isinf(backoff):
+            logger.warning(
+                "Invalid NETWORK_RETRY_BACKOFF_FACTOR value %r (NaN/Inf), "
+                "falling back to default 1.0",
+                raw_backoff,
+            )
+            backoff = 1.0
     except ValueError:
         logger.warning(
             "Invalid NETWORK_RETRY_BACKOFF_FACTOR value %r, falling back to default 1.0",
