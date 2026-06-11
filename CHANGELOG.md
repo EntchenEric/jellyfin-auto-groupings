@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `.gitignore` now excludes `.ruff_cache/`, `.coverage`, and `htmlcov/`.
+- `pyproject.toml` now includes a `[tool.ruff.format]` section with explicit
+  quote-style, indent-style, and line-ending settings.
+
+### Changed
+- `pyproject.toml` ruff lint config reverted from `select`/`ignore` back to
+  `extend-select`/`extend-ignore`. The change was reverted because `select`
+  overrides Ruff's default rule sets (E, F, W, etc.), while `extend-select`
+  adds custom rules on top of defaults. `extend-ignore` remains the correct
+  key for suppressing rules; `extend-ignore`/`select` were never deprecated.
+- `scheduler.py` `validate_cron` docstring: removed skipped doctest examples
+  that were never executed.
+- `letterboxd.py` `_extract_ids_from_list_page`: removed unnecessary
+  `re.DOTALL` flags from single-line regex patterns.
+
+### Added
 - `ANILIST_API_URL` environment variable example in `docker-compose.yml`.
 - Tests for `_fill_defaults` resilience when `scheduler` is `null` or a non-dict
   value in the stored config.
