@@ -26,7 +26,7 @@ Thank you for considering contributing! Here are a few guidelines to help things
 ### Code Style
 
 - Python: Follow [PEP 8](https://peps.python.org/pep-0008/). The project uses `ruff` for linting and formatting.
-- JavaScript: Follow standard ES module conventions. The project uses `ruff` for linting (no separate ESLint config is needed).
+- JavaScript: Follow standard ES module conventions. JS files are linted via `make lint` (Python-only `ruff` is used for Python; JS currently has no separate linter configured).
 - Run linting and format-checking before committing:
   ```bash
   make lint

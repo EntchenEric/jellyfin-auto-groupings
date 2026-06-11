@@ -295,8 +295,8 @@ See [`.env.example`](.env.example) for quick setup.
 1. Clone the repo.
 2. Create a virtual environment:
    ```bash
-   python3 -m venv venv
-   source venv/bin/activate
+   python3 -m venv .venv
+   source .venv/bin/activate
    ```
 3. Install the package (including dev extras):
    ```bash
