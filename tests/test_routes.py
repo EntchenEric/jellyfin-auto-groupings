@@ -1177,7 +1177,9 @@ def test_csrf_exempted_endpoint_skips_csrf_without_header(app, client) -> None:
         assert response.status_code != 403, (
             "CSRF exemption should have allowed the request without X-Requested-With header"
         )
-        assert not response.is_json or "CSRF" not in response.get_json().get("message", "")
+        assert not response.is_json or "CSRF" not in response.get_json().get(
+            "message", ""
+        )
     finally:
         routes_module._ALLOWED_NON_CSRF_REQUESTS = old_allowed
         app.config["TESTING"] = True
