@@ -287,10 +287,15 @@ def _validate_config_types(new_config: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     for str_field in (
         "jellyfin_url",
+        "api_key",
         "target_path",
         "media_path_in_jellyfin",
         "media_path_on_host",
         "target_path_in_jellyfin",
+        "anilist_api_url",
+        "trakt_client_id",
+        "tmdb_api_key",
+        "mal_client_id",
     ):
         val = new_config.get(str_field)
         if val is not None and not isinstance(val, str):
@@ -332,6 +337,74 @@ def _validate_config_types(new_config: dict[str, Any]) -> list[str]:
             name = group.get("name")
             if name is not None and not isinstance(name, str):
                 errors.append(f"groups[{i}].name must be a string")
+            source_type = group.get("source_type")
+            if source_type is not None and not isinstance(source_type, str):
+                errors.append(f"groups[{i}].source_type must be a string")
+            source_value = group.get("source_value")
+            if source_value is not None and not isinstance(source_value, str):
+                errors.append(f"groups[{i}].source_value must be a string")
+            sort_order = group.get("sort_order")
+            if sort_order is not None and not isinstance(sort_order, str):
+                errors.append(f"groups[{i}].sort_order must be a string")
+            watch_state = group.get("watch_state")
+            if watch_state is not None and not isinstance(watch_state, str):
+                errors.append(f"groups[{i}].watch_state must be a string")
+            schedule = group.get("schedule")
+            if schedule is not None and not isinstance(schedule, str):
+                errors.append(f"groups[{i}].schedule must be a string")
+            for bool_field in (
+                "schedule_enabled",
+                "seasonal_enabled",
+                "create_as_collection",
+            ):
+                val = group.get(bool_field)
+                if val is not None and not isinstance(val, bool):
+                    errors.append(f"groups[{i}].{bool_field} must be a boolean")
+            # Validate seasonal date format (MM-DD) when provided
+            for date_field in ("seasonal_start", "seasonal_end"):
+                val = group.get(date_field)
+                if val is not None and not isinstance(val, str):
+                    errors.append(f"groups[{i}].{date_field} must be a string")
+                elif isinstance(val, str) and val:
+                    import re as _re
+
+                    if not _re.match(r"^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$", val):
+                        errors.append(
+                            f"groups[{i}].{date_field} must be in MM-DD format (e.g. 10-31)"
+                        )
+            # Validate rules field (complex query rules)
+            rules = group.get("rules")
+            if rules is not None and not isinstance(rules, list):
+                errors.append(f"groups[{i}].rules must be a list")
+            elif isinstance(rules, list):
+                for j, rule in enumerate(rules):
+                    if not isinstance(rule, dict):
+                        errors.append(f"groups[{i}].rules[{j}] must be an object")
+                        continue
+                    for rule_field in ("type", "value"):
+                        rv = rule.get(rule_field)
+                        if rv is not None and not isinstance(rv, str):
+                            errors.append(
+                                f"groups[{i}].rules[{j}].{rule_field} must be a string"
+                            )
+                    op = rule.get("operator")
+                    if op is not None and not isinstance(op, str):
+                        errors.append(
+                            f"groups[{i}].rules[{j}].operator must be a string"
+                        )
+                    neg = rule.get("not")
+                    if neg is not None and not isinstance(neg, bool):
+                        errors.append(f"groups[{i}].rules[{j}].not must be a boolean")
+
+    # Validate jellyfin_url format when provided
+    jellyfin_url = new_config.get("jellyfin_url")
+    if (
+        isinstance(jellyfin_url, str)
+        and jellyfin_url
+        and not jellyfin_url.startswith(("http://", "https://"))
+    ):
+        errors.append("'jellyfin_url' must start with http:// or https://")
+
     return errors
 
 
@@ -882,6 +955,10 @@ def _search_local_filesystem(
                 dirnames.clear()
                 continue
             if is_mount and dirpath != root:
+                # Check files in the mount point directory itself before
+                # pruning subdirectories from the walk.
+                if filename in filenames:
+                    return str(Path(dirpath) / filename)
                 dirnames.clear()
                 continue
             if time.monotonic() - walk_start > timeout:

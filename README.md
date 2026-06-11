@@ -28,7 +28,7 @@ Instead of messing with Jellyfin's internal collections or duplicating multi-gig
 - 🤖 **TMDb Recommendations**: Generate groups from TMDb content-based recommendations.
 - 🎬 **Watch State Filtering**: Filter by watched/unwatched status per user.
 - ⚡ **Complex Logic**: Combine filters with `AND`, `OR`, and `NOT` (e.g., `Genre: Action AND NOT Genre: Sci-Fi`).
-- 🔢 **Smart Sorting**: Prefix filenames with a numeric index based on Rating, Year, Name, or List Order.
+- 🔢 **Smart Sorting**: Prefix filenames with a numeric index based on Rating, Year, Name, List Order, or Recommendations Order.
 - 🐳 **Docker-First**: Designed to run alongside your Jellyfin container with easy path mapping.
 - 🛠️ **Auto-Detect**: Scans your filesystem to help you configure path translations automatically.
 
@@ -133,6 +133,9 @@ You can generate a group from **TMDb content-based recommendations**.
 2. Add one or more seed items (by TMDb ID) to get recommendations from.
 3. The app calls the TMDb `/recommendations` endpoint for each seed item and
    aggregates the results, weighted by position (top recommendations score higher).
+
+   **Sorting**: Set the group sort order to **Recommendations Order** to preserve
+   the weighted recommendation ranking (top recommendations appear first).
 
 Requires a valid `TMDB_API_KEY` in the server settings.
 
