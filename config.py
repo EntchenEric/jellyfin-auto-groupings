@@ -97,14 +97,17 @@ def _fill_defaults(cfg: dict[str, Any], defaults: dict[str, Any]) -> None:
     requiring the caller to specify every intermediate level.
     """
     for key, default_value in defaults.items():
-        cfg.setdefault(key, default_value)
+        if key not in cfg:
+            # Deep-copy to prevent runtime mutations of cfg from aliasing
+            # the DEFAULT_CONFIG object (via setdefault).
+            cfg[key] = copy.deepcopy(default_value)
         if isinstance(default_value, dict):
             current = cfg.get(key)
             if isinstance(current, dict):
                 _fill_defaults(current, default_value)
-            else:
-                # Value exists but is not a dict (e.g. None, empty string) —
-                # replace with a deep copy to avoid AttributeError downstream.
+            elif not isinstance(current, dict):
+                # Value exists but is not a dict — replace with a deep copy
+                # to avoid AttributeError downstream.
                 cfg[key] = copy.deepcopy(default_value)
 
 

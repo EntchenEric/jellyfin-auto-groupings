@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `ANILIST_API_URL` environment variable example in `docker-compose.yml`.
+- Tests for `_fill_defaults` resilience when `scheduler` is `null` or a non-dict
+  value in the stored config.
+- Documented Makefile targets in README.md (test, lint, typecheck, run, format, etc.)
+  for contributor discoverability.
+- Initial CHANGELOG.md for project tracking.
+- Added `anilist_api_url` to `DEFAULT_CONFIG` to prevent KeyError when config
+  is accessed before the key is explicitly set.
+- Documented `NETWORK_RETRY_*` environment variables in the README env vars table
+  and added them to `.env.example` and `docker-compose.yml` for discoverability.
+- Add test coverage for `/api/health` endpoint (configured and unconfigured cases)
+  via PR #494.
+- Added SVG favicon (`🎬` emoji) to base template for better browser tabs.
 - Print-friendly stylesheet with hidden UI chrome, expanded link URLs, and
   readable code blocks when printing docs/setup guides.
 - `network.py` now gracefully falls back to default retry settings when
@@ -31,6 +44,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `test_delete_folder_resolve_oserror` covers OSError from `Path.resolve()`.
   - `test_search_filesystem_ismount_oserror` covers OSError from
     `os.path.ismount()` in `_search_local_filesystem`.
+- Robust containment check in `routes.py` `_delete_folder` using
+  `resolved.relative_to(base_resolved)` instead of substring matching.
+- `config.py` `_fill_defaults` now uses `copy.deepcopy` for missing nested
+  keys via membership check, eliminating aliasing with `DEFAULT_CONFIG`.
 
 ### Changed
 - Scrollbar thumb colors now use `color-mix(in srgb, var(--text-secondary) …%,
@@ -44,8 +61,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   hooks to match `make lint` target.
 - Removed deprecated `page-break-*` CSS properties (courtesy of CodeRabbit
   review) — using modern `break-*` equivalents only.
-
-### Changed
 - Improved `network.py` error logging to include the actual invalid value when
   `NETWORK_RETRY_TOTAL` or `NETWORK_RETRY_BACKOFF_FACTOR` fails to parse.
 - Stricter `_handle_http_error` signature in `routes.py` to accept `HTTPException`
@@ -84,9 +99,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fixed `_fill_defaults` in `config.py` to use `copy.deepcopy` for nested
-  default dicts instead of `dict.copy()`, preventing shallow-copy issues.
-  a string) for nested keys like `scheduler` with the full default dict, preventing
-  `AttributeError` downstream when accessing sub-keys.
+  default dicts instead of `dict.copy()`, preventing shallow-copy issues
+  and aliasing with `DEFAULT_CONFIG`.
 - Fixed order-dependent `test_clear_library_cache` test in `test_sync_more_edges.py`
   by clearing the module-level cache before populating it.
 - Improved CSRF testing check in `routes.py` to use the standard Flask
@@ -95,21 +109,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   passed non-string types (already handled gracefully as a fallback).
 - Fixed double-checked locking pattern in `_fetch_full_library()` so the cache
   is not overwritten if another thread populated it during the fetch.
-
-### Added
-- `ANILIST_API_URL` environment variable example in `docker-compose.yml`.
-- Tests for `_fill_defaults` resilience when `scheduler` is `null` or a non-dict
-  value in the stored config.
-- Documented Makefile targets in README.md (test, lint, typecheck, run, format, etc.)
-  for contributor discoverability.
-- Initial CHANGELOG.md for project tracking.
-- Added `anilist_api_url` to `DEFAULT_CONFIG` to prevent KeyError when config
-  is accessed before the key is explicitly set.
-- Documented `NETWORK_RETRY_*` environment variables in the README env vars table
-  and added them to `.env.example` and `docker-compose.yml` for discoverability.
-- Add test coverage for `/api/health` endpoint (configured and unconfigured cases)
-  via PR #494.
-- Added SVG favicon (`🎬` emoji) to base template for better browser tabs.
 
 ## [1.0.0] - 2025-03-01
 

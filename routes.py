@@ -745,7 +745,13 @@ def _delete_folder(
         resolved = path.resolve()
     except (OSError, RuntimeError):
         resolved = path
-    if target_base not in str(resolved.parent):
+    try:
+        base_resolved = Path(target_base).resolve()
+    except (OSError, RuntimeError):
+        base_resolved = Path(target_base)
+    try:
+        resolved.relative_to(base_resolved)
+    except ValueError:
         return False, f"Path traversal detected for: {name}"
     if not path.exists() or not path.is_dir():
         return False, None

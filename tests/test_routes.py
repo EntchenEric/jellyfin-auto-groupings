@@ -1449,6 +1449,6 @@ def test_search_filesystem_ismount_oserror(mock_ismount) -> None:
         mock_ismount.side_effect = OSError("Permission denied")
 
         result = _search_local_filesystem("movie.mkv", [str(test_dir)])
-        # Should return None because the only sub-directory raised an OSError
-        # and was skipped (dirnames cleared), but the root itself may still match
-        assert result is None or result == str(test_dir / "movie.mkv")
+        # ismount OSError on the root causes continue before checking filenames,
+        # so the file is never found
+        assert result is None
