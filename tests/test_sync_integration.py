@@ -15,7 +15,12 @@ TEST_API_KEY = "test_key"
 @patch("pathlib.Path.symlink_to")
 @patch("sync.fetch_jellyfin_items")
 def test_run_sync_basic(
-    mock_fetch, mock_symlink, mock_rmtree, mock_exists, mock_mkdir, mock_cover
+    mock_fetch,
+    mock_symlink,
+    mock_rmtree,
+    mock_exists,
+    mock_mkdir,
+    mock_cover,
 ) -> None:
     """Test run_sync with a simple genre-based group."""
     mock_cover.return_value = None

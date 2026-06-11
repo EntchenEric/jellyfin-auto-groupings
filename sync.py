@@ -1701,7 +1701,7 @@ def _process_group(
     return result
 
 
-def _parse_mmdd(value: str) -> tuple[int, int]:
+def _parse_mmdd(value: str | None) -> tuple[int, int]:
     """Parse an ``MM-DD`` string into a ``(month, day)`` tuple.
 
     Validates that month is 1-12 and that *day* is valid for the given month.
@@ -1734,7 +1734,7 @@ def _parse_mmdd(value: str) -> tuple[int, int]:
     return (month, day)
 
 
-def _is_in_season(start_str: Any, end_str: Any) -> bool:
+def _is_in_season(start_str: str | None, end_str: str | None) -> bool:
     """Check if the current date is within the seasonal window [start, end).
 
     Both start and end must be ``MM-DD`` strings.  The window is **inclusive**

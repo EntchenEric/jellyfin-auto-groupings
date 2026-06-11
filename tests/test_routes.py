@@ -878,7 +878,10 @@ def test_preview_grouping_runtime_error(mock_preview, client) -> None:
 @patch("routes.os.path.exists")
 @pytest.mark.usefixtures("temp_config")
 def test_perform_cleanup_with_auto_create(
-    mock_exists, mock_delete, client, tmp_path
+    mock_exists,
+    mock_delete,
+    client,
+    tmp_path,
 ) -> None:
     target = tmp_path / "target"
     target.mkdir()
@@ -1218,7 +1221,9 @@ def test_perform_cleanup_folder_not_found(client, tmp_path) -> None:
 @patch("routes.os.path.exists")
 @pytest.mark.usefixtures("temp_config")
 def test_perform_cleanup_auto_create_missing_settings(
-    mock_exists, client, tmp_path
+    mock_exists,
+    client,
+    tmp_path,
 ) -> None:
     target = tmp_path / "target"
     target.mkdir()

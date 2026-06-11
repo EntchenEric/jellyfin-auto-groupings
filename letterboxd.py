@@ -218,7 +218,8 @@ def fetch_letterboxd_list(list_url: str) -> list[str]:
             consecutive_empty += 1
             if consecutive_empty >= _MAX_EMPTY_CONSECUTIVE:
                 logger.info(
-                    "Stopping after %d empty consecutive pages", consecutive_empty
+                    "Stopping after %d empty consecutive pages",
+                    consecutive_empty,
                 )
                 break
             page += 1

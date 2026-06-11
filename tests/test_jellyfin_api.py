@@ -782,7 +782,10 @@ def test_set_collection_image_os_error(mock_open, caplog) -> None:
 @patch("jellyfin.Path.open")
 @patch("jellyfin.network.post")
 def test_set_collection_image_unknown_mime(
-    mock_post, mock_open, mock_guess, caplog
+    mock_post,
+    mock_open,
+    mock_guess,
+    caplog,
 ) -> None:
     mock_guess.return_value = (None, None)
     mock_open.return_value.__enter__.return_value.read.return_value = b"data"
@@ -801,7 +804,10 @@ def test_set_collection_image_unknown_mime(
 @patch("jellyfin.Path.open")
 @patch("jellyfin.network.post")
 def test_set_collection_image_http_error(
-    mock_post, mock_open, mock_guess, caplog
+    mock_post,
+    mock_open,
+    mock_guess,
+    caplog,
 ) -> None:
     mock_guess.return_value = ("image/jpeg", None)
     mock_open.return_value.__enter__.return_value.read.return_value = b"jpeg_data"

@@ -1056,7 +1056,7 @@ def health_check() -> ResponseReturnValue:
                 "configured": configured,
                 "groups": len(config.get("groups", [])),
             },
-        }
+        },
     )
 
 

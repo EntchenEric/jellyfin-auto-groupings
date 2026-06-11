@@ -152,7 +152,7 @@ def test_fetch_anilist_list_entry_not_dict(mock_post) -> None:
                             "not a dict",
                             {"mediaId": 12345},
                             {},
-                        ]
+                        ],
                     },
                 ],
             },
