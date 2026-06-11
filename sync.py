@@ -701,9 +701,9 @@ def _build_letterboxd_items(
 ) -> list[dict[str, Any]]:
     """Map external Letterboxd IDs to Jellyfin items, respecting sort order.
 
-    When *sort_order* is ``"letterboxd_list_order"`` the external list order
-    is preserved and duplicates (same Jellyfin item matched via both IMDb and
-    TMDb ID) are skipped to avoid duplicate symlinks.
+    The external list order is preserved regardless of *sort_order*.
+    Duplicates (the same Jellyfin item matched via both IMDb and TMDb ID)
+    are skipped to avoid duplicate symlinks.
     """
     items: list[dict[str, Any]] = []
     seen_jf_ids: set[str] = set()

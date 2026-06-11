@@ -349,7 +349,7 @@ make run
 ### 🧪 Testing
 
 ```bash
-# Run the full test suite (598+ tests, 100% coverage)
+# Run the full test suite (608+ tests, 100% coverage)
 python3 -m pytest
 
 # Run tests with coverage report

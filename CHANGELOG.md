@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `tests/test_sync_uncovered.py`: add `test_build_letterboxd_items_unmatched_id_skipped`
+  to cover the `continue` branch when `_match_letterboxd_id` returns `None`.
+
+### Fixed
+- `sync.py`: fix `_build_letterboxd_items` docstring — dedup description was
+  incorrectly scoped to `letterboxd_list_order` only; dedup applies to all
+  sort orders.
+
+### Changed
+- `README.md`: update test count from 598+ to 608+.
+
+### Added
 - `tmdb.py`: add O(1) dedup set in `fetch_tmdb_list` for defensive duplicate filtering.
 - Dockerfile: add `--preload` to gunicorn CMD for memory sharing between workers.
 - Dockerfile: increase healthcheck `--start-period` from 10s to 15s for slower gunicorn boot times.
