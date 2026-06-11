@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 import math
 import os
-from typing import Any
+from typing import Any, cast
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -178,7 +178,7 @@ def _reraise_timeout(exc: requests.ConnectionError) -> None:
 def _request(method: str, url: str, **kwargs: Any) -> requests.Response:
     """Send a *method* request to *url* through the retry-enabled session."""
     try:
-        http_fn = getattr(_SESSION, method.lower())
+        http_fn = cast("requests.Session", getattr(_SESSION, method.lower()))
         return http_fn(url, **kwargs)
     except requests.ConnectionError as exc:
         _reraise_timeout(exc)

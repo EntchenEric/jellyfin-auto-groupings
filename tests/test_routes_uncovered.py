@@ -514,9 +514,11 @@ def test_validate_cron_expressions_global_disabled() -> None:
     """No error when global_enabled is False with invalid schedule."""
     from routes import _validate_cron_expressions
 
-    errors = _validate_cron_expressions({
-        "scheduler": {"global_enabled": False, "global_schedule": "invalid"},
-    })
+    errors = _validate_cron_expressions(
+        {
+            "scheduler": {"global_enabled": False, "global_schedule": "invalid"},
+        }
+    )
     assert errors == []
 
 
@@ -524,9 +526,11 @@ def test_validate_cron_expressions_global_enabled_bad() -> None:
     """Error when global_enabled is True with invalid schedule."""
     from routes import _validate_cron_expressions
 
-    errors = _validate_cron_expressions({
-        "scheduler": {"global_enabled": True, "global_schedule": "bad"},
-    })
+    errors = _validate_cron_expressions(
+        {
+            "scheduler": {"global_enabled": True, "global_schedule": "bad"},
+        }
+    )
     assert any("Global schedule" in e for e in errors)
 
 
@@ -534,9 +538,11 @@ def test_validate_cron_expressions_global_enabled_valid() -> None:
     """No error when global_enabled is True with valid schedule."""
     from routes import _validate_cron_expressions
 
-    errors = _validate_cron_expressions({
-        "scheduler": {"global_enabled": True, "global_schedule": "0 0 * * *"},
-    })
+    errors = _validate_cron_expressions(
+        {
+            "scheduler": {"global_enabled": True, "global_schedule": "0 0 * * *"},
+        }
+    )
     assert errors == []
 
 
@@ -544,9 +550,11 @@ def test_validate_cron_expressions_cleanup_disabled() -> None:
     """No error when cleanup is disabled with invalid schedule."""
     from routes import _validate_cron_expressions
 
-    errors = _validate_cron_expressions({
-        "scheduler": {"cleanup_enabled": False, "cleanup_schedule": "invalid"},
-    })
+    errors = _validate_cron_expressions(
+        {
+            "scheduler": {"cleanup_enabled": False, "cleanup_schedule": "invalid"},
+        }
+    )
     assert errors == []
 
 
@@ -554,9 +562,11 @@ def test_validate_cron_expressions_cleanup_enabled_bad() -> None:
     """Error when cleanup is enabled with invalid schedule."""
     from routes import _validate_cron_expressions
 
-    errors = _validate_cron_expressions({
-        "scheduler": {"cleanup_enabled": True, "cleanup_schedule": "bad"},
-    })
+    errors = _validate_cron_expressions(
+        {
+            "scheduler": {"cleanup_enabled": True, "cleanup_schedule": "bad"},
+        }
+    )
     assert any("Cleanup schedule" in e for e in errors)
 
 
@@ -564,9 +574,11 @@ def test_validate_cron_expressions_cleanup_empty_schedule() -> None:
     """Empty cleanup schedule doesn't cause error even when enabled."""
     from routes import _validate_cron_expressions
 
-    errors = _validate_cron_expressions({
-        "scheduler": {"cleanup_enabled": True, "cleanup_schedule": ""},
-    })
+    errors = _validate_cron_expressions(
+        {
+            "scheduler": {"cleanup_enabled": True, "cleanup_schedule": ""},
+        }
+    )
     assert errors == []
 
 
@@ -574,9 +586,13 @@ def test_validate_cron_expressions_group_disabled() -> None:
     """No error when group schedule is disabled with bad cron."""
     from routes import _validate_cron_expressions
 
-    errors = _validate_cron_expressions({
-        "groups": [{"name": "G1", "schedule_enabled": False, "schedule": "invalid"}],
-    })
+    errors = _validate_cron_expressions(
+        {
+            "groups": [
+                {"name": "G1", "schedule_enabled": False, "schedule": "invalid"}
+            ],
+        }
+    )
     assert errors == []
 
 
@@ -584,9 +600,11 @@ def test_validate_cron_expressions_group_enabled_bad() -> None:
     """Error when group schedule is enabled with bad cron."""
     from routes import _validate_cron_expressions
 
-    errors = _validate_cron_expressions({
-        "groups": [{"name": "G1", "schedule_enabled": True, "schedule": "bad"}],
-    })
+    errors = _validate_cron_expressions(
+        {
+            "groups": [{"name": "G1", "schedule_enabled": True, "schedule": "bad"}],
+        }
+    )
     assert any("G1" in e for e in errors)
 
 
@@ -594,9 +612,11 @@ def test_validate_cron_expressions_group_enabled_no_schedule() -> None:
     """No error when group schedule is enabled but no schedule set."""
     from routes import _validate_cron_expressions
 
-    errors = _validate_cron_expressions({
-        "groups": [{"name": "G1", "schedule_enabled": True}],
-    })
+    errors = _validate_cron_expressions(
+        {
+            "groups": [{"name": "G1", "schedule_enabled": True}],
+        }
+    )
     assert errors == []
 
 
@@ -604,17 +624,19 @@ def test_validate_cron_expressions_all_valid() -> None:
     """No errors when all expressions are valid."""
     from routes import _validate_cron_expressions
 
-    errors = _validate_cron_expressions({
-        "scheduler": {
-            "global_enabled": True,
-            "global_schedule": "0 0 * * *",
-            "cleanup_enabled": True,
-            "cleanup_schedule": "0 * * * *",
-        },
-        "groups": [
-            {"name": "G1", "schedule_enabled": True, "schedule": "*/30 * * * *"},
-        ],
-    })
+    errors = _validate_cron_expressions(
+        {
+            "scheduler": {
+                "global_enabled": True,
+                "global_schedule": "0 0 * * *",
+                "cleanup_enabled": True,
+                "cleanup_schedule": "0 * * * *",
+            },
+            "groups": [
+                {"name": "G1", "schedule_enabled": True, "schedule": "*/30 * * * *"},
+            ],
+        }
+    )
     assert errors == []
 
 
@@ -622,7 +644,9 @@ def test_validate_cron_expressions_group_no_name() -> None:
     """Unnamed group uses "unnamed" in error message."""
     from routes import _validate_cron_expressions
 
-    errors = _validate_cron_expressions({
-        "groups": [{"schedule_enabled": True, "schedule": "bad"}],
-    })
+    errors = _validate_cron_expressions(
+        {
+            "groups": [{"schedule_enabled": True, "schedule": "bad"}],
+        }
+    )
     assert any("unnamed" in e for e in errors)
