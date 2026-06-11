@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
@@ -25,6 +26,12 @@ from flask import Flask
 from config import CONFIG_FILE, DEFAULT_CONFIG, _env_flag, save_config
 from routes import bp
 from scheduler import start_scheduler
+
+# Record application start time for health check uptime reporting
+os.environ.setdefault(
+    "JELLYFIN_GROUPINGS_START_TIME",
+    str(int(time.time())),
+)
 
 
 def _configure_logging() -> None:
@@ -56,13 +63,9 @@ def _configure_logging() -> None:
     )
 
 
-# ---------------------------------------------------------------------------
-# Application factory
-# ---------------------------------------------------------------------------
+_configure_logging()
 
 __all__ = ["app"]
-
-_configure_logging()
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.register_blueprint(bp)

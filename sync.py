@@ -177,6 +177,7 @@ def _get_cover_path(
     group_name: str,
     target_base: str,
     check_exists: bool = True,
+    ext: str = "jpg",
 ) -> str | None:
     """Compute the expected cover image path for a group, resolving storage priority.
 
@@ -192,6 +193,7 @@ def _get_cover_path(
             (useful for saving new covers — prefers the library-local path
             when *target_base* is a directory, falling back to the legacy
             config location otherwise).
+        ext: File extension to use (default ``jpg``).
 
     Returns:
         The absolute path to the cover image, or None if not found/possible.
@@ -203,11 +205,11 @@ def _get_cover_path(
     ).hexdigest()
 
     # Priority 1: Library-local .covers/ directory (new storage location)
-    lib_cover_path = str(Path(target_base) / ".covers" / f"{safe_name}.jpg")
+    lib_cover_path = str(Path(target_base) / ".covers" / f"{safe_name}.{ext}")
 
     # Priority 2: Internal config/covers/ directory (legacy storage location)
     legacy_cover_path = str(
-        Path(__file__).resolve().parent / "config" / "covers" / f"{safe_name}.jpg",
+        Path(__file__).resolve().parent / "config" / "covers" / f"{safe_name}.{ext}",
     )
 
     if not check_exists:

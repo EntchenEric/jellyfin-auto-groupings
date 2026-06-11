@@ -495,6 +495,61 @@ def test_upload_cover_unresolvable_path(mock_get_cover, client) -> None:
     assert "Could not resolve cover storage path" in response.get_json()["message"]
 
 
+def test_upload_cover_unsupported_mime(client) -> None:
+    """Upload with an unsupported MIME type returns 400."""
+    response = client.post(
+        "/api/upload_cover",
+        json={
+            "group_name": "G",
+            "image": "data:image/bmp;base64,AAAA",
+        },
+    )
+    assert response.status_code == 400
+    data = response.get_json()
+    assert "Unsupported image type" in data["message"]
+    assert "image/bmp" in data["message"]
+
+
+def test_upload_cover_mime_extension_mapping(client, tmp_path) -> None:
+    """Upload with a non-JPEG MIME type uses the correct file extension."""
+    from routes import _get_cover_path
+    from config import save_config
+
+    save_config({"target_path": str(tmp_path)})
+    img_data = (
+        "data:image/png;base64,"
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+    )
+    response = client.post(
+        "/api/upload_cover",
+        json={"group_name": "TestGroup", "image": img_data},
+    )
+    assert response.status_code == 200
+    # Verify the file was saved with .png extension
+    cover_path = _get_cover_path("TestGroup", str(tmp_path), check_exists=False, ext="png")
+    assert cover_path is not None
+    assert Path(cover_path).exists()
+    assert cover_path.endswith(".png")
+
+
+# ---------------------------------------------------------------------------
+# health_check edge cases
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.usefixtures("temp_config")
+def test_health_check_error_path(client) -> None:
+    """Health check returns 500 with generic error when config loading fails."""
+    with patch("routes.load_config", side_effect=RuntimeError("config corrupt")):
+        response = client.get("/api/health")
+    assert response.status_code == 500
+    data = response.get_json()
+    assert data["status"] == "error"
+    assert data["healthcheck"]["ok"] is False
+    # Must not leak internal exception text
+    assert data["healthcheck"]["error"] == "internal_error"
+
+
 # ---------------------------------------------------------------------------
 # get_cleanup_items
 # ---------------------------------------------------------------------------
