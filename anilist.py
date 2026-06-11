@@ -42,10 +42,21 @@ query ($userName: String, $status: MediaListStatus) {
 
 
 def _resolve_anilist_status(status: str | None) -> str | None:
-    """Normalize a user-provided AniList status to the API's expected value."""
+    """Normalize a user-provided AniList status to the API's expected value.
+
+    Raises:
+        ValueError: If *status* is not ``None``, ``"ALL"``, or a recognised
+                    status key from :data:`_ANILIST_STATUS_MAP`.
+
+    """
     if not status or status.upper() == "ALL":
         return None
-    return _ANILIST_STATUS_MAP.get(status.upper())
+    normalized = _ANILIST_STATUS_MAP.get(status.upper())
+    if normalized is None:
+        valid = sorted(_ANILIST_STATUS_MAP)
+        msg = f"Unknown AniList status: {status!r}. Valid values: {valid}"
+        raise ValueError(msg)
+    return normalized
 
 
 def _extract_media_ids(data: dict) -> list[int]:

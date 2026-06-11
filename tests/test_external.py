@@ -161,6 +161,38 @@ def test_fetch_anilist_all(mock_post) -> None:
     assert "status" not in kwargs["json"]["variables"]
 
 
+def test_anilist_status_invalid() -> None:
+    """An unknown status raises ValueError with valid options in message."""
+    with pytest.raises(ValueError) as exc_info:
+        fetch_anilist_list("user", "bogus_status")
+    msg = str(exc_info.value)
+    assert "bogus_status" in msg
+    assert "COMPLETED" in msg
+    assert "CURRENT" in msg
+
+
+def test_anilist_status_valid_values() -> None:
+    """Direct calls to the resolver return correct values (not public, verify via fetch_anilist_list)."""
+    import anilist as anilist_module
+
+    # Each valid status should map correctly
+    assert anilist_module._resolve_anilist_status(None) is None
+    assert anilist_module._resolve_anilist_status("ALL") is None
+    assert anilist_module._resolve_anilist_status("all") is None
+    assert anilist_module._resolve_anilist_status("COMPLETED") == "COMPLETED"
+    assert anilist_module._resolve_anilist_status("WATCHING") == "CURRENT"
+    assert anilist_module._resolve_anilist_status("rewatching") == "REPEATING"
+
+
+@pytest.mark.parametrize("invalid", ["FINISHED", "HOLDING"])
+def test_anilist_status_invalid_values(invalid: str) -> None:
+    """Various invalid status values all raise ValueError."""
+    import anilist as anilist_module
+
+    with pytest.raises(ValueError, match="Unknown AniList status"):
+        anilist_module._resolve_anilist_status(invalid)
+
+
 # ---------------------------------------------------------------------------
 # tmdb.py — code uses network.get
 # ---------------------------------------------------------------------------
