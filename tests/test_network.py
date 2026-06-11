@@ -308,6 +308,33 @@ def test_parse_retry_config_trailing_comma(monkeypatch) -> None:
     assert len(statuses) == 2
 
 
+def test_parse_retry_config_nan_backoff_fallback(monkeypatch) -> None:
+    """NaN NETWORK_RETRY_BACKOFF_FACTOR falls back to default 1.0."""
+    monkeypatch.setenv("NETWORK_RETRY_BACKOFF_FACTOR", "nan")
+    from network import _parse_retry_config
+
+    _, backoff, _ = _parse_retry_config()
+    assert backoff == 1.0
+
+
+def test_parse_retry_config_inf_backoff_fallback(monkeypatch) -> None:
+    """Infinity NETWORK_RETRY_BACKOFF_FACTOR falls back to default 1.0."""
+    monkeypatch.setenv("NETWORK_RETRY_BACKOFF_FACTOR", "inf")
+    from network import _parse_retry_config
+
+    _, backoff, _ = _parse_retry_config()
+    assert backoff == 1.0
+
+
+def test_parse_retry_config_negative_inf_backoff_fallback(monkeypatch) -> None:
+    """-Infinity NETWORK_RETRY_BACKOFF_FACTOR falls back to default 1.0."""
+    monkeypatch.setenv("NETWORK_RETRY_BACKOFF_FACTOR", "-inf")
+    from network import _parse_retry_config
+
+    _, backoff, _ = _parse_retry_config()
+    assert backoff == 1.0
+
+
 def test_parse_retry_config_negative_status_code(monkeypatch) -> None:
     """Negative status code in NETWORK_RETRY_STATUS_FORCELIST raises ValueError."""
     monkeypatch.setenv("NETWORK_RETRY_STATUS_FORCELIST", "-1")
