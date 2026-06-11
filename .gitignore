@@ -9,6 +9,7 @@ __pycache__/
 *.py[cod]
 *.pyo
 .mypy_cache/
+.ruff_cache/
 
 # Virtual envs
 .venv/
@@ -49,6 +50,8 @@ node_modules/
 
 # Coverage artifacts (from ``coverage.py`` with ``source=``)
 *.py,cover
+.coverage
+htmlcov/
 
 # Build artifacts
 *.egg-info/
