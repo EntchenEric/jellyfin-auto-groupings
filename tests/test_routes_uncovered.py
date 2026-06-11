@@ -327,7 +327,7 @@ def test_health_check_configured(client) -> None:
             "api_key": "test-key-123",
             "target_path": "/media/groupings",
             "groups": [{"name": "Movies"}, {"name": "Shows"}],
-        }
+        },
     )
     response = client.get("/api/health")
     assert response.status_code == 200

@@ -109,7 +109,7 @@ try:
     _RETRY_TOTAL, _RETRY_BACKOFF_FACTOR, _RETRY_STATUS_FORCELIST = _parse_retry_config()
 except ValueError:
     logger.exception(
-        "Invalid retry configuration in environment — falling back to defaults"
+        "Invalid retry configuration in environment — falling back to defaults",
     )
     _RETRY_TOTAL = 3
     _RETRY_BACKOFF_FACTOR = 1.0
