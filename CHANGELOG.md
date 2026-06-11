@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Dockerfile: add `--preload` to gunicorn CMD for memory sharing between workers.
+- Dockerfile: increase healthcheck `--start-period` from 10s to 15s for slower gunicorn boot times.
+
+### Changed
+- Dockerfile: remove `requirements-dev.txt` copy from builder stage (unused in production).
+
+### Added
 - `.gitignore` now excludes `.ruff_cache/`, `.coverage`, and `htmlcov/`.
 - `pyproject.toml` now includes a `[tool.ruff.format]` section with explicit
   quote-style, indent-style, and line-ending settings.

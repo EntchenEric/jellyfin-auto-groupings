@@ -20,14 +20,15 @@ def test_reraise_timeout_read() -> None:
 
 
 def test_reraise_timeout_connect() -> None:
-    """_reraise_timeout returns normally for ConnectTimeout, not ReadTimeout."""
+    """_reraise_timeout raises requests.Timeout for ConnectTimeoutError."""
     from network import _reraise_timeout
 
     connect_err = ConnectTimeoutError("pool", "url", "msg")
     max_retry = MaxRetryError("pool", "url", reason=connect_err)
     conn_err = requests.ConnectionError(max_retry)
 
-    _reraise_timeout(conn_err)  # should not raise
+    with pytest.raises(requests.Timeout, match=r"Connection timed out\."):
+        _reraise_timeout(conn_err)
 
 
 def test_reraise_timeout_plain_connection_error() -> None:
@@ -169,7 +170,7 @@ def testdelete_timeout_re_raise(monkeypatch) -> None:
 
 
 def testpost_maxretry_non_readtimeout(monkeypatch) -> None:
-    """Post re-raises ConnectionError when MaxRetryError reason is not ReadTimeout."""
+    """Post raises requests.Timeout when MaxRetryError reason is ConnectTimeout."""
     from network import _SESSION, post
 
     connect_err = ConnectTimeoutError("pool", "url", "msg")
@@ -180,12 +181,12 @@ def testpost_maxretry_non_readtimeout(monkeypatch) -> None:
         raise conn_err
 
     monkeypatch.setattr(_SESSION, "post", _fail)
-    with pytest.raises(requests.ConnectionError):
+    with pytest.raises(requests.Timeout, match=r"Connection timed out\."):
         post("http://example.com/api")
 
 
 def testdelete_maxretry_non_readtimeout(monkeypatch) -> None:
-    """Delete re-raises ConnectionError when MaxRetryError reason is not ReadTimeout."""
+    """Delete raises requests.Timeout when MaxRetryError reason is ConnectTimeout."""
     from network import _SESSION, delete
 
     connect_err = ConnectTimeoutError("pool", "url", "msg")
@@ -196,7 +197,7 @@ def testdelete_maxretry_non_readtimeout(monkeypatch) -> None:
         raise conn_err
 
     monkeypatch.setattr(_SESSION, "delete", _fail)
-    with pytest.raises(requests.ConnectionError):
+    with pytest.raises(requests.Timeout, match=r"Connection timed out\."):
         delete("http://example.com/api")
 
 
