@@ -244,6 +244,27 @@ def test_build_letterboxd_items_priority_order_dedup() -> None:
     assert result[0]["Id"] == "item1"
 
 
+def test_build_letterboxd_items_unmatched_id_skipped() -> None:
+    """An external ID that matches neither IMDb nor TMDb indices is skipped."""
+    from sync import _build_letterboxd_items
+
+    # External IDs: one matches, one matches nothing
+    external_ids = ["tt999", "unmatched_id_12345"]
+    items_by_imdb: dict[str, dict[str, object]] = {
+        "tt999": {"Id": "item1", "Name": "Movie A"},
+    }
+    items_by_tmdb: dict[str, dict[str, object]] = {}
+
+    result = _build_letterboxd_items(
+        external_ids,
+        items_by_imdb,
+        items_by_tmdb,
+        "letterboxd_list_order",
+    )
+    assert len(result) == 1
+    assert result[0]["Id"] == "item1"
+
+
 # ---------------------------------------------------------------------------
 # parse_complex_query edge cases
 # ---------------------------------------------------------------------------
