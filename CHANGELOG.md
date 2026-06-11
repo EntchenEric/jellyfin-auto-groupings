@@ -19,6 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - `network.py`: guard against NaN/Inf `NETWORK_RETRY_BACKOFF_FACTOR` values
   that parses as valid ``float`` but produce unusable retry behaviour.
+- `anilist.py`: add missing ``from typing import Any`` import to fix ruff
+  F821 undefined-name error.
+- `network.py`: fix incorrect ``cast("requests.Session", ...)`` on bound
+  method — the ``getattr`` result is a ``Callable``, not a ``Session``, which
+  fixes the mypy ``operator`` error. (PR #538)
 
 ### Added
 - `tests/test_network.py`: add tests for NaN, +Inf, and -Inf backoff factor
