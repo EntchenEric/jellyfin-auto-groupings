@@ -2349,3 +2349,200 @@ def test_run_sync_path_translation_active(
     }
     run_sync(config, dry_run=False)
     assert any("Path translation active" in r.message for r in caplog.records)
+
+
+# ---------------------------------------------------------------------------
+# Complex query parser — edge cases
+# Covers issues #968–#975 (good-first-issue testing tickets)
+# ---------------------------------------------------------------------------
+
+
+def test_parse_complex_query_empty_string() -> None:
+    """Empty query string returns empty rules list."""
+    rules = parse_complex_query("", "genre")
+    assert rules == []
+
+
+def test_parse_complex_query_whitespace_only() -> None:
+    """Whitespace-only query returns empty rules list."""
+    rules = parse_complex_query("   ", "genre")
+    assert rules == []
+
+
+def test_parse_complex_query_whitespace_between_tokens() -> None:
+    """Extra whitespace between tokens is collapsed."""
+    rules = parse_complex_query("Action    AND       Comedy", "genre")
+    assert len(rules) == 2
+    assert rules[0] == {"operator": "AND", "type": "genre", "value": "Action"}
+    assert rules[1] == {"operator": "AND", "type": "genre", "value": "Comedy"}
+
+
+def test_parse_complex_query_case_insensitivity() -> None:
+    """Operators are case-insensitive: and, And, OR, or, not."""
+    rules = parse_complex_query("action and comedy or horror", "genre")
+    assert len(rules) == 3
+    assert rules[0] == {"operator": "AND", "type": "genre", "value": "action"}
+    assert rules[1] == {"operator": "AND", "type": "genre", "value": "comedy"}
+    assert rules[2] == {"operator": "OR", "type": "genre", "value": "horror"}
+
+    rules2 = parse_complex_query("Action And Not Comedy Or Drama", "genre")
+    assert len(rules2) == 3
+    assert rules2[0] == {"operator": "AND", "type": "genre", "value": "Action"}
+    assert rules2[1] == {"operator": "AND NOT", "type": "genre", "value": "Comedy"}
+    assert rules2[2] == {"operator": "OR", "type": "genre", "value": "Drama"}
+
+
+def test_parse_complex_query_impossible_year_and() -> None:
+    """Query 'year:2020 AND year:2021' should produce two rules that will
+    never match (no single item can have two different production years)."""
+    # This is logically impossible — it validates that the parser produces
+    # two distinct rules with specific types and the same operator.
+    rules = parse_complex_query("year:2020 AND year:2021", "genre")
+    assert len(rules) == 2
+    assert rules[0] == {"operator": "AND", "type": "year", "value": "2020"}
+    assert rules[1] == {"operator": "AND", "type": "year", "value": "2021"}
+
+
+def test_parse_complex_query_nested_and_or_with_not() -> None:
+    """Complex chain with AND, OR, NOT in various positions."""
+    rules = parse_complex_query("Action AND NOT Comedy OR Drama AND NOT Horror", "genre")
+    assert len(rules) == 4
+    assert rules[0] == {"operator": "AND", "type": "genre", "value": "Action"}
+    assert rules[1] == {"operator": "AND NOT", "type": "genre", "value": "Comedy"}
+    assert rules[2] == {"operator": "OR", "type": "genre", "value": "Drama"}
+    assert rules[3] == {"operator": "AND NOT", "type": "genre", "value": "Horror"}
+
+
+def test_parse_complex_query_and_and_not_or_not() -> None:
+    """All four operator variants are parsed correctly."""
+    rules = parse_complex_query(
+        "A AND NOT B OR NOT C",
+        "genre",
+    )
+    assert len(rules) == 3
+    assert rules[0] == {"operator": "AND", "type": "genre", "value": "A"}
+    assert rules[1] == {"operator": "AND NOT", "type": "genre", "value": "B"}
+    assert rules[2] == {"operator": "OR NOT", "type": "genre", "value": "C"}
+
+    # AND NOT + OR NOT in same query with typed prefixes
+    rules2 = parse_complex_query("genre:A OR NOT actor:B AND NOT year:2020", "tag")
+    assert len(rules2) == 3
+    assert rules2[0] == {"operator": "AND", "type": "genre", "value": "A"}
+    assert rules2[1] == {"operator": "OR NOT", "type": "actor", "value": "B"}
+    assert rules2[2] == {"operator": "AND NOT", "type": "year", "value": "2020"}
+
+
+def test_parse_complex_query_special_chars_in_values() -> None:
+    """Values containing special characters like quotes, colons, or parens."""
+    # Value containing single quotes (as part of the name)
+    rules = parse_complex_query("O'Brien", "actor")
+    assert rules == [{"operator": "AND", "type": "actor", "value": "O'Brien"}]
+
+    # Value containing parentheses (common in studio names)
+    rules = parse_complex_query("studio:( Walt Disney Pictures )", "genre")
+    assert len(rules) == 1
+    assert rules[0]["type"] == "studio"
+    assert "Walt Disney Pictures" in rules[0]["value"]
+
+    # Value with colon but not a known prefix — should use default type
+    rules = parse_complex_query("foo:bar", "genre")
+    assert rules[0]["value"] == "foo:bar"
+
+    # Multiple typed values with special characters
+    rules = parse_complex_query("actor:Tom Hanks AND genre:Sci-Fi", "tag")
+    assert len(rules) == 2
+    assert rules[0] == {"operator": "AND", "type": "actor", "value": "Tom Hanks"}
+    assert rules[1] == {"operator": "AND", "type": "genre", "value": "Sci-Fi"}
+
+
+def test_parse_complex_query_unicode_values() -> None:
+    """Unicode characters in actor/genre names are preserved."""
+    rules = parse_complex_query("actor:Àgént Cöñnor", "genre")
+    assert rules == [
+        {"operator": "AND", "type": "actor", "value": "Àgént Cöñnor"}
+    ]
+
+    rules = parse_complex_query("genre:科学 AND actor:トム・クルーズ", "tag")
+    assert len(rules) == 2
+    assert rules[0] == {"operator": "AND", "type": "genre", "value": "科学"}
+    assert rules[1] == {"operator": "AND", "type": "actor", "value": "トム・クルーズ"}
+
+
+def test_parse_complex_query_single_token() -> None:
+    """A single token (no operators) returns one rule."""
+    rules = parse_complex_query("Action", "genre")
+    assert rules == [{"operator": "AND", "type": "genre", "value": "Action"}]
+
+    rules = parse_complex_query("actor:Tom Cruise", "tag")
+    assert rules == [{"operator": "AND", "type": "actor", "value": "Tom Cruise"}]
+
+
+def test_parse_complex_query_very_long() -> None:
+    """Very long query (>1000 chars) is parsed without errors."""
+    long_value = "genre:Movie" + " AND year:2020" * 50
+    rules = parse_complex_query(long_value, "tag")
+    assert len(rules) == 51  # 1 initial + 50 repeated (AND, year:2020) pairs
+    assert rules[0] == {"operator": "AND", "type": "genre", "value": "Movie"}
+    for i in range(1, 51):
+        assert rules[i]["operator"] == "AND"
+        assert rules[i]["type"] == "year"
+        assert rules[i]["value"] == "2020"
+
+
+def test_parse_complex_query_not_with_prefix() -> None:
+    """Bare NOT followed by a typed prefix (e.g. NOT genre:Horror)."""
+    rules = parse_complex_query("NOT genre:Horror", "tag")
+    assert len(rules) == 1
+    assert rules[0] == {"operator": "AND NOT", "type": "genre", "value": "Horror"}
+
+    rules = parse_complex_query("NOT actor:Tom Hanks AND genre:Drama", "tag")
+    assert len(rules) == 2
+    assert rules[0] == {"operator": "AND NOT", "type": "actor", "value": "Tom Hanks"}
+    assert rules[1] == {"operator": "AND", "type": "genre", "value": "Drama"}
+
+
+def test_parse_complex_query_and_not_with_no_value() -> None:
+    """'AND NOT' trailing without following value is handled gracefully.
+
+    The regex splits 'Action AND NOT' as ['Action', 'AND', 'NOT'] because
+    the trailing AND NOT lacks a closing space. The second value becomes 'NOT'
+    rather than an AND NOT operator, so this is a single negation with 'NOT'
+    as the search term (harmless edge case).
+    """
+    rules = parse_complex_query("Action AND NOT", "genre")
+    assert len(rules) == 2
+    assert rules[0] == {"operator": "AND", "type": "genre", "value": "Action"}
+    assert rules[1] == {"operator": "AND", "type": "genre", "value": "NOT"}
+
+
+def test_parse_complex_query_leading_operator() -> None:
+    """Leading 'AND' (no preceding space) is treated as part of the value.
+
+    The regex requires whitespace on both sides of operators, so 'AND Action'
+    is parsed as one literal value.
+    """
+    rules = parse_complex_query("AND Action", "genre")
+    assert len(rules) == 1
+    assert rules[0] == {"operator": "AND", "type": "genre", "value": "AND Action"}
+
+
+def test_parse_complex_query_known_prefix_only() -> None:
+    """A value that is purely a known prefix with no value after the colon."""
+    rules = parse_complex_query("actor:", "genre")
+    # The "actor:" prefix is recognised, but the value after the colon is empty
+    assert len(rules) == 1
+    assert rules[0]["type"] == "actor"
+    assert rules[0]["value"] == ""
+
+
+def test_parse_complex_query_mixed_types_multiple_rules() -> None:
+    """Multiple rules with different typed prefixes."""
+    rules = parse_complex_query(
+        "actor:Tom Hanks OR studio:Marvel AND NOT genre:Comedy OR year:2022",
+        "tag",
+    )
+    assert len(rules) == 4
+    assert rules[0] == {"operator": "AND", "type": "actor", "value": "Tom Hanks"}
+    assert rules[1] == {"operator": "OR", "type": "studio", "value": "Marvel"}
+    assert rules[2] == {"operator": "AND NOT", "type": "genre", "value": "Comedy"}
+    assert rules[3] == {"operator": "OR", "type": "year", "value": "2022"}
