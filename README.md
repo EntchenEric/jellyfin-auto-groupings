@@ -491,12 +491,14 @@ If symlinks point to non-existent files, verify your path mapping:
 - Check the browser console (F12) for JavaScript errors.
 - Verify the Jellyfin server is reachable from the app container.
 - Check the app logs for detailed error messages. Logs are written to
-  `app/logs/jellyfin-groupings.log` inside the container. To persist them
+  `/app/logs/jellyfin-groupings.log` inside the container. To persist them
   across restarts, add a volume mount in your docker-compose:
+
   ```yaml
   volumes:
     - ./logs:/app/logs
   ```
+
 - Verify the Flask backend is running (`docker logs jellyfin-groupings`).
 - Ensure you have at least one group configured.
 

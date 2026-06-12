@@ -50,7 +50,7 @@ services:
       # - ./config/covers:/app/config/covers
 
       # 5. Application logs (optional but helpful for troubleshooting)
-      # Logs are written to app/logs/jellyfin-groupings.log by default.
+      # Logs are written to /app/logs/jellyfin-groupings.log by default.
       # - ./logs:/app/logs
 
     healthcheck:
