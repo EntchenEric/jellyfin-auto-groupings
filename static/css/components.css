@@ -429,7 +429,7 @@ button:disabled {
     right: 1.5rem;
     margin: 0;
     max-width: 360px;
-    z-index: 200;
+    z-index: var(--z-toast);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
@@ -457,7 +457,7 @@ button:disabled {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.85);
-    z-index: 2000;
+    z-index: var(--z-loading-overlay);
     justify-content: center;
     align-items: center;
     backdrop-filter: blur(12px);
@@ -534,7 +534,7 @@ button:disabled {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.85);
-    z-index: 1000;
+    z-index: var(--z-modal);
     justify-content: center;
     align-items: center;
     backdrop-filter: blur(8px);
@@ -1346,7 +1346,7 @@ pre {
     position: absolute;
     top: -100%;
     left: 0;
-    z-index: 9999;
+    z-index: var(--z-skip-link);
     padding: 0.5rem 1rem;
     background: var(--accent-color);
     color: #fff;

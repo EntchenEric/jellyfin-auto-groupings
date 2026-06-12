@@ -33,9 +33,16 @@ function wireKeyboardShortcuts() {
         // Don't trigger shortcuts when user is typing in an input/textarea/select
         const tag = e.target.tagName;
         if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-        // Don't trigger when a modal is open
-        const visibleModal = document.querySelector('.modal[style*="display: flex"], .modal[style*="display: block"]');
-        if (visibleModal) return;
+        // Don't trigger when a modal is open — check computed style for robustness
+        const modals = document.querySelectorAll('.modal');
+        let hasOpenModal = false;
+        for (const m of modals) {
+            if (window.getComputedStyle(m).display !== 'none') {
+                hasOpenModal = true;
+                break;
+            }
+        }
+        if (hasOpenModal) return;
 
         switch (e.key.toLowerCase()) {
             case 's':

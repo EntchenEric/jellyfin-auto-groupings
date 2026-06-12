@@ -2,7 +2,7 @@
 .bg-blob {
     position: fixed;
     border-radius: 50%;
-    z-index: 0;
+    z-index: var(--z-content);
     pointer-events: none;
     filter: blur(90px);
     animation: blobFloat 22s ease-in-out infinite alternate;
@@ -42,7 +42,7 @@
     left: 0;
     right: 0;
     height: var(--topbar-height);
-    z-index: 100;
+    z-index: var(--z-topbar);
     display: flex;
     align-items: center;
     gap: 1rem;
@@ -183,7 +183,7 @@
     bottom: 0;
     display: grid;
     grid-template-columns: var(--sidebar-width) 1fr;
-    z-index: 1;
+    z-index: var(--z-content);
 }
 
 /* ── Sidebar ────────────────────────────────────────────── */
@@ -280,7 +280,7 @@
     bottom: 0;
     left: var(--sidebar-width);
     transform: translateX(-50%);
-    z-index: 100;
+    z-index: var(--z-sticky);
     background: transparent;
     transition: background 0.2s ease;
 }

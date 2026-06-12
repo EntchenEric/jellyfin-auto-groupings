@@ -16,6 +16,17 @@
     --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     --sidebar-width: 340px;
     --topbar-height: 58px;
+
+    /* Z-index layers — single source of truth for stacking context */
+    --z-content: 0;
+    --z-sticky: 100;
+    --z-toast: 200;
+    --z-topbar: 300;
+    --z-sidebar: 400;
+    --z-modal: 1000;
+    --z-loading-overlay: 2000;
+    --z-wizard: 5000;
+    --z-skip-link: 9999;
 }
 
 /* Apply light theme when OS/browser requests light mode; default to dark theme otherwise */
