@@ -324,16 +324,22 @@ See [`.env.example`](.env.example) for quick setup.
 ### Building from Source
 
 1. Clone the repo.
-2. Create a virtual environment:
+2. Copy `.env.example` to `.env` and fill in your values for local development.
+3. Create a virtual environment:
    ```bash
    python3 -m venv .venv
    source .venv/bin/activate
    ```
-3. Install the package (including dev extras):
+4. Install the package (including dev extras):
    ```bash
    pip install -e .[dev]
    ```
-4. Run: `python3 app.py`.
+5. (Optional) Install pre-commit hooks for lint/format/typecheck/coverage checks:
+   ```bash
+   pip install pre-commit
+   pre-commit install
+   ```
+6. Run: `python3 app.py`.
 
 ### Print-Friendly Pages
 
@@ -375,6 +381,14 @@ make install-dev
 make test
 make run
 ```
+
+> [!TIP]
+> The default `make test` (and `make test-all` / `make test-cov`) uses pytest's `-q` flag for quiet output.
+> Override verbosity by setting `PYTEST_ARGS`, e.g.:
+> ```bash
+> make test PYTEST_ARGS='-v'    # verbose output
+> make test PYTEST_ARGS=''      # default pytest verbosity
+> ```
 
 ### 🧪 Testing
 
