@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
+
+import requests
 
 import network
 
 __all__ = ["fetch_mal_list"]
+
+logger = logging.getLogger(__name__)
 
 MAL_API_BASE_URL = "https://api.myanimelist.net/v2"
 
@@ -14,18 +19,37 @@ MAL_API_BASE_URL = "https://api.myanimelist.net/v2"
 _REQUEST_TIMEOUT: int = 15
 
 
+_KNOWN_STATUSES: frozenset[str] = frozenset({
+    "watching",
+    "completed",
+    "on_hold",
+    "dropped",
+    "plan_to_watch",
+})
+
+
 def _normalize_mal_status(status: str | None) -> str | None:
-    """Normalize a user-provided MAL status string to the API's expected values."""
+    """Normalize a user-provided MAL status string to the API's expected values.
+
+    Returns ``None`` when *status* is empty or ``"all"`` (meaning fetch all lists).
+    Raises :exc:`ValueError` for unrecognised status values.
+    """
     if not status:
         return None
     s = status.lower().replace(" ", "_").replace("-", "_")
-    mapping = {
-        "current": "watching",
-        "planning": "plan_to_watch",
-        "paused": "on_hold",
-        "all": None,
-    }
-    return mapping.get(s, s)
+    if s == "all":
+        return None
+    if s == "current":
+        return "watching"
+    if s == "planning":
+        return "plan_to_watch"
+    if s == "paused":
+        return "on_hold"
+    if s in _KNOWN_STATUSES:
+        return s
+    valid = sorted(_KNOWN_STATUSES)
+    msg = f"Unknown MAL status: {status!r}. Valid values: {valid}"
+    raise ValueError(msg)
 
 
 def fetch_mal_list(
@@ -66,15 +90,24 @@ def fetch_mal_list(
     ids = []
 
     while url:
-        response = network.get(
-            url,
-            params=params,
-            headers=headers,
-            timeout=_REQUEST_TIMEOUT,
-        )
-        response.raise_for_status()
+        try:
+            response = network.get(
+                url,
+                params=params,
+                headers=headers,
+                timeout=_REQUEST_TIMEOUT,
+            )
+            response.raise_for_status()
+        except requests.exceptions.RequestException as exc:
+            msg = f"Failed to fetch MAL list for user {username!r}: {exc}"
+            raise RuntimeError(msg) from exc
 
-        data = response.json()
+        try:
+            data = response.json()
+        except ValueError as exc:
+            msg = f"Invalid JSON response from MAL API for user {username!r}: {exc}"
+            raise RuntimeError(msg) from exc
+
         for entry in data.get("data", []):
             node = entry.get("node", {})
             if node.get("id"):

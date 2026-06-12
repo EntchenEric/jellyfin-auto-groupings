@@ -295,7 +295,7 @@ def test_run_sync_selective(
         ],
     }
     mock_jf_fetch.return_value = [
-        {"Id": "6", "Name": "M1", "Path": "/p1", "Genres": ["Action"]}
+        {"Id": "6", "Name": "M1", "Path": "/p1", "Genres": ["Action"]},
     ]
     _mock_exists.return_value = True
     # Sync only G1

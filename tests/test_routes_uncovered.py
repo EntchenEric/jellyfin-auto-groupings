@@ -247,7 +247,7 @@ def test_validate_config_types_group_name_non_string() -> None:
     from routes import _validate_config_types
 
     errors = _validate_config_types({"groups": [{"name": 123}]})
-    assert any("groups[0].name must be a string" in e for e in errors)
+    assert any("'groups[0].name' must be a str" in e for e in errors)
 
 
 def test_validate_config_types_group_source_type_non_string() -> None:
@@ -255,7 +255,7 @@ def test_validate_config_types_group_source_type_non_string() -> None:
     from routes import _validate_config_types
 
     errors = _validate_config_types({"groups": [{"name": "G", "source_type": 123}]})
-    assert any("groups[0].source_type" in e for e in errors)
+    assert any("'groups[0].source_type' must be a str" in e for e in errors)
 
 
 def test_validate_config_types_group_source_value_non_string() -> None:
@@ -263,7 +263,7 @@ def test_validate_config_types_group_source_value_non_string() -> None:
     from routes import _validate_config_types
 
     errors = _validate_config_types({"groups": [{"name": "G", "source_value": 123}]})
-    assert any("groups[0].source_value" in e for e in errors)
+    assert any("'groups[0].source_value' must be a str" in e for e in errors)
 
 
 def test_validate_config_types_group_sort_order_non_string() -> None:
@@ -271,7 +271,7 @@ def test_validate_config_types_group_sort_order_non_string() -> None:
     from routes import _validate_config_types
 
     errors = _validate_config_types({"groups": [{"name": "G", "sort_order": 123}]})
-    assert any("groups[0].sort_order" in e for e in errors)
+    assert any("'groups[0].sort_order' must be a str" in e for e in errors)
 
 
 def test_validate_config_types_group_watch_state_non_string() -> None:
@@ -279,7 +279,7 @@ def test_validate_config_types_group_watch_state_non_string() -> None:
     from routes import _validate_config_types
 
     errors = _validate_config_types({"groups": [{"name": "G", "watch_state": 123}]})
-    assert any("groups[0].watch_state" in e for e in errors)
+    assert any("'groups[0].watch_state' must be a str" in e for e in errors)
 
 
 def test_validate_config_types_group_schedule_non_string() -> None:
@@ -287,7 +287,7 @@ def test_validate_config_types_group_schedule_non_string() -> None:
     from routes import _validate_config_types
 
     errors = _validate_config_types({"groups": [{"name": "G", "schedule": 123}]})
-    assert any("groups[0].schedule" in e for e in errors)
+    assert any("'groups[0].schedule' must be a str" in e for e in errors)
 
 
 def test_validate_config_types_group_bool_fields() -> None:
@@ -351,7 +351,7 @@ def test_validate_config_types_group_rules_type_non_string() -> None:
     from routes import _validate_config_types
 
     errors = _validate_config_types(
-        {"groups": [{"name": "G", "rules": [{"type": 123}]}]}
+        {"groups": [{"name": "G", "rules": [{"type": 123}]}]},
     )
     assert any("groups[0].rules[0].type" in e for e in errors)
 
@@ -361,7 +361,7 @@ def test_validate_config_types_group_rules_value_non_string() -> None:
     from routes import _validate_config_types
 
     errors = _validate_config_types(
-        {"groups": [{"name": "G", "rules": [{"value": 123}]}]}
+        {"groups": [{"name": "G", "rules": [{"value": 123}]}]},
     )
     assert any("groups[0].rules[0].value" in e for e in errors)
 
@@ -371,7 +371,7 @@ def test_validate_config_types_group_rules_operator_non_string() -> None:
     from routes import _validate_config_types
 
     errors = _validate_config_types(
-        {"groups": [{"name": "G", "rules": [{"operator": 123}]}]}
+        {"groups": [{"name": "G", "rules": [{"operator": 123}]}]},
     )
     assert any("groups[0].rules[0].operator" in e for e in errors)
 
@@ -381,7 +381,7 @@ def test_validate_config_types_group_rules_not_non_bool() -> None:
     from routes import _validate_config_types
 
     errors = _validate_config_types(
-        {"groups": [{"name": "G", "rules": [{"not": "not_bool"}]}]}
+        {"groups": [{"name": "G", "rules": [{"not": "not_bool"}]}]},
     )
     assert any("groups[0].rules[0].not" in e for e in errors)
 
@@ -480,8 +480,7 @@ def test_auto_detect_partial_match() -> None:
 
 @pytest.mark.usefixtures("temp_config")
 def test_health_check_configured(client) -> None:
-    """
-    GET /api/health returns ok status, configured=True when
+    """GET /api/health returns ok status, configured=True when
     jellyfin_url, api_key, and target_path are all set.
     """
     from config import save_config
@@ -517,7 +516,7 @@ def test_validate_cron_expressions_global_disabled() -> None:
     errors = _validate_cron_expressions(
         {
             "scheduler": {"global_enabled": False, "global_schedule": "invalid"},
-        }
+        },
     )
     assert errors == []
 
@@ -529,7 +528,7 @@ def test_validate_cron_expressions_global_enabled_bad() -> None:
     errors = _validate_cron_expressions(
         {
             "scheduler": {"global_enabled": True, "global_schedule": "bad"},
-        }
+        },
     )
     assert any("Global schedule" in e for e in errors)
 
@@ -541,7 +540,7 @@ def test_validate_cron_expressions_global_enabled_valid() -> None:
     errors = _validate_cron_expressions(
         {
             "scheduler": {"global_enabled": True, "global_schedule": "0 0 * * *"},
-        }
+        },
     )
     assert errors == []
 
@@ -553,7 +552,7 @@ def test_validate_cron_expressions_cleanup_disabled() -> None:
     errors = _validate_cron_expressions(
         {
             "scheduler": {"cleanup_enabled": False, "cleanup_schedule": "invalid"},
-        }
+        },
     )
     assert errors == []
 
@@ -565,7 +564,7 @@ def test_validate_cron_expressions_cleanup_enabled_bad() -> None:
     errors = _validate_cron_expressions(
         {
             "scheduler": {"cleanup_enabled": True, "cleanup_schedule": "bad"},
-        }
+        },
     )
     assert any("Cleanup schedule" in e for e in errors)
 
@@ -577,7 +576,7 @@ def test_validate_cron_expressions_cleanup_empty_schedule() -> None:
     errors = _validate_cron_expressions(
         {
             "scheduler": {"cleanup_enabled": True, "cleanup_schedule": ""},
-        }
+        },
     )
     assert errors == []
 
@@ -589,9 +588,9 @@ def test_validate_cron_expressions_group_disabled() -> None:
     errors = _validate_cron_expressions(
         {
             "groups": [
-                {"name": "G1", "schedule_enabled": False, "schedule": "invalid"}
+                {"name": "G1", "schedule_enabled": False, "schedule": "invalid"},
             ],
-        }
+        },
     )
     assert errors == []
 
@@ -603,7 +602,7 @@ def test_validate_cron_expressions_group_enabled_bad() -> None:
     errors = _validate_cron_expressions(
         {
             "groups": [{"name": "G1", "schedule_enabled": True, "schedule": "bad"}],
-        }
+        },
     )
     assert any("G1" in e for e in errors)
 
@@ -615,7 +614,7 @@ def test_validate_cron_expressions_group_enabled_no_schedule() -> None:
     errors = _validate_cron_expressions(
         {
             "groups": [{"name": "G1", "schedule_enabled": True}],
-        }
+        },
     )
     assert errors == []
 
@@ -635,7 +634,7 @@ def test_validate_cron_expressions_all_valid() -> None:
             "groups": [
                 {"name": "G1", "schedule_enabled": True, "schedule": "*/30 * * * *"},
             ],
-        }
+        },
     )
     assert errors == []
 
@@ -647,6 +646,6 @@ def test_validate_cron_expressions_group_no_name() -> None:
     errors = _validate_cron_expressions(
         {
             "groups": [{"schedule_enabled": True, "schedule": "bad"}],
-        }
+        },
     )
     assert any("unnamed" in e for e in errors)

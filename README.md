@@ -14,6 +14,28 @@
 
 ---
 
+## 📑 Table of Contents
+
+- [✨ Features](#features)
+- [🚀 Quick Start with Docker](#quick-start-with-docker)
+- [⚙️ Configuration Guide](#configuration-guide)
+- [📂 Setting up Jellyfin Libraries](#setting-up-jellyfin-libraries)
+- [🛠️ Advanced: Complex Queries](#advanced-complex-queries)
+- [🎬 Watch State Filtering](#watch-state-filtering)
+- [🤖 TMDb Recommendations](#tmdb-recommendations)
+- [⏰ Scheduler Configuration](#scheduler-configuration)
+- [🌿 Seasonal Groups](#seasonal-groups)
+- [🗂️ Collection Mode (Boxsets)](#collection-mode-boxsets)
+- [🔌 REST API](#rest-api)
+- [🧹 Cover Images](#cover-images)
+- [💻 Development](#development)
+- [🐳 Docker Environment Variables](#docker-environment-variables)
+- [📜 License](#license)
+- [🐛 Troubleshooting](#troubleshooting)
+- [❓ FAQ](#faq)
+
+---
+
 > [!NOTE]
 > **This project was largely AI-generated.** I'm a CS student who could have written this myself — I just didn't want to. I reviewed the code, understand how it works, and actively maintain it. The AI was basically just a faster keyboard.
 
@@ -268,6 +290,10 @@ Cover images are stored and managed automatically:
 To set a cover for a group, upload an image via the group editor UI.
 
 ---
+
+## 💻 Development
+
+<a id="development"></a>
 
 ### Environment Variables
 
