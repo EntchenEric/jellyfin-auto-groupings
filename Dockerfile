@@ -58,4 +58,12 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --retries=3 \
 
 USER appuser
 
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "--preload", "--access-logfile", "-", "--error-logfile", "-", "app:app"]
+# ------------------------------------------------------------------
+# Gunicorn configuration — timeout is configurable via GUNICORN_TIMEOUT
+# (default 120s) for deployments with slow API responses or large libraries.
+# ------------------------------------------------------------------
+ENV GUNICORN_TIMEOUT=120
+
+# shell entrypoint expands $GUNICORN_TIMEOUT at container start so the
+# environment variable can be overridden without rebuilding the image.
+ENTRYPOINT ["/bin/sh", "-c", "exec gunicorn --bind 0.0.0.0:5000 --workers 2 --timeout ${GUNICORN_TIMEOUT} --preload --access-logfile - --error-logfile - app:app"]

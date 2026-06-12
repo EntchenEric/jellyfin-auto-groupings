@@ -35,6 +35,7 @@ pytest.log
 .pytest_cache/
 .coverage
 htmlcov/
+coverage.xml
 e2e/test_media/
 e2e/test_output/
 

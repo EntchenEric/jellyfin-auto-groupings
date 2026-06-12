@@ -312,6 +312,7 @@ The application reads the following environment variables (which take precedence
 | `FLASK_PORT` | Server port (default: `5000`) |
 | `FLASK_DEBUG` | Enable Flask debug mode (`true`/`false`) |
 | `LOG_LEVEL` | Log level for application output. Accepts `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` (default: `INFO`) |
+| `GUNICORN_TIMEOUT` | Gunicorn worker timeout in seconds for long-running API calls (default: `120`). Increase this if sync operations time out |
 | `ANILIST_API_URL` | AniList GraphQL endpoint (default: `https://graphql.anilist.co`) |
 | `VIRTUAL_JF_PORT` | Port for mock Jellyfin server used during development (default: `8096`) |
 | `NETWORK_RETRY_TOTAL` | Max HTTP retries for external API calls (default: `3`; set `0` to disable) |
@@ -462,6 +463,7 @@ services:
       - NETWORK_RETRY_STATUS_FORCELIST=429,500,502,503,504 # optional: retry status codes
       - ALLOWED_NON_CSRF_ENDPOINTS= # optional: comma-separated Flask endpoint names (e.g. "main.webhook,main.callback") exempt from CSRF check
       - LOG_LEVEL=INFO                   # optional: log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+      - GUNICORN_TIMEOUT=120            # optional: gunicorn worker timeout in seconds (default: 120)
       - FLASK_DEBUG=false              # optional: set to true for debug mode
     restart: unless-stopped
 ```
@@ -488,6 +490,28 @@ detailed logs:
 
 Logs are written to ``logs/jellyfin-groupings.log`` with a rotating
 file handler (10 MB max, 3 backups).
+
+### "504 Gateway Time-out" or Sync Hangs
+
+If syncing large libraries triggers a 504 timeout or the sync operation
+hangs without completing, the gunicorn worker may be hitting its timeout
+limit. Increase it by setting ``GUNICORN_TIMEOUT`` in your
+``docker-compose.yml`` environment section:
+
+```yaml
+environment:
+  - GUNICORN_TIMEOUT=300  # seconds; default is 120
+```
+
+After changing this, recreate the container with:
+
+```bash
+docker compose up -d
+```
+
+> **Note:** ``GUNICORN_TIMEOUT`` only applies to Docker deployments
+> that use the default gunicorn entrypoint. Native/flask run deployments
+> are not affected.
 
 ### Path Translation Issues
 If symlinks point to non-existent files, verify your path mapping:
