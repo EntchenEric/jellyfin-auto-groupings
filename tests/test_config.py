@@ -234,7 +234,7 @@ def test_load_config_corrupt_file_backup_success(temp_config, caplog) -> None:
 def test_load_config_unreadable_file(temp_config, monkeypatch) -> None:
     """Test that an unreadable config file falls back to defaults."""
     with Path(temp_config).open("w") as f:
-        f.write("{\"jellyfin_url\":\"http://example.com\"}")
+        f.write('{"jellyfin_url":"http://example.com"}')
 
     # Make the file unreadable
     Path(temp_config).chmod(0o000)

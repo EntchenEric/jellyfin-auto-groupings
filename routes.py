@@ -13,6 +13,7 @@ import binascii
 import logging
 import math
 import os
+import re
 import shutil
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -87,6 +88,14 @@ def _success(message: str, status_code: int = 200, **extra: Any) -> ResponseRetu
 _ALLOWED_COVER_MIME_TYPES: frozenset[str] = frozenset(
     {"image/jpeg", "image/png", "image/webp", "image/gif"},
 )
+
+# Map MIME type to file extension (used by upload_cover)
+_MIME_TO_EXT: dict[str, str] = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+}
 
 # Max size for base64 encoded cover image (approx 4MB)
 MAX_B64_SIZE = 4 * 1024 * 1024
@@ -366,13 +375,17 @@ def _validate_group_types(
         val = group.get(date_field)
         if val is not None and not isinstance(val, str):
             errors.append(f"{prefix}.{date_field} must be a string")
-        elif isinstance(val, str) and val:
-            import re as _re
-
-            if not _re.match(r"^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$", val):
-                errors.append(
-                    f"{prefix}.{date_field} must be in MM-DD format (e.g. 10-31)",
-                )
+        elif (
+            isinstance(val, str)
+            and val
+            and not re.match(
+                r"^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$",
+                val,
+            )
+        ):
+            errors.append(
+                f"{prefix}.{date_field} must be in MM-DD format (e.g. 10-31)",
+            )
 
     # Validate rules field (complex query rules)
     rules = group.get("rules")
@@ -693,13 +706,6 @@ def upload_cover() -> ResponseReturnValue:
             400,
         )
 
-    # Map MIME type to file extension
-    _MIME_TO_EXT: dict[str, str] = {
-        "image/jpeg": "jpg",
-        "image/png": "png",
-        "image/webp": "webp",
-        "image/gif": "gif",
-    }
     ext = _MIME_TO_EXT.get(mime_type, "jpg")
 
     try:
