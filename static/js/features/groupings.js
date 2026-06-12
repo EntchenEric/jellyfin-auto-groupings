@@ -222,7 +222,7 @@ export async function deleteGroup(index) {
                 body: JSON.stringify({ folders: [groupName] })
             });
         } catch (e) {
-            console.error('Failed to cleanup folder from disk:', e);
+            showToast('Failed to clean up folder from disk: ' + e.message, 'error');
         }
     }
 }
@@ -242,7 +242,7 @@ export async function clearAllGroups() {
                 body: JSON.stringify({ folders: groupNames })
             });
         } catch (e) {
-            console.error('Failed to cleanup folders from disk:', e);
+            showToast('Failed to clean up folders from disk: ' + e.message, 'error');
         }
     }
 }
