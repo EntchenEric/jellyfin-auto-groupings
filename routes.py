@@ -341,7 +341,9 @@ def _validate_scheduler_types(sched: dict[str, Any], errors: list[str]) -> None:
 
 
 def _validate_group_rules(
-    rules: list[dict[str, Any]], prefix: str, errors: list[str],
+    rules: list[dict[str, Any]],
+    prefix: str,
+    errors: list[str],
 ) -> None:
     """Validate type correctness of a group's complex query rules."""
     for j, rule in enumerate(rules):
@@ -356,7 +358,9 @@ def _validate_group_rules(
 
 
 def _validate_group_types(
-    group: dict[str, Any], prefix: str, errors: list[str],
+    group: dict[str, Any],
+    prefix: str,
+    errors: list[str],
 ) -> None:
     """Validate type correctness of a single group definition."""
     if not isinstance(group, dict):
@@ -722,7 +726,10 @@ def upload_cover() -> ResponseReturnValue:
         target_path = str(cfg.get("target_path", ""))
 
         cover_path = _get_cover_path(
-            group_name, target_path, check_exists=False, ext=ext,
+            group_name,
+            target_path,
+            check_exists=False,
+            ext=ext,
         )
         if cover_path is None:
             return _error("Could not resolve cover storage path", 500)
@@ -1223,7 +1230,8 @@ def health_check() -> ResponseReturnValue:
                 "server": {
                     "uptime_seconds": math.ceil(time.time() - _APP_START_TIME),
                     "started_at": time.strftime(
-                        "%Y-%m-%dT%H:%M:%SZ", time.gmtime(_APP_START_TIME),
+                        "%Y-%m-%dT%H:%M:%SZ",
+                        time.gmtime(_APP_START_TIME),
                     ),
                 },
             },

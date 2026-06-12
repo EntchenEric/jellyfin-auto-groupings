@@ -2353,7 +2353,7 @@ def test_run_sync_path_translation_active(
 
 # ---------------------------------------------------------------------------
 # Complex query parser — edge cases
-# Covers issues #968–#975 (good-first-issue testing tickets)
+# Covers issues #968-#975 (good-first-issue testing tickets)
 # ---------------------------------------------------------------------------
 
 
@@ -2405,7 +2405,9 @@ def test_parse_complex_query_impossible_year_and() -> None:
 
 def test_parse_complex_query_nested_and_or_with_not() -> None:
     """Complex chain with AND, OR, NOT in various positions."""
-    rules = parse_complex_query("Action AND NOT Comedy OR Drama AND NOT Horror", "genre")
+    rules = parse_complex_query(
+        "Action AND NOT Comedy OR Drama AND NOT Horror", "genre"
+    )
     assert len(rules) == 4
     assert rules[0] == {"operator": "AND", "type": "genre", "value": "Action"}
     assert rules[1] == {"operator": "AND NOT", "type": "genre", "value": "Comedy"}
@@ -2458,9 +2460,7 @@ def test_parse_complex_query_special_chars_in_values() -> None:
 def test_parse_complex_query_unicode_values() -> None:
     """Unicode characters in actor/genre names are preserved."""
     rules = parse_complex_query("actor:Àgént Cöñnor", "genre")
-    assert rules == [
-        {"operator": "AND", "type": "actor", "value": "Àgént Cöñnor"}
-    ]
+    assert rules == [{"operator": "AND", "type": "actor", "value": "Àgént Cöñnor"}]
 
     rules = parse_complex_query("genre:科学 AND actor:トム・クルーズ", "tag")
     assert len(rules) == 2
