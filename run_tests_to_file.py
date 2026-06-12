@@ -25,13 +25,14 @@ def main() -> None:
             # Running all tests with coverage
             f.write("Starting test run...\n")
             f.flush()
-            subprocess.run(
+            result = subprocess.run(
                 [sys.executable, "-m", "pytest", "--cov=.", "tests/"],
                 stdout=f,
                 stderr=subprocess.STDOUT,
                 timeout=120,
                 check=False,
             )
+            f.write(f"\nExit code: {result.returncode}\n")
         except (subprocess.TimeoutExpired, OSError) as e:
             f.write(f"\nERROR: {e!s}")
 
