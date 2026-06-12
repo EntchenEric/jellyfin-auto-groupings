@@ -232,6 +232,7 @@ def _is_valid_folder_name(name: str) -> bool:
         and name not in (".", "..")
         and "/" not in name
         and "\\" not in name
+        and "\x00" not in name
     )
 
 
@@ -1001,6 +1002,8 @@ def _search_local_filesystem(
         if not Path(root).is_dir():
             continue
         for dirpath, dirnames, filenames in os.walk(root):
+            # Compute depth once per directory entry
+            dir_depth = len(Path(dirpath).parts)
             try:
                 is_mount = os.path.ismount(dirpath)
             except OSError:
@@ -1030,7 +1033,7 @@ def _search_local_filesystem(
                 return None
             if filename in filenames:
                 return str(Path(dirpath) / filename)
-            if len(Path(dirpath).parts) > _AUTO_DETECT_MAX_DEPTH:
+            if dir_depth > _AUTO_DETECT_MAX_DEPTH:
                 dirnames.clear()
     return None
 

@@ -58,12 +58,14 @@ window.cancelEdit = cancelEdit;
 
 // Keyboard shortcuts — scoped so they don't fire when typing in inputs
 function wireKeyboardShortcuts() {
+    // Cache the modal query selector for performance
+    const modals = document.querySelectorAll('.modal');
+
     document.addEventListener('keydown', (e) => {
         // Don't trigger shortcuts when user is typing in an input/textarea/select
         const tag = e.target.tagName;
         if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
         // Don't trigger when a modal is open — check computed style for robustness
-        const modals = document.querySelectorAll('.modal');
         let hasOpenModal = false;
         for (const m of modals) {
             if (window.getComputedStyle(m).display !== 'none') {
