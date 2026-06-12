@@ -442,6 +442,110 @@ def test_validate_config_types_valid_passthrough(tmp_path) -> None:
     assert errors == []
 
 
+def test_validate_config_types_target_path_missing(tmp_path) -> None:
+    """Non-existent target_path is flagged."""
+    from routes import _validate_config_types
+
+    missing = tmp_path / "does_not_exist"
+    errors = _validate_config_types({"target_path": str(missing)})
+    assert any("target_path" in e and "does not exist" in e for e in errors)
+
+
+def test_validate_config_types_target_path_not_dir(tmp_path) -> None:
+    """target_path that is a file (not a directory) is flagged."""
+    from routes import _validate_config_types
+
+    file_path = tmp_path / "not_a_dir"
+    file_path.write_text("i am a file")
+    errors = _validate_config_types({"target_path": str(file_path)})
+    assert any("target_path" in e and "not a directory" in e for e in errors)
+
+
+def test_validate_config_types_target_path_not_writable(tmp_path, monkeypatch) -> None:
+    """target_path that is not writable is flagged."""
+    import os as os_mod
+    from routes import _validate_config_types
+
+    dir_path = tmp_path / "readonly"
+    dir_path.mkdir()
+    monkeypatch.setattr(os_mod, "access", lambda path, mode: False)
+    errors = _validate_config_types({"target_path": str(dir_path)})
+    assert any("target_path" in e and "not writable" in e for e in errors)
+
+
+def test_validate_config_types_media_path_missing(tmp_path) -> None:
+    """Non-existent media_path_on_host is flagged."""
+    from routes import _validate_config_types
+
+    missing = tmp_path / "no_such_media"
+    errors = _validate_config_types({"media_path_on_host": str(missing)})
+    assert any("media_path_on_host" in e and "does not exist" in e for e in errors)
+
+
+def test_validate_config_types_media_path_not_dir(tmp_path) -> None:
+    """media_path_on_host that is a file (not a directory) is flagged."""
+    from routes import _validate_config_types
+
+    file_path = tmp_path / "media_file"
+    file_path.write_text("i am a file")
+    errors = _validate_config_types({"media_path_on_host": str(file_path)})
+    assert any("media_path_on_host" in e and "not a directory" in e for e in errors)
+
+
+def test_validate_config_types_media_path_not_readable(tmp_path, monkeypatch) -> None:
+    """media_path_on_host that is not readable is flagged."""
+    import os as os_mod
+    from routes import _validate_config_types
+
+    dir_path = tmp_path / "no_read"
+    dir_path.mkdir()
+    monkeypatch.setattr(os_mod, "access", lambda path, mode: False)
+    errors = _validate_config_types({"media_path_on_host": str(dir_path)})
+    assert any("media_path_on_host" in e and "not readable" in e for e in errors)
+
+
+def test_validate_config_types_path_oserror(tmp_path) -> None:
+    """OSError during path validation is caught gracefully."""
+    from unittest.mock import patch
+    from routes import _validate_config_types
+
+    dir_path = tmp_path / "error"
+    dir_path.mkdir()
+    with patch("pathlib.Path.exists", side_effect=OSError("mock error")):
+        errors = _validate_config_types({"target_path": str(dir_path)})
+    assert any("validation error" in e for e in errors)
+
+
+def test_validate_config_types_path_oserror_media(tmp_path) -> None:
+    """OSError during media_path_on_host validation is caught gracefully."""
+    from unittest.mock import patch
+    from routes import _validate_config_types
+
+    dir_path = tmp_path / "error"
+    dir_path.mkdir()
+    with patch("pathlib.Path.exists", side_effect=OSError("mock error")):
+        errors = _validate_config_types({"media_path_on_host": str(dir_path)})
+    assert any("validation error" in e for e in errors)
+
+
+def test_validate_config_types_jellyfin_url_no_netloc() -> None:
+    """jellyfin_url with scheme but no hostname is flagged."""
+    from routes import _validate_config_types
+
+    errors = _validate_config_types({"jellyfin_url": "http://"})
+    assert any("missing hostname" in e for e in errors)
+
+
+def test_validate_config_types_jellyfin_url_unparseable() -> None:
+    """Exception during URL parsing is caught gracefully."""
+    from unittest.mock import patch
+    from routes import _validate_config_types
+
+    with patch("urllib.parse.urlparse", side_effect=ValueError("mock")):
+        errors = _validate_config_types({"jellyfin_url": "http://host"})
+    assert any("unparseable" in e for e in errors)
+
+
 def test_validate_config_types_empty_config() -> None:
     """Empty config produces no errors (all fields optional)."""
     from routes import _validate_config_types

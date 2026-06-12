@@ -17,11 +17,11 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 __all__ = [
+    "_active_env_overrides",
+    "_ENV_TO_CONFIG",
     "CONFIG_DIR",
     "CONFIG_FILE",
     "DEFAULT_CONFIG",
-    "_active_env_overrides",
-    "_ENV_TO_CONFIG",
     "load_config",
     "save_config",
 ]
@@ -239,22 +239,17 @@ def save_config(config: dict[str, Any]) -> None:
     cfg_file = Path(CONFIG_FILE)
     cfg_dir.mkdir(parents=True, exist_ok=True)
 
-    # Backup existing config if present
-    if cfg_file.exists():
-        try:
-            # Rotate: keep a single backup with timestamp suffix
-            backup_name = cfg_file.name + f".{datetime.now(tz=UTC).strftime('%Y%m%d_%H%M%S')}.bak"
-            backup_path = cfg_dir / backup_name
-            cfg_file.rename(backup_path)
-            logger.debug("Backed up previous config to %s", backup_path)
-        except OSError:
-            logger.exception("Failed to backup config before saving")
-
-    # Atomic write via temp file + rename
+    # Atomic write via temp file first, then rotate existing + rename
     tmp_file = cfg_file.with_suffix(".json.tmp")
     try:
         with tmp_file.open("w", encoding="utf-8") as fh:
             json.dump(config, fh, indent=4)
+        # Write succeeded — now rotate the existing config and atomically replace
+        if cfg_file.exists():
+            backup_name = cfg_file.name + f".{datetime.now(tz=UTC).strftime('%Y%m%d_%H%M%S')}.bak"
+            backup_path = cfg_dir / backup_name
+            cfg_file.rename(backup_path)
+            logger.debug("Backed up previous config to %s", backup_path)
         tmp_file.rename(cfg_file)
     except Exception:
         # Clean up temp file on failure

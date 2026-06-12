@@ -16,6 +16,7 @@ import os
 import re
 import shutil
 import time
+import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -51,7 +52,6 @@ from jellyfin import (
     get_users,
 )
 from scheduler import _scheduler, update_scheduler_jobs, validate_cron
-
 from sync import _get_cover_path, clear_library_cache, preview_group, run_sync
 
 _APP_START_TIME: float = time.time()
@@ -458,18 +458,14 @@ def _validate_config_types(new_config: dict[str, Any]) -> list[str]:
     if isinstance(jellyfin_url, str) and jellyfin_url:
         if not jellyfin_url.startswith(("http://", "https://")):
             errors.append("'jellyfin_url' must start with http:// or https://")
-        elif ":" not in jellyfin_url.split("://", 1)[-1].split("/", 1)[0]:
-            # Check for scheme://hostname where hostname has no port (not required, just a warning)
-            pass
-        # Validate well-formed URL with urllib
-        import urllib.parse
-
-        try:
-            parsed = urllib.parse.urlparse(jellyfin_url)
-            if not parsed.netloc:
-                errors.append("'jellyfin_url' is not a well-formed URL (missing hostname)")
-        except Exception:
-            errors.append("'jellyfin_url' contains unparseable characters")
+        else:
+            # Validate well-formed URL with urllib
+            try:
+                parsed = urllib.parse.urlparse(jellyfin_url)
+                if not parsed.netloc:
+                    errors.append("'jellyfin_url' is not a well-formed URL (missing hostname)")
+            except Exception:
+                errors.append("'jellyfin_url' contains unparseable characters")
 
     # Validate target_path exists and is writable when provided
     target_path_val = new_config.get("target_path")
