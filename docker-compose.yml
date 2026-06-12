@@ -49,8 +49,12 @@ services:
       #    precedence; this is the legacy fallback location)
       # - ./config/covers:/app/config/covers
 
+      # 5. Application logs (optional but helpful for troubleshooting)
+      # Logs are written to app/logs/jellyfin-groupings.log by default.
+      # - ./logs:/app/logs
+
     healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/')"]
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:5000/', timeout=3).raise_for_status()"]
       interval: 30s
       timeout: 10s
       retries: 3
