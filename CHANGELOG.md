@@ -8,12 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
 - CSS custom property system for z-index layers (`--z-content`, `--z-toast`,
   `--z-modal`, `--z-loading-overlay`, `--z-wizard`, `--z-skip-link`)
   in `variables.css` to centralise stacking context. All hardcoded z-index
   values across CSS files now reference these variables for maintainability.
 
 ### Changed
+
 - `README.md`: update test count from "650+" to exact "650".
 - `static/js/app.js`: keyboard shortcut modal detection now uses
   `getComputedStyle` instead of fragile `[style*=]` CSS attribute selector,
