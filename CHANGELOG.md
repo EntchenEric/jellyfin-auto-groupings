@@ -22,6 +22,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `static/js/app.js`: cache modal NodeList query in `wireKeyboardShortcuts`
+  for performance (query once, reuse on every keydown). (PR #568)
+- `static/js/core/api.js`: use `URL` constructor instead of string
+  concatenation for `browsePath` query parameters. (PR #568)
+- `static/js/features/groupings.js`: fix race condition in `deleteGroup` —
+  when `saveConfig` fails after splicing a group, re-insertion now uses
+  `push` (instead of `splice`) if the original index is out of bounds.
+- `static/js/features/groupings.js`: fix `clearAllGroups` error handling —
+  groups array is now backed up and restored on save failure. (PR #568)
+- `static/js/features/path-picker.js`: use `URL` constructor instead of
+  string concatenation for `browseDir` query parameters. (PR #568)
+- `static/js/features/path-picker.js`: fix root-path edge case — trailing
+  `encodeURIComponent("/")` on the empty-string root path now produces
+  a correct `/` prefix. (PR #568)
+- `routes.py`: add null byte check (`\x00`) to `_is_valid_folder_name`
+  for security hardening. (PR #568)
 - `anilist.py`: catch `requests.RequestException` in `fetch_anilist_list()`
   and wrap it in a descriptive `RuntimeError`, matching the pattern used by
   the other fetcher modules for consistent error reporting.
@@ -36,6 +52,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `config.py`: localize `Path(CONFIG_DIR)` / `Path(CONFIG_FILE)` to module-
+  level variables for cleaner coverage tracking. (PR #568)
+- `routes.py`: cache `dir_depth = len(Path(dirpath).parts)` in
+  `_search_local_filesystem` to avoid re-resolving `Path.parts` on every
+  directory entry. (PR #568)
 - `routes.py`: move `_MIME_TO_EXT` from inside `upload_cover()` to module
   level, promoting local `import re as _re` to module-level `import re`
   to eliminate per-invocation import overhead. Flatten nested `if` in
