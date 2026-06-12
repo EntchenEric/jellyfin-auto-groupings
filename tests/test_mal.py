@@ -3,7 +3,6 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-import requests
 
 from mal import fetch_mal_list
 
