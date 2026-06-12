@@ -11,16 +11,16 @@ install-dev:
 # ── Testing ─────────────────────────────────────────────────────────────────
 
 test:
-	python -m pytest -x -q --ignore=tests/test_deep_sync.py
+	python3 -m pytest -x -q --ignore=tests/test_deep_sync.py
 
 test-all:
-	python -m pytest
+	python3 -m pytest
 
 test-cov:
-	python -m pytest --cov=. --cov-report=term-missing
+	python3 -m pytest --cov=. --cov-report=term-missing
 
 test-to-file:
-	python run_tests_to_file.py
+	python3 run_tests_to_file.py
 
 # ── Linting & Type Checking ─────────────────────────────────────────────────
 
@@ -48,10 +48,10 @@ clean:
 # ── Development ──────────────────────────────────────────────────────────────
 
 run:
-	python app.py
+	python3 app.py
 
 virtual-jellyfin:
-	python start_virtual_jellyfin.py
+	python3 start_virtual_jellyfin.py
 
 # ── Docker ──────────────────────────────────────────────────────────────────
 
