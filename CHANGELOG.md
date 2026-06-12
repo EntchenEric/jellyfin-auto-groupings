@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   making it resilient to style-attribute changes.
 
 ### Added
+
 - `tests/test_routes_uncovered.py`: 12 new direct unit tests for
   `_validate_cron_expressions` covering all valid/invalid cron patterns
   (global schedule, cleanup schedule, group schedule, disabled groups).
@@ -32,10 +33,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Closed stale PR #545 — already merged into main.
 
 ### Changed
+
 - Cleaned up 13 stale merged local branches and pruned 10 stale remote
   tracking references.
 
 ### Fixed
+
 - `network.py`: guard against NaN/Inf `NETWORK_RETRY_BACKOFF_FACTOR` values
   that parses as valid ``float`` but produce unusable retry behaviour.
 - `anilist.py`: add missing ``from typing import Any`` import to fix ruff
@@ -45,6 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fixes the mypy ``operator`` error. (PR #538)
 
 ### Added
+
 - `tests/test_network.py`: add tests for NaN, +Inf, and -Inf backoff factor
   fallback values.
 - `static/js/core/state.js`: add ``recommendations_list_order`` display label.
@@ -65,21 +69,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `.github/CODEOWNERS`: add default code owner (`@entcheneric`).
 
 ### Changed
+
 - (empty)
 
 ### Added
+
 - `tests/test_sync_uncovered.py`: add `test_build_letterboxd_items_unmatched_id_skipped`
   to cover the `continue` branch when `_match_letterboxd_id` returns `None`.
 
 ### Fixed
+
 - `sync.py`: fix `_build_letterboxd_items` docstring — dedup description was
   incorrectly scoped to `letterboxd_list_order` only; dedup applies to all
   sort orders.
 
 ### Changed
+
 - `README.md`: update test count from 598+ to 608+.
 
 ### Added
+
 - `tmdb.py`: add O(1) dedup set in `fetch_tmdb_list` for defensive duplicate filtering.
 - Dockerfile: add `--preload` to gunicorn CMD for memory sharing between workers.
 - Dockerfile: increase healthcheck `--start-period` from 10s to 15s for slower gunicorn boot times.
@@ -96,6 +105,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   quote-style, indent-style, and line-ending settings.
 
 ### Changed
+
 - `docker-compose.yml`: sync healthcheck `start_period` from 10s → 15s to match the Dockerfile.
 - Dockerfile: remove `requirements-dev.txt` copy from builder stage (unused in production).
 - `routes.py`: extract CSRF-mutating method check into `_CSRF_MUTATING_METHODS`
@@ -207,6 +217,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scheduler.py` `validate_cron`: call `expr.strip()` once instead of twice.
 
 ### Fixed
+
 - Fixed `_search_local_filesystem` returning `None` on timeout/file-limit
   instead of continuing to the next search root (prevents unbounded filesystem
   scanning after the limit is reached).
@@ -228,6 +239,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2025-03-01
 
 ### Added
+
 - Initial release of Jellyfin Groupings.
 - Metadata-based groups (genre, actor, studio, tag, year).
 - External list support (IMDb, Trakt, TMDb, Letterboxd, AniList, MyAnimeList).
