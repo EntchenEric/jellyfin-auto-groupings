@@ -81,6 +81,9 @@ services:
       # Your media root. Needed so the app can verify files and follow symlinks.
       # Use the same path Jellyfin uses if possible to simplify mapping.
       - /mnt/user/media:/media:ro
+      
+      # Optional: persist application logs for troubleshooting
+      # - ./logs:/app/logs
     restart: unless-stopped
 ```
 
@@ -487,7 +490,15 @@ If symlinks point to non-existent files, verify your path mapping:
 ### Nothing Happens When I Click Sync
 - Check the browser console (F12) for JavaScript errors.
 - Verify the Jellyfin server is reachable from the app container.
-- Check the app logs (`logs/jellyfin-groupings.log`) for detailed error messages.
+- Check the app logs for detailed error messages. Logs are written to
+  `/app/logs/jellyfin-groupings.log` inside the container. To persist them
+  across restarts, add a volume mount in your docker-compose:
+
+  ```yaml
+  volumes:
+    - ./logs:/app/logs
+  ```
+
 - Verify the Flask backend is running (`docker logs jellyfin-groupings`).
 - Ensure you have at least one group configured.
 
