@@ -30,6 +30,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `routes.py`: move `_MIME_TO_EXT` from inside `upload_cover()` to module
+  level, promoting local `import re as _re` to module-level `import re`
+  to eliminate per-invocation import overhead. Flatten nested `if` in
+  seasonal-date validation (ruff SIM102). (PR #563)
+- `config.py`: improve corrupt config backup with timestamp-based collision
+  handling and more descriptive error logging. (PR #563)
+- `static/js/app.js`: set initial `aria-expanded` and `aria-controls` on
+  hamburger button based on actual DOM state; improve password toggle
+  `aria-label` to prefer `aria-label`/`placeholder` attributes and compute
+  initial `aria-pressed` from actual input type. (PR #563)
+
 - `routes.py`: health endpoint now reports `uptime_seconds` (computed from
   the application start time) and an ISO 8601 `started_at` timestamp instead
   of a raw `uptime` string. (PR #561)
