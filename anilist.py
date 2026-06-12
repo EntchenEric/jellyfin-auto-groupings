@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+import requests
+
 import network
 
 __all__ = ["fetch_anilist_list"]
@@ -119,11 +121,15 @@ def fetch_anilist_list(
         normalized_status or "ALL",
     )
 
-    response = network.post(
-        resolved_url,
-        json={"query": _ANILIST_QUERY, "variables": variables},
-        timeout=_REQUEST_TIMEOUT,
-    )
-    response.raise_for_status()
+    try:
+        response = network.post(
+            resolved_url,
+            json={"query": _ANILIST_QUERY, "variables": variables},
+            timeout=_REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
+    except requests.exceptions.RequestException as exc:
+        msg = f"Failed to fetch AniList list for user {username!r}: {exc}"
+        raise RuntimeError(msg) from exc
 
     return _extract_media_ids(response.json())

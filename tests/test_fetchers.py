@@ -161,3 +161,35 @@ def test_fetch_anilist_list_entry_not_dict(mock_post) -> None:
     mock_post.return_value = mock_resp
     ids = fetch_anilist_list("user")
     assert ids == [12345]
+
+
+@patch("anilist.network.post")
+def test_fetch_anilist_http_error(mock_post) -> None:
+    """Anilist network error raises RuntimeError."""
+    mock_post.side_effect = requests.exceptions.RequestException(
+        "Connection refused",
+    )
+    with pytest.raises(RuntimeError, match="Failed to fetch AniList list"):
+        fetch_anilist_list("user")
+
+
+@patch("anilist.network.post")
+def test_fetch_anilist_custom_api_url(mock_post) -> None:
+    """AniList custom API URL is used when provided."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "data": {
+            "MediaListCollection": {
+                "lists": [
+                    {"entries": [{"mediaId": 42}]},
+                ],
+            },
+        },
+    }
+    mock_post.return_value = mock_resp
+    ids = fetch_anilist_list("user", api_url="https://custom.anilist.example/graphql")
+    assert ids == [42]
+    _args, kwargs = mock_post.call_args
+    assert kwargs["json"]["variables"]["userName"] == "user"
+    assert _args[0] == "https://custom.anilist.example/graphql"

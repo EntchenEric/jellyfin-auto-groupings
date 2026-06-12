@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (PR #561)
 - `routes.py`: add `ALLOWED_NON_CSRF_ENDPOINTS` env var for CSRF opt-out.
   (PR #561)
+
+### Fixed
+
+- `anilist.py`: catch `requests.RequestException` in `fetch_anilist_list()`
+  and wrap it in a descriptive `RuntimeError`, matching the pattern used by
+  the other fetcher modules for consistent error reporting.
 - `start_virtual_jellyfin.py`: add `VIRTUAL_JF_PORT` env var for overriding the
   default mock Jellyfin port 8096. (PR #561)
 - `Dockerfile`: update `HEALTHCHECK` to use `/api/health` endpoint instead of
