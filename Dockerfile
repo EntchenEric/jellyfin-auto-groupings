@@ -61,9 +61,13 @@ USER appuser
 # ------------------------------------------------------------------
 # Gunicorn configuration — timeout is configurable via GUNICORN_TIMEOUT
 # (default 120s) for deployments with slow API responses or large libraries.
+# Worker count is configurable via GUNICORN_WORKERS (default 2) for
+# multi-core hosts.
 # ------------------------------------------------------------------
 ENV GUNICORN_TIMEOUT=120
+ENV GUNICORN_WORKERS=2
 
-# shell entrypoint expands $GUNICORN_TIMEOUT at container start so the
-# environment variable can be overridden without rebuilding the image.
-ENTRYPOINT ["/bin/sh", "-c", "exec gunicorn --bind 0.0.0.0:5000 --workers 2 --timeout ${GUNICORN_TIMEOUT} --preload --access-logfile - --error-logfile - app:app"]
+# shell entrypoint expands $GUNICORN_TIMEOUT and $GUNICORN_WORKERS at
+# container start so environment variables can be overridden without
+# rebuilding the image.
+ENTRYPOINT ["/bin/sh", "-c", "exec gunicorn --bind 0.0.0.0:5000 --workers ${GUNICORN_WORKERS} --timeout ${GUNICORN_TIMEOUT} --preload --access-logfile - --error-logfile - app:app"]

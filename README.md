@@ -313,6 +313,7 @@ The application reads the following environment variables (which take precedence
 | `FLASK_DEBUG` | Enable Flask debug mode (`true`/`false`) |
 | `LOG_LEVEL` | Log level for application output. Accepts `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` (default: `INFO`) |
 | `GUNICORN_TIMEOUT` | Gunicorn worker timeout in seconds for long-running API calls (default: `120`). Increase this if sync operations time out |
+| `GUNICORN_WORKERS` | Number of gunicorn worker processes for handling concurrent requests (default: `2`). Increase for multi-core hosts |
 | `ANILIST_API_URL` | AniList GraphQL endpoint (default: `https://graphql.anilist.co`) |
 | `VIRTUAL_JF_PORT` | Port for mock Jellyfin server used during development (default: `8096`) |
 | `NETWORK_RETRY_TOTAL` | Max HTTP retries for external API calls (default: `3`; set `0` to disable) |
@@ -464,6 +465,7 @@ services:
       - ALLOWED_NON_CSRF_ENDPOINTS= # optional: comma-separated Flask endpoint names (e.g. "main.webhook,main.callback") exempt from CSRF check
       - LOG_LEVEL=INFO                   # optional: log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
       - GUNICORN_TIMEOUT=120            # optional: gunicorn worker timeout in seconds (default: 120)
+      - GUNICORN_WORKERS=2              # optional: gunicorn worker process count (default: 2)
       - FLASK_DEBUG=false              # optional: set to true for debug mode
     restart: unless-stopped
 ```
