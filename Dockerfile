@@ -55,4 +55,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --retries=3 \
 
 USER appuser
 
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "--preload", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "--preload", "--access-logfile", "-", "--error-logfile", "-", "app:app"]

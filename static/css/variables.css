@@ -27,6 +27,8 @@
     --z-wizard: 5000;
     --z-locked-overlay: 10;
     --z-skip-link: 9999;
+
+    color-scheme: dark;
 }
 
 /* Apply light theme when OS/browser requests light mode; default to dark theme otherwise */
@@ -43,5 +45,7 @@
         --success-color: #059669;
         --error-color: #dc2626;
         --warning-color: #d97706;
+
+        color-scheme: light;
     }
 }
