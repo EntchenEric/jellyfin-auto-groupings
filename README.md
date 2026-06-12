@@ -445,6 +445,7 @@ services:
       - NETWORK_RETRY_BACKOFF_FACTOR=1.0 # optional: retry backoff multiplier
       - NETWORK_RETRY_STATUS_FORCELIST=429,500,502,503,504 # optional: retry status codes
       - ALLOWED_NON_CSRF_ENDPOINTS= # optional: comma-separated Flask endpoint names (e.g. "main.webhook,main.callback") exempt from CSRF check
+      - FLASK_DEBUG=false              # optional: set to true for debug mode
     restart: unless-stopped
 ```
 

@@ -192,6 +192,22 @@ def _check_csrf() -> ResponseReturnValue | None:
 
 
 # ---------------------------------------------------------------------------
+# Security headers — applied to every response
+# ---------------------------------------------------------------------------
+
+
+@bp.after_request
+def _add_security_headers(response: Response) -> Response:
+    """Set security-related HTTP headers on every response.
+
+    * ``X-Content-Type-Options: nosniff`` — prevents MIME-type sniffing.
+    * ``X-Frame-Options: DENY`` — prevents clickjacking in frames.
+    """
+    response.headers.set("X-Content-Type-Options", "nosniff")
+    response.headers.set("X-Frame-Options", "DENY")
+    return response
+
+
 # Security helpers for the filesystem browser
 # ---------------------------------------------------------------------------
 

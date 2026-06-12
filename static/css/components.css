@@ -1681,3 +1681,12 @@ pre {
     font-size: 0.95rem;
     line-height: 1.5;
 }
+
+/* ── JavaScript-disabled warning ──────────────────────────── */
+.nojs-warning {
+    background: var(--error-color, #ef4444);
+    color: #fff;
+    padding: 1rem;
+    text-align: center;
+    font-weight: 600;
+}
