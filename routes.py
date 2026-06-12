@@ -311,7 +311,9 @@ def _validate_scheduler_types(sched: dict[str, Any], errors: list[str]) -> None:
     )
 
 
-def _validate_group_rules(rules: list[dict[str, Any]], prefix: str, errors: list[str]) -> None:
+def _validate_group_rules(
+    rules: list[dict[str, Any]], prefix: str, errors: list[str]
+) -> None:
     """Validate type correctness of a group's complex query rules."""
     for j, rule in enumerate(rules):
         if not isinstance(rule, dict):
@@ -324,7 +326,9 @@ def _validate_group_rules(rules: list[dict[str, Any]], prefix: str, errors: list
         _check_type(rule.get("not"), bool, f"{rprefix}.not", errors)
 
 
-def _validate_group_types(group: dict[str, Any], prefix: str, errors: list[str]) -> None:
+def _validate_group_types(
+    group: dict[str, Any], prefix: str, errors: list[str]
+) -> None:
     """Validate type correctness of a single group definition."""
     if not isinstance(group, dict):
         errors.append(f"{prefix} must be an object")
@@ -345,7 +349,8 @@ def _validate_group_types(group: dict[str, Any], prefix: str, errors: list[str])
             errors.append(f"{prefix}.{date_field} must be a string")
         elif isinstance(val, str) and val:
             import re as _re
-            if not _re.match(r"^(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$", val):
+
+            if not _re.match(r"^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$", val):
                 errors.append(
                     f"{prefix}.{date_field} must be in MM-DD format (e.g. 10-31)",
                 )
@@ -381,7 +386,11 @@ def _validate_config_types(new_config: dict[str, Any]) -> list[str]:
     _check_type(new_config.get("groups"), list, "groups", errors)
 
     # Top-level boolean fields
-    for bool_field in ("auto_create_libraries", "auto_set_library_covers", "setup_done"):
+    for bool_field in (
+        "auto_create_libraries",
+        "auto_set_library_covers",
+        "setup_done",
+    ):
         _check_type(new_config.get(bool_field), bool, bool_field, errors)
 
     # Scheduler sub-object
@@ -686,7 +695,9 @@ def upload_cover() -> ResponseReturnValue:
         cfg = load_config()
         target_path = str(cfg.get("target_path", ""))
 
-        cover_path = _get_cover_path(group_name, target_path, check_exists=False, ext=ext)
+        cover_path = _get_cover_path(
+            group_name, target_path, check_exists=False, ext=ext
+        )
         if cover_path is None:
             return _error("Could not resolve cover storage path", 500)
 
