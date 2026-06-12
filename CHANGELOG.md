@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `Dockerfile`: enable gunicorn access and error logging (`--access-logfile -`
   and `--error-logfile -`) for container observability via `docker logs`. (PR #554)
+- `Dockerfile`: add `ENV PYTHONUNBUFFERED=1` to final stage for immediate
+  container log output. (PR #560)
+- `run_tests_to_file.py`: increase subprocess timeout from 120s → 300s,
+  enable `--tb=short` for concise tracebacks, and log Python version and
+  CWD at report start. (PR #560)
 - `variables.css`: add `color-scheme: dark` / `color-scheme: light` declarations
   for proper native form control styling in both themes. (PR #554)
 - CSS custom property system for z-index layers (`--z-content`, `--z-toast`,
