@@ -487,3 +487,53 @@ def test_fetch_trakt_bad_pagination_header(mock_get) -> None:
 
     ids = fetch_trakt_list("user/list", "client_id")
     assert ids == ["tt222"]
+
+
+# ---------------------------------------------------------------------------
+# imdb.py: duplicate ID skip branch
+# ---------------------------------------------------------------------------
+
+
+@patch("network.get")
+def test_fetch_imdb_list_duplicate_ids_skipped(mock_get) -> None:
+    """Duplicate IMDb IDs in paginated results are skipped."""
+    page1_resp = MagicMock()
+    page1_resp.status_code = 200
+    # Two links to the same title
+    page1_resp.text = (
+        '<a href="/title/tt1234567/">Movie 1</a>'
+        '<a href="/title/tt1234567/">Movie 1 again</a>'
+        '<a href="/title/tt7654321/">Movie 2</a>'
+    )
+    # No next-page link -> stops after first page
+    mock_get.return_value = page1_resp
+
+    from imdb import fetch_imdb_list
+
+    ids = fetch_imdb_list("ls123456789")
+    # tt1234567 appears only once despite two anchor tags
+    assert ids == ["tt1234567", "tt7654321"]
+
+
+# ---------------------------------------------------------------------------
+# tmdb.py: duplicate ID skip branch
+# ---------------------------------------------------------------------------
+
+
+def test_collect_tmdb_ids_dedup() -> None:
+    """_collect_tmdb_ids_from_page skips IDs already in the seen set."""
+    from tmdb import _collect_tmdb_ids_from_page
+
+    data = {
+        "items": [
+            {"id": 123},
+            {"id": 456},
+            {"id": 123},  # duplicate
+            {"id": 789},
+        ]
+    }
+    ids: list[str] = []
+    seen: set[str] = set()
+    _collect_tmdb_ids_from_page(data, ids, seen)
+    assert ids == ["123", "456", "789"]
+    assert seen == {"123", "456", "789"}

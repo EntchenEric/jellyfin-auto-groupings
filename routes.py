@@ -33,8 +33,6 @@ from werkzeug.exceptions import HTTPException
 
 import network
 
-_APP_START_TIME: float = time.time()
-
 if TYPE_CHECKING:
     from flask.typing import ResponseReturnValue
 
@@ -49,6 +47,8 @@ from jellyfin import (
 )
 from scheduler import update_scheduler_jobs, validate_cron
 from sync import _get_cover_path, clear_library_cache, preview_group, run_sync
+
+_APP_START_TIME: float = time.time()
 
 logger = logging.getLogger(__name__)
 

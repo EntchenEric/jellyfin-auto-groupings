@@ -202,3 +202,46 @@ def test_env_flag_false_values(monkeypatch) -> None:
 
     monkeypatch.setenv("TEST_ENV_FLAG_8", "")
     assert _env_flag("TEST_ENV_FLAG_8") is False
+
+
+def test_load_config_corrupt_file_backup_rename_failure(temp_config) -> None:
+    """Test that corrupt config backup rename failure is handled gracefully."""
+    with Path(temp_config).open("w") as f:
+        f.write("this is not json{{{ ")
+
+    # Prevent rename by making the backup path collide with a directory
+    backup_path = Path(temp_config).with_suffix(".corrupt.bak")
+    backup_path.mkdir()
+
+    cfg = load_config()
+    assert cfg["jellyfin_url"] == ""
+    assert cfg["groups"] == []
+
+
+def test_load_config_corrupt_file_backup_success(temp_config, caplog) -> None:
+    """Test that corrupt config backup creates a .corrupt.bak file."""
+
+    with Path(temp_config).open("w") as f:
+        f.write("this is not json{{{ ")
+
+    cfg = load_config()
+    assert cfg["jellyfin_url"] == ""
+
+    backup_path = Path(temp_config).with_suffix(".corrupt.bak")
+    assert backup_path.exists()
+
+
+def test_load_config_unreadable_file(temp_config, monkeypatch) -> None:
+    """Test that an unreadable config file falls back to defaults."""
+    with Path(temp_config).open("w") as f:
+        f.write("{\"jellyfin_url\":\"http://example.com\"}")
+
+    # Make the file unreadable
+    Path(temp_config).chmod(0o000)
+
+    try:
+        cfg = load_config()
+        assert cfg["jellyfin_url"] == ""
+    finally:
+        # Restore permissions to allow cleanup
+        Path(temp_config).chmod(0o644)
