@@ -5,6 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from sync import _translate_path, run_sync
+from sync import _maybe_handle_seasonal
 
 
 def test_translate_path_empty_root() -> None:
@@ -156,6 +157,194 @@ def test_is_in_season_same_year_window() -> None:
         mock_dt.now.return_value = datetime(2025, 6, 15, tzinfo=UTC)
         mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
         assert _is_in_season("06-01", "09-01") is True
+
+
+# ---------------------------------------------------------------------------
+# Seasonal sync edge cases (covers issues #976–#983)
+# ---------------------------------------------------------------------------
+
+
+def test_is_in_season_single_day_season() -> None:
+    """Single-day season (same start/end) never matches (window is [start, end)).
+    Covers issue #982."""
+    from datetime import UTC, datetime
+
+    from sync import _is_in_season
+
+    with patch("sync.datetime") as mock_dt:
+        mock_dt.now.return_value = datetime(2025, 6, 15, tzinfo=UTC)
+        mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+        # Same day — s <= e but window is [s, e), so 06-15 < 06-15 is False
+        assert _is_in_season("06-15", "06-15") is False
+
+    # A leap-year single day
+    with patch("sync.datetime") as mock_dt:
+        mock_dt.now.return_value = datetime(2024, 2, 29, tzinfo=UTC)
+        mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+        assert _is_in_season("02-29", "02-29") is False
+
+
+def test_is_in_season_dec_31_to_jan_1_wrap() -> None:
+    """Dec 31 to Jan 1 wrap-around: only Dec 31 is in season.
+    Covers issue #976."""
+    from datetime import UTC, datetime
+
+    from sync import _is_in_season
+
+    # Jan 15 — should NOT be in [Dec 31, Jan 1) because current < end (Jan 1)
+    # but wrap-around means current >= s(12-31) OR current < e(01-01)
+    with patch("sync.datetime") as mock_dt:
+        mock_dt.now.return_value = datetime(2025, 1, 15, tzinfo=UTC)
+        mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+        # current >= 12-31? No. current < 01-01? No (15 > 1).
+        assert _is_in_season("12-31", "01-01") is False
+
+    # Dec 31 — should be in season
+    with patch("sync.datetime") as mock_dt:
+        mock_dt.now.return_value = datetime(2025, 12, 31, tzinfo=UTC)
+        mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+        assert _is_in_season("12-31", "01-01") is True
+
+
+def test_is_in_season_mar_1_to_feb_29_cross_leap() -> None:
+    """Mar 1 to Feb 29 wrap-around (leap year — Feb 29 valid).
+    Covers issue #977."""
+    from datetime import UTC, datetime
+
+    from sync import _is_in_season
+
+    # Feb 28 — should be in season (current >= 03-01? No. current < 02-29? In wrap: 28 < 29 = Yes)
+    with patch("sync.datetime") as mock_dt:
+        mock_dt.now.return_value = datetime(2024, 2, 28, tzinfo=UTC)
+        mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+        assert _is_in_season("03-01", "02-29") is True
+
+
+def test_is_in_season_leap_feb_29_as_start() -> None:
+    """Feb 29 as start date (leap year).
+    Covers issue #977."""
+    from datetime import UTC, datetime
+
+    from sync import _is_in_season
+
+    with patch("sync.datetime") as mock_dt:
+        mock_dt.now.return_value = datetime(2024, 2, 29, tzinfo=UTC)
+        mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+        assert _is_in_season("02-29", "03-15") is True  # Inclusive start
+
+
+def test_is_in_season_invalid_mmdd_feb_31() -> None:
+    """Invalid MM-DD like Feb 31 falls back to (0, 0) -> returns True.
+    Covers issue #983."""
+    from sync import _is_in_season
+
+    # Feb 31 is not a valid date, so _parse_mmdd returns (0,0) -> graceful degradation
+    assert _is_in_season("02-31", "06-01") is True
+    assert _is_in_season("06-01", "02-31") is True
+
+
+def test_parse_mmdd_feb_31_invalid() -> None:
+    """Feb 31 is not a valid date -> returns (0, 0).
+    Covers issue #983."""
+    from sync import _parse_mmdd
+
+    assert _parse_mmdd("02-31") == (0, 0)
+
+
+def test_maybe_handle_seasonal_empty_name(tmp_path) -> None:
+    """Out-of-season group with empty name is handled gracefully.
+    Covers issue #979."""
+    with patch("sync._is_in_season", return_value=False):
+        result = _maybe_handle_seasonal(
+            {
+                "seasonal_enabled": True,
+                "seasonal_start": "01-01",
+                "seasonal_end": "01-02",
+            },
+            "",
+            str(tmp_path),
+            dry_run=False,
+        )
+    assert result is not None
+    assert result["group"] == "(unnamed)"
+    assert result["status"] == "out_of_season"
+
+
+def test_maybe_handle_seasonal_disabled_mid_season(tmp_path) -> None:
+    """Group with seasonal_enabled=False returns None regardless.
+    Covers issue #980."""
+    result = _maybe_handle_seasonal(
+        {"seasonal_enabled": False},
+        "test-group",
+        str(tmp_path),
+        dry_run=False,
+    )
+    assert result is None
+
+
+def test_maybe_handle_seasonal_dry_run_out_of_season(tmp_path) -> None:
+    """Dry-run out-of-season: no directory deletion, returns result.
+    Covers issue #981."""
+    group_dir = tmp_path / "dry-seasonal"
+    group_dir.mkdir()
+    (group_dir / "movie.mkv").write_text("data")
+
+    with patch("sync._is_in_season", return_value=False):
+        result = _maybe_handle_seasonal(
+            {
+                "seasonal_enabled": True,
+                "seasonal_start": "01-01",
+                "seasonal_end": "01-02",
+            },
+            "dry-seasonal",
+            str(tmp_path),
+            dry_run=True,
+        )
+    assert result is not None
+    assert result["status"] == "out_of_season"
+    assert group_dir.exists()  # Not deleted in dry run
+
+
+def test_maybe_handle_seasonal_live_delete_out_of_season(tmp_path) -> None:
+    """Live run out-of-season: directory is deleted.
+    Covers issue #981."""
+    group_dir = tmp_path / "live-seasonal"
+    group_dir.mkdir()
+    (group_dir / "movie.mkv").write_text("data")
+
+    with patch("sync._is_in_season", return_value=False):
+        result = _maybe_handle_seasonal(
+            {
+                "seasonal_enabled": True,
+                "seasonal_start": "01-01",
+                "seasonal_end": "01-02",
+            },
+            "live-seasonal",
+            str(tmp_path),
+            dry_run=False,
+        )
+    assert result is not None
+    assert result["status"] == "out_of_season"
+    assert not group_dir.exists()  # Deleted in live run
+
+
+def test_maybe_handle_seasonal_no_name_out_of_season(tmp_path) -> None:
+    """Out-of-season group with no name key returns (unnamed).
+    Covers issue #979."""
+    with patch("sync._is_in_season", return_value=False):
+        result = _maybe_handle_seasonal(
+            {
+                "seasonal_enabled": True,
+                "seasonal_start": "01-01",
+                "seasonal_end": "01-02",
+            },
+            "",
+            str(tmp_path),
+            dry_run=False,
+        )
+    assert result is not None
+    assert result["group"] == "(unnamed)"
+    assert result["status"] == "out_of_season"
 
 
 # ---------------------------------------------------------------------------
