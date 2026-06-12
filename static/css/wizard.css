@@ -1,6 +1,6 @@
 /* ── Setup Wizard ───────────────────────────────────────── */
 #setup-wizard-modal {
-    z-index: 5000;
+    z-index: var(--z-wizard);
 }
 
 .wizard-box {
