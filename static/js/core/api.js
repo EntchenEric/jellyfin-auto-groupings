@@ -73,4 +73,8 @@ export const uploadCover = (groupName, image) =>
 export const getCleanupItems = () => apiGet('/api/cleanup');
 export const performCleanup = (folders) => apiPost('/api/cleanup', { folders });
 export const autoDetectPaths = () => apiPost('/api/jellyfin/auto-detect-paths');
-export const browsePath = (path) => apiGet('/api/browse?path=' + encodeURIComponent(path));
+export const browsePath = (path) => {
+    const url = new URL('/api/browse', window.location.origin);
+    url.searchParams.set('path', path);
+    return apiGet(url.toString());
+};

@@ -208,7 +208,13 @@ export async function deleteGroup(index) {
     try {
         await saveConfig(state.currentConfig);
     } catch (e) {
-        state.currentConfig.groups.splice(index, 0, removedGroup);
+        // Re-insert at the original position. If the array was modified
+        // between the splice and the save failure, append at the end.
+        if (index <= state.currentConfig.groups.length) {
+            state.currentConfig.groups.splice(index, 0, removedGroup);
+        } else {
+            state.currentConfig.groups.push(removedGroup);
+        }
         showToast('Failed to save after deleting group', 'error');
         return;
     }
@@ -230,8 +236,15 @@ export async function deleteGroup(index) {
 export async function clearAllGroups() {
     if (!confirm('Are you sure you want to remove ALL groupings? This cannot be undone.')) return;
     const groupNames = state.currentConfig.groups.map(g => g.name).filter(Boolean);
+    const backup = state.currentConfig.groups;
     state.currentConfig.groups = [];
-    await saveConfig(state.currentConfig);
+    try {
+        await saveConfig(state.currentConfig);
+    } catch (e) {
+        state.currentConfig.groups = backup;
+        showToast('Failed to save after clearing groups', 'error');
+        return;
+    }
     renderGroups();
 
     if (groupNames.length > 0) {

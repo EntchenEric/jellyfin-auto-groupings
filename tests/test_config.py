@@ -209,13 +209,19 @@ def test_load_config_corrupt_file_backup_rename_failure(temp_config) -> None:
     with Path(temp_config).open("w") as f:
         f.write("this is not json{{{ ")
 
-    # Prevent rename by making the backup path collide with a directory
-    backup_path = Path(temp_config).with_name(Path(temp_config).name + ".corrupt.bak")
-    backup_path.mkdir()
+    # Make the config directory read-only so rename fails with OSError
+    cfg_dir = Path(temp_config).parent
+    # First ensure the backup path doesn't exist (so we go straight to rename)
+    # and make the dir read-only
+    original_mode = cfg_dir.stat().st_mode
+    cfg_dir.chmod(0o555)  # read-only, no write
 
-    cfg = load_config()
-    assert cfg["jellyfin_url"] == ""
-    assert cfg["groups"] == []
+    try:
+        cfg = load_config()
+        assert cfg["jellyfin_url"] == ""
+        assert cfg["groups"] == []
+    finally:
+        cfg_dir.chmod(original_mode)
 
 
 def test_load_config_corrupt_file_backup_success(temp_config, caplog) -> None:
@@ -229,6 +235,26 @@ def test_load_config_corrupt_file_backup_success(temp_config, caplog) -> None:
 
     backup_path = Path(temp_config).with_name(Path(temp_config).name + ".corrupt.bak")
     assert backup_path.exists()
+
+
+def test_load_config_corrupt_file_backup_timestamp_collision(temp_config) -> None:
+    """Test that corrupt config backup uses a timestamped name when .corrupt.bak already exists."""
+    with Path(temp_config).open("w") as f:
+        f.write("this is not json{{{ ")
+
+    # Pre-create the .corrupt.bak file so the collision branch is taken
+    backup_path = Path(temp_config).with_name(Path(temp_config).name + ".corrupt.bak")
+    backup_path.write_text("existing backup")
+
+    cfg = load_config()
+    assert cfg["jellyfin_url"] == ""
+    assert cfg["groups"] == []
+
+    # The original backup path should still exist (wasn't overwritten)
+    assert backup_path.read_text() == "existing backup"
+    # A timestamped backup should also exist
+    ts_files = list(Path(temp_config).parent.glob("*.corrupt.*.bak"))
+    assert len(ts_files) >= 1
 
 
 def test_load_config_unreadable_file(temp_config, monkeypatch) -> None:
@@ -245,3 +271,30 @@ def test_load_config_unreadable_file(temp_config, monkeypatch) -> None:
     finally:
         # Restore permissions to allow cleanup
         Path(temp_config).chmod(0o644)
+
+
+def test_save_config_path_objects(tmp_path) -> None:
+    """Test save_config with actual Path objects (coverage for Path(CONFIG_DIR)/Path(CONFIG_FILE) lines)."""
+    import config
+
+    # Save original module-level paths
+    orig_dir = config.CONFIG_DIR
+    orig_file = config.CONFIG_FILE
+
+    try:
+        test_dir = tmp_path / "cfg"
+        test_file = test_dir / "config.json"
+        config.CONFIG_DIR = test_dir
+        config.CONFIG_FILE = test_file
+
+        config.save_config({"key": "value"})
+        assert test_file.exists()
+
+        import json
+
+        with test_file.open() as f:
+            data = json.load(f)
+        assert data["key"] == "value"
+    finally:
+        config.CONFIG_DIR = orig_dir
+        config.CONFIG_FILE = orig_file

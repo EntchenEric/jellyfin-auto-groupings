@@ -50,7 +50,9 @@ export async function browseDir(path) {
         '<p style="padding:1.5rem; text-align:center; color:var(--text-secondary);">Loading...</p>';
     let result;
     try {
-        const resp = await fetch('/api/browse?path=' + encodeURIComponent(path));
+        const url = new URL('/api/browse', window.location.origin);
+        url.searchParams.set('path', path);
+        const resp = await fetch(url.toString());
         result = await resp.json();
     } catch (e) {
         bodyEl.innerHTML = `<p class="picker-empty">Could not load directory: ${e.message}</p>`;
@@ -148,10 +150,22 @@ export async function autoDetectIfEmpty() {
         const result = await apiAutoDetect();
         if (result.status !== 'success') return;
         const d = result.detected;
-        if (!targetEl.value && d.target_path) { targetEl.value = d.target_path; state.currentConfig.target_path = d.target_path; }
-        if (!jfEl.value && d.media_path_in_jellyfin) { jfEl.value = d.media_path_in_jellyfin; state.currentConfig.media_path_in_jellyfin = d.media_path_in_jellyfin; }
-        if (!hostEl.value && d.media_path_on_host) { hostEl.value = d.media_path_on_host; state.currentConfig.media_path_on_host = d.media_path_on_host; }
-        if (d.target_path_in_jellyfin) { getEl('target_path_in_jellyfin').value = d.target_path_in_jellyfin; state.currentConfig.target_path_in_jellyfin = d.target_path_in_jellyfin; }
+        if (!targetEl.value && d.target_path) {
+            targetEl.value = d.target_path;
+            state.currentConfig.target_path = d.target_path;
+        }
+        if (!jfEl.value && d.media_path_in_jellyfin) {
+            jfEl.value = d.media_path_in_jellyfin;
+            state.currentConfig.media_path_in_jellyfin = d.media_path_in_jellyfin;
+        }
+        if (!hostEl.value && d.media_path_on_host) {
+            hostEl.value = d.media_path_on_host;
+            state.currentConfig.media_path_on_host = d.media_path_on_host;
+        }
+        if (d.target_path_in_jellyfin) {
+            getEl('target_path_in_jellyfin').value = d.target_path_in_jellyfin;
+            state.currentConfig.target_path_in_jellyfin = d.target_path_in_jellyfin;
+        }
         showToast('Paths auto-filled - review and save.', 'success');
     } catch (_) { /* silently ignore */ }
 }

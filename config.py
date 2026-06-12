@@ -207,6 +207,8 @@ def save_config(config: dict[str, Any]) -> None:
         config: The configuration dictionary to write.
 
     """
-    Path(CONFIG_DIR).mkdir(parents=True, exist_ok=True)
-    with Path(CONFIG_FILE).open("w", encoding="utf-8") as fh:
+    cfg_dir = Path(CONFIG_DIR)
+    cfg_file = Path(CONFIG_FILE)
+    cfg_dir.mkdir(parents=True, exist_ok=True)
+    with cfg_file.open("w", encoding="utf-8") as fh:
         json.dump(config, fh, indent=4)
