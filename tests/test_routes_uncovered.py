@@ -410,16 +410,22 @@ def test_validate_config_types_jellyfin_url_valid_https() -> None:
     assert not any("jellyfin_url" in e for e in errors)
 
 
-def test_validate_config_types_valid_passthrough() -> None:
+def test_validate_config_types_valid_passthrough(tmp_path) -> None:
     """Valid config produces no errors."""
     from routes import _validate_config_types
 
+    # Create real directories so path validation passes
+    target_dir = tmp_path / "virtual"
+    target_dir.mkdir()
+    media_dir = tmp_path / "media"
+    media_dir.mkdir()
+
     valid_config = {
         "jellyfin_url": "http://localhost:8096",
-        "target_path": "/virtual",
+        "target_path": str(target_dir),
         "media_path_in_jellyfin": "/data/media",
-        "media_path_on_host": "/media",
-        "target_path_in_jellyfin": "/virtual",
+        "media_path_on_host": str(media_dir),
+        "target_path_in_jellyfin": str(target_dir),
         "groups": [{"name": "TestGroup"}],
         "auto_create_libraries": False,
         "auto_set_library_covers": True,

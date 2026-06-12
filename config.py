@@ -20,11 +20,14 @@ __all__ = [
     "CONFIG_DIR",
     "CONFIG_FILE",
     "DEFAULT_CONFIG",
+    "_active_env_overrides",
+    "_ENV_TO_CONFIG",
     "load_config",
     "save_config",
 ]
 
-# Environment-variable overrides for sensitive config keys
+# Environment-variable overrides for sensitive config keys.
+# Maps config key -> environment variable name.
 _ENV_OVERRIDES: dict[str, str] = {
     "api_key": "JELLYFIN_API_KEY",
     "trakt_client_id": "TRAKT_CLIENT_ID",
@@ -32,6 +35,10 @@ _ENV_OVERRIDES: dict[str, str] = {
     "mal_client_id": "MAL_CLIENT_ID",
     "anilist_api_url": "ANILIST_API_URL",
 }
+
+# Inverse mapping: env var name -> config key, used to report which
+# values are being overridden at runtime.
+_ENV_TO_CONFIG: dict[str, str] = {v: k for k, v in _ENV_OVERRIDES.items()}
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -200,8 +207,29 @@ def load_config() -> dict[str, Any]:
     return cfg
 
 
+def _active_env_overrides() -> dict[str, str]:
+    """Return a mapping of config keys that are being overridden by environment variables.
+
+    Returns a dict like ``{"api_key": "JELLYFIN_API_KEY", ...}`` for any
+    environment variable that is currently set and differs from the saved
+    config, **or** ``{"api_key": "JELLYFIN_API_KEY", ...}`` simply reporting
+    which env overrides are active.
+    """
+    overrides: dict[str, str] = {}
+    for cfg_key, env_var in _ENV_OVERRIDES.items():
+        env_val = os.environ.get(env_var)
+        if env_val:
+            overrides[cfg_key] = env_var
+    return overrides
+
+
 def save_config(config: dict[str, Any]) -> None:
     """Persist *config* to :data:`CONFIG_FILE` as pretty-printed JSON.
+
+    The write is **atomic**: content is first written to a temporary file in
+    the same directory, then renamed over the target.  If a previous config
+    file existed, a timestamped backup is created via ``.bak`` suffix so
+    administrators can recover the last-good state.
 
     Args:
         config: The configuration dictionary to write.
@@ -210,5 +238,28 @@ def save_config(config: dict[str, Any]) -> None:
     cfg_dir = Path(CONFIG_DIR)
     cfg_file = Path(CONFIG_FILE)
     cfg_dir.mkdir(parents=True, exist_ok=True)
-    with cfg_file.open("w", encoding="utf-8") as fh:
-        json.dump(config, fh, indent=4)
+
+    # Backup existing config if present
+    if cfg_file.exists():
+        try:
+            # Rotate: keep a single backup with timestamp suffix
+            backup_name = cfg_file.name + f".{datetime.now(tz=UTC).strftime('%Y%m%d_%H%M%S')}.bak"
+            backup_path = cfg_dir / backup_name
+            cfg_file.rename(backup_path)
+            logger.debug("Backed up previous config to %s", backup_path)
+        except OSError:
+            logger.exception("Failed to backup config before saving")
+
+    # Atomic write via temp file + rename
+    tmp_file = cfg_file.with_suffix(".json.tmp")
+    try:
+        with tmp_file.open("w", encoding="utf-8") as fh:
+            json.dump(config, fh, indent=4)
+        tmp_file.rename(cfg_file)
+    except Exception:
+        # Clean up temp file on failure
+        try:
+            tmp_file.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise

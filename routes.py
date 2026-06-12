@@ -37,7 +37,11 @@ import network
 if TYPE_CHECKING:
     from flask.typing import ResponseReturnValue
 
-from config import load_config, save_config
+from config import (
+    _active_env_overrides,
+    load_config,
+    save_config,
+)
 from jellyfin import (
     _PAGE_LIMIT,
     RECURSIVE_TRUE,
@@ -46,7 +50,8 @@ from jellyfin import (
     fetch_jellyfin_items,
     get_users,
 )
-from scheduler import update_scheduler_jobs, validate_cron
+from scheduler import _scheduler, update_scheduler_jobs, validate_cron
+
 from sync import _get_cover_path, clear_library_cache, preview_group, run_sync
 
 _APP_START_TIME: float = time.time()
@@ -287,11 +292,18 @@ def _get_jellyfin_config(
 def get_config() -> ResponseReturnValue:
     """Return the current application configuration as JSON.
 
+    The response includes a top-level ``_active_env_overrides`` key listing
+    any config keys that are currently overridden by environment variables
+    (see :mod:`config`).
+
     Returns:
-        JSON-serialised configuration dictionary.
+        JSON-serialised configuration dictionary with an extra
+        ``_active_env_overrides`` key.
 
     """
-    return jsonify(load_config())
+    config = load_config()
+    config["_active_env_overrides"] = _active_env_overrides()
+    return jsonify(config)
 
 
 def _validate_cron_expressions(new_config: dict[str, Any]) -> list[str]:
@@ -443,12 +455,63 @@ def _validate_config_types(new_config: dict[str, Any]) -> list[str]:
 
     # Validate jellyfin_url format when provided
     jellyfin_url = new_config.get("jellyfin_url")
-    if (
-        isinstance(jellyfin_url, str)
-        and jellyfin_url
-        and not jellyfin_url.startswith(("http://", "https://"))
-    ):
-        errors.append("'jellyfin_url' must start with http:// or https://")
+    if isinstance(jellyfin_url, str) and jellyfin_url:
+        if not jellyfin_url.startswith(("http://", "https://")):
+            errors.append("'jellyfin_url' must start with http:// or https://")
+        elif ":" not in jellyfin_url.split("://", 1)[-1].split("/", 1)[0]:
+            # Check for scheme://hostname where hostname has no port (not required, just a warning)
+            pass
+        # Validate well-formed URL with urllib
+        import urllib.parse
+
+        try:
+            parsed = urllib.parse.urlparse(jellyfin_url)
+            if not parsed.netloc:
+                errors.append("'jellyfin_url' is not a well-formed URL (missing hostname)")
+        except Exception:
+            errors.append("'jellyfin_url' contains unparseable characters")
+
+    # Validate target_path exists and is writable when provided
+    target_path_val = new_config.get("target_path")
+    if isinstance(target_path_val, str) and target_path_val:
+        try:
+            tp = Path(target_path_val)
+            if not tp.exists():
+                errors.append(
+                    f"'target_path' path does not exist: {target_path_val}"
+                )
+            elif not tp.is_dir():
+                errors.append(
+                    f"'target_path' is not a directory: {target_path_val}"
+                )
+            elif not os.access(str(tp), os.W_OK | os.X_OK):
+                errors.append(
+                    f"'target_path' is not writable: {target_path_val}"
+                )
+        except (OSError, ValueError) as exc:
+            errors.append(f"'target_path' validation error: {exc!s}")
+
+    # Validate media_path_on_host is readable when provided
+    media_path_val = new_config.get("media_path_on_host")
+    if isinstance(media_path_val, str) and media_path_val:
+        try:
+            mp = Path(media_path_val)
+            if not mp.exists():
+                errors.append(
+                    f"'media_path_on_host' path does not exist: {media_path_val}"
+                )
+            elif not mp.is_dir():
+                errors.append(
+                    f"'media_path_on_host' is not a directory: {media_path_val}"
+                )
+            elif not os.access(str(mp), os.R_OK | os.X_OK):
+                errors.append(
+                    f"'media_path_on_host' is not readable: {media_path_val}"
+                )
+        except (OSError, ValueError) as exc:
+            errors.append(
+                f"'media_path_on_host' validation error: {exc!s}"
+            )
 
     return errors
 
@@ -1201,16 +1264,19 @@ def browse_directory() -> ResponseReturnValue:
 
 @bp.route("/api/health", methods=["GET"])
 def health_check() -> ResponseReturnValue:
-    """Provide a simple health check endpoint for Docker / Kubernetes probes.
+    """Provide a health check endpoint for Docker / Kubernetes probes.
 
-    Returns a lightweight JSON response with service status, uptime
-    computed from the application start time, and a quick config sanity
-    check.
+    Returns a JSON response with:
+
+    * Service status and uptime
+    * Configuration sanity check
+    * Scheduler status (running, job count, next run times)
+    * Jellyfin server reachability (quick connectivity test)
+    * Active environment overrides
 
     Returns:
-        JSON with ``status``, ``healthcheck.ok`` boolean, and ``server``
-        metadata including ``uptime_seconds`` and ``started_at`` (ISO 8601
-        UTC timestamp).
+        JSON with ``status``, ``healthcheck`` block, ``server`` metadata,
+        ``scheduler`` status, and ``jellyfin`` reachability.
 
     """
     try:
@@ -1219,6 +1285,50 @@ def health_check() -> ResponseReturnValue:
         api_key: str = str(config.get("api_key") or "")
         configured: bool = bool(url and api_key and config.get("target_path"))
 
+        # Scheduler information
+        scheduler_info: dict[str, Any] = {
+            "running": False,
+            "job_count": 0,
+            "next_run_times": [],
+        }
+        try:
+            if hasattr(_scheduler, "running") and _scheduler.running:
+                scheduler_info["running"] = True
+                jobs = _scheduler.get_jobs()
+                # Ensure we have a real list of dict-serializable entries
+                if isinstance(jobs, list):
+                    scheduler_info["job_count"] = len(jobs)
+                    next_runs: list[dict[str, str]] = []
+                    for job in jobs:
+                        try:
+                            jid = str(getattr(job, "id", ""))
+                            jname = str(getattr(job, "name", ""))
+                            run_time = getattr(job, "next_run_time", None)
+                            entry: dict[str, str] = {
+                                "id": jid,
+                                "name": jname,
+                            }
+                            if run_time is not None:
+                                entry["next_run"] = str(run_time.isoformat())
+                            next_runs.append(entry)
+                        except Exception:
+                            continue
+                    scheduler_info["next_run_times"] = next_runs
+        except Exception:
+            logger.debug("Could not fetch scheduler details", exc_info=True)
+
+        # Jellyfin reachability check (lightweight ping)
+        jellyfin_reachable: bool | None = None
+        if url:
+            try:
+                resp = network.get(
+                    f"{url}/System/Ping",
+                    timeout=_TEST_SERVER_TIMEOUT,
+                )
+                jellyfin_reachable = resp.status_code < 500
+            except (requests.RequestException, OSError, ValueError):
+                jellyfin_reachable = False
+
         return jsonify(
             {
                 "status": "ok",
@@ -1226,6 +1336,7 @@ def health_check() -> ResponseReturnValue:
                     "ok": True,
                     "configured": configured,
                     "groups": len(config.get("groups", [])),
+                    "env_overrides": list(_active_env_overrides().keys()),
                 },
                 "server": {
                     "uptime_seconds": math.ceil(time.time() - _APP_START_TIME),
@@ -1233,6 +1344,10 @@ def health_check() -> ResponseReturnValue:
                         "%Y-%m-%dT%H:%M:%SZ",
                         time.gmtime(_APP_START_TIME),
                     ),
+                },
+                "scheduler": scheduler_info,
+                "jellyfin": {
+                    "reachable": jellyfin_reachable,
                 },
             },
         )
