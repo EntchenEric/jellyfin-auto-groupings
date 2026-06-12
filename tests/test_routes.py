@@ -526,7 +526,9 @@ def test_upload_cover_mime_extension_mapping(client, tmp_path) -> None:
     )
     assert response.status_code == 200
     # Verify the file was saved with .png extension
-    cover_path = _get_cover_path("TestGroup", str(tmp_path), check_exists=False, ext="png")
+    cover_path = _get_cover_path(
+        "TestGroup", str(tmp_path), check_exists=False, ext="png"
+    )
     assert cover_path is not None
     assert Path(cover_path).exists()
     assert cover_path.endswith(".png")
@@ -1216,7 +1218,9 @@ def test_handle_http_error_http_none_code() -> None:
 
 
 def test_csrf_exempted_endpoint_skips_csrf_without_header(
-    app, client, monkeypatch,
+    app,
+    client,
+    monkeypatch,
 ) -> None:
     """Endpoints listed in _ALLOWED_NON_CSRF_REQUESTS bypass the CSRF check."""
     import routes as routes_module
@@ -1243,7 +1247,8 @@ def test_csrf_exempted_endpoint_skips_csrf_without_header(
             "CSRF exemption should have allowed the request without X-Requested-With header"
         )
         assert not response.is_json or "CSRF" not in response.get_json().get(
-            "message", "",
+            "message",
+            "",
         )
     finally:
         routes_module._ALLOWED_NON_CSRF_REQUESTS = old_allowed
