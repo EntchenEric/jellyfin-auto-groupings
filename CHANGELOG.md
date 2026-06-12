@@ -12,9 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `_validate_cron_expressions` covering all valid/invalid cron patterns
   (global schedule, cleanup schedule, group schedule, disabled groups).
   (PR #535)
-- `README.md`: update test count from 608+ to 642+. (PR #535)
+- `README.md`: update test count from 642+ to 650+. (PR #535)
 - `static/js/app.js`: add <kbd>R</kbd> keyboard shortcut to reload the
   groups list without a full page refresh.
+- Closed stale PR #545 — already merged into main.
+
+### Changed
+- Cleaned up 13 stale merged local branches and pruned 10 stale remote
+  tracking references.
 
 ### Fixed
 - `network.py`: guard against NaN/Inf `NETWORK_RETRY_BACKOFF_FACTOR` values

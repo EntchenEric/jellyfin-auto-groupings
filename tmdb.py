@@ -7,7 +7,7 @@ TMDb v3 list.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 from urllib.parse import urlparse
 
 import requests
@@ -46,7 +46,7 @@ def _fetch_tmdb_page(
     except requests.exceptions.RequestException as exc:
         msg = f"Failed to fetch TMDb list page {page}: {exc}"
         raise RuntimeError(msg) from exc
-    return resp.json()
+    return cast("dict[str, Any]", resp.json())
 
 
 def _collect_tmdb_ids_from_page(
