@@ -18,10 +18,10 @@ test:
 	python3 -m pytest -x $(PYTEST_ARGS) --ignore=tests/test_deep_sync.py
 
 test-all:
-	python3 -m pytest
+	python3 -m pytest $(PYTEST_ARGS)
 
 test-cov:
-	python3 -m pytest --cov=. --cov-report=term-missing
+	python3 -m pytest $(PYTEST_ARGS) --cov=. --cov-report=term-missing
 
 test-to-file:
 	python3 run_tests_to_file.py
