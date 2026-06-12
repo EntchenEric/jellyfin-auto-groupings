@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Makefile`: add configurable `PYTEST_ARGS` variable (default `-q`) so
   callers can override pytest verbosity (e.g. `make test PYTEST_ARGS="-v"`)
   without editing the Makefile. (PR #557)
+- `Makefile` and `README.md`: apply `PYTEST_ARGS` to `test-all` and
+  `test-cov` targets for consistency, add `.env.example` & pre-commit hooks
+  to dev setup docs, and document `PYTEST_ARGS` override tip. (PR #558)
 
 ### Changed
 
