@@ -163,7 +163,7 @@ def load_config() -> dict[str, Any]:
                 "Config file %s contains invalid JSON. Falling back to defaults.",
                 CONFIG_FILE,
             )
-            backup_path = Path(str(CONFIG_FILE) + ".corrupt.bak")
+            backup_path = Path(CONFIG_FILE).with_suffix(".corrupt.bak")
             try:
                 Path(CONFIG_FILE).rename(backup_path)
                 logger.info("Backed up corrupt config to %s", backup_path)

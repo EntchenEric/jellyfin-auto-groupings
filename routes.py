@@ -11,6 +11,7 @@ from __future__ import annotations
 import base64
 import binascii
 import logging
+import math
 import os
 import shutil
 import time
@@ -1187,11 +1188,13 @@ def health_check() -> ResponseReturnValue:
     """Provide a simple health check endpoint for Docker / Kubernetes probes.
 
     Returns a lightweight JSON response with service status, uptime
-    (application start time), and a quick config sanity check.
+    computed from the application start time, and a quick config sanity
+    check.
 
     Returns:
-        JSON with ``status``, ``healthcheck.ok`` boolean, and basic
-        application metadata.
+        JSON with ``status``, ``healthcheck.ok`` boolean, and ``server``
+        metadata including ``uptime_seconds`` and ``started_at`` (ISO 8601
+        UTC timestamp).
 
     """
     try:
@@ -1209,9 +1212,9 @@ def health_check() -> ResponseReturnValue:
                     "groups": len(config.get("groups", [])),
                 },
                 "server": {
-                    "uptime": os.environ.get(
-                        "JELLYFIN_GROUPINGS_START_TIME",
-                        "",
+                    "uptime_seconds": math.ceil(time.time() - _APP_START_TIME),
+                    "started_at": time.strftime(
+                        "%Y-%m-%dT%H:%M:%SZ", time.gmtime(_APP_START_TIME)
                     ),
                 },
             },

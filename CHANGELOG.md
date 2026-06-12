@@ -9,8 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `Dockerfile`: enable gunicorn access and error logging (`--access-logfile -`
-  and `--error-logfile -`) for container observability via `docker logs`. (PR #554)
+- `routes.py`: add health check endpoint at `/api/health` for Docker/Kubernetes
+  probes, returning service status, config sanity, and uptime. (PR #561)
+- `routes.py`: add global error boundary (`unhandledrejection` + `error` events)
+  to surface runtime errors as toast notifications. (PR #561)
+- `config.py`: add corrupt config file backup to `config.json.corrupt.bak`
+  before falling back to defaults. (PR #561)
+- `config.py`: add environment flag parser `_env_flag()` for boolean env vars.
+  (PR #561)
+- `routes.py`: add `ALLOWED_NON_CSRF_ENDPOINTS` env var for CSRF opt-out.
+  (PR #561)
+- `start_virtual_jellyfin.py`: add `VIRTUAL_JF_PORT` env var for overriding the
+  default mock Jellyfin port 8096. (PR #561)
+- `Dockerfile`: update `HEALTHCHECK` to use `/api/health` endpoint instead of
+  the homepage root. (PR #561)
+- `static/js/app.js`: improve hamburger button with `aria-expanded` and
+  `aria-label` toggling for accessibility. (PR #561)
+- `static/js/app.js`: improve password toggle buttons with `aria-pressed` and
+  dynamic `aria-label` based on the input field name. (PR #561)
+
+### Changed
+
+- `routes.py`: health endpoint now reports `uptime_seconds` (computed from
+  the application start time) and an ISO 8601 `started_at` timestamp instead
+  of a raw `uptime` string. (PR #561)
+- `config.py`: use `Path().with_suffix()` for corrupt config file backup
+  path construction (instead of string concatenation).
 - `Dockerfile`: add `ENV PYTHONUNBUFFERED=1` to final stage for immediate
   container log output. (PR #560)
 - `run_tests_to_file.py`: increase subprocess timeout from 120s → 300s,
