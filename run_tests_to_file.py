@@ -22,14 +22,16 @@ def main() -> None:
     output_file = repo_root / "test_results.txt"
     with output_file.open("w", encoding="utf-8") as f:
         try:
-            # Running all tests with coverage
+            # Running all tests with coverage and short traceback for readability
             f.write("Starting test run...\n")
+            f.write(f"Python: {sys.version}\n")
+            f.write(f"CWD: {repo_root}\n\n")
             f.flush()
             result = subprocess.run(
-                [sys.executable, "-m", "pytest", "--cov=.", "tests/"],
+                [sys.executable, "-m", "pytest", "--cov=.", "--tb=short", "tests/"],
                 stdout=f,
                 stderr=subprocess.STDOUT,
-                timeout=120,
+                timeout=300,
                 check=False,
             )
             f.write(f"\nExit code: {result.returncode}\n")

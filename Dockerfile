@@ -24,6 +24,9 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # ---------------------------------------------------------------------------
 FROM python:3.12-slim
 
+# Ensure Python logs are unbuffered for timely container log output
+ENV PYTHONUNBUFFERED=1
+
 WORKDIR /app
 
 COPY --from=builder /opt/venv /opt/venv
