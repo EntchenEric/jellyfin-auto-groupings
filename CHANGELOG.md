@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   values across CSS files now reference these variables for maintainability.
 - `variables.css`: add `--z-locked-overlay` custom property (value `10`)
   for the lock-section overlay badge. (PR #549)
+- `Makefile`: add configurable `PYTEST_ARGS` variable (default `-q`) so
+  callers can override pytest verbosity (e.g. `make test PYTEST_ARGS="-v"`)
+  without editing the Makefile. (PR #557)
 
 ### Changed
 
