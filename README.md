@@ -466,7 +466,8 @@ services:
       - LOG_LEVEL=INFO                   # optional: log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
       - GUNICORN_TIMEOUT=120            # optional: gunicorn worker timeout in seconds (default: 120)
       - GUNICORN_WORKERS=2              # optional: gunicorn worker process count (default: 2)
-      - FLASK_DEBUG=false              # optional: set to true for debug mode
+      - FLASK_PORT=5000                 # optional: server port (default: 5000)
+      - FLASK_DEBUG=false               # optional: set to true for debug mode (default: false)
     restart: unless-stopped
 ```
 

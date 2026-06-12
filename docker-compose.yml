@@ -22,7 +22,9 @@ services:
       # - ANILIST_API_URL=https://graphql.anilist.co
       # Set a password to enable HTTP Basic Auth on the web UI:
       # - APP_PASSWORD=${APP_PASSWORD:-}
-      # Uncomment to disable debug mode in production:
+      # Uncomment to override the Flask server port (default: 5000):
+      # - FLASK_PORT=5000
+      # Uncomment to disable debug mode in production (default: false):
       # - FLASK_DEBUG=false
       # Override HTTP retry behaviour for external API calls:
       # - NETWORK_RETRY_TOTAL=3
