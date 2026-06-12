@@ -43,14 +43,19 @@ export function apiGet(url, timeoutMs) {
 }
 
 export function apiPost(url, body, timeoutMs) {
-    return apiRequest(url, {
+    const opts = {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-Requested-With': 'XMLHttpRequest'
-        },
-        body: JSON.stringify(body)
-    }, timeoutMs);
+        }
+    };
+    // Only set body when provided — JSON.stringify(undefined) returns undefined,
+    // which omits the body entirely rather than sending "undefined".
+    if (body !== undefined) {
+        opts.body = JSON.stringify(body);
+    }
+    return apiRequest(url, opts, timeoutMs);
 }
 
 // Convenience wrappers
