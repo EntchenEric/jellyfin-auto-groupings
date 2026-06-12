@@ -312,6 +312,7 @@ The application reads the following environment variables (which take precedence
 | `FLASK_PORT` | Server port (default: `5000`) |
 | `FLASK_DEBUG` | Enable Flask debug mode (`true`/`false`) |
 | `ANILIST_API_URL` | AniList GraphQL endpoint (default: `https://graphql.anilist.co`) |
+| `VIRTUAL_JF_PORT` | Port for mock Jellyfin server used during development (default: `8096`) |
 | `NETWORK_RETRY_TOTAL` | Max HTTP retries for external API calls (default: `3`; set `0` to disable) |
 | `NETWORK_RETRY_BACKOFF_FACTOR` | Sleep multiplier between retries (default: `1.0`) |
 | `NETWORK_RETRY_STATUS_FORCELIST` | Status codes that trigger retry (default: `429,500,502,503,504`) |
