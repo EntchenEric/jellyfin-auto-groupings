@@ -11,7 +11,9 @@ from __future__ import annotations
 import base64
 import binascii
 import logging
+import math
 import os
+import re
 import shutil
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -46,6 +48,8 @@ from jellyfin import (
 )
 from scheduler import update_scheduler_jobs, validate_cron
 from sync import _get_cover_path, clear_library_cache, preview_group, run_sync
+
+_APP_START_TIME: float = time.time()
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +88,14 @@ def _success(message: str, status_code: int = 200, **extra: Any) -> ResponseRetu
 _ALLOWED_COVER_MIME_TYPES: frozenset[str] = frozenset(
     {"image/jpeg", "image/png", "image/webp", "image/gif"},
 )
+
+# Map MIME type to file extension (used by upload_cover)
+_MIME_TO_EXT: dict[str, str] = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+}
 
 # Max size for base64 encoded cover image (approx 4MB)
 MAX_B64_SIZE = 4 * 1024 * 1024
@@ -363,13 +375,17 @@ def _validate_group_types(
         val = group.get(date_field)
         if val is not None and not isinstance(val, str):
             errors.append(f"{prefix}.{date_field} must be a string")
-        elif isinstance(val, str) and val:
-            import re as _re
-
-            if not _re.match(r"^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$", val):
-                errors.append(
-                    f"{prefix}.{date_field} must be in MM-DD format (e.g. 10-31)",
-                )
+        elif (
+            isinstance(val, str)
+            and val
+            and not re.match(
+                r"^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$",
+                val,
+            )
+        ):
+            errors.append(
+                f"{prefix}.{date_field} must be in MM-DD format (e.g. 10-31)",
+            )
 
     # Validate rules field (complex query rules)
     rules = group.get("rules")
@@ -690,13 +706,6 @@ def upload_cover() -> ResponseReturnValue:
             400,
         )
 
-    # Map MIME type to file extension
-    _MIME_TO_EXT: dict[str, str] = {
-        "image/jpeg": "jpg",
-        "image/png": "png",
-        "image/webp": "webp",
-        "image/gif": "gif",
-    }
     ext = _MIME_TO_EXT.get(mime_type, "jpg")
 
     try:
@@ -1185,11 +1194,13 @@ def health_check() -> ResponseReturnValue:
     """Provide a simple health check endpoint for Docker / Kubernetes probes.
 
     Returns a lightweight JSON response with service status, uptime
-    (application start time), and a quick config sanity check.
+    computed from the application start time, and a quick config sanity
+    check.
 
     Returns:
-        JSON with ``status``, ``healthcheck.ok`` boolean, and basic
-        application metadata.
+        JSON with ``status``, ``healthcheck.ok`` boolean, and ``server``
+        metadata including ``uptime_seconds`` and ``started_at`` (ISO 8601
+        UTC timestamp).
 
     """
     try:
@@ -1207,9 +1218,9 @@ def health_check() -> ResponseReturnValue:
                     "groups": len(config.get("groups", [])),
                 },
                 "server": {
-                    "uptime": os.environ.get(
-                        "JELLYFIN_GROUPINGS_START_TIME",
-                        "",
+                    "uptime_seconds": math.ceil(time.time() - _APP_START_TIME),
+                    "started_at": time.strftime(
+                        "%Y-%m-%dT%H:%M:%SZ", time.gmtime(_APP_START_TIME)
                     ),
                 },
             },

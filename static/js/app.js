@@ -15,6 +15,35 @@ import { initPathPicker, openPathPicker, closePicker, confirmPicker, pickerOutsi
 import { initSidebarResizer } from './features/sidebar-resizer.js';
 import { renderGroups, cancelEdit, toggleSortOrder, toggleSeasonal, toggleGroupScheduler, populateSeasonalDays, resetFormUI, initGroupSearch } from './features/groupings.js';
 
+// ---------------------------------------------------------------------------
+// Global error boundary
+// Catches unhandled promise rejections and uncaught exceptions, displaying
+// them as toast notifications so the user always sees a feedback message
+// instead of a silent failure or a broken page.
+// ---------------------------------------------------------------------------
+window.addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason;
+    const message =
+        reason instanceof Error ? reason.message :
+        typeof reason === 'string' ? reason :
+        'An unexpected error occurred';
+    showToast(message, 'error');
+    // Don't log aborted requests — those are intentional
+    if (!(reason instanceof DOMException && reason.name === 'AbortError')) {
+        console.error('[App] Unhandled rejection:', reason);
+    }
+});
+
+window.addEventListener('error', (event) => {
+    // Only show toasts when event.error exists (actual Error objects).
+    // Resource-load failures (e.g. failed <script>/<img> loads) don't
+    // populate event.error, so they are silently ignored.
+    if (event.error) {
+        showToast(event.error.message || 'Script error', 'error');
+        console.error('[App] Uncaught error:', event.error);
+    }
+});
+
 // Listen for cross-module events
 document.addEventListener('groups-changed', () => renderGroups());
 
@@ -165,8 +194,18 @@ function wireImportFilePicker() {
 function wireHamburgerButton() {
     const hamburger = getEl('hamburger-btn');
     if (hamburger) {
+        const sidebar = document.getElementById('sidebar');
+        hamburger.setAttribute('aria-controls', 'sidebar');
+        // Set initial state from actual DOM
+        const initialOpen = sidebar.classList.contains('open');
+        hamburger.setAttribute('aria-expanded', String(initialOpen));
+        hamburger.setAttribute('aria-label', initialOpen ? 'Close sidebar menu' : 'Open sidebar menu');
+
         hamburger.addEventListener('click', () => {
-            document.getElementById('sidebar').classList.toggle('open');
+            sidebar.classList.toggle('open');
+            const isOpen = sidebar.classList.contains('open');
+            hamburger.setAttribute('aria-expanded', String(isOpen));
+            hamburger.setAttribute('aria-label', isOpen ? 'Close sidebar menu' : 'Open sidebar menu');
         });
     }
 }
@@ -236,14 +275,25 @@ function wirePasswordToggles() {
     const eyeSvg = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
     const eyeSlashSvg = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
     document.querySelectorAll('.toggle-password-btn').forEach(btn => {
+        const targetId = btn.getAttribute('data-target');
+        const input = document.getElementById(targetId);
+
+        // Set initial aria state based on actual input type
+        if (input) {
+            btn.setAttribute('aria-pressed', input.type !== 'password' ? 'true' : 'false');
+        } else {
+            btn.setAttribute('aria-pressed', 'false');
+        }
+
         btn.addEventListener('click', () => {
-            const targetId = btn.getAttribute('data-target');
-            const input = document.getElementById(targetId);
             if (!input) return;
             const isPassword = input.type === 'password';
             input.type = isPassword ? 'text' : 'password';
             btn.classList.toggle('visible', isPassword);
-            btn.setAttribute('aria-label', isPassword ? 'Hide API key' : 'Show API key');
+            // Use human-readable label
+            const label = input.getAttribute('aria-label') || input.getAttribute('placeholder') || input.name || 'password';
+            btn.setAttribute('aria-label', isPassword ? 'Hide ' + label : 'Show ' + label);
+            btn.setAttribute('aria-pressed', String(!isPassword));
             btn.innerHTML = isPassword ? eyeSlashSvg : eyeSvg;
         });
     });
