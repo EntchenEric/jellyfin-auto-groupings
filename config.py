@@ -10,6 +10,7 @@ import copy
 import json
 import logging
 import os
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -159,16 +160,27 @@ def load_config() -> dict[str, Any]:
                 save_config(cfg)
         except json.JSONDecodeError:
             # If the file is corrupt, backup and fall back to safe defaults
+            cfg_path = Path(CONFIG_FILE)
             logger.warning(
                 "Config file %s contains invalid JSON. Falling back to defaults.",
                 CONFIG_FILE,
             )
-            backup_path = Path(CONFIG_FILE).with_suffix(".corrupt.bak")
+            backup_path = cfg_path.with_name(cfg_path.name + ".corrupt.bak")
             try:
-                Path(CONFIG_FILE).rename(backup_path)
+                if backup_path.exists():
+                    # Avoid collision by appending a timestamp
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    backup_path = cfg_path.with_name(
+                        cfg_path.name + f".corrupt.{timestamp}.bak"
+                    )
+                cfg_path.rename(backup_path)
                 logger.info("Backed up corrupt config to %s", backup_path)
             except OSError:
-                logger.exception("Failed to backup corrupt config file")
+                logger.exception(
+                    "Failed to backup corrupt config to %s (backup existed: %s)",
+                    backup_path,
+                    backup_path.exists(),
+                )
             cfg = DEFAULT_CONFIG.copy()
         except OSError:
             # If the file is unreadable, fall back to safe defaults

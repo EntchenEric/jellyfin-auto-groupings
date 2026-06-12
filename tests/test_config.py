@@ -210,7 +210,7 @@ def test_load_config_corrupt_file_backup_rename_failure(temp_config) -> None:
         f.write("this is not json{{{ ")
 
     # Prevent rename by making the backup path collide with a directory
-    backup_path = Path(temp_config).with_suffix(".corrupt.bak")
+    backup_path = Path(temp_config).with_name(Path(temp_config).name + ".corrupt.bak")
     backup_path.mkdir()
 
     cfg = load_config()
@@ -227,7 +227,7 @@ def test_load_config_corrupt_file_backup_success(temp_config, caplog) -> None:
     cfg = load_config()
     assert cfg["jellyfin_url"] == ""
 
-    backup_path = Path(temp_config).with_suffix(".corrupt.bak")
+    backup_path = Path(temp_config).with_name(Path(temp_config).name + ".corrupt.bak")
     assert backup_path.exists()
 
 
