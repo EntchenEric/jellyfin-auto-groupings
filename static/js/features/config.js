@@ -55,6 +55,9 @@ export async function loadConfig() {
         updateSourceTypeOptions();
         renderGroups();
 
+        // Show warning banner if environment overrides are active
+        showEnvOverrideWarning(cfg._active_env_overrides || {});
+
         if (state.currentConfig.jellyfin_url && state.currentConfig.api_key) {
             await performSilentTest();
         }
@@ -179,4 +182,55 @@ export function initConfig() {
         await saveAllConfig();
         setLoading(saveApisBtn, false);
     });
+}
+
+/**
+ * Shows an info banner in the config UI when environment variable overrides
+ * are active. The banner lists which config values are being overridden at
+ * runtime so the user is aware the saved config is not the effective value.
+ * @param {object} activeOverrides - Map of config key -> env var name
+ */
+function showEnvOverrideWarning(activeOverrides) {
+    const keys = Object.keys(activeOverrides);
+    const existingBanner = document.getElementById('env-override-warning');
+    if (existingBanner) existingBanner.remove();
+
+    if (keys.length === 0) return;
+
+    const labelMap = {
+        api_key: 'Jellyfin API Key',
+        trakt_client_id: 'Trakt Client ID',
+        tmdb_api_key: 'TMDb API Key',
+        mal_client_id: 'MAL Client ID',
+        anilist_api_url: 'AniList API URL',
+    };
+
+    const items = keys.map(k => {
+        const label = labelMap[k] || k;
+        const env = activeOverrides[k];
+        return `<li><strong>${label}</strong> overridden by <code>${env}</code></li>`;
+    }).join('');
+
+    const banner = document.createElement('div');
+    banner.id = 'env-override-warning';
+    banner.className = 'status-msg info sidebar-error-card';
+    banner.innerHTML = `
+        <h3 class="sidebar-error-heading">&#x1f6a7; Environment Overrides Active</h3>
+        <p class="sidebar-error-text">The saved config values for these fields are being
+        ignored at runtime in favor of environment variables:</p>
+        <ul style="margin:0.3rem 0 0 1rem;padding:0;font-size:0.85rem;line-height:1.5;">
+            ${items}
+        </ul>
+        <p class="sidebar-error-text" style="margin-top:0.3rem;">
+        To use the saved values, unset the corresponding environment variables and restart.</p>
+    `;
+
+    // Insert after the connectivity warning
+    const sidebar = document.getElementById('sidebar');
+    const connWarning = document.getElementById('connection-warning');
+    if (sidebar && connWarning) {
+        connWarning.insertAdjacentElement('afterend', banner);
+    } else if (sidebar) {
+        sidebar.prepend(banner);
+    }
 }

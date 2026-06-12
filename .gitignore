@@ -1,3 +1,6 @@
+# Config backups created by atomic save in config.py
+config/*.bak
+
 # Local config – contains secrets (API key etc.), never commit
 config.json
 
