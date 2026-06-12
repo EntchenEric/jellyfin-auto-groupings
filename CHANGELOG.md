@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `Dockerfile`: enable gunicorn access and error logging (`--access-logfile -`
+  and `--error-logfile -`) for container observability via `docker logs`. (PR #554)
+- `variables.css`: add `color-scheme: dark` / `color-scheme: light` declarations
+  for proper native form control styling in both themes. (PR #554)
 - CSS custom property system for z-index layers (`--z-content`, `--z-toast`,
   `--z-modal`, `--z-loading-overlay`, `--z-wizard`, `--z-skip-link`)
   in `variables.css` to centralise stacking context. All hardcoded z-index
@@ -18,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `run_tests_to_file.py`: print subprocess exit code after test run completes.
+  (PR #554)
 - `static/css/components.css`: replace hardcoded `z-index: 10` on
   `.locked-overlay-text` with `var(--z-locked-overlay)`. (PR #549)
 - `README.md`: update test count from "650+" to exact "650".
@@ -25,8 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `getComputedStyle` instead of fragile `[style*=]` CSS attribute selector,
   making it resilient to style-attribute changes.
 
-### Added
-
+- `.env.example`: add comment noting `NETWORK_RETRY_TOTAL=0` to disable
+  retries entirely. (PR #554)
 - `tests/test_routes_uncovered.py`: 12 new direct unit tests for
   `_validate_cron_expressions` covering all valid/invalid cron patterns
   (global schedule, cleanup schedule, group schedule, disabled groups).
@@ -35,11 +41,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `static/js/app.js`: add <kbd>R</kbd> keyboard shortcut to reload the
   groups list without a full page refresh.
 - Closed stale PR #545 — already merged into main.
-
-### Changed
-
-- Cleaned up 13 stale merged local branches and pruned 10 stale remote
-  tracking references.
 
 ### Fixed
 
