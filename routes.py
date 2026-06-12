@@ -294,6 +294,70 @@ def _check_type(val: Any, expected_type: type, path: str, errors: list[str]) -> 
         errors.append(f"'{path}' must be a {type_name}")
 
 
+def _validate_scheduler_types(sched: dict[str, Any], errors: list[str]) -> None:
+    """Validate type correctness of scheduler sub-object fields."""
+    if not isinstance(sched, dict):
+        errors.append("'scheduler' must be an object")
+        return
+    for bool_field in ("global_enabled", "cleanup_enabled"):
+        _check_type(sched.get(bool_field), bool, f"scheduler.{bool_field}", errors)
+    for str_field in ("global_schedule", "cleanup_schedule"):
+        _check_type(sched.get(str_field), str, f"scheduler.{str_field}", errors)
+    _check_type(
+        sched.get("global_exclude_ids"),
+        list,
+        "scheduler.global_exclude_ids",
+        errors,
+    )
+
+
+def _validate_group_rules(rules: list[dict[str, Any]], prefix: str, errors: list[str]) -> None:
+    """Validate type correctness of a group's complex query rules."""
+    for j, rule in enumerate(rules):
+        if not isinstance(rule, dict):
+            errors.append(f"{prefix}.rules[{j}] must be an object")
+            continue
+        rprefix = f"{prefix}.rules[{j}]"
+        _check_type(rule.get("type"), str, f"{rprefix}.type", errors)
+        _check_type(rule.get("value"), str, f"{rprefix}.value", errors)
+        _check_type(rule.get("operator"), str, f"{rprefix}.operator", errors)
+        _check_type(rule.get("not"), bool, f"{rprefix}.not", errors)
+
+
+def _validate_group_types(group: dict[str, Any], prefix: str, errors: list[str]) -> None:
+    """Validate type correctness of a single group definition."""
+    if not isinstance(group, dict):
+        errors.append(f"{prefix} must be an object")
+        return
+    _check_type(group.get("name"), str, f"{prefix}.name", errors)
+    _check_type(group.get("source_type"), str, f"{prefix}.source_type", errors)
+    _check_type(group.get("source_value"), str, f"{prefix}.source_value", errors)
+    _check_type(group.get("sort_order"), str, f"{prefix}.sort_order", errors)
+    _check_type(group.get("watch_state"), str, f"{prefix}.watch_state", errors)
+    _check_type(group.get("schedule"), str, f"{prefix}.schedule", errors)
+    for bool_field in ("schedule_enabled", "seasonal_enabled", "create_as_collection"):
+        _check_type(group.get(bool_field), bool, f"{prefix}.{bool_field}", errors)
+
+    # Validate seasonal date format (MM-DD) when provided
+    for date_field in ("seasonal_start", "seasonal_end"):
+        val = group.get(date_field)
+        if val is not None and not isinstance(val, str):
+            errors.append(f"{prefix}.{date_field} must be a string")
+        elif isinstance(val, str) and val:
+            import re as _re
+            if not _re.match(r"^(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$", val):
+                errors.append(
+                    f"{prefix}.{date_field} must be in MM-DD format (e.g. 10-31)",
+                )
+
+    # Validate rules field (complex query rules)
+    rules = group.get("rules")
+    if rules is not None and not isinstance(rules, list):
+        errors.append(f"{prefix}.rules must be a list")
+    elif isinstance(rules, list):
+        _validate_group_rules(rules, prefix, errors)
+
+
 def _validate_config_types(new_config: dict[str, Any]) -> list[str]:
     """Validate basic types in *new_config*, returning a list of errors."""
     errors: list[str] = []
@@ -323,58 +387,13 @@ def _validate_config_types(new_config: dict[str, Any]) -> list[str]:
     # Scheduler sub-object
     sched = new_config.get("scheduler")
     if sched is not None:
-        if not isinstance(sched, dict):
-            errors.append("'scheduler' must be an object")
-        else:
-            for bool_field in ("global_enabled", "cleanup_enabled"):
-                _check_type(sched.get(bool_field), bool, f"scheduler.{bool_field}", errors)
-            for str_field in ("global_schedule", "cleanup_schedule"):
-                _check_type(sched.get(str_field), str, f"scheduler.{str_field}", errors)
-            _check_type(sched.get("global_exclude_ids"), list, "scheduler.global_exclude_ids", errors)
+        _validate_scheduler_types(sched, errors)
 
     # Groups
     groups = new_config.get("groups")
     if isinstance(groups, list):
         for i, group in enumerate(groups):
-            if not isinstance(group, dict):
-                errors.append(f"groups[{i}] must be an object")
-                continue
-            prefix = f"groups[{i}]"
-            _check_type(group.get("name"), str, f"{prefix}.name", errors)
-            _check_type(group.get("source_type"), str, f"{prefix}.source_type", errors)
-            _check_type(group.get("source_value"), str, f"{prefix}.source_value", errors)
-            _check_type(group.get("sort_order"), str, f"{prefix}.sort_order", errors)
-            _check_type(group.get("watch_state"), str, f"{prefix}.watch_state", errors)
-            _check_type(group.get("schedule"), str, f"{prefix}.schedule", errors)
-            for bool_field in ("schedule_enabled", "seasonal_enabled", "create_as_collection"):
-                _check_type(group.get(bool_field), bool, f"{prefix}.{bool_field}", errors)
-
-            # Validate seasonal date format (MM-DD) when provided
-            for date_field in ("seasonal_start", "seasonal_end"):
-                val = group.get(date_field)
-                if val is not None and not isinstance(val, str):
-                    errors.append(f"{prefix}.{date_field} must be a string")
-                elif isinstance(val, str) and val:
-                    import re as _re
-                    if not _re.match(r"^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$", val):
-                        errors.append(
-                            f"{prefix}.{date_field} must be in MM-DD format (e.g. 10-31)",
-                        )
-
-            # Validate rules field (complex query rules)
-            rules = group.get("rules")
-            if rules is not None and not isinstance(rules, list):
-                errors.append(f"{prefix}.rules must be a list")
-            elif isinstance(rules, list):
-                for j, rule in enumerate(rules):
-                    if not isinstance(rule, dict):
-                        errors.append(f"{prefix}.rules[{j}] must be an object")
-                        continue
-                    rprefix = f"{prefix}.rules[{j}]"
-                    _check_type(rule.get("type"), str, f"{rprefix}.type", errors)
-                    _check_type(rule.get("value"), str, f"{rprefix}.value", errors)
-                    _check_type(rule.get("operator"), str, f"{rprefix}.operator", errors)
-                    _check_type(rule.get("not"), bool, f"{rprefix}.not", errors)
+            _validate_group_types(group, f"groups[{i}]", errors)
 
     # Validate jellyfin_url format when provided
     jellyfin_url = new_config.get("jellyfin_url")
