@@ -291,6 +291,7 @@ def test_save_config_path_objects(tmp_path) -> None:
         assert test_file.exists()
 
         import json
+
         with test_file.open() as f:
             data = json.load(f)
         assert data["key"] == "value"
