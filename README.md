@@ -395,14 +395,14 @@ make run
 ### 🧪 Testing
 
 ```bash
-# Run the full test suite (659 tests, 100% coverage)
+# Run the full test suite (1354 tests, 100% coverage)
 python3 -m pytest
 
 # Run tests with coverage report
 python3 -m pytest --cov=.
 
 # Run a specific test file
-python3 -m pytest tests/test_routes.py -v
+python3 -m pytest tests/test_sync.py -v -k "complex"
 
 # Run without slow integration/exhaustive tests
 python3 -m pytest -m "not exhaustive" tests/
@@ -472,6 +472,22 @@ Created and maintained by [entcheneric](https://github.com/entcheneric).
 This project is licensed under the MIT License - feel free to use it however you want!
 
 ## 🐛 Troubleshooting
+
+### Enabling Debug Logging
+
+Set the ``LOG_LEVEL`` environment variable to ``DEBUG`` to get more
+detailed logs:
+
+```bash
+# Docker: add to docker-compose.yml environment section
+# LOG_LEVEL=DEBUG
+
+# Native: export before running the app
+# export LOG_LEVEL=DEBUG
+```
+
+Logs are written to ``logs/jellyfin-groupings.log`` with a rotating
+file handler (10 MB max, 3 backups).
 
 ### Path Translation Issues
 If symlinks point to non-existent files, verify your path mapping:

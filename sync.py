@@ -1023,9 +1023,14 @@ def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
 
     Returns:
         A list of rule dictionaries suitable for _fetch_items_for_complex_group.
+        An empty or whitespace-only query returns an empty list.
 
     """
-    parts = _COMPLEX_QUERY_RE.split(query.strip())
+    stripped = query.strip()
+    if not stripped:
+        return []
+
+    parts = _COMPLEX_QUERY_RE.split(stripped)
 
     rules: list[dict[str, Any]] = []
 
