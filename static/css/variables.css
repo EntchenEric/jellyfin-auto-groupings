@@ -26,6 +26,7 @@
     --z-modal: 1000;
     --z-loading-overlay: 2000;
     --z-wizard: 5000;
+    --z-locked-overlay: 10;
     --z-skip-link: 9999;
 }
 

@@ -13,9 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `--z-modal`, `--z-loading-overlay`, `--z-wizard`, `--z-skip-link`)
   in `variables.css` to centralise stacking context. All hardcoded z-index
   values across CSS files now reference these variables for maintainability.
+- `variables.css`: add `--z-locked-overlay` custom property (value `10`)
+  for the lock-section overlay badge. (PR #549)
 
 ### Changed
 
+- `static/css/components.css`: replace hardcoded `z-index: 10` on
+  `.locked-overlay-text` with `var(--z-locked-overlay)`. (PR #549)
 - `README.md`: update test count from "650+" to exact "650".
 - `static/js/app.js`: keyboard shortcut modal detection now uses
   `getComputedStyle` instead of fragile `[style*=]` CSS attribute selector,
