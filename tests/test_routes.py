@@ -1636,3 +1636,107 @@ def test_search_filesystem_mount_point_file_not_found(mock_ismount) -> None:
         # Should NOT find the file because mount dir's subdirectories are pruned
         result = _search_local_filesystem("movie.mkv", [str(root_dir)])
         assert result is None
+
+
+# ---------------------------------------------------------------------------
+# Preview grouping: year type, complex query, invalid source_type (Issue #791)
+# ---------------------------------------------------------------------------
+
+
+@patch("routes.preview_group")
+@pytest.mark.usefixtures("temp_config")
+def test_preview_grouping_year_type(mock_preview, client) -> None:
+    """Preview with year type returns proper results."""
+    save_config({"jellyfin_url": "http://t", "api_key": "k"})
+    mock_preview.return_value = (
+        [{"Name": "Movie 1", "ProductionYear": 2020}],
+        None,
+        200,
+    )
+    response = client.post(
+        "/api/grouping/preview",
+        json={"type": "year", "value": "2020"},
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["count"] == 1
+    assert data["preview_items"][0]["Year"] == 2020
+
+
+@patch("routes.preview_group")
+@pytest.mark.usefixtures("temp_config")
+def test_preview_grouping_complex_query(mock_preview, client) -> None:
+    """Preview with complex query type returns properly."""
+    save_config({"jellyfin_url": "http://t", "api_key": "k"})
+    mock_preview.return_value = (
+        [
+            {"Name": "HorrorComedy", "ProductionYear": 2023},
+        ],
+        None,
+        200,
+    )
+    response = client.post(
+        "/api/grouping/preview",
+        json={"type": "complex", "value": "Horror AND Comedy"},
+    )
+    assert response.status_code == 200
+    assert response.get_json()["count"] == 1
+
+
+@patch("routes.preview_group")
+@pytest.mark.usefixtures("temp_config")
+def test_preview_grouping_watch_state(mock_preview, client) -> None:
+    """Preview with watch_state filter works."""
+    save_config({"jellyfin_url": "http://t", "api_key": "k"})
+    mock_preview.return_value = ([{"Name": "M1"}], None, 200)
+    response = client.post(
+        "/api/grouping/preview",
+        json={"type": "genre", "value": "Action", "watch_state": "unwatched"},
+    )
+    assert response.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Cleanup: empty target dir, permission denied (Issue #792)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.usefixtures("temp_config")
+def test_get_cleanup_empty_target_dir(client, tmp_path) -> None:
+    """Empty target directory returns no items."""
+    target = tmp_path / "empty_target"
+    target.mkdir()
+    save_config({"target_path": str(target)})
+    response = client.get("/api/cleanup")
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["items"] == []
+
+
+@patch("routes.Path.iterdir")
+@pytest.mark.usefixtures("temp_config")
+def test_get_cleanup_permission_denied(mock_iterdir, client, tmp_path) -> None:
+    """Permission denied reading target dir returns 500 error."""
+    target = tmp_path / "secure"
+    target.mkdir()
+    save_config({"target_path": str(target)})
+    mock_iterdir.side_effect = PermissionError("Permission denied")
+    response = client.get("/api/cleanup")
+    assert response.status_code == 500
+    data = response.get_json()
+    assert "Permission denied" in data["message"]
+
+
+# ---------------------------------------------------------------------------
+# Index: rendered wizard state present in HTML (Issue #797)
+# ---------------------------------------------------------------------------
+
+
+def test_index_contains_wizard_element(client) -> None:
+    """Index page contains the wizard trigger element."""
+    response = client.get("/")
+    assert response.status_code == 200
+    html = response.data.decode("utf-8")
+    # The wizard button should be in the rendered HTML
+    assert "wizard" in html.lower()
+    assert "data-wizard" in html or 'id="wizard' in html or 'class="wizard' in html
