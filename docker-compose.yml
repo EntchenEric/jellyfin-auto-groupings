@@ -30,6 +30,14 @@ services:
       # - NETWORK_RETRY_TOTAL=3
       # - NETWORK_RETRY_BACKOFF_FACTOR=1.0
       # - NETWORK_RETRY_STATUS_FORCELIST=429,500,502,503,504
+      # Comma-separated Flask endpoint names exempt from the X-Requested-With CSRF check:
+      # - ALLOWED_NON_CSRF_ENDPOINTS=main.webhook,main.callback
+      # Control log verbosity (DEBUG, INFO, WARNING, ERROR, CRITICAL; default: INFO):
+      # - LOG_LEVEL=INFO
+      # Gunicorn worker timeout in seconds for long-running sync (default: 120):
+      # - GUNICORN_TIMEOUT=120
+      # Number of gunicorn worker processes (default: 2):
+      # - GUNICORN_WORKERS=2
     volumes:
       # 1. Config persistence
       # Stores your API keys and group definitions. 
