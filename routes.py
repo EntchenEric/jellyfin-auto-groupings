@@ -358,7 +358,7 @@ def _validate_config_types(new_config: dict[str, Any]) -> list[str]:
                     import re as _re
                     if not _re.match(r"^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$", val):
                         errors.append(
-                            f"{prefix}.{date_field} must be in MM-DD format (e.g. 10-31)"
+                            f"{prefix}.{date_field} must be in MM-DD format (e.g. 10-31)",
                         )
 
             # Validate rules field (complex query rules)

@@ -182,7 +182,7 @@ def _request(method: str, url: str, **kwargs: Any) -> requests.Response:
     """Send a *method* request to *url* through the retry-enabled session."""
     try:
         http_fn = cast(
-            "Callable[..., requests.Response]", getattr(_SESSION, method.lower())
+            "Callable[..., requests.Response]", getattr(_SESSION, method.lower()),
         )
         return http_fn(url, **kwargs)
     except requests.ConnectionError as exc:

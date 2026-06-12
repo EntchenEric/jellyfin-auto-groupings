@@ -1216,7 +1216,7 @@ def test_handle_http_error_http_none_code() -> None:
 
 
 def test_csrf_exempted_endpoint_skips_csrf_without_header(
-    app, client, monkeypatch
+    app, client, monkeypatch,
 ) -> None:
     """Endpoints listed in _ALLOWED_NON_CSRF_REQUESTS bypass the CSRF check."""
     import routes as routes_module
@@ -1243,7 +1243,7 @@ def test_csrf_exempted_endpoint_skips_csrf_without_header(
             "CSRF exemption should have allowed the request without X-Requested-With header"
         )
         assert not response.is_json or "CSRF" not in response.get_json().get(
-            "message", ""
+            "message", "",
         )
     finally:
         routes_module._ALLOWED_NON_CSRF_REQUESTS = old_allowed
