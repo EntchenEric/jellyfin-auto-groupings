@@ -7,6 +7,7 @@ Provides a dashboard at http://localhost:8096.
 from __future__ import annotations
 
 import logging
+import os
 
 from config import _env_flag
 from tests.virtual_jellyfin import app
@@ -18,4 +19,5 @@ if __name__ == "__main__":
     logger.info("Dashboard: http://localhost:8096")
     logger.info("Press Ctrl+C to stop.")
     debug: bool = _env_flag("FLASK_DEBUG")
-    app.run(host="0.0.0.0", port=8096, debug=debug)
+    port: int = int(os.environ.get("VIRTUAL_JF_PORT", "8096"))
+    app.run(host="0.0.0.0", port=port, debug=debug)

@@ -54,7 +54,7 @@ LABEL org.opencontainers.image.title="Jellyfin Groupings" \
 EXPOSE 5000
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --retries=3 \
-  CMD python -c "import requests; requests.get('http://localhost:5000/', timeout=3).raise_for_status()" || exit 1
+  CMD python -c "import requests; requests.get('http://localhost:5000/api/health', timeout=3).raise_for_status()" || exit 1
 
 USER appuser
 

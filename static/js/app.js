@@ -15,6 +15,33 @@ import { initPathPicker, openPathPicker, closePicker, confirmPicker, pickerOutsi
 import { initSidebarResizer } from './features/sidebar-resizer.js';
 import { renderGroups, cancelEdit, toggleSortOrder, toggleSeasonal, toggleGroupScheduler, populateSeasonalDays, resetFormUI, initGroupSearch } from './features/groupings.js';
 
+// ---------------------------------------------------------------------------
+// Global error boundary
+// Catches unhandled promise rejections and uncaught exceptions, displaying
+// them as toast notifications so the user always sees a feedback message
+// instead of a silent failure or a broken page.
+// ---------------------------------------------------------------------------
+window.addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason;
+    const message =
+        reason instanceof Error ? reason.message :
+        typeof reason === 'string' ? reason :
+        'An unexpected error occurred';
+    showToast(message, 'error');
+    // Don't log aborted requests — those are intentional
+    if (!(reason instanceof DOMException && reason.name === 'AbortError')) {
+        console.error('[App] Unhandled rejection:', reason);
+    }
+});
+
+window.addEventListener('error', (event) => {
+    // Only handle script errors, not resource-load failures
+    if (event.error) {
+        showToast(event.error.message || 'Script error', 'error');
+        console.error('[App] Uncaught error:', event.error);
+    }
+});
+
 // Listen for cross-module events
 document.addEventListener('groups-changed', () => renderGroups());
 
@@ -166,8 +193,14 @@ function wireHamburgerButton() {
     const hamburger = getEl('hamburger-btn');
     if (hamburger) {
         hamburger.addEventListener('click', () => {
-            document.getElementById('sidebar').classList.toggle('open');
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('open');
+            const isOpen = sidebar.classList.contains('open');
+            hamburger.setAttribute('aria-expanded', String(isOpen));
+            hamburger.setAttribute('aria-label', isOpen ? 'Close sidebar menu' : 'Open sidebar menu');
         });
+        // Set initial state
+        hamburger.setAttribute('aria-expanded', 'false');
     }
 }
 
@@ -243,9 +276,12 @@ function wirePasswordToggles() {
             const isPassword = input.type === 'password';
             input.type = isPassword ? 'text' : 'password';
             btn.classList.toggle('visible', isPassword);
-            btn.setAttribute('aria-label', isPassword ? 'Hide API key' : 'Show API key');
+            btn.setAttribute('aria-label', isPassword ? 'Hide ' + input.name + ' value' : 'Show ' + input.name + ' value');
+            btn.setAttribute('aria-pressed', String(!isPassword));
             btn.innerHTML = isPassword ? eyeSlashSvg : eyeSvg;
         });
+        // Set initial aria state
+        btn.setAttribute('aria-pressed', 'false');
     });
 }
 

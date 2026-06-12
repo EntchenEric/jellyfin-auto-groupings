@@ -13,7 +13,10 @@ from pathlib import Path
 
 
 def main() -> None:
-    """Run pytest with coverage and stream output to ``test_results.txt``."""
+    """Run pytest with coverage and stream output to ``test_results.txt``.
+
+    The output file is created in the repository root directory.
+    """
     repo_root = Path(__file__).resolve().parent
     existing = os.environ.get("PYTHONPATH")
     os.environ["PYTHONPATH"] = (

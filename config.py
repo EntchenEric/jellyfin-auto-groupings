@@ -157,10 +157,24 @@ def load_config() -> dict[str, Any]:
             _fill_defaults(cfg, DEFAULT_CONFIG)
             if _migrate_legacy_keys(cfg):
                 save_config(cfg)
-        except (json.JSONDecodeError, OSError):
-            # If the file is corrupt or unreadable, fall back to safe defaults
+        except json.JSONDecodeError:
+            # If the file is corrupt, backup and fall back to safe defaults
             logger.warning(
-                "Could not read config file, falling back to defaults",
+                "Config file %s contains invalid JSON. Falling back to defaults.",
+                CONFIG_FILE,
+            )
+            backup_path = Path(str(CONFIG_FILE) + ".corrupt.bak")
+            try:
+                Path(CONFIG_FILE).rename(backup_path)
+                logger.info("Backed up corrupt config to %s", backup_path)
+            except OSError:
+                logger.exception("Failed to backup corrupt config file")
+            cfg = DEFAULT_CONFIG.copy()
+        except OSError:
+            # If the file is unreadable, fall back to safe defaults
+            logger.warning(
+                "Could not read config file %s, falling back to defaults",
+                CONFIG_FILE,
                 exc_info=True,
             )
             cfg = DEFAULT_CONFIG.copy()

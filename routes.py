@@ -32,6 +32,8 @@ from werkzeug.exceptions import HTTPException
 
 import network
 
+_APP_START_TIME: float = time.time()
+
 if TYPE_CHECKING:
     from flask.typing import ResponseReturnValue
 
