@@ -10,7 +10,7 @@ import copy
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -169,7 +169,7 @@ def load_config() -> dict[str, Any]:
             try:
                 if backup_path.exists():
                     # Avoid collision by appending a timestamp
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    timestamp = datetime.now(tz=UTC).strftime("%Y%m%d_%H%M%S")
                     backup_path = cfg_path.with_name(
                         cfg_path.name + f".corrupt.{timestamp}.bak"
                     )

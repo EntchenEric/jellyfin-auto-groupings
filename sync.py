@@ -94,7 +94,10 @@ _METADATA_FILTER_MAP: dict[str, str] = {
 }
 
 # Jellyfin Fields parameter for full-library fetches
-_FULL_LIBRARY_FIELDS: str = "Path,ProviderIds,Genres,Studios,Tags,People,ProductionYear,CommunityRating,UserData"
+_FULL_LIBRARY_FIELDS: str = (
+    "Path,ProviderIds,Genres,Studios,Tags,People,"
+    "ProductionYear,CommunityRating,UserData"
+)
 
 # Jellyfin API timeout for full-library fetches (seconds)
 _FULL_LIBRARY_TIMEOUT: int = 30
@@ -688,7 +691,6 @@ def _fetch_items_for_letterboxd_group(
         external_ids,
         items_by_imdb,
         items_by_tmdb,
-        sort_order,
     )
     items = _filter_by_watch_state(items, watch_state)
 
@@ -699,11 +701,10 @@ def _build_letterboxd_items(
     external_ids: list[str],
     items_by_imdb: dict[str, dict[str, Any]],
     items_by_tmdb: dict[str, dict[str, Any]],
-    sort_order: str,
 ) -> list[dict[str, Any]]:
-    """Map external Letterboxd IDs to Jellyfin items, respecting sort order.
+    """Map external Letterboxd IDs to Jellyfin items, preserving list order.
 
-    The external list order is preserved regardless of *sort_order*.
+    The external list order is preserved.
     Duplicates (the same Jellyfin item matched via both IMDb and TMDb ID)
     are skipped to avoid duplicate symlinks.
     """
@@ -1884,7 +1885,11 @@ def run_sync(
         try:
             Path(target_base).mkdir(parents=True, exist_ok=True)
         except PermissionError as exc:
-            msg = f"Cannot create target directory '{target_base}' (permission denied). Please choose a path the application can write to."
+            msg = (
+                f"Cannot create target directory '{target_base}'"
+                " (permission denied). Please choose a path the application"
+                " can write to."
+            )
             raise ValueError(msg) from exc
 
     logger.info("Starting sync to: %s", target_base)

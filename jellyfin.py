@@ -84,10 +84,12 @@ def _format_request_error(
     exc: requests.exceptions.RequestException,
     prefix: str,
 ) -> str:
-    """Build a human-readable error message from *exc* with response details if available."""
+    """Build a human-readable error message from *exc* with response details."""
     msg = prefix
-    if hasattr(exc, "response") and exc.response is not None:
-        msg += f" (Status {exc.response.status_code}): {exc.response.text}"
+    if exc.response is not None:
+        status = getattr(exc.response, "status_code", "?")
+        text = getattr(exc.response, "text", "")
+        msg += f" (Status {status}): {text}"
     else:
         msg += f": {exc!s}"
     return msg
@@ -102,7 +104,7 @@ def _raise_request_error(
 
 
 def _parse_json(response: requests.Response) -> Any:
-    """Safely parse *response* JSON, translating decode failures into ``RuntimeError``."""
+    """Safely parse *response* JSON, translating decode failures into RuntimeError."""
     try:
         return response.json()
     except requests.exceptions.JSONDecodeError as exc:

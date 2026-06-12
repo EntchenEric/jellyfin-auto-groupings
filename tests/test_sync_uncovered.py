@@ -220,14 +220,13 @@ def test_build_letterboxd_items_list_order_dedup() -> None:
         external_ids,
         items_by_imdb,
         items_by_tmdb,
-        "letterboxd_list_order",
     )
     assert len(result) == 1
     assert result[0]["Id"] == "item1"
 
 
 def test_build_letterboxd_items_priority_order_dedup() -> None:
-    """Priority sort order also deduplicates entries."""
+    """Deduplicates entries regardless of sort request."""
     from sync import _build_letterboxd_items
 
     external_ids = ["tt999", "123"]
@@ -238,7 +237,6 @@ def test_build_letterboxd_items_priority_order_dedup() -> None:
         external_ids,
         items_by_imdb,
         items_by_tmdb,
-        "SortName",
     )
     assert len(result) == 1
     assert result[0]["Id"] == "item1"
@@ -259,7 +257,6 @@ def test_build_letterboxd_items_unmatched_id_skipped() -> None:
         external_ids,
         items_by_imdb,
         items_by_tmdb,
-        "letterboxd_list_order",
     )
     assert len(result) == 1
     assert result[0]["Id"] == "item1"

@@ -64,7 +64,8 @@ def fetch_mal_list(
     Args:
         username: The MAL username.
         client_id: The MAL API Client ID.
-        status: The list status to fetch (e.g., "watching", "completed", "on_hold", "dropped", "plan_to_watch").
+        status: The list status to fetch (e.g., "watching", "completed",
+                "on_hold", "dropped", "plan_to_watch").
                 If None, all lists are fetched.
 
     Returns:
