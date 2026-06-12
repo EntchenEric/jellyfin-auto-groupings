@@ -141,7 +141,7 @@ Examples:
 
 - Use the [GitHub issue tracker](https://github.com/entcheneric/jellyfin-auto-groupings/issues).
 - Include steps to reproduce, expected behavior, and actual behavior.
-- Include relevant logs (from `logs/jellyfin-groupings.log`) if applicable.
+- Include relevant logs (from `logs/jellyfin-groupings.log` inside the container or `./logs/jellyfin-groupings.log` if you mounted the logs volume) if applicable.
 - Include your Jellyfin version and deployment method (Docker, native, etc.).
 
 ## Code of Conduct
