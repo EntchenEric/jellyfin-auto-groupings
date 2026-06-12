@@ -10,8 +10,12 @@ install-dev:
 
 # ── Testing ─────────────────────────────────────────────────────────────────
 
+# PYTEST_ARGS can be overridden to add/remove flags e.g.: make test PYTEST_ARGS="-v"
+# The -q flag reduces pytest verbosity; remove it for full output during debugging.
+PYTEST_ARGS ?= -q
+
 test:
-	python3 -m pytest -x -q --ignore=tests/test_deep_sync.py
+	python3 -m pytest -x $(PYTEST_ARGS) --ignore=tests/test_deep_sync.py
 
 test-all:
 	python3 -m pytest
