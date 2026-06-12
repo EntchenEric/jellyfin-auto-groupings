@@ -1,4 +1,10 @@
-// app.js – Application entry point
+/**
+ * @file Application entry point — initialises all modules, wires event
+ * handlers, keyboard shortcuts, and cross-module event listeners.
+ *
+ * This module is the bootstrap for the Jellyfin Auto Groupings frontend.
+ * All setup, wiring, and initial data loading happens here.
+ */
 
 import { state, metadataTypes } from './core/state.js';
 import { getEl, showToast, showErrorDialog, setLoading, showLoadingOverlay, updateLoadingStatus, hideLoadingOverlay, hideModal } from './core/ui.js';
@@ -21,6 +27,12 @@ import { renderGroups, cancelEdit, toggleSortOrder, toggleSeasonal, toggleGroupS
 // them as toast notifications so the user always sees a feedback message
 // instead of a silent failure or a broken page.
 // ---------------------------------------------------------------------------
+
+/**
+ * Handles unhandled promise rejections by displaying a toast notification.
+ * AbortError (from cancelled fetch requests) is not logged to console.
+ * @param {PromiseRejectionEvent} event - The unhandled rejection event.
+ */
 window.addEventListener('unhandledrejection', (event) => {
     const reason = event.reason;
     const message =
@@ -34,6 +46,12 @@ window.addEventListener('unhandledrejection', (event) => {
     }
 });
 
+/**
+ * Handles uncaught runtime errors by displaying a toast notification.
+ * Resource-load failures (e.g. failed <script> / <img> loads) are silently
+ * ignored since they do not populate event.error.
+ * @param {ErrorEvent} event - The uncaught error event.
+ */
 window.addEventListener('error', (event) => {
     // Only show toasts when event.error exists (actual Error objects).
     // Resource-load failures (e.g. failed <script>/<img> loads) don't
@@ -44,7 +62,9 @@ window.addEventListener('error', (event) => {
     }
 });
 
-// Listen for cross-module events
+/**
+ * Renders the groups list when a 'groups-changed' event is dispatched.
+ */
 document.addEventListener('groups-changed', () => renderGroups());
 
 // Expose to window for inline HTML onclick handlers (path-picker modal)
@@ -56,7 +76,17 @@ window.openPathPicker = openPathPicker;
 // Expose for JS-injected buttons (group edit inline)
 window.cancelEdit = cancelEdit;
 
-// Keyboard shortcuts — scoped so they don't fire when typing in inputs
+/**
+ * Registers keyboard shortcuts:
+ * - S: Run sync (unless a modal is open or the user is typing)
+ * - D: Dry-run / preview sync
+ * - C: Open cleanup modal
+ * - R: Refresh groups list
+ *
+ * Shortcuts are scoped so they don't fire when the user is typing in an
+ * input, textarea, or select element, or when a modal is open.
+ * @returns {void}
+ */
 function wireKeyboardShortcuts() {
     // Cache the modal query selector for performance
     const modals = document.querySelectorAll('.modal');
@@ -116,6 +146,12 @@ function wireKeyboardShortcuts() {
     });
 }
 
+/**
+ * Wires click handlers for topbar action buttons (sync, preview, cleanup,
+ * export, import, wizard). Each button dispatches its corresponding feature
+ * module function with loading state management.
+ * @returns {void}
+ */
 function wireTopbarButtons() {
     // Sync button → confirmation dialog first
     const topbarSyncBtn = getEl('topbar-sync-btn');
@@ -162,6 +198,11 @@ function wireTopbarButtons() {
     }
 }
 
+/**
+ * Wires the confirm / preview buttons inside the sync confirmation dialog.
+ * Hides the modal first, then executes the requested action.
+ * @returns {void}
+ */
 function wireConfirmSyncDialog() {
     const confirmGoBtn = getEl('confirm-sync-go-btn');
     const confirmPreviewBtn = getEl('confirm-sync-preview-btn');
@@ -184,6 +225,11 @@ function wireConfirmSyncDialog() {
     }
 }
 
+/**
+ * Wires the file-select button in the import modal to trigger the hidden
+ * <input type="file"> element, and wires the change handler.
+ * @returns {void}
+ */
 function wireImportFilePicker() {
     const selectBtn = getEl('import-select-file-btn');
     const fileInput = getEl('import-file-input');
@@ -193,6 +239,11 @@ function wireImportFilePicker() {
     }
 }
 
+/**
+ * Wires the mobile hamburger button to toggle the sidebar open/closed.
+ * Manages aria-expanded and aria-label attributes for accessibility.
+ * @returns {void}
+ */
 function wireHamburgerButton() {
     const hamburger = getEl('hamburger-btn');
     if (hamburger) {
@@ -212,6 +263,11 @@ function wireHamburgerButton() {
     }
 }
 
+/**
+ * Wires browse buttons (marked with data-path-field) to open the path
+ * picker for the associated form field.
+ * @returns {void}
+ */
 function wireBrowseButtons() {
     // Browse buttons use data-path-field attribute
     document.querySelectorAll('.browse-btn[data-path-field]').forEach(btn => {
@@ -224,6 +280,10 @@ function wireBrowseButtons() {
     });
 }
 
+/**
+ * Wires the global and cleanup scheduler enable/disable toggles.
+ * @returns {void}
+ */
 function wireSchedulerToggles() {
     const globalToggle = getEl('global_scheduler_enabled');
     if (globalToggle) {
@@ -235,6 +295,11 @@ function wireSchedulerToggles() {
     }
 }
 
+/**
+ * Wires form events on the group-edit form: toggles (sort order, schedule,
+ * seasonal), preview button, add-rule button, and cancel-edit button.
+ * @returns {void}
+ */
 function wireGroupFormEvents() {
     // Wire sort order toggle
     const sortOrderToggle = getEl('sort_order_enabled');
@@ -273,6 +338,12 @@ function wireGroupFormEvents() {
     }
 }
 
+/**
+ * Wires password visibility toggles for all password fields. Each toggle
+ * button (class .toggle-password-btn) toggles the associated <input> type
+ * between "password" and "text" and updates the toggle icon and aria-label.
+ * @returns {void}
+ */
 function wirePasswordToggles() {
     const eyeSvg = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
     const eyeSlashSvg = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
@@ -301,6 +372,11 @@ function wirePasswordToggles() {
     });
 }
 
+/**
+ * Wires miscellaneous UI buttons, e.g. the "Clear results" button on the
+ * sync results panel.
+ * @returns {void}
+ */
 function wireMiscButtons() {
     const clearResultsBtn = getEl('clear-sync-results');
     if (clearResultsBtn) {
@@ -311,6 +387,12 @@ function wireMiscButtons() {
     }
 }
 
+/**
+ * Main application bootstrap. Initialises all feature modules, wires UI
+ * event handlers and keyboard shortcuts, then loads config and connects
+ * to Jellyfin if configured.
+ * @returns {Promise<void>}
+ */
 async function bootstrap() {
     initConfig();
     initMetadata();

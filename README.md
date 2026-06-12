@@ -311,6 +311,7 @@ The application reads the following environment variables (which take precedence
 | `APP_PASSWORD` | Enables HTTP Basic Auth on the web UI |
 | `FLASK_PORT` | Server port (default: `5000`) |
 | `FLASK_DEBUG` | Enable Flask debug mode (`true`/`false`) |
+| `LOG_LEVEL` | Log level for application output. Accepts `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` (default: `INFO`) |
 | `ANILIST_API_URL` | AniList GraphQL endpoint (default: `https://graphql.anilist.co`) |
 | `VIRTUAL_JF_PORT` | Port for mock Jellyfin server used during development (default: `8096`) |
 | `NETWORK_RETRY_TOTAL` | Max HTTP retries for external API calls (default: `3`; set `0` to disable) |
@@ -460,6 +461,7 @@ services:
       - NETWORK_RETRY_BACKOFF_FACTOR=1.0 # optional: retry backoff multiplier
       - NETWORK_RETRY_STATUS_FORCELIST=429,500,502,503,504 # optional: retry status codes
       - ALLOWED_NON_CSRF_ENDPOINTS= # optional: comma-separated Flask endpoint names (e.g. "main.webhook,main.callback") exempt from CSRF check
+      - LOG_LEVEL=INFO                   # optional: log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
       - FLASK_DEBUG=false              # optional: set to true for debug mode
     restart: unless-stopped
 ```
