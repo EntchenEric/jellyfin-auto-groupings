@@ -23,6 +23,56 @@ _DEFAULT_TMDB_LANGUAGE: str = "en-US"
 _MAX_TMDB_PAGES: int = 50
 
 
+def _fetch_tmdb_page(
+    list_id: str,
+    api_key: str,
+    page: int,
+) -> dict[str, Any]:
+    """Fetch a single TMDb list page and return the parsed JSON response.
+
+    Raises:
+        RuntimeError: If an HTTP error occurs.
+
+    """
+    url = f"{_TMDB_API_BASE}/list/{list_id}"
+    params = {
+        "api_key": api_key,
+        "page": str(page),
+        "language": _DEFAULT_TMDB_LANGUAGE,
+    }
+    try:
+        resp = network.get(url, params=params, timeout=15)
+        resp.raise_for_status()
+    except requests.exceptions.RequestException as exc:
+        msg = f"Failed to fetch TMDb list page {page}: {exc}"
+        raise RuntimeError(msg) from exc
+    return resp.json()
+
+
+def _collect_tmdb_ids_from_page(
+    data: dict[str, Any],
+    ids: list[str],
+    seen: set[str],
+) -> None:
+    """Extract TMDb IDs from a page response, deduplicating via *seen*."""
+    for item in data.get("items", []):
+        tmdb_id = item.get("id")
+        if tmdb_id:
+            str_id = str(tmdb_id)
+            if str_id not in seen:
+                seen.add(str_id)
+                ids.append(str_id)
+
+
+def _normalize_tmdb_list_id(list_id: str) -> str:
+    """Normalize *list_id* by stripping whitespace and extracting from a full URL if needed."""
+    list_id = list_id.strip()
+    if "themoviedb.org/list/" in list_id:
+        parsed = urlparse(list_id)
+        list_id = parsed.path.strip("/").split("/")[-1]
+    return list_id
+
+
 def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
     """Fetch a TMDb v3 list and return its items as TMDb IDs in list order.
 
@@ -45,48 +95,21 @@ def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
         msg = "A TMDb List ID is required."
         raise ValueError(msg)
 
-    list_id = list_id.strip()
-
-    # Handle full URL if provided (extracting ID from https://www.themoviedb.org/list/123)
-    if "themoviedb.org/list/" in list_id:
-        parsed = urlparse(list_id)
-        list_id = parsed.path.strip("/").split("/")[-1]
+    list_id = _normalize_tmdb_list_id(list_id)
 
     ids: list[str] = []
     seen: set[str] = set()
     page: int = 1
 
     while True:
-        url = f"{_TMDB_API_BASE}/list/{list_id}"
-        params = {
-            "api_key": api_key,
-            "page": str(page),
-            "language": _DEFAULT_TMDB_LANGUAGE,
-        }
+        data = _fetch_tmdb_page(list_id, api_key, page)
+        _collect_tmdb_ids_from_page(data, ids, seen)
 
-        try:
-            resp = network.get(url, params=params, timeout=15)
-            resp.raise_for_status()
-        except requests.exceptions.RequestException as exc:
-            msg = f"Failed to fetch TMDb list page {page}: {exc}"
-            raise RuntimeError(msg) from exc
-
-        data: dict[str, Any] = resp.json()
-        items: list[dict[str, Any]] = data.get("items", [])
-
-        if not items:
+        if not data.get("items"):
             break
 
-        for item in items:
-            tmdb_id = item.get("id")
-            if tmdb_id:
-                str_id = str(tmdb_id)
-                if str_id not in seen:
-                    seen.add(str_id)
-                    ids.append(str_id)
-
         total_pages: int = data.get("total_pages", 1)
-        if page >= total_pages or page >= _MAX_TMDB_PAGES:  # Safety cap
+        if page >= total_pages or page >= _MAX_TMDB_PAGES:
             break
         page += 1
 
