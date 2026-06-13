@@ -4,6 +4,9 @@ import { showToast, showErrorDialog } from './ui.js';
 
 const DEFAULT_TIMEOUT_MS = 60000;
 
+let _basicAuthUser = '';
+let _basicAuthPass = '';
+
 class ApiError extends Error {
     constructor(status, message) {
         super(message);
@@ -12,25 +15,50 @@ class ApiError extends Error {
     }
 }
 
-async function apiRequest(url, options = {}, timeoutMs = DEFAULT_TIMEOUT_MS) {
+export function setBasicAuthCredentials(user, pass) {
+    _basicAuthUser = user || '';
+    _basicAuthPass = pass || '';
+}
+
+export async function loginWithPassword(password) {
+    setBasicAuthCredentials('user', password);
+    return apiGet('/api/config');
+}
+
+function buildHeaders(extra = {}) {
+    const headers = { ...extra };
+    if (_basicAuthPass) {
+        headers['Authorization'] = 'Basic ' + btoa(`${_basicAuthUser}:${_basicAuthPass}`);
+    }
+    return headers;
+}
+
+async function apiRequest(url, options = {}, timeoutMs = DEFAULT_TIMEOUT_MS, silent = false) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-        const res = await fetch(url, { ...options, signal: controller.signal });
+        const res = await fetch(url, {
+            ...options,
+            credentials: 'same-origin',
+            signal: controller.signal,
+            headers: buildHeaders(options.headers || {})
+        });
         if (!res.ok) {
             const body = await res.json().catch(() => ({}));
             throw new ApiError(res.status, body.message || 'Request failed');
         }
         return res.json();
     } catch (err) {
-        if (err.name === 'AbortError') {
-            showErrorDialog('Request timed out — server did not respond in time');
-        } else if (err instanceof ApiError) {
-            showErrorDialog(err.message);
-        } else if (err instanceof TypeError) {
-            showErrorDialog('Network error — check your connection');
-        } else {
-            showErrorDialog('Unexpected error occurred');
+        if (!silent) {
+            if (err.name === 'AbortError') {
+                showErrorDialog('Request timed out — server did not respond in time');
+            } else if (err instanceof ApiError) {
+                showErrorDialog(err.message);
+            } else if (err instanceof TypeError) {
+                showErrorDialog('Network error — check your connection');
+            } else {
+                showErrorDialog('Unexpected error occurred');
+            }
         }
         throw err;
     } finally {
@@ -38,11 +66,13 @@ async function apiRequest(url, options = {}, timeoutMs = DEFAULT_TIMEOUT_MS) {
     }
 }
 
-export function apiGet(url, timeoutMs) {
-    return apiRequest(url, {}, timeoutMs);
+export function apiGet(url, timeoutMs, silent) {
+    return apiRequest(url, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    }, timeoutMs, silent);
 }
 
-export function apiPost(url, body, timeoutMs) {
+export function apiPost(url, body, timeoutMs, silent) {
     return apiRequest(url, {
         method: 'POST',
         headers: {
@@ -50,6 +80,13 @@ export function apiPost(url, body, timeoutMs) {
             'X-Requested-With': 'XMLHttpRequest'
         },
         body: JSON.stringify(body)
+    }, timeoutMs, silent);
+}
+
+export function apiDelete(url, timeoutMs) {
+    return apiRequest(url, {
+        method: 'DELETE',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
     }, timeoutMs);
 }
 
@@ -60,7 +97,7 @@ export const testServer = (url, key) => apiPost('/api/test-server', { jellyfin_u
 export const fetchMetadata = () => apiGet('/api/jellyfin/metadata');
 export const fetchUsers = () => apiGet('/api/jellyfin/users');
 export const runSync = () => apiPost('/api/sync');
-export const previewSync = () => apiPost('/api/sync/preview_all');
+export const previewSync = (silent = false) => apiPost('/api/sync/preview_all', {}, DEFAULT_TIMEOUT_MS, silent);
 export const previewGroup = (type, value, watch_state) =>
     apiPost('/api/grouping/preview', { type, value, watch_state });
 export const uploadCover = (groupName, image) =>

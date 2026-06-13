@@ -20,7 +20,9 @@ logging.basicConfig(
 @pytest.fixture(scope="session")
 def virtual_jellyfin():
     """Fixture to run a virtual Jellyfin server in a background thread."""
-    server_thread = threading.Thread(target=lambda: jelly_mock_app.run(port=8096, debug=False, use_reloader=False))
+    server_thread = threading.Thread(
+        target=lambda: jelly_mock_app.run(port=8096, debug=False, use_reloader=False)
+    )
     server_thread.daemon = True
     server_thread.start()
 
@@ -42,23 +44,28 @@ def virtual_jellyfin():
 
 @pytest.fixture(autouse=True)
 def mock_scheduler():
-    patcher = patch('scheduler._scheduler')
+    patcher = patch("scheduler._scheduler")
     mock_bg_sched_instance = patcher.start()
     yield mock_bg_sched_instance
     patcher.stop()
 
 
 def pytest_configure(config):
-    config.addinivalue_line("markers", "e2e: end-to-end tests requiring real Jellyfin instance")
+    config.addinivalue_line(
+        "markers", "e2e: end-to-end tests requiring real Jellyfin instance"
+    )
 
 
 @pytest.fixture
 def app():
     from copy import deepcopy
+
     old_config = deepcopy(flask_app.config)
-    flask_app.config.update({
-        "TESTING": True,
-    })
+    flask_app.config.update(
+        {
+            "TESTING": True,
+        }
+    )
 
     with flask_app.app_context():
         yield flask_app
@@ -80,6 +87,7 @@ def temp_config(tmp_path):
 
     # Mock CONFIG_FILE in config module
     import config
+
     original_config_file = config.CONFIG_FILE
     original_config_dir = config.CONFIG_DIR
 

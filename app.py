@@ -21,7 +21,7 @@ from pathlib import Path
 
 from flask import Flask
 
-import network  # noqa: F401 — monkey-patches requests.get/post/delete with retry
+import network  # noqa: F401 — registers retry-aware HTTP helpers used across the app
 from config import CONFIG_FILE, DEFAULT_CONFIG, save_config
 from routes import bp
 from scheduler import start_scheduler
@@ -46,7 +46,12 @@ app = Flask(__name__, template_folder="templates", static_folder="static")
 app.register_blueprint(bp)
 
 # Start the background sync scheduler
-if not app.testing and (not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true"):
+if (
+    not app.testing
+    and (not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true")
+    and os.environ.get("SCHEDULER_ENABLED", "1") == "1"
+    and os.environ.get("DISABLE_SCHEDULER") != "1"
+):
     start_scheduler()
 
 

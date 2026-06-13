@@ -64,6 +64,14 @@ def fetch_anilist_list(username: str, status: str | None = None) -> list[int]:
     response.raise_for_status()
 
     data = response.json()
+    errors = data.get("errors")
+    if errors:
+        messages = [
+            err.get("message", str(err)) if isinstance(err, dict) else str(err)
+            for err in errors
+        ]
+        raise RuntimeError("; ".join(messages))
+
     root = data.get("data")
     if not isinstance(root, dict):
         return []

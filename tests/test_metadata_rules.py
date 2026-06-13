@@ -3,6 +3,7 @@
 The JS frontend parses filter strings like "Horror AND Action AND NOT Comedy".
 These tests verify the Python-side logic for parsing and filtering rules.
 """
+
 # Replicating the frontend's parseMetadataValue logic in Python for testing
 # the algorithm's correctness (the backend sync engine applies these rules).
 import re
@@ -22,6 +23,7 @@ def parse_metadata_value(val_str):
         if match:
             return {"type": match.group(1), "value": match.group(2).strip()}
         return {"value": s}
+
     first = parse_rule(parts[0])
     rules.append({"operator": "", **first})
     for i in range(1, len(parts), 2):

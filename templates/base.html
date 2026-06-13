@@ -24,7 +24,7 @@
             <span class="loading-spinner" aria-hidden="true"></span>
             <h3 id="loading-overlay-title">Connecting to Jellyfin</h3>
             <p id="loading-overlay-status" role="status" aria-live="polite" aria-atomic="true">Fetching genres, actors, studios, and tags...</p>
-            <div class="progress-bar-container">
+            <div class="progress-bar-container" id="progress-bar-container" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-labelledby="loading-overlay-status">
                 <div class="progress-bar-fill" id="progress-bar-fill" style="width: 0%;"></div>
             </div>
             <div class="progress-info" id="progress-info">

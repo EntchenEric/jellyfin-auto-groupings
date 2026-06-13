@@ -6,11 +6,11 @@ TEST_URL = "http://localhost:8096"
 TEST_API_KEY = "test_key"
 
 
-@patch('pathlib.Path.mkdir')
-@patch('pathlib.Path.exists')
-@patch('sync.shutil.rmtree')
-@patch('sync.os.symlink')
-@patch('sync.fetch_jellyfin_items')
+@patch("pathlib.Path.mkdir")
+@patch("pathlib.Path.exists")
+@patch("sync.shutil.rmtree")
+@patch("sync.os.symlink")
+@patch("sync.fetch_jellyfin_items")
 def test_run_sync_basic(mock_fetch, mock_symlink, mock_rmtree, mock_exists, mock_mkdir):
     """Test run_sync with a simple genre-based group."""
     config = {
@@ -49,9 +49,9 @@ def test_run_sync_basic(mock_fetch, mock_symlink, mock_rmtree, mock_exists, mock
     assert "0001 - file.mkv" in str(args[1])
 
 
-@patch('pathlib.Path.exists')
-@patch('sync.fetch_jellyfin_items')
-@patch('sync._fetch_items_for_imdb_group')
+@patch("pathlib.Path.exists")
+@patch("sync.fetch_jellyfin_items")
+@patch("sync._fetch_items_for_imdb_group")
 def test_run_sync_imdb(mock_imdb_fetch, mock_jf_fetch, mock_exists):
     """Test run_sync with an IMDb-list group."""
     mock_exists.return_value = True

@@ -23,11 +23,15 @@ test_results.txt
 pytest_verbose.log
 current_test_out.txt
 test_api_out.txt
+test_error.log
 pytest.log
 .pytest_cache/
 .coverage
 e2e/test_media/
 e2e/test_output/
+
+# Legacy monolith UI (removed)
+index.html
 
 # IDE
 .vscode/

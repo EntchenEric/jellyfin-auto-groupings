@@ -1,8 +1,8 @@
 // sync.js – Sync and preview sync logic
 
 import { state } from '../core/state.js';
-import { apiPost } from '../core/api.js';
-import { showToast, showErrorDialog, getEl } from '../core/ui.js';
+import { apiPost, previewSync } from '../core/api.js';
+import { showToast, showErrorDialog, getEl, showModal } from '../core/ui.js';
 
 export async function syncAll() {
     const result = await apiPost('/api/sync');
@@ -17,8 +17,23 @@ export async function syncAll() {
             result.results.forEach(r => {
                 const entry = document.createElement('div');
                 entry.setAttribute('style', 'display:flex; justify-content:space-between; padding:0.3rem 0; border-bottom:1px solid var(--glass-border); font-size:0.85rem;');
-                entry.innerHTML = `<span>${r.group}</span><span style="color:var(--accent-color); font-weight:600;">${r.links} links</span>`;
-                if (r.error) entry.innerHTML += `<span style="color:var(--error-color); margin-left:0.5rem;">(${r.error})</span>`;
+
+                const groupSpan = document.createElement('span');
+                groupSpan.textContent = r.group;
+                entry.appendChild(groupSpan);
+
+                const linksSpan = document.createElement('span');
+                linksSpan.style.cssText = 'color:var(--accent-color); font-weight:600;';
+                linksSpan.textContent = `${r.links} links`;
+                entry.appendChild(linksSpan);
+
+                if (r.error) {
+                    const errSpan = document.createElement('span');
+                    errSpan.style.cssText = 'color:var(--error-color); margin-left:0.5rem;';
+                    errSpan.textContent = `(${r.error})`;
+                    entry.appendChild(errSpan);
+                }
+
                 resultsContent.appendChild(entry);
             });
             resultsPanel.style.display = 'block';
@@ -87,15 +102,29 @@ export async function previewSyncAll() {
     }
 }
 
-export function showConfirmSyncDialog() {
+export async function showConfirmSyncDialog() {
     const groupCount = state.currentConfig.groups.length;
     if (groupCount === 0) {
         showErrorDialog('No groups to sync.');
         return;
     }
     const countEl = getEl('confirm-sync-group-count');
+    const itemCountEl = getEl('confirm-sync-item-count');
     if (countEl) countEl.textContent = groupCount;
-    getEl('confirm-sync-modal').style.display = 'flex';
+    if (itemCountEl) itemCountEl.textContent = '…';
+    showModal('confirm-sync-modal');
+
+    try {
+        const result = await previewSync(true);
+        if (result.status === 'success' && result.results) {
+            const totalLinks = result.results.reduce((acc, r) => acc + (r.links || 0), 0);
+            if (itemCountEl) itemCountEl.textContent = totalLinks;
+        } else if (itemCountEl) {
+            itemCountEl.textContent = groupCount;
+        }
+    } catch {
+        if (itemCountEl) itemCountEl.textContent = groupCount;
+    }
 }
 
 export function initSync() {

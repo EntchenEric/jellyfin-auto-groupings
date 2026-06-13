@@ -109,7 +109,7 @@ export function renderMetadataRules() {
         if (type === 'complex') {
             const rowTypeSelect = document.createElement('select');
             rowTypeSelect.setAttribute('style', 'flex: 0 0 auto; width: 110px; padding: 0.8rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 0.9rem;');
-            ['genre', 'actor', 'studio', 'tag'].forEach(t => {
+            ['genre', 'actor', 'studio', 'tag', 'year'].forEach(t => {
                 const o = document.createElement('option');
                 o.value = t; o.textContent = t.charAt(0).toUpperCase() + t.slice(1);
                 if (rule.type === t || (!rule.type && t === 'genre')) o.selected = true;
@@ -121,28 +121,39 @@ export function renderMetadataRules() {
         }
 
         const rowType = type === 'complex' ? (rule.type || 'genre') : type;
-        const options = state.cachedMetadata[rowType] || [];
-        const valSelect = document.createElement('select');
-        valSelect.setAttribute('style', 'flex: 1; padding: 0.8rem 1rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 1rem;');
 
-        const defaultOpt = document.createElement('option');
-        defaultOpt.value = ''; defaultOpt.textContent = 'Select ' + rowType + '...'; defaultOpt.disabled = true; defaultOpt.selected = !rule.value;
-        valSelect.appendChild(defaultOpt);
+        if (rowType === 'year') {
+            const valInput = document.createElement('input');
+            valInput.type = 'text';
+            valInput.placeholder = 'e.g. 2020 or >2000';
+            valInput.value = rule.value || '';
+            valInput.setAttribute('style', 'flex: 1; padding: 0.8rem 1rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 1rem;');
+            valInput.oninput = (e) => { rule.value = e.target.value; };
+            row.appendChild(valInput);
+        } else {
+            const options = state.cachedMetadata[rowType] || [];
+            const valSelect = document.createElement('select');
+            valSelect.setAttribute('style', 'flex: 1; padding: 0.8rem 1rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 1rem;');
 
-        let foundMatch = false;
-        options.forEach(opt => {
-            const o = document.createElement('option');
-            o.value = opt; o.textContent = opt;
-            if (rule.value === opt) { o.selected = true; foundMatch = true; }
-            valSelect.appendChild(o);
-        });
-        if (rule.value && !foundMatch) {
-            const o = document.createElement('option');
-            o.value = rule.value; o.textContent = rule.value + " (Custom)"; o.selected = true;
-            valSelect.appendChild(o);
+            const defaultOpt = document.createElement('option');
+            defaultOpt.value = ''; defaultOpt.textContent = 'Select ' + rowType + '...'; defaultOpt.disabled = true; defaultOpt.selected = !rule.value;
+            valSelect.appendChild(defaultOpt);
+
+            let foundMatch = false;
+            options.forEach(opt => {
+                const o = document.createElement('option');
+                o.value = opt; o.textContent = opt;
+                if (rule.value === opt) { o.selected = true; foundMatch = true; }
+                valSelect.appendChild(o);
+            });
+            if (rule.value && !foundMatch) {
+                const o = document.createElement('option');
+                o.value = rule.value; o.textContent = rule.value + " (Custom)"; o.selected = true;
+                valSelect.appendChild(o);
+            }
+            valSelect.onchange = (e) => { rule.value = e.target.value; };
+            row.appendChild(valSelect);
         }
-        valSelect.onchange = (e) => { rule.value = e.target.value; };
-        row.appendChild(valSelect);
 
         if (index > 0) {
             const rmBtn = document.createElement('button');
@@ -206,6 +217,7 @@ export function updateSourceValueUI(preValue = null) {
             'tmdb_list': ['e.g. 12345', 'TMDb list ID or full URL.'],
             'anilist_list': ['e.g. username', 'AniList username, optionally with status.'],
             'mal_list': ['e.g. username', 'MAL username, optionally with status.'],
+            'letterboxd_list': ['https://letterboxd.com/user/list/list-slug', 'Full Letterboxd list URL.'],
             'general': ['e.g. Action  or  tt1234567', 'Item name or date range.'],
             'recommendations': ['', ''],
         };
@@ -273,28 +285,48 @@ export async function previewGrouping() {
     const val = getFilterValue();
     const resultDiv = getEl('preview_result');
 
-    if (!metadataTypes.includes(type) && type !== 'general') {
+    if (!metadataTypes.includes(type) && type !== 'general' && type !== 'year') {
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<span style="color:var(--text-secondary);">Preview supports Jellyfin metadata types (Genre, Actor, etc).</span>';
+        resultDiv.textContent = '';
+        const span = document.createElement('span');
+        span.style.color = 'var(--text-secondary)';
+        span.textContent = 'Preview supports Jellyfin metadata types (Genre, Actor, etc).';
+        resultDiv.appendChild(span);
         return;
     }
     if (!val) {
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<span style="color:var(--error-color);">Please enter a filter value.</span>';
+        resultDiv.textContent = '';
+        const span = document.createElement('span');
+        span.style.color = 'var(--error-color)';
+        span.textContent = 'Please enter a filter value.';
+        resultDiv.appendChild(span);
         return;
     }
 
     resultDiv.style.display = 'block';
-    resultDiv.innerHTML = '<span class="loading-spinner" style="display:inline-block; margin-right:0.5rem; border-color:rgba(255,255,255,0.2); border-left-color:var(--accent-color);"></span> Loading preview...';
+    resultDiv.textContent = '';
+    const loadingSpan = document.createElement('span');
+    loadingSpan.className = 'loading-spinner';
+    loadingSpan.setAttribute('style', 'display:inline-block; margin-right:0.5rem; border-color:rgba(255,255,255,0.2); border-left-color:var(--accent-color);');
+    resultDiv.appendChild(loadingSpan);
+    resultDiv.appendChild(document.createTextNode(' Loading preview...'));
 
     try {
+        const previewType = type === 'year' ? 'year' : type;
         const res = await apiPost('/api/grouping/preview', {
-            type, value: val, watch_state: getEl('watch_state').value
+            type: previewType, value: val, watch_state: getEl('watch_state').value
         });
-        resultDiv.innerHTML = '';
+        resultDiv.textContent = '';
         if (res.status === 'success') {
             const summary = document.createElement('div');
-            summary.innerHTML = `<strong>Estimated Items:</strong> <span style="color:var(--accent-color);">${res.count}</span>`;
+            const strong = document.createElement('strong');
+            strong.textContent = 'Estimated Items: ';
+            summary.appendChild(strong);
+            const countSpan = document.createElement('span');
+            countSpan.style.color = 'var(--accent-color)';
+            countSpan.textContent = res.count;
+            summary.appendChild(countSpan);
             resultDiv.appendChild(summary);
             if (res.count > 0 && res.preview_items) {
                 const ul = document.createElement('ul');
@@ -307,10 +339,17 @@ export async function previewGrouping() {
                 resultDiv.appendChild(ul);
             }
         } else {
-            resultDiv.innerHTML = `<span style="color:var(--error-color);">Error: ${res.message}</span>`;
+            const span = document.createElement('span');
+            span.style.color = 'var(--error-color)';
+            span.textContent = `Error: ${res.message}`;
+            resultDiv.appendChild(span);
         }
     } catch (err) {
-        resultDiv.innerHTML = '<span style="color:var(--error-color);">Network error during preview.</span>';
+        resultDiv.textContent = '';
+        const span = document.createElement('span');
+        span.style.color = 'var(--error-color)';
+        span.textContent = 'Network error during preview.';
+        resultDiv.appendChild(span);
     }
 }
 

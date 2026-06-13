@@ -1,7 +1,7 @@
 // groupings.js – CRUD operations for groupings
 
 import { state, sourceOptions, sortLabels } from '../core/state.js';
-import { saveConfig } from '../core/api.js';
+import { saveConfig, performCleanup } from '../core/api.js';
 import { showToast, getEl } from '../core/ui.js';
 import { updateSourceTypeOptions, updateSourceValueUI, getFilterValue } from './metadata.js';
 import { openCoverGenerator } from './cover-generator.js';
@@ -166,11 +166,7 @@ export async function deleteGroup(index) {
 
     if (groupName) {
         try {
-            await fetch('/api/cleanup', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ folders: [groupName] })
-            });
+            await performCleanup([groupName]);
         } catch (e) {
             console.error('Failed to cleanup folder from disk:', e);
         }
@@ -186,11 +182,7 @@ export async function clearAllGroups() {
 
     if (groupNames.length > 0) {
         try {
-            await fetch('/api/cleanup', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ folders: groupNames })
-            });
+            await performCleanup(groupNames);
         } catch (e) {
             console.error('Failed to cleanup folders from disk:', e);
         }

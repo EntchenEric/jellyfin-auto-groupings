@@ -23,6 +23,7 @@ TEST_API_KEY = "test_key"
 def jellyfin_url(virtual_jellyfin):
     return virtual_jellyfin
 
+
 # 1. Authentication & Network Failures
 
 
@@ -45,6 +46,7 @@ def test_connection_error():
         fetch_jellyfin_items("http://localhost:12345", TEST_API_KEY, timeout=1)
     assert isinstance(excinfo.value.__cause__, requests.exceptions.ConnectionError)
 
+
 # 2. fetch_jellyfin_items Exhaustive
 
 
@@ -65,8 +67,11 @@ def test_fetch_malformed_json(jellyfin_url):
 
 def test_fetch_extra_query_params(jellyfin_url):
     # The server ignores it, but we test requests is passing it
-    items = fetch_jellyfin_items(jellyfin_url, TEST_API_KEY, extra_params={"IncludeItemTypes": "Movie"})
+    items = fetch_jellyfin_items(
+        jellyfin_url, TEST_API_KEY, extra_params={"IncludeItemTypes": "Movie"}
+    )
     assert len(items) >= 2
+
 
 # 3. get_libraries Exhaustive
 
@@ -86,6 +91,7 @@ def test_get_libraries_missing_name(jellyfin_url):
 def test_get_libraries_empty(jellyfin_url):
     libs = get_libraries(jellyfin_url, "LIB_GET_EMPTY")
     assert libs == []
+
 
 # 4. add_virtual_folder Exhaustive
 
@@ -112,20 +118,25 @@ def test_add_virtual_folder_400_paths(jellyfin_url):
 
 def test_add_virtual_folder_502_refresh(jellyfin_url):
     with pytest.raises(RuntimeError) as excinfo:
-        add_virtual_folder(jellyfin_url, "FAIL_REFRESH_KEY", "RefreshLib", ["/tmp/safe"])
+        add_virtual_folder(
+            jellyfin_url, "FAIL_REFRESH_KEY", "RefreshLib", ["/tmp/safe"]
+        )
     assert "Failed to trigger library refresh" in str(excinfo.value)
     assert "Status 502" in str(excinfo.value)
 
 
 def test_add_virtual_folder_invalid_collection(jellyfin_url):
     # Mixed should omit collectionType parameter.
-    add_virtual_folder(jellyfin_url, TEST_API_KEY, "MixedLib2", ["/tmp/safe"], collection_type="mixed")
+    add_virtual_folder(
+        jellyfin_url, TEST_API_KEY, "MixedLib2", ["/tmp/safe"], collection_type="mixed"
+    )
     # if it doesn't fail, we consider it a success.
 
 
 def test_add_virtual_folder_empty_paths(jellyfin_url):
     # Should not fail.
     add_virtual_folder(jellyfin_url, TEST_API_KEY, "EmptyLib", [])
+
 
 # 5. delete_virtual_folder Exhaustive
 
@@ -139,6 +150,7 @@ def test_delete_virtual_folder_404(jellyfin_url, caplog):
 def test_delete_virtual_folder_500(jellyfin_url):
     with pytest.raises(RuntimeError):
         delete_virtual_folder(jellyfin_url, TEST_API_KEY, "FAIL_DELETE_500")
+
 
 # 6. get_library_id Exhaustive
 
@@ -158,6 +170,7 @@ def test_get_library_id_500(jellyfin_url):
         get_library_id(jellyfin_url, "LIB_GET_500", "Movies")
     assert excinfo.value.__cause__.response.status_code == 500
 
+
 # 7. set_virtual_folder_image Exhaustive
 
 
@@ -170,7 +183,9 @@ def test_set_virtual_folder_image_missing_id(jellyfin_url, tmp_path, caplog):
 
 
 def test_set_virtual_folder_image_oserror(jellyfin_url, caplog):
-    set_virtual_folder_image(jellyfin_url, TEST_API_KEY, "Movies", "/does/not/exist.jpg")
+    set_virtual_folder_image(
+        jellyfin_url, TEST_API_KEY, "Movies", "/does/not/exist.jpg"
+    )
     assert "Failed to read image file" in caplog.text
 
 
@@ -190,6 +205,7 @@ def test_set_virtual_folder_image_400(jellyfin_url, tmp_path, caplog):
 
     # We must mock get_library_id to return our magic ID since standard "Movies" returns "movies_id"
     import jellyfin
+
     original_get_id = jellyfin.get_library_id
     jellyfin.get_library_id = lambda *args, **kwargs: "FAIL_IMAGE_ID"
 
@@ -199,6 +215,7 @@ def test_set_virtual_folder_image_400(jellyfin_url, tmp_path, caplog):
         jellyfin.get_library_id = original_get_id
 
     assert "Failed to upload image for item" in caplog.text
+
 
 # 8. get_users and get_user_recent_items Exhaustive
 
