@@ -88,16 +88,16 @@ def test_env_flag():
 
 
 def test_load_config_oserror_on_read(temp_config):
-    import os
     import stat
 
-    with Path(temp_config).open("w") as f:
+    config_path = Path(temp_config)
+    with config_path.open("w") as f:
         json.dump({"jellyfin_url": "http://test"}, f)
-    os.chmod(temp_config, 0)
+    config_path.chmod(0)
     try:
         cfg = load_config()
     finally:
-        os.chmod(temp_config, stat.S_IRUSR | stat.S_IWUSR)
+        config_path.chmod(stat.S_IRUSR | stat.S_IWUSR)
     assert cfg["jellyfin_url"] == ""
 
 
@@ -106,7 +106,8 @@ def test_load_config_corrupt_backup_oserror(temp_config, monkeypatch):
         f.write("{bad json")
 
     def fail_copy(*_args, **_kwargs):
-        raise OSError("backup failed")
+        msg = "backup failed"
+        raise OSError(msg)
 
     monkeypatch.setattr("config.shutil.copy2", fail_copy)
     cfg = load_config()
@@ -115,7 +116,8 @@ def test_load_config_corrupt_backup_oserror(temp_config, monkeypatch):
 
 def test_save_config_cleans_temp_on_failure(temp_config, monkeypatch):
     def fail_replace(self, _target):
-        raise OSError("replace failed")
+        msg = "replace failed"
+        raise OSError(msg)
 
     monkeypatch.setattr(Path, "replace", fail_replace)
     tmp = Path(temp_config).with_suffix(".json.tmp")
