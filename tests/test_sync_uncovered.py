@@ -4,8 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from sync import _translate_path, run_sync
-from sync import _maybe_handle_seasonal
+from sync import _maybe_handle_seasonal, _translate_path, run_sync
 
 
 def test_translate_path_empty_root() -> None:
@@ -160,7 +159,7 @@ def test_is_in_season_same_year_window() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Seasonal sync edge cases (covers issues #976–#983)
+# Seasonal sync edge cases (covers issues #976-#983)
 # ---------------------------------------------------------------------------
 
 
