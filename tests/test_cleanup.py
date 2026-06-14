@@ -1,7 +1,13 @@
+"""Tests for broken-symlink cleanup in sync.py.
+
+Covers ``run_cleanup_broken_symlinks`` with both broken and healthy symlinks,
+as well as non-existent target paths.
+"""
+
 from sync import run_cleanup_broken_symlinks
 
 
-def test_run_cleanup_broken_symlinks(tmp_path):
+def test_run_cleanup_broken_symlinks(tmp_path) -> None:
     """Test that broken symlinks are removed and healthy ones are kept."""
     target_base = tmp_path / "target"
     target_base.mkdir()
@@ -36,7 +42,7 @@ def test_run_cleanup_broken_symlinks(tmp_path):
     assert not broken_sub_link.is_symlink()
 
 
-def test_run_cleanup_invalid_path():
+def test_run_cleanup_invalid_path() -> None:
     """Test cleanup with a non-existent path."""
     config = {"target_path": "/non/existent/path/at/all", "groups": []}
     deleted_count = run_cleanup_broken_symlinks(config)

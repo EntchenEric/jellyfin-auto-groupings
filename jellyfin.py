@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import logging
 import mimetypes
-from typing import TYPE_CHECKING, Any, NoReturn
+from http import HTTPStatus
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, NoReturn, cast
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -23,7 +25,6 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "RECURSIVE_TRUE",
     "add_to_collection",
-    "add_virtual_folder",
     "create_collection",
     "delete_collection",
     "delete_virtual_folder",
@@ -61,8 +62,10 @@ _DEFAULT_TIMEOUT: int = 30
 # Maps internal ``sort_order`` keys to the Jellyfin API ``SortBy`` /
 # ``SortOrder`` query parameter pairs.
 #
-# ``"imdb_list_order"``, ``"trakt_list_order"``, and ``""`` are handled
-# separately by the sync logic and do **not** appear in this map.
+# ``"*_list_order"`` sort values (``imdb_list_order``, ``trakt_list_order``,
+# ``tmdb_list_order``, ``anilist_list_order``, ``mal_list_order``,
+# ``letterboxd_list_order``, ``recommendations_list_order``) and ``""`` are
+# handled separately by the sync logic and do **not** appear in this map.
 SORT_MAP: dict[str, tuple[str, str]] = {
     "CommunityRating": ("CommunityRating", "Descending"),
     "ProductionYear": ("ProductionYear,SortName", "Descending,Ascending"),
@@ -78,26 +81,30 @@ def _auth_headers(api_key: str) -> dict[str, str]:
 
 
 def _format_request_error(
-    exc: requests.exceptions.RequestException, prefix: str
+    exc: requests.exceptions.RequestException,
+    prefix: str,
 ) -> str:
-    """Build a human-readable error message from *exc* with response details if available."""
+    """Build a human-readable error message from *exc* with response details."""
     msg = prefix
-    if hasattr(exc, "response") and exc.response is not None:
-        msg += f" (Status {exc.response.status_code}): {exc.response.text}"
+    if exc.response is not None:
+        status = getattr(exc.response, "status_code", "?")
+        text = getattr(exc.response, "text", "")
+        msg += f" (Status {status}): {text}"
     else:
         msg += f": {exc!s}"
     return msg
 
 
 def _raise_request_error(
-    exc: requests.exceptions.RequestException, prefix: str
+    exc: requests.exceptions.RequestException,
+    prefix: str,
 ) -> NoReturn:
     """Format *exc* into a ``RuntimeError`` with response details if available."""
     raise RuntimeError(_format_request_error(exc, prefix)) from exc
 
 
 def _parse_json(response: requests.Response) -> Any:
-    """Safely parse *response* JSON, translating decode failures into ``RuntimeError``."""
+    """Safely parse *response* JSON, translating decode failures into RuntimeError."""
     try:
         return response.json()
     except requests.exceptions.JSONDecodeError as exc:
@@ -161,6 +168,10 @@ def _request_or_raise(
     try:
         if method == "POST":
             response = network.post(url, timeout=timeout, **kwargs)
+        elif method == "PUT":
+            response = network.put(url, timeout=timeout, **kwargs)
+        elif method == "PATCH":
+            response = network.patch(url, timeout=timeout, **kwargs)
         elif method == "DELETE":
             response = network.delete(url, timeout=timeout, **kwargs)
         else:
@@ -277,12 +288,15 @@ def fetch_jellyfin_items(
     if extra_params:
         params.update(extra_params)
 
-    return _get_json(
-        f"{base_url}/Items",
-        headers=headers,
-        params=params,
-        timeout=timeout,
-    ).get("Items", [])
+    return cast(
+        "list[dict[str, Any]]",
+        _get_json(
+            f"{base_url}/Items",
+            headers=headers,
+            params=params,
+            timeout=timeout,
+        ).get("Items", []),
+    )
 
 
 def fetch_all_jellyfin_items(
@@ -417,10 +431,13 @@ def get_users(base_url: str, api_key: str, timeout: int = 30) -> list[dict[str, 
         A list of user dictionaries.
 
     """
-    return _get_json(
-        f"{base_url}/Users",
-        headers=_auth_headers(api_key),
-        timeout=timeout,
+    return cast(
+        "list[dict[str, Any]]",
+        _get_json(
+            f"{base_url}/Users",
+            headers=_auth_headers(api_key),
+            timeout=timeout,
+        ),
     )
 
 
@@ -453,12 +470,15 @@ def get_user_recent_items(
         "Limit": str(limit),
         "Fields": "ProviderIds",
     }
-    return _get_json(
-        f"{base_url}/Users/{user_id}/Items",
-        headers=_auth_headers(api_key),
-        params=params,
-        timeout=timeout,
-    ).get("Items", [])
+    return cast(
+        "list[dict[str, Any]]",
+        _get_json(
+            f"{base_url}/Users/{user_id}/Items",
+            headers=_auth_headers(api_key),
+            params=params,
+            timeout=timeout,
+        ).get("Items", []),
+    )
 
 
 def add_virtual_folder(
@@ -505,7 +525,7 @@ def add_virtual_folder(
             data="",
             timeout=timeout,
         )
-        if create_resp.status_code != 409:
+        if create_resp.status_code != HTTPStatus.CONFLICT:
             create_resp.raise_for_status()
     except requests.exceptions.RequestException as exc:
         _raise_request_error(exc, f"Failed to create virtual folder {name!r}")
@@ -531,7 +551,10 @@ def add_virtual_folder(
 
 
 def delete_virtual_folder(
-    base_url: str, api_key: str, name: str, timeout: int = 30
+    base_url: str,
+    api_key: str,
+    name: str,
+    timeout: int = 30,
 ) -> None:
     """Delete a virtual folder (library) from Jellyfin.
 
@@ -563,7 +586,10 @@ def delete_virtual_folder(
 
 
 def get_library_id(
-    base_url: str, api_key: str, name: str, timeout: int = 30
+    base_url: str,
+    api_key: str,
+    name: str,
+    timeout: int = 30,
 ) -> str | None:
     """Get the ItemId of a virtual folder (library) from Jellyfin by name.
 
@@ -607,7 +633,7 @@ def _upload_image(
         timeout: HTTP request timeout.
 
     """
-    with open(image_path, "rb") as f:  # noqa: PTH123
+    with Path(image_path).open("rb") as f:
         image_bytes = f.read()
     mime_type, _ = mimetypes.guess_type(image_path)
     headers = _auth_headers(api_key)

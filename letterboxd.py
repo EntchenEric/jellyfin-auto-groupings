@@ -10,8 +10,11 @@ import logging
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from http import HTTPStatus
 
 import requests
+
+import network
 
 __all__ = ["fetch_letterboxd_list"]
 
@@ -20,6 +23,8 @@ logger = logging.getLogger(__name__)
 # Request timeouts (seconds)
 _FILM_PAGE_TIMEOUT: int = 10
 _LIST_PAGE_TIMEOUT: int = 15
+
+_MAX_EMPTY_CONSECUTIVE: int = 3
 
 _MAX_PAGES: int = 10
 _MAX_WORKERS: int = 6
@@ -34,6 +39,19 @@ _REQUEST_HEADERS: dict[str, str] = {
 }
 
 
+# Ordered sequence of (regex, id_group_index) for extracting IDs from list-page HTML.
+# Higher-priority patterns (TMDb data attribute) are checked first so that
+# they take precedence over lower-priority ones (IMDb / TMDb href).
+_ID_LIST_PAGE_PATTERNS: list[tuple[str, int]] = [
+    # data-tmdb-id attribute directly on the film element (fastest, no href match)
+    (r'data-film-slug="([^"]+)".*?data-tmdb-id="(\d+)"', 2),
+    # IMDb URL in a link
+    (r'data-film-slug="([^"]+)".*?imdb\.com/title/(tt\d+)', 2),
+    # TMDb URL in a link
+    (r'data-film-slug="([^"]+)".*?themoviedb\.org/movie/(\d+)', 2),
+]
+
+
 def _extract_ids_from_list_page(html: str) -> dict[str, str]:
     """Extract IMDb/TMDb IDs embedded in list-page HTML.
 
@@ -42,30 +60,11 @@ def _extract_ids_from_list_page(html: str) -> dict[str, str]:
     """
     found: dict[str, str] = {}
 
-    for match in re.finditer(
-        r'data-film-slug="([^"]+)".*?data-tmdb-id="(\d+)"',
-        html,
-        re.DOTALL,
-    ):
-        found[match.group(1)] = match.group(2)
-
-    for match in re.finditer(
-        r'data-film-slug="([^"]+)".*?imdb\.com/title/(tt\d+)',
-        html,
-        re.DOTALL,
-    ):
-        slug = match.group(1)
-        if slug not in found:
-            found[slug] = match.group(2)
-
-    for match in re.finditer(
-        r'data-film-slug="([^"]+)".*?themoviedb\.org/movie/(\d+)',
-        html,
-        re.DOTALL,
-    ):
-        slug = match.group(1)
-        if slug not in found:
-            found[slug] = match.group(2)
+    for pattern, id_group in _ID_LIST_PAGE_PATTERNS:
+        for match in re.finditer(pattern, html):
+            slug = match.group(1)
+            if slug not in found:
+                found[slug] = match.group(id_group)
 
     return found
 
@@ -125,8 +124,10 @@ def _fetch_id_for_slug(slug: str) -> str | None:
     """
     film_url = f"https://letterboxd.com/film/{slug}/"
     try:
-        resp = requests.get(
-            film_url, headers=_REQUEST_HEADERS, timeout=_FILM_PAGE_TIMEOUT
+        resp = network.get(
+            film_url,
+            headers=_REQUEST_HEADERS,
+            timeout=_FILM_PAGE_TIMEOUT,
         )
         resp.raise_for_status()
         html = resp.text
@@ -145,7 +146,9 @@ def _fetch_id_for_slug(slug: str) -> str | None:
 
     except requests.exceptions.RequestException:
         logger.warning(
-            "Failed to fetch Letterboxd film page for '%s'", slug, exc_info=True
+            "Failed to fetch Letterboxd film page for '%s'",
+            slug,
+            exc_info=True,
         )
         return None
 
@@ -177,15 +180,18 @@ def fetch_letterboxd_list(list_url: str) -> list[str]:
     ids: list[str] = []
     seen_ids: set[str] = set()
     page = 1
+    consecutive_empty: int = 0
 
     while True:
         current_url = f"{list_url}/page/{page}/" if page > 1 else f"{list_url}/"
 
         try:
-            resp = requests.get(
-                current_url, headers=_REQUEST_HEADERS, timeout=_LIST_PAGE_TIMEOUT
+            resp = network.get(
+                current_url,
+                headers=_REQUEST_HEADERS,
+                timeout=_LIST_PAGE_TIMEOUT,
             )
-            if resp.status_code == 404 and page > 1:
+            if resp.status_code == HTTPStatus.NOT_FOUND and page > 1:
                 break
             resp.raise_for_status()
         except requests.exceptions.RequestException as exc:
@@ -203,7 +209,18 @@ def fetch_letterboxd_list(list_url: str) -> list[str]:
         unique_slugs = _deduplicate_slugs(slugs)
         if not unique_slugs:
             logger.warning("No film slugs found on Letterboxd page %d", page)
-            break
+            consecutive_empty += 1
+            if consecutive_empty >= _MAX_EMPTY_CONSECUTIVE:
+                logger.info(
+                    "Stopping after %d empty consecutive pages",
+                    consecutive_empty,
+                )
+                break
+            page += 1
+            time.sleep(0.5)
+            continue
+
+        consecutive_empty = 0
 
         slugs_to_fetch = [s for s in unique_slugs if s not in ids_from_list]
         logger.info(

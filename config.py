@@ -6,10 +6,11 @@ backwards-compatible key migration and first-run default creation.
 
 from __future__ import annotations
 
+import copy
 import json
 import logging
 import os
-import shutil
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +30,7 @@ _ENV_OVERRIDES: dict[str, str] = {
     "trakt_client_id": "TRAKT_CLIENT_ID",
     "tmdb_api_key": "TMDB_API_KEY",
     "mal_client_id": "MAL_CLIENT_ID",
+    "anilist_api_url": "ANILIST_API_URL",
 }
 
 # ---------------------------------------------------------------------------
@@ -36,15 +38,14 @@ _ENV_OVERRIDES: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 _CONFIG_PATH = Path(__file__).parent / "config"
-CONFIG_DIR: str = str(_CONFIG_PATH)
-CONFIG_FILE: str = str(_CONFIG_PATH / "config.json")
+CONFIG_DIR: Path = _CONFIG_PATH
+CONFIG_FILE: Path = _CONFIG_PATH / "config.json"
 
 # ---------------------------------------------------------------------------
 # Defaults
 # ---------------------------------------------------------------------------
 
 DEFAULT_CONFIG: dict[str, Any] = {
-    "CONFIG_SCHEMA_VERSION": 1,
     "jellyfin_url": "",
     "api_key": "",
     "target_path": "",
@@ -53,6 +54,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "trakt_client_id": "",
     "tmdb_api_key": "",
     "mal_client_id": "",
+    "anilist_api_url": "",
     "groups": [],
     "scheduler": {
         "global_enabled": False,
@@ -72,21 +74,49 @@ DEFAULT_CONFIG: dict[str, Any] = {
 # ---------------------------------------------------------------------------
 
 
-def _env_flag(name: str, *, default: bool = True) -> bool:
-    return os.environ.get(name, "1" if default else "0") == "1"
+def _env_flag(name: str, *, default: bool = False) -> bool:
+    """Parse an environment variable as a boolean flag.
+
+    Accepts ``"true"``, ``"1"``, ``"yes"`` (case-insensitive) as truthy.
+    Accepts ``"false"``, ``"0"``, ``"no"`` (case-insensitive) as falsy.
+    If the variable is unset or empty, return *default*.
+    All other values return *default*.
+    """
+    raw = os.environ.get(name, "").strip().lower()
+    if raw in ("true", "1", "yes"):
+        return True
+    if raw in ("false", "0", "no"):
+        return False
+    return default
 
 
 def _fill_defaults(cfg: dict[str, Any], defaults: dict[str, Any]) -> None:
-    """Fill missing keys in *cfg* from *defaults*, including nested dicts."""
+    """Fill missing keys in *cfg* from *defaults*, recursing into nested dicts.
+
+    Recursively walks *defaults* so that deeply nested structures (e.g.
+    scheduler config with arbitrary sub-keys) are properly populated without
+    requiring the caller to specify every intermediate level.
+    """
     for key, default_value in defaults.items():
-        cfg.setdefault(key, default_value)
-        if isinstance(default_value, dict) and isinstance(cfg.get(key), dict):
-            for sub_key, sub_val in default_value.items():
-                cfg[key].setdefault(sub_key, sub_val)
+        if key not in cfg:
+            # Deep-copy to prevent runtime mutations of cfg from aliasing
+            # the DEFAULT_CONFIG object (via setdefault).
+            cfg[key] = copy.deepcopy(default_value)
+        if isinstance(default_value, dict):
+            current = cfg.get(key)
+            if isinstance(current, dict):
+                _fill_defaults(current, default_value)
+            else:
+                # Value exists but is not a dict (or is None) — replace with
+                # a deep copy to avoid AttributeError downstream.
+                cfg[key] = copy.deepcopy(default_value)
 
 
 def _migrate_legacy_keys(cfg: dict[str, Any]) -> bool:
-    """Migrate legacy keys to their new names. Returns True if any changes were made."""
+    """Migrate legacy keys to their new names. Returns True if any changes were made.
+
+    The caller is responsible for persisting changes when this returns True.
+    """
     migrated = False
     if cfg.get("jellyfin_root") and not cfg.get("media_path_in_jellyfin"):
         cfg["media_path_in_jellyfin"] = cfg["jellyfin_root"]
@@ -97,7 +127,6 @@ def _migrate_legacy_keys(cfg: dict[str, Any]) -> bool:
     if migrated:
         cfg.pop("jellyfin_root", None)
         cfg.pop("host_root", None)
-        save_config(cfg)
     return migrated
 
 
@@ -127,22 +156,37 @@ def load_config() -> dict[str, Any]:
             with Path(CONFIG_FILE).open("r", encoding="utf-8") as fh:
                 cfg = json.load(fh)
             _fill_defaults(cfg, DEFAULT_CONFIG)
-            _migrate_legacy_keys(cfg)
+            if _migrate_legacy_keys(cfg):
+                save_config(cfg)
         except json.JSONDecodeError:
-            corrupt_backup = Path(CONFIG_FILE).with_suffix(".json.corrupt.bak")
-            try:
-                shutil.copy2(CONFIG_FILE, corrupt_backup)
-                logger.warning("Backed up corrupt config to %s", corrupt_backup)
-            except OSError:
-                logger.warning("Could not back up corrupt config file", exc_info=True)
+            # If the file is corrupt, backup and fall back to safe defaults
+            cfg_path = Path(CONFIG_FILE)
             logger.warning(
-                "Could not read config file, falling back to defaults",
-                exc_info=True,
+                "Config file %s contains invalid JSON. Falling back to defaults.",
+                CONFIG_FILE,
             )
+            backup_path = cfg_path.with_name(cfg_path.name + ".corrupt.bak")
+            try:
+                if backup_path.exists():
+                    # Avoid collision by appending a timestamp
+                    timestamp = datetime.now(tz=UTC).strftime("%Y%m%d_%H%M%S")
+                    backup_path = cfg_path.with_name(
+                        cfg_path.name + f".corrupt.{timestamp}.bak"
+                    )
+                cfg_path.rename(backup_path)
+                logger.info("Backed up corrupt config to %s", backup_path)
+            except OSError:
+                logger.exception(
+                    "Failed to backup corrupt config to %s (backup existed: %s)",
+                    backup_path,
+                    backup_path.exists(),
+                )
             cfg = DEFAULT_CONFIG.copy()
         except OSError:
+            # If the file is unreadable, fall back to safe defaults
             logger.warning(
-                "Could not read config file, falling back to defaults",
+                "Could not read config file %s, falling back to defaults",
+                CONFIG_FILE,
                 exc_info=True,
             )
             cfg = DEFAULT_CONFIG.copy()
@@ -163,13 +207,8 @@ def save_config(config: dict[str, Any]) -> None:
         config: The configuration dictionary to write.
 
     """
-    config_path = Path(CONFIG_FILE)
-    Path(CONFIG_DIR).mkdir(parents=True, exist_ok=True)
-    tmp_path = config_path.with_suffix(".json.tmp")
-    try:
-        with tmp_path.open("w", encoding="utf-8") as fh:
-            json.dump(config, fh, indent=4)
-        tmp_path.replace(config_path)
-    except BaseException:
-        tmp_path.unlink(missing_ok=True)
-        raise
+    cfg_dir = Path(CONFIG_DIR)
+    cfg_file = Path(CONFIG_FILE)
+    cfg_dir.mkdir(parents=True, exist_ok=True)
+    with cfg_file.open("w", encoding="utf-8") as fh:
+        json.dump(config, fh, indent=4)

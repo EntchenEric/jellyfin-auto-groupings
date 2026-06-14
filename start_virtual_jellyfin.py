@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import os
 
+from config import _env_flag
 from tests.virtual_jellyfin import app
 
 logger = logging.getLogger(__name__)
@@ -17,5 +18,6 @@ if __name__ == "__main__":
     logger.info("Starting Virtual Jellyfin Mock Server...")
     logger.info("Dashboard: http://localhost:8096")
     logger.info("Press Ctrl+C to stop.")
-    debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
-    app.run(host="0.0.0.0", port=8096, debug=debug)
+    debug: bool = _env_flag("FLASK_DEBUG")
+    port: int = int(os.environ.get("VIRTUAL_JF_PORT", "8096"))
+    app.run(host="0.0.0.0", port=port, debug=debug)

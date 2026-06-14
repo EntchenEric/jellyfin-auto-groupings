@@ -9,7 +9,7 @@ from .conftest import api_post
 class TestE2EConnection:
     """Test connection to Jellyfin server via the app."""
 
-    def test_test_server_endpoint(self, e2e_session):
+    def test_test_server_endpoint(self, e2e_session) -> None:
         """The test-server endpoint should return success against real Jellyfin."""
         result = api_post(
             e2e_session,
@@ -21,7 +21,7 @@ class TestE2EConnection:
         )
         assert result["status"] == "success"
 
-    def test_server_info_accessible(self, e2e_session):
+    def test_server_info_accessible(self, e2e_session) -> None:
         """Server info should be retrievable from the test-server response."""
         result = api_post(
             e2e_session,
@@ -33,7 +33,7 @@ class TestE2EConnection:
         )
         assert "message" in result
 
-    def test_invalid_url_fails(self, e2e_session):
+    def test_invalid_url_fails(self, e2e_session) -> None:
         """An invalid URL should result in an error."""
         result = api_post(
             e2e_session,
@@ -45,7 +45,7 @@ class TestE2EConnection:
         )
         assert result["status"] == "error"
 
-    def test_invalid_api_key_fails(self, e2e_session):
+    def test_invalid_api_key_fails(self, e2e_session) -> None:
         """An incorrect API key should result in an error."""
         result = api_post(
             e2e_session,

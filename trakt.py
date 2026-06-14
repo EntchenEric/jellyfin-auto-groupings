@@ -10,7 +10,9 @@ import logging
 import re
 from typing import Any
 
-import requests
+import requests  # keep for exception type references
+
+import network
 
 __all__ = ["fetch_trakt_list"]
 
@@ -80,6 +82,7 @@ def fetch_trakt_list(list_url: str, client_id: str) -> list[str]:
     }
 
     ids: list[str] = []
+    seen: set[str] = set()
     page: int = 1
 
     while True:
@@ -88,7 +91,7 @@ def fetch_trakt_list(list_url: str, client_id: str) -> list[str]:
             f"?page={page}&limit={_PAGE_LIMIT}"
         )
         try:
-            resp = requests.get(url, headers=headers, timeout=_REQUEST_TIMEOUT)
+            resp = network.get(url, headers=headers, timeout=_REQUEST_TIMEOUT)
             resp.raise_for_status()
         except requests.exceptions.RequestException as exc:
             msg = f"Failed to fetch Trakt list page {page}: {exc}"
@@ -102,7 +105,8 @@ def fetch_trakt_list(list_url: str, client_id: str) -> list[str]:
             item_type: str | None = entry.get("type")  # "movie" or "show"
             media: dict[str, Any] = entry.get(item_type, {}) if item_type else {}
             imdb_id: str | None = media.get("ids", {}).get("imdb")
-            if imdb_id and imdb_id not in ids:
+            if imdb_id and imdb_id not in seen:
+                seen.add(imdb_id)
                 ids.append(imdb_id)
 
         try:

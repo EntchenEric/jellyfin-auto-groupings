@@ -1,3 +1,5 @@
+"""Tests for TMDb API client (fetch_tmdb_list, get_tmdb_recommendations)."""
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -6,15 +8,15 @@ import requests
 from tmdb import fetch_tmdb_list, get_tmdb_recommendations
 
 
-def test_fetch_tmdb_list_missing_args():
+def test_fetch_tmdb_list_missing_args() -> None:
     with pytest.raises(ValueError, match="A TMDb API Key is required"):
         fetch_tmdb_list("123", "")
     with pytest.raises(ValueError, match="A TMDb List ID is required"):
         fetch_tmdb_list("", "api_key")
 
 
-@patch("requests.get")
-def test_fetch_tmdb_list_success(mock_get):
+@patch("network.get")
+def test_fetch_tmdb_list_success(mock_get) -> None:
     mock_resp_1 = MagicMock()
     mock_resp_1.status_code = 200
     mock_resp_1.json.return_value = {
@@ -34,8 +36,8 @@ def test_fetch_tmdb_list_success(mock_get):
     assert mock_get.call_count == 2
 
 
-@patch("requests.get")
-def test_fetch_tmdb_list_url_parsing(mock_get):
+@patch("network.get")
+def test_fetch_tmdb_list_url_parsing(mock_get) -> None:
     mock_resp = MagicMock()
     mock_resp.status_code = 200
     mock_resp.json.return_value = {
@@ -45,27 +47,28 @@ def test_fetch_tmdb_list_url_parsing(mock_get):
     mock_get.return_value = mock_resp
 
     ids = fetch_tmdb_list(
-        "https://www.themoviedb.org/list/456?language=en-US", "test_key"
+        "https://www.themoviedb.org/list/456?language=en-US",
+        "test_key",
     )
     assert ids == ["101"]
     args, _kwargs = mock_get.call_args
     assert "/list/456" in args[0]
 
 
-@patch("requests.get")
-def test_fetch_tmdb_list_failure(mock_get):
+@patch("network.get")
+def test_fetch_tmdb_list_failure(mock_get) -> None:
     mock_get.side_effect = requests.exceptions.RequestException("Network Error")
     with pytest.raises(RuntimeError, match="Failed to fetch TMDb list page 1"):
         fetch_tmdb_list("123", "test_key")
 
 
-def test_get_tmdb_recommendations_missing_key():
+def test_get_tmdb_recommendations_missing_key() -> None:
     with pytest.raises(ValueError, match="A TMDb API Key is required"):
         get_tmdb_recommendations([("101", "movie")], "")
 
 
-@patch("requests.get")
-def test_get_tmdb_recommendations_success(mock_get):
+@patch("network.get")
+def test_get_tmdb_recommendations_success(mock_get) -> None:
     mock_resp_movie = MagicMock()
     mock_resp_movie.status_code = 200
     mock_resp_movie.json.return_value = {
@@ -91,8 +94,8 @@ def test_get_tmdb_recommendations_success(mock_get):
     assert recs == ["202", "201", "203"]
 
 
-@patch("requests.get")
-def test_get_tmdb_recommendations_failure_skipped(mock_get):
+@patch("network.get")
+def test_get_tmdb_recommendations_failure_skipped(mock_get) -> None:
     mock_resp_movie = MagicMock()
     mock_resp_movie.status_code = 200
     mock_resp_movie.json.return_value = {
@@ -105,6 +108,7 @@ def test_get_tmdb_recommendations_failure_skipped(mock_get):
     ]
 
     recs = get_tmdb_recommendations(
-        [("error_id", "movie"), ("101", "movie")], "test_key"
+        [("error_id", "movie"), ("101", "movie")],
+        "test_key",
     )
     assert recs == ["201"]

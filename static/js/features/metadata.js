@@ -91,11 +91,11 @@ export function renderMetadataRules() {
 
     window._currentMetadataRules.forEach((rule, index) => {
         const row = document.createElement('div');
-        row.setAttribute('style', 'display: flex; gap: 0.5rem; align-items: center; width: 100%;');
+        row.className = 'rule-row';
 
         if (index > 0) {
             const opSelect = document.createElement('select');
-            opSelect.setAttribute('style', 'flex: 0 0 auto; padding: 0.8rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 0.9rem; font-weight: 600;');
+            opSelect.className = 'rule-operator-select';
             ['AND', 'OR', 'AND NOT', 'OR NOT'].forEach(op => {
                 const o = document.createElement('option');
                 o.value = op; o.textContent = op;
@@ -108,8 +108,8 @@ export function renderMetadataRules() {
 
         if (type === 'complex') {
             const rowTypeSelect = document.createElement('select');
-            rowTypeSelect.setAttribute('style', 'flex: 0 0 auto; width: 110px; padding: 0.8rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 0.9rem;');
-            ['genre', 'actor', 'studio', 'tag', 'year'].forEach(t => {
+            rowTypeSelect.className = 'rule-type-select';
+            ['genre', 'actor', 'studio', 'tag'].forEach(t => {
                 const o = document.createElement('option');
                 o.value = t; o.textContent = t.charAt(0).toUpperCase() + t.slice(1);
                 if (rule.type === t || (!rule.type && t === 'genre')) o.selected = true;
@@ -121,47 +121,35 @@ export function renderMetadataRules() {
         }
 
         const rowType = type === 'complex' ? (rule.type || 'genre') : type;
+        const options = state.cachedMetadata[rowType] || [];
+        const valSelect = document.createElement('select');
+        valSelect.className = 'rule-value-select';
 
-        if (rowType === 'year') {
-            const valInput = document.createElement('input');
-            valInput.type = 'text';
-            valInput.placeholder = 'e.g. 2020 or >2000';
-            valInput.value = rule.value || '';
-            valInput.setAttribute('style', 'flex: 1; padding: 0.8rem 1rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 1rem;');
-            valInput.oninput = (e) => { rule.value = e.target.value; };
-            row.appendChild(valInput);
-        } else {
-            const options = state.cachedMetadata[rowType] || [];
-            const valSelect = document.createElement('select');
-            valSelect.setAttribute('style', 'flex: 1; padding: 0.8rem 1rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 1rem;');
+        const defaultOpt = document.createElement('option');
+        defaultOpt.value = ''; defaultOpt.textContent = 'Select ' + rowType + '...'; defaultOpt.disabled = true; defaultOpt.selected = !rule.value;
+        valSelect.appendChild(defaultOpt);
 
-            const defaultOpt = document.createElement('option');
-            defaultOpt.value = ''; defaultOpt.textContent = 'Select ' + rowType + '...'; defaultOpt.disabled = true; defaultOpt.selected = !rule.value;
-            valSelect.appendChild(defaultOpt);
-
-            let foundMatch = false;
-            options.forEach(opt => {
-                const o = document.createElement('option');
-                o.value = opt; o.textContent = opt;
-                if (rule.value === opt) { o.selected = true; foundMatch = true; }
-                valSelect.appendChild(o);
-            });
-            if (rule.value && !foundMatch) {
-                const o = document.createElement('option');
-                o.value = rule.value; o.textContent = rule.value + " (Custom)"; o.selected = true;
-                valSelect.appendChild(o);
-            }
-            valSelect.onchange = (e) => { rule.value = e.target.value; };
-            row.appendChild(valSelect);
+        let foundMatch = false;
+        options.forEach(opt => {
+            const o = document.createElement('option');
+            o.value = opt; o.textContent = opt;
+            if (rule.value === opt) { o.selected = true; foundMatch = true; }
+            valSelect.appendChild(o);
+        });
+        if (rule.value && !foundMatch) {
+            const o = document.createElement('option');
+            o.value = rule.value; o.textContent = rule.value + " (Custom)"; o.selected = true;
+            valSelect.appendChild(o);
         }
+        valSelect.onchange = (e) => { rule.value = e.target.value; };
+        row.appendChild(valSelect);
 
         if (index > 0) {
             const rmBtn = document.createElement('button');
             rmBtn.type = 'button';
             rmBtn.innerHTML = '<svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>';
-            rmBtn.className = 'delete-btn';
+            rmBtn.className = 'delete-btn rule-remove-btn';
             rmBtn.title = 'Remove condition';
-            rmBtn.setAttribute('style', 'padding: 0; width: 38px; height: 38px; display:flex; align-items:center; justify-content:center; margin: 0; flex-shrink: 0;');
             rmBtn.onclick = () => { window._currentMetadataRules.splice(index, 1); renderMetadataRules(); };
             row.appendChild(rmBtn);
         }
@@ -217,7 +205,6 @@ export function updateSourceValueUI(preValue = null) {
             'tmdb_list': ['e.g. 12345', 'TMDb list ID or full URL.'],
             'anilist_list': ['e.g. username', 'AniList username, optionally with status.'],
             'mal_list': ['e.g. username', 'MAL username, optionally with status.'],
-            'letterboxd_list': ['https://letterboxd.com/user/list/list-slug', 'Full Letterboxd list URL.'],
             'general': ['e.g. Action  or  tt1234567', 'Item name or date range.'],
             'recommendations': ['', ''],
         };
@@ -235,7 +222,7 @@ export function updateSourceValueUI(preValue = null) {
             if (!userSel) {
                 userSel = document.createElement('select');
                 userSel.id = 'source_value_user_select';
-                userSel.setAttribute('style', 'flex: 1; padding: 0.8rem 1rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 1rem; width: 100%;');
+                userSel.className = 'user-select';
                 userSel.onchange = (e) => { sourceValueInput.value = e.target.value; };
                 getEl('source_value_container').insertBefore(userSel, sourceValueInput);
             }
@@ -278,6 +265,9 @@ export function initMetadata() {
     getEl('source_category').onchange = updateSourceTypeOptions;
     getEl('source_type').onchange = () => updateSourceValueUI();
     getEl('add-rule-btn').onclick = addMetadataRule;
+    // Expose to window for app.js cross-module event wiring
+    window.updateSourceTypeOptions = updateSourceTypeOptions;
+    window.updateSourceValueUI = updateSourceValueUI;
 }
 
 export async function previewGrouping() {
@@ -285,52 +275,32 @@ export async function previewGrouping() {
     const val = getFilterValue();
     const resultDiv = getEl('preview_result');
 
-    if (!metadataTypes.includes(type) && type !== 'general' && type !== 'year') {
+    if (!metadataTypes.includes(type) && type !== 'general') {
         resultDiv.style.display = 'block';
-        resultDiv.textContent = '';
-        const span = document.createElement('span');
-        span.style.color = 'var(--text-secondary)';
-        span.textContent = 'Preview supports Jellyfin metadata types (Genre, Actor, etc).';
-        resultDiv.appendChild(span);
+        resultDiv.innerHTML = '<span style="color:var(--text-secondary);">Preview supports Jellyfin metadata types (Genre, Actor, etc).</span>';
         return;
     }
     if (!val) {
         resultDiv.style.display = 'block';
-        resultDiv.textContent = '';
-        const span = document.createElement('span');
-        span.style.color = 'var(--error-color)';
-        span.textContent = 'Please enter a filter value.';
-        resultDiv.appendChild(span);
+        resultDiv.innerHTML = '<span style="color:var(--error-color);">Please enter a filter value.</span>';
         return;
     }
 
     resultDiv.style.display = 'block';
-    resultDiv.textContent = '';
-    const loadingSpan = document.createElement('span');
-    loadingSpan.className = 'loading-spinner';
-    loadingSpan.setAttribute('style', 'display:inline-block; margin-right:0.5rem; border-color:rgba(255,255,255,0.2); border-left-color:var(--accent-color);');
-    resultDiv.appendChild(loadingSpan);
-    resultDiv.appendChild(document.createTextNode(' Loading preview...'));
+    resultDiv.innerHTML = '<span class="loading-spinner" style="display:inline-block; margin-right:0.5rem; border-color:rgba(255,255,255,0.2); border-left-color:var(--accent-color);"></span> Loading preview...';
 
     try {
-        const previewType = type === 'year' ? 'year' : type;
         const res = await apiPost('/api/grouping/preview', {
-            type: previewType, value: val, watch_state: getEl('watch_state').value
+            type, value: val, watch_state: getEl('watch_state').value
         });
-        resultDiv.textContent = '';
+        resultDiv.innerHTML = '';
         if (res.status === 'success') {
             const summary = document.createElement('div');
-            const strong = document.createElement('strong');
-            strong.textContent = 'Estimated Items: ';
-            summary.appendChild(strong);
-            const countSpan = document.createElement('span');
-            countSpan.style.color = 'var(--accent-color)';
-            countSpan.textContent = res.count;
-            summary.appendChild(countSpan);
+            summary.innerHTML = `<strong>Estimated Items:</strong> <span style="color:var(--accent-color);">${res.count}</span>`;
             resultDiv.appendChild(summary);
             if (res.count > 0 && res.preview_items) {
                 const ul = document.createElement('ul');
-                ul.setAttribute('style', 'margin-top:0.4rem; padding-left:1.5rem; color:var(--text-secondary);');
+                ul.className = 'metadata-results-list';
                 res.preview_items.forEach(item => {
                     const li = document.createElement('li');
                     li.textContent = item.Year ? `${item.Name} (${item.Year})` : item.Name;
@@ -339,17 +309,14 @@ export async function previewGrouping() {
                 resultDiv.appendChild(ul);
             }
         } else {
-            const span = document.createElement('span');
-            span.style.color = 'var(--error-color)';
-            span.textContent = `Error: ${res.message}`;
-            resultDiv.appendChild(span);
+            resultDiv.textContent = '';
+            const errSpan = document.createElement('span');
+            errSpan.style.color = 'var(--error-color)';
+            errSpan.textContent = `Error: ${res.message || 'Preview failed'}`;
+            resultDiv.appendChild(errSpan);
         }
     } catch (err) {
-        resultDiv.textContent = '';
-        const span = document.createElement('span');
-        span.style.color = 'var(--error-color)';
-        span.textContent = 'Network error during preview.';
-        resultDiv.appendChild(span);
+        resultDiv.innerHTML = '<span style="color:var(--error-color);">Network error during preview.</span>';
     }
 }
 

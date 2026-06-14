@@ -4,60 +4,88 @@ import { state } from '../core/state.js';
 import { autoDetectPaths as apiAutoDetect } from '../core/api.js';
 import { showToast, showErrorDialog, getEl } from '../core/ui.js';
 
+/** @type {string|null} ID of the form input field being picked for */
 let _pickerTargetId = null;
+/** @type {string|null} Currently browsed directory path */
 let _pickerCurrentPath = null;
+
+
+/**
+ * Join a base path with a name, handling the root case correctly.
+ *
+ * When *base* is ``"/"``, ``base + name`` would produce ``"/dirname"``, so
+ * a simple ``base.replace(/\/$/, '') + '/' + name`` is not safe — it would
+ * produce ``"""/dirname"`` for the root path.
+ *
+ * @param {string} base  Base directory path.
+ * @param {string} name  Child directory name.
+ * @returns {string} Joined path.
+ */
+function joinPath(base, name) {
+    // Normalise trailing slash: keep exactly one for root, strip otherwise.
+    const normalized = base === '/' ? '' : base.replace(/\/+$/, '');
+    return normalized + '/' + name;
+}
+
 
 export async function openPathPicker(fieldId) {
     _pickerTargetId = fieldId;
     const currentVal = getEl(fieldId).value;
-    getEl('picker-title').textContent =
-        fieldId === 'target_path' ? 'Select Target Path' :
-            fieldId === 'media_path_in_jellyfin' ? 'Select Media Path (Jellyfin side)' :
-                'Select Media Path (this machine)';
+    const titleEl = getEl('picker-title');
+    if (fieldId === 'target_path') {
+        titleEl.textContent = 'Select Target Path';
+    } else if (fieldId === 'media_path_in_jellyfin') {
+        titleEl.textContent = 'Select Media Path (Jellyfin side)';
+    } else {
+        titleEl.textContent = 'Select Media Path (this machine)';
+    }
     getEl('path-picker-modal').style.display = 'flex';
     await browseDir(currentVal || '');
 }
 
+
 export async function browseDir(path) {
-    getEl('picker-body').innerHTML =
+    const bodyEl = getEl('picker-body');
+    bodyEl.innerHTML =
         '<p style="padding:1.5rem; text-align:center; color:var(--text-secondary);">Loading...</p>';
     let result;
     try {
-        const resp = await fetch('/api/browse?path=' + encodeURIComponent(path));
+        const url = new URL('/api/browse', window.location.origin);
+        url.searchParams.set('path', path);
+        const resp = await fetch(url.toString());
         result = await resp.json();
     } catch (e) {
-        getEl('picker-body').innerHTML = `<p class="picker-empty">Could not load directory: ${e.message}</p>`;
+        bodyEl.innerHTML = `<p class="picker-empty">Could not load directory: ${e.message}</p>`;
         return;
     }
     if (result.status !== 'success') {
-        getEl('picker-body').innerHTML = `<p class="picker-empty">${result.message}</p>`;
+        bodyEl.innerHTML = `<p class="picker-empty">${result.message}</p>`;
         return;
     }
     _pickerCurrentPath = result.current;
     getEl('picker-breadcrumb').textContent = result.current;
     getEl('picker-footer-path').textContent = result.current;
 
-    const body = getEl('picker-body');
-    body.innerHTML = '';
+    bodyEl.innerHTML = '';
 
     if (result.parent) {
         const up = document.createElement('button');
         up.className = 'picker-item picker-up';
         up.innerHTML = '<span class="picker-item-icon">..</span> (go up)';
         up.onclick = () => browseDir(result.parent);
-        body.appendChild(up);
+        bodyEl.appendChild(up);
     }
 
     if (result.dirs.length === 0) {
         const empty = document.createElement('p');
         empty.className = 'picker-empty';
         empty.textContent = 'No subdirectories here.';
-        body.appendChild(empty);
+        bodyEl.appendChild(empty);
     } else {
         result.dirs.forEach(name => {
             const btn = document.createElement('button');
             btn.className = 'picker-item';
-            const fullPath = result.current.replace(/\/$/, '') + '/' + name;
+            const fullPath = joinPath(result.current, name);
             const icon = document.createElement('span');
             icon.className = 'picker-item-icon';
             icon.textContent = '[ ]';
@@ -65,7 +93,7 @@ export async function browseDir(path) {
             btn.appendChild(document.createTextNode(' ' + name));
             btn.title = fullPath;
             btn.onclick = () => browseDir(fullPath);
-            body.appendChild(btn);
+            bodyEl.appendChild(btn);
         });
     }
 }
@@ -122,10 +150,22 @@ export async function autoDetectIfEmpty() {
         const result = await apiAutoDetect();
         if (result.status !== 'success') return;
         const d = result.detected;
-        if (!targetEl.value && d.target_path) { targetEl.value = d.target_path; state.currentConfig.target_path = d.target_path; }
-        if (!jfEl.value && d.media_path_in_jellyfin) { jfEl.value = d.media_path_in_jellyfin; state.currentConfig.media_path_in_jellyfin = d.media_path_in_jellyfin; }
-        if (!hostEl.value && d.media_path_on_host) { hostEl.value = d.media_path_on_host; state.currentConfig.media_path_on_host = d.media_path_on_host; }
-        if (d.target_path_in_jellyfin) { getEl('target_path_in_jellyfin').value = d.target_path_in_jellyfin; state.currentConfig.target_path_in_jellyfin = d.target_path_in_jellyfin; }
+        if (!targetEl.value && d.target_path) {
+            targetEl.value = d.target_path;
+            state.currentConfig.target_path = d.target_path;
+        }
+        if (!jfEl.value && d.media_path_in_jellyfin) {
+            jfEl.value = d.media_path_in_jellyfin;
+            state.currentConfig.media_path_in_jellyfin = d.media_path_in_jellyfin;
+        }
+        if (!hostEl.value && d.media_path_on_host) {
+            hostEl.value = d.media_path_on_host;
+            state.currentConfig.media_path_on_host = d.media_path_on_host;
+        }
+        if (d.target_path_in_jellyfin) {
+            getEl('target_path_in_jellyfin').value = d.target_path_in_jellyfin;
+            state.currentConfig.target_path_in_jellyfin = d.target_path_in_jellyfin;
+        }
         showToast('Paths auto-filled - review and save.', 'success');
     } catch (_) { /* silently ignore */ }
 }

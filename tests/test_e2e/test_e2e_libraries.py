@@ -10,14 +10,14 @@ from .conftest import api_get
 class TestE2ELibraries:
     """Test library auto-creation and cover setting features."""
 
-    def test_config_supports_library_features(self, e2e_session):
+    def test_config_supports_library_features(self, e2e_session) -> None:
         """Config should support auto_create_libraries and auto_set_library_covers."""
         config = api_get(e2e_session, "/api/config")
         assert "auto_create_libraries" in config
         assert "auto_set_library_covers" in config
         assert "target_path_in_jellyfin" in config
 
-    def test_can_enable_library_features(self, e2e_session):
+    def test_can_enable_library_features(self, e2e_session) -> None:
         """Should be able to toggle library features in config."""
         config = api_get(e2e_session, "/api/config")
         config["auto_create_libraries"] = True

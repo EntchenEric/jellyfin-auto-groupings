@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jellyfin Groupings | Dashboard</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap"
@@ -19,20 +20,28 @@
 </head>
 
 <body>
-    <div id="loading-overlay" class="loading-overlay">
+    <a href="#main-content" class="skip-to-content">Skip to main content</a>
+
+    <div id="loading-overlay" class="loading-overlay" role="dialog" aria-modal="true" aria-labelledby="loading-overlay-title">
         <div class="loading-overlay-card">
             <span class="loading-spinner" aria-hidden="true"></span>
             <h3 id="loading-overlay-title">Connecting to Jellyfin</h3>
             <p id="loading-overlay-status" role="status" aria-live="polite" aria-atomic="true">Fetching genres, actors, studios, and tags...</p>
-            <div class="progress-bar-container" id="progress-bar-container" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-labelledby="loading-overlay-status">
-                <div class="progress-bar-fill" id="progress-bar-fill" style="width: 0%;"></div>
+            <div class="progress-bar-container">
+                <div class="progress-bar-fill" id="progress-bar-fill"></div>
             </div>
             <div class="progress-info" id="progress-info">
                 <span id="progress-percentage">0%</span>
-                <span id="progress-eta" style="display:none;"></span>
+                <span id="progress-eta" class="hidden"></span>
             </div>
         </div>
     </div>
+
+    <noscript>
+        <div class="nojs-warning">
+            JavaScript is required for Jellyfin Groupings to function.
+        </div>
+    </noscript>
 
     <div class="bg-blob bg-blob-1"></div>
     <div class="bg-blob bg-blob-2"></div>

@@ -16,6 +16,38 @@
     --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     --sidebar-width: 340px;
     --topbar-height: 58px;
+
+    /* Z-index layers — single source of truth for stacking context */
+    --z-content: 0;
+    --z-sticky: 100;
+    --z-toast: 200;
+    --z-topbar: 300;
+    --z-modal: 1000;
+    --z-loading-overlay: 2000;
+    --z-wizard: 5000;
+    --z-locked-overlay: 10;
+    --z-skip-link: 9999;
+
+    color-scheme: dark;
+}
+
+/* Apply light theme when OS/browser requests light mode; default to dark theme otherwise */
+@media (prefers-color-scheme: light) {
+    :root {
+        --bg-color: #f1f5f9;
+        --surface-color: #ffffff;
+        --accent-color: #6366f1;
+        --accent-hover: #4f46e5;
+        --text-primary: #0f172a;
+        --text-secondary: #475569;
+        --glass-bg: rgba(0, 0, 0, 0.02);
+        --glass-border: rgba(0, 0, 0, 0.08);
+        --success-color: #059669;
+        --error-color: #dc2626;
+        --warning-color: #d97706;
+
+        color-scheme: light;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {

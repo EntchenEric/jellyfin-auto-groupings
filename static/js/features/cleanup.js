@@ -1,7 +1,6 @@
 // cleanup.js – Cleanup modal logic
 
 import { showToast, showErrorDialog, getEl } from '../core/ui.js';
-import { getCleanupItems, performCleanup } from '../core/api.js';
 
 export async function openCleanupModal() {
     getEl('cleanup-modal').style.display = 'flex';
@@ -10,45 +9,44 @@ export async function openCleanupModal() {
     getEl('cleanup-error').style.display = 'none';
 
     try {
-        const result = await getCleanupItems();
+        const response = await fetch('/api/cleanup');
+        const result = await response.json();
 
         if (result.status === 'success') {
             const listContainer = getEl('cleanup-list');
             listContainer.innerHTML = '';
 
             if (!result.items || result.items.length === 0) {
-                listContainer.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-secondary); font-style: italic;">No folders found in Target Directory.</div>';
+                const emptyDiv = document.createElement('div');
+                emptyDiv.className = 'cleanup-empty';
+                emptyDiv.textContent = 'No folders found in Target Directory.';
+                listContainer.appendChild(emptyDiv);
             } else {
                 result.items.forEach(item => {
                     const row = document.createElement('label');
-                    row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 0.8rem; border-bottom: 1px solid var(--glass-border); cursor: pointer; transition: background 0.15s; text-transform: none; font-weight: 400;';
-                    row.onmouseover = () => row.style.background = 'rgba(255,255,255,0.05)';
-                    row.onmouseout = () => row.style.background = 'transparent';
+                    row.className = 'cleanup-item';
 
                     const left = document.createElement('div');
-                    left.style.display = 'flex';
-                    left.style.alignItems = 'center';
-                    left.style.gap = '1rem';
+                    left.className = 'cleanup-item-left';
 
                     const checkbox = document.createElement('input');
                     checkbox.type = 'checkbox';
                     checkbox.value = item.name;
                     checkbox.checked = true;
-                    checkbox.style.cssText = 'width: 16px; height: 16px; accent-color: var(--error-color);';
+                    checkbox.className = 'cleanup-item-checkbox';
                     checkbox.onchange = updateCleanupCount;
 
                     const nameSpan = document.createElement('span');
+                    nameSpan.className = 'cleanup-item-name';
                     nameSpan.textContent = item.name;
-                    nameSpan.style.color = 'var(--text-primary)';
-                    nameSpan.style.fontFamily = 'monospace';
 
                     const badge = document.createElement('span');
                     if (item.is_configured) {
                         badge.textContent = 'Configured';
-                        badge.style.cssText = 'font-size: 0.7rem; background: rgba(34, 197, 94, 0.2); color: #4ade80; padding: 0.2rem 0.5rem; border-radius: 4px;';
+                        badge.className = 'cleanup-badge-configured';
                     } else {
                         badge.textContent = 'Unconfigured';
-                        badge.style.cssText = 'font-size: 0.7rem; background: rgba(239, 68, 68, 0.2); color: #f87171; padding: 0.2rem 0.5rem; border-radius: 4px;';
+                        badge.className = 'cleanup-badge-unconfigured';
                     }
 
                     left.appendChild(checkbox);
@@ -89,22 +87,28 @@ export async function execCleanup() {
     if (folders.length === 0) return;
 
     const btn = getEl('confirm-cleanup-btn');
-    btn.innerHTML = '<span class="loading-spinner" style="display:inline-block; border-top-color:#fff; width:16px; height:16px;border-width:2px;margin-right:8px;"></span>Deleting...';
+    btn.innerHTML = '<span class="loading-spinner cleanup-spinner-inline"></span>Deleting...';
     btn.disabled = true;
 
     try {
-        const result = await performCleanup(folders);
+        const response = await fetch('/api/cleanup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ folders })
+        });
+        const result = await response.json();
 
         btn.innerHTML = 'Delete Selected <span id="cleanup-count"></span>';
         btn.disabled = false;
         updateCleanupCount();
 
         if (result.status === 'success' || result.status === 'partial_success') {
-            getEl('cleanup-modal').style.display = 'none';
-            const msg = `Successfully deleted ${result.deleted} folder(s).${result.errors ? ' Errors: ' + result.errors.join(', ') : ''}`;
-            showToast(msg, 'success');
+            showToast(`Successfully deleted ${result.deleted} folder(s).${result.errors ? ' Errors: ' + result.errors.join(', ') : ''}`, result.status === 'partial_success' ? 'warning' : 'success');
+            // Refresh the modal list instead of closing
+            openCleanupModal();
         } else {
             showErrorDialog('Error deleting folders: ' + result.message);
+            updateCleanupCount();
         }
     } catch (err) {
         btn.innerHTML = 'Delete Selected <span id="cleanup-count"></span>';

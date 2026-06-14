@@ -1,3 +1,5 @@
+"""Tests for external list fetcher modules (IMDb, AniList, TMDb, Jellyfin)."""
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -10,7 +12,7 @@ from tmdb import fetch_tmdb_list
 
 
 @patch("jellyfin.network.get")
-def test_fetch_jellyfin_items(mock_get):
+def test_fetch_jellyfin_items(mock_get) -> None:
     mock_resp = MagicMock()
     mock_resp.status_code = 200
     mock_resp.json.return_value = {"Items": [{"Name": "M1"}], "TotalRecordCount": 1}
@@ -23,8 +25,8 @@ def test_fetch_jellyfin_items(mock_get):
     assert kwargs["params"]["Type"] == "Movie"
 
 
-@patch("imdb.requests.get")
-def test_fetch_imdb_list(mock_get):
+@patch("imdb.network.get")
+def test_fetch_imdb_list(mock_get) -> None:
     mock_response = MagicMock()
     mock_response.text = '<html><div class="lister-item-header"><a href="/title/tt1234567/"></a></div></html>'
     mock_get.return_value = mock_response
@@ -32,8 +34,8 @@ def test_fetch_imdb_list(mock_get):
     assert ids == ["tt1234567"]
 
 
-@patch("tmdb.requests.get")
-def test_fetch_tmdb_list(mock_get):
+@patch("tmdb.network.get")
+def test_fetch_tmdb_list(mock_get) -> None:
     mock_response = MagicMock()
     mock_response.json.return_value = {
         "items": [
@@ -47,8 +49,8 @@ def test_fetch_tmdb_list(mock_get):
     assert ids == ["101", "202"]
 
 
-@patch("anilist.requests.post")
-def test_fetch_anilist_list(mock_post):
+@patch("anilist.network.post")
+def test_fetch_anilist_list(mock_post) -> None:
     mock_response = MagicMock()
     mock_response.json.return_value = {
         "data": {
@@ -71,25 +73,25 @@ def test_fetch_anilist_list(mock_post):
 # ---------------------------------------------------------------------------
 
 
-def test_fetch_imdb_invalid_id():
+def test_fetch_imdb_invalid_id() -> None:
     with pytest.raises(ValueError, match="Invalid IMDb list ID"):
         fetch_imdb_list("not-a-valid-id")
 
 
-@patch("imdb.requests.get")
-def test_fetch_imdb_http_error(mock_get):
+@patch("imdb.network.get")
+def test_fetch_imdb_http_error(mock_get) -> None:
     mock_resp = MagicMock()
     mock_resp.status_code = 500
     mock_resp.raise_for_status.side_effect = requests.exceptions.HTTPError(
-        "Server Error"
+        "Server Error",
     )
     mock_get.return_value = mock_resp
     with pytest.raises(RuntimeError, match="Failed to fetch IMDb"):
         fetch_imdb_list("ls12345")
 
 
-@patch("imdb.requests.get")
-def test_fetch_imdb_pagination(mock_get):
+@patch("imdb.network.get")
+def test_fetch_imdb_pagination(mock_get) -> None:
     resp1 = MagicMock()
     resp1.status_code = 200
     resp1.text = (
@@ -113,11 +115,81 @@ def test_fetch_imdb_pagination(mock_get):
 # ---------------------------------------------------------------------------
 
 
-@patch("anilist.requests.post")
-def test_fetch_anilist_empty_collection(mock_post):
+@patch("anilist.network.post")
+def test_fetch_anilist_empty_collection(mock_post) -> None:
     mock_resp = MagicMock()
     mock_resp.status_code = 200
     mock_resp.json.return_value = {"data": {"MediaListCollection": None}}
     mock_post.return_value = mock_resp
     ids = fetch_anilist_list("user")
     assert ids == []
+
+
+@patch("anilist.network.post")
+def test_fetch_anilist_data_not_dict(mock_post) -> None:
+    """Anilist response where 'data' is not a dict (uncovered branch)."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"data": "not a dict"}
+    mock_post.return_value = mock_resp
+    ids = fetch_anilist_list("user")
+    assert ids == []
+
+
+@patch("anilist.network.post")
+def test_fetch_anilist_list_entry_not_dict(mock_post) -> None:
+    """Anilist response where a list entry or its wrapper is not a dict (uncovered branches)."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "data": {
+            "MediaListCollection": {
+                "lists": [
+                    "not a dict",
+                    {"entries": None},
+                    {
+                        "entries": [
+                            "not a dict",
+                            {"mediaId": 12345},
+                            {},
+                        ],
+                    },
+                ],
+            },
+        },
+    }
+    mock_post.return_value = mock_resp
+    ids = fetch_anilist_list("user")
+    assert ids == [12345]
+
+
+@patch("anilist.network.post")
+def test_fetch_anilist_http_error(mock_post) -> None:
+    """Anilist network error raises RuntimeError."""
+    mock_post.side_effect = requests.exceptions.RequestException(
+        "Connection refused",
+    )
+    with pytest.raises(RuntimeError, match="Failed to fetch AniList list"):
+        fetch_anilist_list("user")
+
+
+@patch("anilist.network.post")
+def test_fetch_anilist_custom_api_url(mock_post) -> None:
+    """AniList custom API URL is used when provided."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "data": {
+            "MediaListCollection": {
+                "lists": [
+                    {"entries": [{"mediaId": 42}]},
+                ],
+            },
+        },
+    }
+    mock_post.return_value = mock_resp
+    ids = fetch_anilist_list("user", api_url="https://custom.anilist.example/graphql")
+    assert ids == [42]
+    _args, kwargs = mock_post.call_args
+    assert kwargs["json"]["variables"]["userName"] == "user"
+    assert _args[0] == "https://custom.anilist.example/graphql"

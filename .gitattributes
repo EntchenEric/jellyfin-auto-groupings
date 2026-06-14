@@ -1,0 +1,48 @@
+# Auto-detect line endings for text files
+* text=auto
+
+# Python — LF endings
+*.py text eol=lf
+*.pyi text eol=lf
+
+# Markdown / docs
+*.md text eol=lf
+*.rst text eol=lf
+
+# Config files
+*.json text eol=lf
+*.toml text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.cfg text eol=lf
+*.ini text eol=lf
+*.example text eol=lf
+*.env text eol=lf
+
+# Shell scripts
+*.sh text eol=lf
+
+# Docker
+Dockerfile text eol=lf
+*.dockerfile text eol=lf
+
+# CSS/JS/HTML
+*.css text eol=lf
+*.js text eol=lf
+*.html text eol=lf
+
+# Lock files — binary
+requirements.txt text eol=lf
+pip-wheel-metadata text eol=lf
+
+# Binary files (never convert)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg binary
+*.woff binary
+*.woff2 binary
+*.eot binary
+*.ttf binary

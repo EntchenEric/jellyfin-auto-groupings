@@ -1,10 +1,15 @@
 # Local config – contains secrets (API key etc.), never commit
 config.json
 
+# Environment secrets — users copy .env.example to .env
+.env
+
 # Python
 __pycache__/
 *.py[cod]
 *.pyo
+.mypy_cache/
+.ruff_cache/
 
 # Virtual envs
 .venv/
@@ -17,21 +22,22 @@ bin/
 include/
 pyvenv.cfg
 
-# Test artifacts
-coverage_report.txt
+# Test results (not artifacts)
 test_results.txt
-pytest_verbose.log
 current_test_out.txt
 test_api_out.txt
+
+# Test artifacts
 test_error.log
+coverage_report.txt
+pytest_verbose.log
 pytest.log
 .pytest_cache/
 .coverage
+htmlcov/
+coverage.xml
 e2e/test_media/
 e2e/test_output/
-
-# Legacy monolith UI (removed)
-index.html
 
 # IDE
 .vscode/
@@ -47,3 +53,7 @@ node_modules/
 *.egg-info/
 dist/
 build/
+.openclaw/
+
+# Runtime logs
+logs/

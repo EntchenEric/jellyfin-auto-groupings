@@ -1,3 +1,10 @@
+"""Tests for scheduler.py — job scheduling, cron validation, and lifecycle.
+
+Verifies that the APScheduler integration correctly schedules, updates,
+and runs global sync, per-group sync, and cleanup jobs, including
+edge cases like invalid cron expressions and scheduler stop/start.
+"""
+
 from unittest.mock import patch
 
 import pytest
@@ -14,7 +21,7 @@ from scheduler import (
 
 @patch("scheduler._scheduler")
 @patch("scheduler.load_config")
-def test_update_scheduler_jobs_clear(mock_load, mock_sched):
+def test_update_scheduler_jobs_clear(mock_load, mock_sched) -> None:
     mock_load.return_value = {"scheduler": {}, "groups": []}
     update_scheduler_jobs()
     mock_sched.remove_all_jobs.assert_called_once()
@@ -22,7 +29,7 @@ def test_update_scheduler_jobs_clear(mock_load, mock_sched):
 
 @patch("scheduler._scheduler")
 @patch("scheduler.load_config")
-def test_update_scheduler_jobs_global(mock_load, mock_sched):
+def test_update_scheduler_jobs_global(mock_load, mock_sched) -> None:
     mock_load.return_value = {
         "scheduler": {
             "global_enabled": True,
@@ -42,7 +49,7 @@ def test_update_scheduler_jobs_global(mock_load, mock_sched):
 
 @patch("scheduler._scheduler")
 @patch("scheduler.load_config")
-def test_update_scheduler_jobs_global_empty_schedule(mock_load, mock_sched):
+def test_update_scheduler_jobs_global_empty_schedule(mock_load, mock_sched) -> None:
     mock_load.return_value = {
         "scheduler": {
             "global_enabled": True,
@@ -57,7 +64,7 @@ def test_update_scheduler_jobs_global_empty_schedule(mock_load, mock_sched):
 
 @patch("scheduler._scheduler")
 @patch("scheduler.load_config")
-def test_update_scheduler_jobs_cleanup_empty_schedule(mock_load, mock_sched):
+def test_update_scheduler_jobs_cleanup_empty_schedule(mock_load, mock_sched) -> None:
     mock_load.return_value = {
         "scheduler": {
             "global_enabled": False,
@@ -72,7 +79,7 @@ def test_update_scheduler_jobs_cleanup_empty_schedule(mock_load, mock_sched):
 
 @patch("scheduler._scheduler")
 @patch("scheduler.load_config")
-def test_update_scheduler_jobs_groups(mock_load, mock_sched):
+def test_update_scheduler_jobs_groups(mock_load, mock_sched) -> None:
     mock_load.return_value = {
         "scheduler": {"global_enabled": False, "cleanup_enabled": False},
         "groups": [
@@ -92,7 +99,7 @@ def test_update_scheduler_jobs_groups(mock_load, mock_sched):
 
 @patch("scheduler.run_sync")
 @patch("scheduler.load_config")
-def test_run_global_sync_job(mock_load, mock_sync):
+def test_run_global_sync_job(mock_load, mock_sync) -> None:
     mock_load.return_value = {
         "groups": [
             {"name": "G1"},
@@ -107,7 +114,7 @@ def test_run_global_sync_job(mock_load, mock_sync):
 
 @patch("scheduler.run_sync")
 @patch("scheduler.load_config")
-def test_run_group_sync_job(mock_load, mock_sync):
+def test_run_group_sync_job(mock_load, mock_sync) -> None:
     _run_group_sync_job("G1")
     mock_sync.assert_called_once()
     _args, kwargs = mock_sync.call_args
@@ -116,17 +123,27 @@ def test_run_group_sync_job(mock_load, mock_sync):
 
 @patch("scheduler.load_config")
 @patch("scheduler._scheduler")
-def test_start_scheduler(mock_sched, mock_load):
+def test_start_scheduler(mock_sched, mock_load) -> None:
     mock_load.return_value = {}
     mock_sched.running = False
     start_scheduler()
     mock_sched.start.assert_called_once()
 
 
+@patch("scheduler.load_config")
+@patch("scheduler._scheduler")
+def test_start_scheduler_already_running(mock_sched, mock_load) -> None:
+    """Scheduler already running — should not call start() again."""
+    mock_load.return_value = {}
+    mock_sched.running = True
+    start_scheduler()
+    mock_sched.start.assert_not_called()
+
+
 @patch("scheduler.CronTrigger.from_crontab")
 @patch("scheduler._scheduler")
 @patch("scheduler.load_config")
-def test_update_scheduler_jobs_error(mock_load, mock_sched, mock_cron):
+def test_update_scheduler_jobs_error(mock_load, mock_sched, mock_cron) -> None:
     mock_load.return_value = {
         "scheduler": {
             "global_enabled": True,
@@ -142,7 +159,7 @@ def test_update_scheduler_jobs_error(mock_load, mock_sched, mock_cron):
 
 @patch("scheduler._scheduler")
 @patch("scheduler.load_config")
-def test_update_scheduler_jobs_cleanup(mock_load, mock_sched):
+def test_update_scheduler_jobs_cleanup(mock_load, mock_sched) -> None:
     mock_load.return_value = {
         "scheduler": {
             "cleanup_enabled": True,
@@ -175,7 +192,7 @@ def test_update_scheduler_jobs_cleanup(mock_load, mock_sched):
         ("not a cron expr", "5 fields"),
     ],
 )
-def test_validate_cron(expr, expected_error):
+def test_validate_cron(expr, expected_error) -> None:
     result = validate_cron(expr)
     if expected_error is None:
         assert result is None
@@ -191,7 +208,7 @@ def test_validate_cron(expr, expected_error):
 
 @patch("scheduler._scheduler")
 @patch("scheduler.load_config")
-def test_update_scheduler_jobs_non_dict_group(mock_load, mock_sched):
+def test_update_scheduler_jobs_non_dict_group(mock_load, mock_sched) -> None:
     mock_load.return_value = {
         "scheduler": {"global_enabled": False, "cleanup_enabled": False},
         "groups": ["not_a_dict"],
@@ -202,7 +219,7 @@ def test_update_scheduler_jobs_non_dict_group(mock_load, mock_sched):
 
 @patch("scheduler._scheduler")
 @patch("scheduler.load_config")
-def test_update_scheduler_jobs_group_no_name(mock_load, mock_sched):
+def test_update_scheduler_jobs_group_no_name(mock_load, mock_sched) -> None:
     mock_load.return_value = {
         "scheduler": {"global_enabled": False, "cleanup_enabled": False},
         "groups": [{"schedule_enabled": True, "schedule": "0 12 * * *"}],
@@ -214,7 +231,7 @@ def test_update_scheduler_jobs_group_no_name(mock_load, mock_sched):
 @patch("scheduler.CronTrigger.from_crontab")
 @patch("scheduler._scheduler")
 @patch("scheduler.load_config")
-def test_update_scheduler_jobs_group_error(mock_load, mock_sched, mock_cron):
+def test_update_scheduler_jobs_group_error(mock_load, mock_sched, mock_cron) -> None:
     mock_load.return_value = {
         "scheduler": {"global_enabled": False, "cleanup_enabled": False},
         "groups": [{"name": "BadGroup", "schedule_enabled": True, "schedule": "bad"}],
@@ -226,7 +243,7 @@ def test_update_scheduler_jobs_group_error(mock_load, mock_sched, mock_cron):
 
 @patch("scheduler.run_sync")
 @patch("scheduler.load_config")
-def test_run_global_sync_job_all_excluded(mock_load, mock_sync):
+def test_run_global_sync_job_all_excluded(mock_load, mock_sync) -> None:
     mock_load.return_value = {
         "groups": [
             {"name": "G1"},
@@ -239,8 +256,87 @@ def test_run_global_sync_job_all_excluded(mock_load, mock_sync):
 
 @patch("scheduler.run_cleanup_broken_symlinks")
 @patch("scheduler.load_config")
-def test_run_cleanup_job(mock_load, mock_cleanup):
+def test_run_cleanup_job(mock_load, mock_cleanup) -> None:
     mock_load.return_value = {"target_path": "/tmp"}
     mock_cleanup.return_value = 5
     _run_cleanup_job()
     mock_cleanup.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# _run_global_sync_job error resilience
+# ---------------------------------------------------------------------------
+
+
+@patch("scheduler.run_sync")
+@patch("scheduler.load_config")
+def test_run_global_sync_job_error(mock_load, mock_sync) -> None:
+    """_run_global_sync_job catches and logs sync exceptions."""
+    mock_load.return_value = {
+        "groups": [
+            {"name": "G1"},
+        ],
+    }
+    mock_sync.side_effect = RuntimeError("sync failure")
+    # Should not raise
+    _run_global_sync_job([])
+    mock_sync.assert_called_once()
+
+
+@patch("scheduler.run_sync")
+@patch("scheduler.load_config")
+def test_run_global_sync_job_empty_groups(mock_load, mock_sync) -> None:
+    """_run_global_sync_job handles empty groups list."""
+    mock_load.return_value = {
+        "groups": [],
+    }
+    _run_global_sync_job([])
+    mock_sync.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# _run_group_sync_job error resilience
+# ---------------------------------------------------------------------------
+
+
+@patch("scheduler.run_sync")
+@patch("scheduler.load_config")
+def test_run_group_sync_job_error(mock_load, mock_sync) -> None:
+    """_run_group_sync_job catches and logs sync exceptions."""
+    mock_sync.side_effect = ValueError("bad config")
+    _run_group_sync_job("G1")
+    mock_sync.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Additional edge cases: non-string group name, duplicate names
+# ---------------------------------------------------------------------------
+
+
+@patch("scheduler._scheduler")
+@patch("scheduler.load_config")
+def test_update_scheduler_jobs_group_non_str_name(mock_load, mock_sched) -> None:
+    """Non-string group names are skipped."""
+    mock_load.return_value = {
+        "scheduler": {"global_enabled": False, "cleanup_enabled": False},
+        "groups": [{"name": 42, "schedule_enabled": True, "schedule": "0 12 * * *"}],
+    }
+    update_scheduler_jobs()
+    mock_sched.add_job.assert_not_called()
+
+
+@patch("scheduler._scheduler")
+@patch("scheduler.load_config")
+def test_update_scheduler_jobs_duplicate_group_names(mock_load, mock_sched) -> None:
+    """Duplicate group names log a warning and only register one job."""
+    mock_load.return_value = {
+        "scheduler": {"global_enabled": False, "cleanup_enabled": False},
+        "groups": [
+            {"name": "SameName", "schedule_enabled": True, "schedule": "0 12 * * *"},
+            {"name": "SameName", "schedule_enabled": True, "schedule": "0 6 * * *"},
+        ],
+    }
+    update_scheduler_jobs()
+    assert mock_sched.add_job.call_count == 1
+    _args, kwargs = mock_sched.add_job.call_args
+    assert kwargs["id"] == "group_sync_SameName"

@@ -30,7 +30,7 @@ class TestE2ESync:
             timeout=10,
         )
 
-    def test_sync_with_single_genre_group(self, e2e_session):
+    def test_sync_with_single_genre_group(self, e2e_session) -> None:
         """Full sync with one genre-based grouping."""
         # Create a group
         config = api_get(e2e_session, "/api/config")
@@ -45,7 +45,7 @@ class TestE2ESync:
                 "schedule": "",
                 "seasonal_enabled": False,
                 "watch_state": "",
-            }
+            },
         ]
         resp = requests.post(
             f"{e2e_session['app_url']}/api/config",
@@ -61,7 +61,7 @@ class TestE2ESync:
         assert len(result["results"]) == 1
         assert result["results"][0]["group"] == "E2E Action Movies"
 
-    def test_sync_preview_all(self, e2e_session):
+    def test_sync_preview_all(self, e2e_session) -> None:
         """Preview sync should show expected results without touching disk."""
         config = api_get(e2e_session, "/api/config")
         config["groups"] = [
@@ -75,7 +75,7 @@ class TestE2ESync:
                 "schedule": "",
                 "seasonal_enabled": False,
                 "watch_state": "",
-            }
+            },
         ]
         requests.post(
             f"{e2e_session['app_url']}/api/config",
@@ -88,7 +88,7 @@ class TestE2ESync:
         assert isinstance(result.get("results"), list)
         assert len(result["results"]) >= 1
 
-    def test_sync_empty_groups(self, e2e_session):
+    def test_sync_empty_groups(self, e2e_session) -> None:
         """Sync with no groups should succeed gracefully."""
         result = api_post(e2e_session, "/api/sync")
         assert result["status"] == "success"

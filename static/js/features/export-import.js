@@ -20,17 +20,16 @@ export function openExportModal() {
             const cb = document.createElement('input');
             cb.type = 'checkbox';
             cb.checked = true;
-            cb.className = 'export-check';
+            cb.className = 'export-check item-checkbox';
             cb.dataset.index = i;
-            cb.setAttribute('style', 'width:18px; height:18px; accent-color: var(--accent-color);');
             item.appendChild(cb);
 
             const labelDiv = document.createElement('div');
             const nameDiv = document.createElement('div');
-            nameDiv.setAttribute('style', 'font-weight:600; font-size:0.95rem;');
+            nameDiv.className = 'item-name';
             nameDiv.textContent = g.name || 'Unnamed Group';
             const typeDiv = document.createElement('div');
-            typeDiv.setAttribute('style', 'font-size:0.8rem; color:var(--text-secondary);');
+            typeDiv.className = 'item-type';
             typeDiv.textContent = g.source_type || '';
             labelDiv.appendChild(nameDiv);
             labelDiv.appendChild(typeDiv);
@@ -42,6 +41,12 @@ export function openExportModal() {
 
     document.querySelector('input[name="export-type"][value="all"]').checked = true;
     toggleExportSelection();
+
+    // Wire radio button change events (removes dependency on HTML onchange)
+    document.querySelectorAll('input[name="export-type"]').forEach(radio => {
+        radio.onchange = toggleExportSelection;
+    });
+
     getEl('export-modal').style.display = 'flex';
 }
 
@@ -89,12 +94,24 @@ export function handleFileSelected(event) {
     const reader = new FileReader();
     reader.onload = (e) => {
         try {
-            const data = JSON.parse(e.target.result);
+            const text = e.target.result;
+            if (!text || text.trim().length === 0) {
+                showErrorDialog('The selected file is empty');
+                return;
+            }
+            const data = JSON.parse(text);
             state.pendingImportData = data;
             setupImportStep2(data);
         } catch (err) {
-            showErrorDialog('Invalid JSON file');
+            if (err instanceof SyntaxError) {
+                showErrorDialog('Invalid JSON file — please check the file format');
+            } else {
+                showErrorDialog('Failed to process import file: ' + err.message);
+            }
         }
+    };
+    reader.onerror = () => {
+        showErrorDialog('Failed to read the selected file');
     };
     reader.readAsText(file);
     event.target.value = '';
@@ -102,7 +119,7 @@ export function handleFileSelected(event) {
 
 function setupImportStep2(data) {
     getEl('import-step-1').style.display = 'none';
-    getEl('import-step-2').style.display = 'block';
+    getEl('import-step-2').style.display = 'flex';
     getEl('cancel-import-top').style.display = 'none';
 
     const warning = getEl('import-warning');
@@ -132,17 +149,16 @@ function setupImportStep2(data) {
             const cb = document.createElement('input');
             cb.type = 'checkbox';
             cb.checked = true;
-            cb.className = 'import-check';
+            cb.className = 'import-check item-checkbox';
             cb.dataset.index = i;
-            cb.setAttribute('style', 'width:18px; height:18px; accent-color: var(--accent-color);');
             item.appendChild(cb);
 
             const labelDiv = document.createElement('div');
             const nameDiv = document.createElement('div');
-            nameDiv.setAttribute('style', 'font-weight:600; font-size:0.95rem;');
+            nameDiv.className = 'item-name';
             nameDiv.textContent = g.name || 'Unnamed Group';
             const typeDiv = document.createElement('div');
-            typeDiv.setAttribute('style', 'font-size:0.8rem; color:var(--text-secondary);');
+            typeDiv.className = 'item-type';
             typeDiv.textContent = `${g.source_type || ''}: ${g.source_value || ''}`;
             labelDiv.appendChild(nameDiv);
             labelDiv.appendChild(typeDiv);

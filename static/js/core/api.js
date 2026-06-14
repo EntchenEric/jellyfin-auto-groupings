@@ -3,9 +3,7 @@
 import { showToast, showErrorDialog } from './ui.js';
 
 const DEFAULT_TIMEOUT_MS = 60000;
-
-let _basicAuthUser = '';
-let _basicAuthPass = '';
+const AUTH_STORAGE_KEY = 'jfg_app_password';
 
 class ApiError extends Error {
     constructor(status, message) {
@@ -15,50 +13,52 @@ class ApiError extends Error {
     }
 }
 
-export function setBasicAuthCredentials(user, pass) {
-    _basicAuthUser = user || '';
-    _basicAuthPass = pass || '';
+export function setAppPassword(password) {
+    if (password) sessionStorage.setItem(AUTH_STORAGE_KEY, password);
+    else sessionStorage.removeItem(AUTH_STORAGE_KEY);
 }
 
-export async function loginWithPassword(password) {
-    setBasicAuthCredentials('user', password);
-    return apiGet('/api/config');
-}
-
-function buildHeaders(extra = {}) {
+function authHeaders(extra = {}) {
     const headers = { ...extra };
-    if (_basicAuthPass) {
-        headers['Authorization'] = 'Basic ' + btoa(`${_basicAuthUser}:${_basicAuthPass}`);
+    const pw = sessionStorage.getItem(AUTH_STORAGE_KEY);
+    if (pw) {
+        headers.Authorization = `Basic ${btoa(`user:${pw}`)}`;
     }
     return headers;
 }
 
-async function apiRequest(url, options = {}, timeoutMs = DEFAULT_TIMEOUT_MS, silent = false) {
+async function apiRequest(url, options = {}, timeoutMs = DEFAULT_TIMEOUT_MS) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
         const res = await fetch(url, {
             ...options,
             credentials: 'same-origin',
-            signal: controller.signal,
-            headers: buildHeaders(options.headers || {})
+            headers: authHeaders(options.headers),
+            signal: controller.signal
         });
+        if (res.status === 401 && !options._authRetried) {
+            const pw = prompt('Enter app password:');
+            if (pw) {
+                setAppPassword(pw);
+                return apiRequest(url, { ...options, _authRetried: true }, timeoutMs);
+            }
+            throw new ApiError(401, 'Authentication required');
+        }
         if (!res.ok) {
             const body = await res.json().catch(() => ({}));
             throw new ApiError(res.status, body.message || 'Request failed');
         }
         return res.json();
     } catch (err) {
-        if (!silent) {
-            if (err.name === 'AbortError') {
-                showErrorDialog('Request timed out — server did not respond in time');
-            } else if (err instanceof ApiError) {
-                showErrorDialog(err.message);
-            } else if (err instanceof TypeError) {
-                showErrorDialog('Network error — check your connection');
-            } else {
-                showErrorDialog('Unexpected error occurred');
-            }
+        if (err.name === 'AbortError') {
+            showErrorDialog('Request timed out — server did not respond in time');
+        } else if (err instanceof ApiError) {
+            showErrorDialog(err.message);
+        } else if (err instanceof TypeError) {
+            showErrorDialog('Network error — check your connection');
+        } else {
+            showErrorDialog('Unexpected error occurred');
         }
         throw err;
     } finally {
@@ -66,28 +66,24 @@ async function apiRequest(url, options = {}, timeoutMs = DEFAULT_TIMEOUT_MS, sil
     }
 }
 
-export function apiGet(url, timeoutMs, silent) {
-    return apiRequest(url, {
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-    }, timeoutMs, silent);
+export function apiGet(url, timeoutMs) {
+    return apiRequest(url, {}, timeoutMs);
 }
 
-export function apiPost(url, body, timeoutMs, silent) {
-    return apiRequest(url, {
+export function apiPost(url, body, timeoutMs) {
+    const opts = {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-Requested-With': 'XMLHttpRequest'
-        },
-        body: JSON.stringify(body)
-    }, timeoutMs, silent);
-}
-
-export function apiDelete(url, timeoutMs) {
-    return apiRequest(url, {
-        method: 'DELETE',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-    }, timeoutMs);
+        }
+    };
+    // Only set body when provided — JSON.stringify(undefined) returns undefined,
+    // which omits the body entirely rather than sending "undefined".
+    if (body !== undefined) {
+        opts.body = JSON.stringify(body);
+    }
+    return apiRequest(url, opts, timeoutMs);
 }
 
 // Convenience wrappers
@@ -97,7 +93,7 @@ export const testServer = (url, key) => apiPost('/api/test-server', { jellyfin_u
 export const fetchMetadata = () => apiGet('/api/jellyfin/metadata');
 export const fetchUsers = () => apiGet('/api/jellyfin/users');
 export const runSync = () => apiPost('/api/sync');
-export const previewSync = (silent = false) => apiPost('/api/sync/preview_all', {}, DEFAULT_TIMEOUT_MS, silent);
+export const previewSync = () => apiPost('/api/sync/preview_all');
 export const previewGroup = (type, value, watch_state) =>
     apiPost('/api/grouping/preview', { type, value, watch_state });
 export const uploadCover = (groupName, image) =>
@@ -105,4 +101,8 @@ export const uploadCover = (groupName, image) =>
 export const getCleanupItems = () => apiGet('/api/cleanup');
 export const performCleanup = (folders) => apiPost('/api/cleanup', { folders });
 export const autoDetectPaths = () => apiPost('/api/jellyfin/auto-detect-paths');
-export const browsePath = (path) => apiGet('/api/browse?path=' + encodeURIComponent(path));
+export const browsePath = (path) => {
+    const url = new URL('/api/browse', window.location.origin);
+    url.searchParams.set('path', path);
+    return apiGet(url.toString());
+};

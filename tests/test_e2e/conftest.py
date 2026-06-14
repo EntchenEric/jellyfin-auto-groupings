@@ -13,12 +13,13 @@ import requests
 E2E_APP_URL = os.environ.get("E2E_APP_URL", "http://localhost:5005")
 E2E_JELLYFIN_URL = os.environ.get("E2E_JELLYFIN_URL", "http://localhost:8096")
 E2E_JELLYFIN_URL_INTERNAL = os.environ.get(
-    "E2E_JELLYFIN_URL_INTERNAL", "http://jellyfin:8096"
+    "E2E_JELLYFIN_URL_INTERNAL",
+    "http://jellyfin:8096",
 )
 E2E_API_KEY = os.environ.get("JELLYFIN_API_KEY", "")
 
 
-def wait_for_app(timeout=30):
+def wait_for_app(timeout=30) -> bool:
     """Wait for the app server to be ready."""
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -32,7 +33,7 @@ def wait_for_app(timeout=30):
     return False
 
 
-def wait_for_jellyfin(timeout=30):
+def wait_for_jellyfin(timeout=30) -> bool:
     """Wait for Jellyfin to be healthy."""
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:

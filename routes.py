@@ -11,16 +11,15 @@ from __future__ import annotations
 import base64
 import binascii
 import copy
-import ipaddress
 import logging
+import math
 import os
+import re
 import shutil
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-from urllib.parse import urlparse
 
 import requests
 from flask import (
@@ -31,7 +30,6 @@ from flask import (
     jsonify,
     render_template,
     request,
-    send_from_directory,
 )
 from werkzeug.exceptions import HTTPException
 
@@ -49,8 +47,10 @@ from jellyfin import (
     fetch_jellyfin_items,
     get_users,
 )
-from scheduler import _scheduler, sync_lock, update_scheduler_jobs, validate_cron
-from sync import _get_cover_path, preview_group, run_sync
+from scheduler import update_scheduler_jobs, validate_cron
+from sync import _get_cover_path, clear_library_cache, preview_group, run_sync
+
+_APP_START_TIME: float = time.time()
 
 logger = logging.getLogger(__name__)
 
@@ -58,19 +58,15 @@ __all__ = ["bp"]
 
 bp = Blueprint("main", __name__)
 
-_APP_START_TIME = datetime.now(UTC)
-_SYNC_REQUESTS_TOTAL = 0
 
-
-@bp.errorhandler(400)
-@bp.errorhandler(500)
-def _handle_config_error(exc: Exception) -> ResponseReturnValue:
+def _handle_http_error(exc: HTTPException) -> ResponseReturnValue:
     """Translate blueprint HTTP exceptions into JSON error responses."""
-    if isinstance(exc, HTTPException):
-        if exc.code is None:
-            raise exc
-        return jsonify({"status": "error", "message": exc.description}), exc.code
-    raise exc
+    if exc.code is None:
+        raise exc
+    return jsonify({"status": "error", "message": exc.description}), exc.code
+
+
+bp.register_error_handler(HTTPException, _handle_http_error)
 
 
 def _error(message: str, status_code: int = 400, **extra: Any) -> ResponseReturnValue:
@@ -89,6 +85,19 @@ def _success(message: str, status_code: int = 200, **extra: Any) -> ResponseRetu
     return jsonify(payload), status_code
 
 
+# Allowed image MIME types for cover upload
+_ALLOWED_COVER_MIME_TYPES: frozenset[str] = frozenset(
+    {"image/jpeg", "image/png", "image/webp", "image/gif"},
+)
+
+# Map MIME type to file extension (used by upload_cover)
+_MIME_TO_EXT: dict[str, str] = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+}
+
 # Max size for base64 encoded cover image (approx 4MB)
 MAX_B64_SIZE = 4 * 1024 * 1024
 
@@ -104,27 +113,21 @@ _TEST_RESULT_FILENAMES = (
     "test_api_out.txt",
 )
 
-# Allowed group source types
-_VALID_SOURCE_TYPES: frozenset[str] = frozenset(
-    {
-        "general",
-        "genre",
-        "actor",
-        "studio",
-        "tag",
-        "year",
-        "complex",
-        "imdb_list",
-        "trakt_list",
-        "tmdb_list",
-        "anilist_list",
-        "mal_list",
-        "letterboxd_list",
-        "recommendations",
-    },
+# Allowed preview metadata types
+_ALLOWED_PREVIEW_TYPES: frozenset[str] = frozenset(
+    {"genre", "studio", "tag", "year", "actor", "general", "complex"},
 )
 
-_MAX_GROUPS = 200
+# Default filesystem search roots for auto-detect
+_DEFAULT_SEARCH_ROOTS: tuple[str, ...] = (
+    str(Path.home()),
+    "/media",
+    "/mnt",
+)
+
+# Sync rate limiting (per client IP)
+_SYNC_RATE_LIMIT_SECONDS = 5
+_last_sync_by_ip: dict[str, float] = {}
 
 _SENSITIVE_CONFIG_KEYS: tuple[str, ...] = (
     "api_key",
@@ -132,18 +135,7 @@ _SENSITIVE_CONFIG_KEYS: tuple[str, ...] = (
     "tmdb_api_key",
     "mal_client_id",
 )
-
 _CONFIG_MASK = "****"
-
-# Allowed preview metadata types
-_ALLOWED_PREVIEW_TYPES: frozenset[str] = frozenset(
-    {"genre", "studio", "tag", "year", "actor", "general", "complex"},
-)
-_DEFAULT_SEARCH_ROOTS: tuple[str, ...] = (
-    str(Path.home()),
-    "/media",
-    "/mnt",
-)
 
 # Server connection-test timeout (seconds)
 _TEST_SERVER_TIMEOUT: int = 5
@@ -153,11 +145,6 @@ _AUTO_DETECT_SAMPLE_LIMIT: int = 10
 
 # Auto-detect Jellyfin API timeout (seconds)
 _AUTO_DETECT_JELLYFIN_TIMEOUT: int = 10
-
-# ---------------------------------------------------------------------------
-# CSRF protection
-# ---------------------------------------------------------------------------
-
 
 # ---------------------------------------------------------------------------
 # Authentication
@@ -172,15 +159,10 @@ def _check_auth() -> ResponseReturnValue | None:
     if not _APP_PASSWORD:
         return None
     # Allow unauthenticated access to the main UI and static assets
-    if request.endpoint in (
-        "main.index",
-        "main.test_dashboard",
-        "main.health",
-        "main.metrics",
-    ):
+    if request.endpoint == "main.index":
         return None
     if request.path.startswith("/static/"):
-        return None
+        return None  # pragma: no cover (defensive — Flask serves static at app level)
 
     auth = request.authorization
     if auth and auth.password == _APP_PASSWORD:
@@ -193,11 +175,41 @@ def _check_auth() -> ResponseReturnValue | None:
     )
 
 
+# Endpoints that are exempted from the CSRF X-Requested-With check.
+# Add endpoint names here when you need to POST from non-browser clients
+# that cannot set the ``X-Requested-With: XMLHttpRequest`` header.
+#
+# Set the ``ALLOWED_NON_CSRF_ENDPOINTS`` environment variable to a
+# comma-separated list of endpoint names (e.g. ``"main.webhook,main.callback"``)
+# to override the default (empty) set at process start.
+_ALLOWED_NON_CSRF_REQUESTS: frozenset[str] = frozenset(
+    e
+    for _split in os.environ.get("ALLOWED_NON_CSRF_ENDPOINTS", "").split(",")
+    if (e := _split.strip())
+)
+
+# HTTP methods that require CSRF protection
+_CSRF_MUTATING_METHODS: tuple[str, ...] = ("POST", "PUT", "DELETE", "PATCH")
+
+
 @bp.before_request
 def _check_csrf() -> ResponseReturnValue | None:
-    """Require X-Requested-With header on state-changing requests."""
-    if request.method in ("POST", "PUT", "DELETE", "PATCH"):
-        if current_app.testing:
+    """Require ``X-Requested-With`` header on state-changing requests.
+
+    POST, PUT, DELETE, and PATCH requests from the browser must include the
+    ``X-Requested-With: XMLHttpRequest`` header (set automatically by
+    JavaScript ``fetch``/``XMLHttpRequest``).
+
+    To permit a specific endpoint to accept requests **without** this header
+    (e.g. for external scripts), add its endpoint name to
+    :data:`_ALLOWED_NON_CSRF_REQUESTS` or set the
+    ``ALLOWED_NON_CSRF_ENDPOINTS`` environment variable to a
+    comma-separated list of endpoint names.
+    """
+    if request.method in _CSRF_MUTATING_METHODS:
+        if current_app.config.get("TESTING"):
+            return None
+        if request.endpoint and request.endpoint in _ALLOWED_NON_CSRF_REQUESTS:
             return None
         if request.headers.get("X-Requested-With") != "XMLHttpRequest":
             return _error("CSRF validation failed", 403)
@@ -205,6 +217,22 @@ def _check_csrf() -> ResponseReturnValue | None:
 
 
 # ---------------------------------------------------------------------------
+# Security headers — applied to every response
+# ---------------------------------------------------------------------------
+
+
+@bp.after_request
+def _add_security_headers(response: Response) -> Response:
+    """Set security-related HTTP headers on every response.
+
+    * ``X-Content-Type-Options: nosniff`` — prevents MIME-type sniffing.
+    * ``X-Frame-Options: DENY`` — prevents clickjacking in frames.
+    """
+    response.headers.set("X-Content-Type-Options", "nosniff")
+    response.headers.set("X-Frame-Options", "DENY")
+    return response
+
+
 # Security helpers for the filesystem browser
 # ---------------------------------------------------------------------------
 
@@ -217,6 +245,7 @@ def _is_valid_folder_name(name: str) -> bool:
         and name not in (".", "..")
         and "/" not in name
         and "\\" not in name
+        and "\x00" not in name
     )
 
 
@@ -262,12 +291,7 @@ def _get_jellyfin_config(
     return url, api_key
 
 
-# ---------------------------------------------------------------------------
-# Config routes
-# ---------------------------------------------------------------------------
-
-
-def _mask_config_for_client(config: dict[str, Any]) -> dict[str, Any]:
+def _mask_config(config: dict[str, Any]) -> dict[str, Any]:
     masked = copy.deepcopy(config)
     for key in _SENSITIVE_CONFIG_KEYS:
         if masked.get(key):
@@ -275,86 +299,14 @@ def _mask_config_for_client(config: dict[str, Any]) -> dict[str, Any]:
     return masked
 
 
-def _validate_groups(groups: Any) -> list[str]:
-    errors: list[str] = []
-    if not isinstance(groups, list):
-        return ["'groups' must be a list"]
-    if len(groups) > _MAX_GROUPS:
-        errors.append(f"Maximum {_MAX_GROUPS} groups allowed, got {len(groups)}")
-    seen_names: set[str] = set()
-    for index, group in enumerate(groups):
-        if not isinstance(group, dict):
-            errors.append(f"Group at index {index} must be an object")
-            continue
-        name = group.get("name")
-        if not isinstance(name, str) or not name.strip():
-            errors.append(f"Group at index {index} has an empty name")
-            continue
-        if name in seen_names:
-            errors.append(f"Duplicate group name: {name}")
-        seen_names.add(name)
-        source_type = group.get("source_type")
-        if source_type is not None and source_type not in _VALID_SOURCE_TYPES:
-            errors.append(f"Group '{name}': invalid source_type '{source_type}'")
-    return errors
-
-
-def _url_targets_blocked_host(url: str) -> str | None:
-    parsed = urlparse(url)
-    if parsed.scheme not in ("http", "https"):
-        return "URL must use http or https"
-    host = parsed.hostname
-    if not host:
-        return "Invalid URL"
-    try:
-        addr = ipaddress.ip_address(host)
-    except ValueError:
-        return None
-    if addr.is_private or addr.is_link_local:
-        return "Connections to private or link-local addresses are not allowed"
+def _check_sync_rate_limit() -> ResponseReturnValue | None:
+    ip = request.remote_addr or "unknown"
+    now = time.monotonic()
+    last = _last_sync_by_ip.get(ip, 0.0)
+    if now - last < _SYNC_RATE_LIMIT_SECONDS:
+        return _error("Please wait before syncing again", 429)
+    _last_sync_by_ip[ip] = now
     return None
-
-
-@bp.route("/api/health", methods=["GET"])
-def health() -> ResponseReturnValue:
-    config = load_config()
-    uptime = (datetime.now(UTC) - _APP_START_TIME).total_seconds()
-    jellyfin_url = str(config.get("jellyfin_url") or "").strip()
-    api_key = str(config.get("api_key") or "").strip()
-    return jsonify(
-        {
-            "status": "ok",
-            "uptime_seconds": uptime,
-            "started_at": _APP_START_TIME.isoformat(),
-            "jellyfin_configured": bool(jellyfin_url and api_key),
-            "scheduler_running": _scheduler.running,
-        }
-    )
-
-
-@bp.route("/api/metrics", methods=["GET"])
-def metrics() -> ResponseReturnValue:
-    uptime = (datetime.now(UTC) - _APP_START_TIME).total_seconds()
-    body = (
-        "# HELP sync_requests_total Total sync requests received\n"
-        "# TYPE sync_requests_total counter\n"
-        f"sync_requests_total {_SYNC_REQUESTS_TOTAL}\n"
-        "# HELP uptime_seconds Process uptime in seconds\n"
-        "# TYPE uptime_seconds gauge\n"
-        f"uptime_seconds {uptime}\n"
-    )
-    return Response(body, mimetype="text/plain; version=0.0.4; charset=utf-8")
-
-
-@bp.route("/api/config", methods=["GET"])
-def get_config() -> ResponseReturnValue:
-    """Return the current application configuration as JSON.
-
-    Returns:
-        JSON-serialised configuration dictionary.
-
-    """
-    return jsonify(_mask_config_for_client(load_config()))
 
 
 def _validate_cron_expressions(new_config: dict[str, Any]) -> list[str]:
@@ -379,6 +331,149 @@ def _validate_cron_expressions(new_config: dict[str, Any]) -> list[str]:
     return cron_errors
 
 
+def _check_type(val: Any, expected_type: type, path: str, errors: list[str]) -> None:
+    """Append an error to *errors* if *val* is not None and not of *expected_type*."""
+    if val is not None and not isinstance(val, expected_type):
+        type_name = expected_type.__name__
+        errors.append(f"'{path}' must be a {type_name}")
+
+
+def _validate_scheduler_types(sched: dict[str, Any], errors: list[str]) -> None:
+    """Validate type correctness of scheduler sub-object fields."""
+    if not isinstance(sched, dict):
+        errors.append("'scheduler' must be an object")
+        return
+    for bool_field in ("global_enabled", "cleanup_enabled"):
+        _check_type(sched.get(bool_field), bool, f"scheduler.{bool_field}", errors)
+    for str_field in ("global_schedule", "cleanup_schedule"):
+        _check_type(sched.get(str_field), str, f"scheduler.{str_field}", errors)
+    _check_type(
+        sched.get("global_exclude_ids"),
+        list,
+        "scheduler.global_exclude_ids",
+        errors,
+    )
+
+
+def _validate_group_rules(
+    rules: list[dict[str, Any]],
+    prefix: str,
+    errors: list[str],
+) -> None:
+    """Validate type correctness of a group's complex query rules."""
+    for j, rule in enumerate(rules):
+        if not isinstance(rule, dict):
+            errors.append(f"{prefix}.rules[{j}] must be an object")
+            continue
+        rprefix = f"{prefix}.rules[{j}]"
+        _check_type(rule.get("type"), str, f"{rprefix}.type", errors)
+        _check_type(rule.get("value"), str, f"{rprefix}.value", errors)
+        _check_type(rule.get("operator"), str, f"{rprefix}.operator", errors)
+        _check_type(rule.get("not"), bool, f"{rprefix}.not", errors)
+
+
+def _validate_group_types(
+    group: dict[str, Any],
+    prefix: str,
+    errors: list[str],
+) -> None:
+    """Validate type correctness of a single group definition."""
+    if not isinstance(group, dict):
+        errors.append(f"{prefix} must be an object")
+        return
+    _check_type(group.get("name"), str, f"{prefix}.name", errors)
+    _check_type(group.get("source_type"), str, f"{prefix}.source_type", errors)
+    _check_type(group.get("source_value"), str, f"{prefix}.source_value", errors)
+    _check_type(group.get("sort_order"), str, f"{prefix}.sort_order", errors)
+    _check_type(group.get("watch_state"), str, f"{prefix}.watch_state", errors)
+    _check_type(group.get("schedule"), str, f"{prefix}.schedule", errors)
+    for bool_field in ("schedule_enabled", "seasonal_enabled", "create_as_collection"):
+        _check_type(group.get(bool_field), bool, f"{prefix}.{bool_field}", errors)
+
+    # Validate seasonal date format (MM-DD) when provided
+    for date_field in ("seasonal_start", "seasonal_end"):
+        val = group.get(date_field)
+        if val is not None and not isinstance(val, str):
+            errors.append(f"{prefix}.{date_field} must be a string")
+        elif (
+            isinstance(val, str)
+            and val
+            and not re.match(
+                r"^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$",
+                val,
+            )
+        ):
+            errors.append(
+                f"{prefix}.{date_field} must be in MM-DD format (e.g. 10-31)",
+            )
+
+    # Validate rules field (complex query rules)
+    rules = group.get("rules")
+    if rules is not None and not isinstance(rules, list):
+        errors.append(f"{prefix}.rules must be a list")
+    elif isinstance(rules, list):
+        _validate_group_rules(rules, prefix, errors)
+
+
+def _validate_config_types(new_config: dict[str, Any]) -> list[str]:
+    """Validate basic types in *new_config*, returning a list of errors."""
+    errors: list[str] = []
+
+    # Top-level string fields
+    for str_field in (
+        "jellyfin_url",
+        "api_key",
+        "target_path",
+        "media_path_in_jellyfin",
+        "media_path_on_host",
+        "target_path_in_jellyfin",
+        "anilist_api_url",
+        "trakt_client_id",
+        "tmdb_api_key",
+        "mal_client_id",
+    ):
+        _check_type(new_config.get(str_field), str, str_field, errors)
+
+    # Top-level list fields
+    _check_type(new_config.get("groups"), list, "groups", errors)
+
+    # Top-level boolean fields
+    for bool_field in (
+        "auto_create_libraries",
+        "auto_set_library_covers",
+        "setup_done",
+    ):
+        _check_type(new_config.get(bool_field), bool, bool_field, errors)
+
+    # Scheduler sub-object
+    sched = new_config.get("scheduler")
+    if sched is not None:
+        _validate_scheduler_types(sched, errors)
+
+    # Groups
+    groups = new_config.get("groups")
+    if isinstance(groups, list):
+        for i, group in enumerate(groups):
+            _validate_group_types(group, f"groups[{i}]", errors)
+
+    # Validate jellyfin_url format when provided
+    jellyfin_url = new_config.get("jellyfin_url")
+    if (
+        isinstance(jellyfin_url, str)
+        and jellyfin_url
+        and not jellyfin_url.startswith(("http://", "https://"))
+    ):
+        errors.append("'jellyfin_url' must start with http:// or https://")
+
+    return errors
+
+
+@bp.route("/api/config", methods=["GET"])
+def get_config() -> ResponseReturnValue:
+    """Return the current application configuration as JSON."""
+    return jsonify(_mask_config(load_config()))
+
+
 @bp.route("/api/config", methods=["POST"])
 def update_config() -> ResponseReturnValue:
     """Persist a new application configuration supplied in the request body.
@@ -394,19 +489,22 @@ def update_config() -> ResponseReturnValue:
     if not isinstance(new_config, dict):
         return _error("Request body must be a JSON object", 400)
 
-    group_errors = _validate_groups(new_config.get("groups", []))
-    if group_errors:
-        return _error("Invalid group configuration", 400, errors=group_errors)
-
     cron_errors = _validate_cron_expressions(new_config)
     if cron_errors:
         return _error("Invalid cron expression(s)", 400, errors=cron_errors)
+
+    type_errors = _validate_config_types(new_config)
+    if type_errors:
+        return _error("Invalid config field type(s)", 400, errors=type_errors)
 
     try:
         save_config(new_config)
     except OSError as exc:
         logger.exception("Failed to write config file")
         return _error(f"Config file write failed: {exc}", 500)
+
+    # Clear any cached Jellyfin data — the server URL or API key may have changed
+    clear_library_cache()
 
     try:
         update_scheduler_jobs()
@@ -444,10 +542,6 @@ def test_server() -> ResponseReturnValue:
 
     if not url or not api_key:
         return _error("URL and API Key are required", 400)
-
-    blocked = _url_targets_blocked_host(url)
-    if blocked:
-        return _error(blocked, 400)
 
     try:
         response = network.get(
@@ -533,7 +627,10 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
             futures: dict[str, Any] = {
                 "genre": pool.submit(_fetch_jellyfin_endpoint, url, api_key, "Genres"),
                 "studio": pool.submit(
-                    _fetch_jellyfin_endpoint, url, api_key, "Studios"
+                    _fetch_jellyfin_endpoint,
+                    url,
+                    api_key,
+                    "Studios",
                 ),
                 "actor": pool.submit(
                     _fetch_jellyfin_endpoint,
@@ -552,7 +649,9 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
                     ]
                 except (RuntimeError, ValueError):
                     logger.warning(
-                        "Failed to process metadata key %r", key, exc_info=True
+                        "Failed to process metadata key %r",
+                        key,
+                        exc_info=True,
                     )
                     result[key] = []
                     failed += 1
@@ -622,7 +721,18 @@ def upload_cover() -> ResponseReturnValue:
         return _error("group_name and image must be strings", 400)
 
     if not image_data.startswith("data:image/"):
-        return _error("Invalid image format", 400)
+        return _error("Invalid image format — must be a data URL", 400)
+
+    # Validate MIME type against allowed list
+    mime_type = image_data[5:].split(",", 1)[0].split(";", 1)[0].strip()
+    if mime_type not in _ALLOWED_COVER_MIME_TYPES:
+        return _error(
+            f"Unsupported image type '{mime_type}'. "
+            f"Allowed: {', '.join(sorted(_ALLOWED_COVER_MIME_TYPES))}",
+            400,
+        )
+
+    ext = _MIME_TO_EXT.get(mime_type, "jpg")
 
     try:
         _header, encoded = image_data.split(",", 1)
@@ -636,7 +746,12 @@ def upload_cover() -> ResponseReturnValue:
         cfg = load_config()
         target_path = str(cfg.get("target_path", ""))
 
-        cover_path = _get_cover_path(group_name, target_path, check_exists=False)
+        cover_path = _get_cover_path(
+            group_name,
+            target_path,
+            check_exists=False,
+            ext=ext,
+        )
         if cover_path is None:
             return _error("Could not resolve cover storage path", 500)
 
@@ -654,12 +769,12 @@ def upload_cover() -> ResponseReturnValue:
 
 def _run_sync_handler(dry_run: bool = False) -> ResponseReturnValue:
     """Run sync (or preview) and return a JSON response."""
-    global _SYNC_REQUESTS_TOTAL
-    _SYNC_REQUESTS_TOTAL += 1
+    rate_limited = _check_sync_rate_limit()
+    if rate_limited is not None:
+        return rate_limited
     try:
         config: dict[str, Any] = load_config()
-        with sync_lock:
-            sync_results = run_sync(config, dry_run=dry_run)
+        sync_results = run_sync(config, dry_run=dry_run)
         if dry_run:
             return _success(
                 "Preview generated successfully",
@@ -738,7 +853,11 @@ def preview_grouping() -> ResponseReturnValue:
     try:
         # Resolve items using the public sync API
         items, error, status_code = preview_group(
-            type_name, val, url, api_key, watch_state
+            type_name,
+            val,
+            url,
+            api_key,
+            watch_state,
         )
 
         if error is not None:
@@ -793,11 +912,35 @@ def _delete_folder(
 ) -> tuple[bool, str | None]:
     """Delete a single folder and optionally its Jellyfin library.
 
+    Args:
+        name: Folder name (validated against path traversal).
+        target_base: Absolute base path for the target directory.
+        auto_create_libraries: Whether to also clean up the Jellyfin library.
+        url: Jellyfin server URL.
+        api_key: Jellyfin API key.
+
     Returns:
         ``(deleted, error_message)`` where *deleted* is True if the folder
         was removed successfully.
+
     """
+    # Prevent path-traversal attacks: reject names with separators
+    if not _is_valid_folder_name(name):
+        return False, f"Invalid folder name: {name}"
     path = Path(target_base) / name
+    # Resolve the path to ensure it is still within target_base (symlink-safe)
+    try:
+        resolved = path.resolve()
+    except (OSError, RuntimeError):
+        resolved = path
+    try:
+        base_resolved = Path(target_base).resolve()
+    except (OSError, RuntimeError):
+        base_resolved = Path(target_base)
+    try:
+        resolved.relative_to(base_resolved)
+    except ValueError:
+        return False, f"Path traversal detected for: {name}"
     if not path.exists() or not path.is_dir():
         return False, None
     try:
@@ -835,12 +978,23 @@ def perform_cleanup() -> ResponseReturnValue:
 
     deleted: int = 0
     errors: list[str] = []
+    seen: set[str] = set()
     for name in folders:
+        if not isinstance(name, str):
+            errors.append("Folder name must be a string")
+            continue
+        if name in seen:
+            continue
+        seen.add(name)
         if not _is_valid_folder_name(name):
             errors.append(f"Invalid folder name: {name}")
             continue
         removed, err = _delete_folder(
-            name, target_base, auto_create_libraries, url, api_key
+            name,
+            target_base,
+            auto_create_libraries,
+            url,
+            api_key,
         )
         if removed:
             deleted += 1
@@ -849,7 +1003,7 @@ def perform_cleanup() -> ResponseReturnValue:
 
     if errors:
         return jsonify(
-            {"status": "partial_success", "deleted": deleted, "errors": errors}
+            {"status": "partial_success", "deleted": deleted, "errors": errors},
         ), 207
     return _success("", deleted=deleted)
 
@@ -879,7 +1033,19 @@ def _search_local_filesystem(
         if not Path(root).is_dir():
             continue
         for dirpath, dirnames, filenames in os.walk(root):
-            if os.path.ismount(dirpath) and dirpath != root:
+            # Compute depth once per directory entry
+            dir_depth = len(Path(dirpath).parts)
+            try:
+                is_mount = os.path.ismount(dirpath)
+            except OSError:
+                # Permission denied or inaccessible — skip this directory
+                dirnames.clear()
+                continue
+            if is_mount and dirpath != root:
+                # Check files in the mount point directory itself before
+                # pruning subdirectories from the walk.
+                if filename in filenames:
+                    return str(Path(dirpath) / filename)
                 dirnames.clear()
                 continue
             if time.monotonic() - walk_start > timeout:
@@ -888,25 +1054,24 @@ def _search_local_filesystem(
                     timeout,
                     files_scanned,
                 )
-                dirnames.clear()
-                break
+                return None
             files_scanned += len(filenames)
             if files_scanned > max_files:
                 logger.warning(
                     "auto-detect hit file limit (%d), stopping scan",
                     max_files,
                 )
-                dirnames.clear()
-                break
+                return None
             if filename in filenames:
                 return str(Path(dirpath) / filename)
-            if len(Path(dirpath).parts) > _AUTO_DETECT_MAX_DEPTH:
+            if dir_depth > _AUTO_DETECT_MAX_DEPTH:
                 dirnames.clear()
     return None
 
 
 def _compute_common_root(
-    jellyfin_path: str, host_path: str
+    jellyfin_path: str,
+    host_path: str,
 ) -> tuple[str | None, str | None]:
     """Infer the common root prefixes from a Jellyfin path and its host match.
 
@@ -1039,7 +1204,9 @@ def browse_directory() -> ResponseReturnValue:
         entries: list[str] = sorted(
             entry.name
             for entry in Path(path).iterdir()
-            if entry.is_dir() and not entry.name.startswith(".")
+            if not entry.name.startswith(".")
+            and entry.is_dir()
+            and not entry.is_symlink()
         )
     except PermissionError:
         entries = []
@@ -1049,6 +1216,61 @@ def browse_directory() -> ResponseReturnValue:
     parent: str | None = str(Path(path).parent) if path != os.sep else None
 
     return _success("", current=path, parent=parent, dirs=entries)
+
+
+# ---------------------------------------------------------------------------
+# Health check
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/api/health", methods=["GET"])
+def health_check() -> ResponseReturnValue:
+    """Provide a simple health check endpoint for Docker / Kubernetes probes.
+
+    Returns a lightweight JSON response with service status, uptime
+    computed from the application start time, and a quick config sanity
+    check.
+
+    Returns:
+        JSON with ``status``, ``healthcheck.ok`` boolean, and ``server``
+        metadata including ``uptime_seconds`` and ``started_at`` (ISO 8601
+        UTC timestamp).
+
+    """
+    try:
+        config: dict[str, Any] = load_config()
+        url: str = str(config.get("jellyfin_url") or "")
+        api_key: str = str(config.get("api_key") or "")
+        configured: bool = bool(url and api_key and config.get("target_path"))
+
+        return jsonify(
+            {
+                "status": "ok",
+                "healthcheck": {
+                    "ok": True,
+                    "configured": configured,
+                    "groups": len(config.get("groups", [])),
+                },
+                "server": {
+                    "uptime_seconds": math.ceil(time.time() - _APP_START_TIME),
+                    "started_at": time.strftime(
+                        "%Y-%m-%dT%H:%M:%SZ",
+                        time.gmtime(_APP_START_TIME),
+                    ),
+                },
+            },
+        )
+    except Exception:
+        logger.exception("Health check failed")
+        return jsonify(
+            {
+                "status": "error",
+                "healthcheck": {
+                    "ok": False,
+                    "error": "internal_error",
+                },
+            },
+        ), 500
 
 
 # ---------------------------------------------------------------------------
@@ -1087,14 +1309,3 @@ def index() -> ResponseReturnValue:
 
     """
     return render_template("base.html")
-
-
-@bp.route("/test")
-def test_dashboard() -> ResponseReturnValue:
-    """Serve the test dashboard frontend.
-
-    Returns:
-        The ``test.html`` file located next to ``app.py``.
-
-    """
-    return send_from_directory(".", "test.html")

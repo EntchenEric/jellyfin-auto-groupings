@@ -1,72 +1,149 @@
 # Contributing to Jellyfin Groupings
 
-Thank you for your interest in contributing. This guide covers local setup, testing, and pull request expectations.
+Thank you for considering contributing! Here are a few guidelines to help things go smoothly.
 
-## Prerequisites
+## Getting Started
 
-- Python 3.11 or 3.12 (see [README.md](README.md#python-version-support))
-- Git
+1. Fork the repository.
+2. Clone your fork:
+   ```bash
+   git clone https://github.com/your-username/jellyfin-auto-groupings.git
+   cd jellyfin-auto-groupings
+   ```
+3. Create a virtual environment and install dependencies:
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   make install-dev
+   ```
+4. Create a branch for your changes:
+   ```bash
+   git checkout -b my-feature-branch
+   ```
 
-## Local setup
+### Pre-commit Hooks (Recommended)
+
+The project ships a `.pre-commit-config.yaml` that runs ruff linting, ruff format
+checking, mypy type checking, and a pytest coverage check automatically before
+each commit.  To install the hooks:
 
 ```bash
-git clone https://github.com/entcheneric/jellyfin-groupings.git
-cd jellyfin-groupings
-pip install -e ".[dev]"
-```
-
-The editable install pulls runtime dependencies from `pyproject.toml` and dev tools (pytest, ruff, mypy, coverage plugins) from the `[dev]` extra.
-
-## Pre-commit hooks
-
-Install hooks once, then run them before pushing:
-
-```bash
+pip install pre-commit
 pre-commit install
-pre-commit run --all-files
 ```
 
-Hooks run **ruff**, **mypy**, and **pytest with 99% coverage** (see `.pre-commit-config.yaml`).
+Once installed, the checks run on every ``git commit``.  To bypass them for a
+single commit use ``git commit --no-verify`` (not recommended).
 
-## Running tests
+## Development
+
+### Code Style
+
+- Python: Follow [PEP 8](https://peps.python.org/pep-0008/). The project uses `ruff` for linting and formatting.
+- JavaScript: Follow standard ES module conventions. JS files are linted via `make lint` (Python-only `ruff` is used for Python; JS currently has no separate linter configured).
+- Run linting and format-checking before committing:
+  ```bash
+  make lint
+  ```
+
+### Type Hints
+
+All Python code should use type hints. The project targets Python 3.11+.
+
+### Running Tests and Coverage
+
+- Tests live in the `tests/` directory and use `pytest`.
+- Run tests before opening a PR:
+  ```bash
+  pytest
+  ```
+- The project requires 100% code coverage (CI uses `--cov-fail-under=100`). New features must include tests.
+- Run individual test files during development:
+  ```bash
+  pytest tests/test_sync.py -v
+  ```
+- Run type checking before opening a PR:
+  ```bash
+  mypy .
+  ```
+
+### Using the Virtual Jellyfin Server
+
+For development without a real Jellyfin instance, you can run a mock Jellyfin server:
 
 ```bash
-export PYTHONPATH=.
-pytest tests/ -v
+python3 start_virtual_jellyfin.py
 ```
 
-Useful variants:
+Then configure Jellyfin Groupings to use `http://localhost:8096` as the server URL with any API key.
+
+### Linting and Formatting
+
+Before committing, run:
 
 ```bash
-pytest tests/ -v --cov=. --cov-report=term-missing
-pytest tests/test_e2e/ -v -m e2e
-python start_virtual_jellyfin.py
+make lint
 ```
 
-E2E tests require the stack in `e2e/` — see [README.md](README.md#end-to-end-tests).
+To auto-format code:
 
-## Code style
+```bash
+make format
+```
 
-| Tool | Purpose | Command |
-|------|---------|---------|
-| [Ruff](https://docs.astral.sh/ruff/) | Linting and import sorting | `ruff check .` |
-| [mypy](https://mypy.readthedocs.io/) | Static type checking | `mypy --ignore-missing-imports --exclude tests --exclude venv --exclude __pycache__ --exclude node_modules .` |
+### Running Locally
 
-Configuration lives in `pyproject.toml`. Match existing patterns: thin route handlers, business logic in service modules (`sync.py`, `jellyfin.py`, etc.), minimal scope in PRs.
+```bash
+python3 app.py
+```
 
-Do not add comments that merely restate what the code does.
+The app will be available at `http://localhost:5000`.
 
-## Pull request guidelines
+## Making Changes
 
-1. **Branch** from `development` (or the branch named in open issues).
-2. **Keep PRs focused** — one logical change per PR when possible.
-3. **Run checks locally** — at minimum `pre-commit run --all-files` or `ruff check .`, `mypy …`, and `pytest`.
-4. **Add or update tests** when fixing bugs or adding behavior that unit tests can cover.
-5. **Update docs** if you change user-facing behavior, environment variables, or API routes.
-6. **Describe the why** in the PR body: problem, approach, and how you tested.
+### Priority Order
 
-CI runs ruff, mypy, and pytest on Python 3.11 and 3.12 (see `.github/workflows/test.yml`).
+When making improvements, consider this priority:
 
-## Questions
+1. **Fix bugs** — Open issues on GitHub take highest priority.
+2. **Merge PRs** — Review and merge open pull requests.
+3. **Documentation** — Improve README, add docstrings, clarify comments.
+4. **Code optimization** — Performance, type hints, error handling, edge cases.
+5. **Tests** — Unit tests, integration tests, edge cases, coverage.
+6. **UI/UX** — CSS improvements, responsive design, accessibility, dark mode.
+7. **Refactoring** — Clean up technical debt, split large files, improve structure.
 
-Open a [GitHub issue](https://github.com/entcheneric/jellyfin-groupings/issues) for bugs, feature ideas, or questions before large changes.
+### Commit Messages
+
+Write clear, concise commit messages:
+
+```
+component: Brief description of the change
+
+Optional longer explanation of why the change was made and
+what it affects.
+```
+
+Examples:
+- `docker: Add healthcheck timeout to prevent hung probes`
+- `docs: Add CONTRIBUTING.md with development guidelines`
+- `tests: Add edge case for empty provider IDs in match_by_provider`
+
+## Pull Request Process
+
+1. Ensure your branch is up to date with `main`.
+2. Run the full test suite and linting checks.
+3. Update documentation if your change affects the public API or configuration.
+4. Open a PR against the `main` branch with a clear title and description.
+5. A maintainer will review your PR. Please be patient — we'll get to it!
+
+## Reporting Issues
+
+- Use the [GitHub issue tracker](https://github.com/entcheneric/jellyfin-auto-groupings/issues).
+- Include steps to reproduce, expected behavior, and actual behavior.
+- Include relevant logs (from `logs/jellyfin-groupings.log` inside the container or `./logs/jellyfin-groupings.log` if you mounted the logs volume) if applicable.
+- Include your Jellyfin version and deployment method (Docker, native, etc.).
+
+## Code of Conduct
+
+Be respectful and constructive. We're all here to make something useful.

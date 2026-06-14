@@ -1,3 +1,5 @@
+"""Shared pytest fixtures and configuration for the test suite."""
+
 import logging
 import threading
 import time
@@ -21,7 +23,7 @@ logging.basicConfig(
 def virtual_jellyfin():
     """Fixture to run a virtual Jellyfin server in a background thread."""
     server_thread = threading.Thread(
-        target=lambda: jelly_mock_app.run(port=8096, debug=False, use_reloader=False)
+        target=lambda: jelly_mock_app.run(port=8096, debug=False, use_reloader=False),
     )
     server_thread.daemon = True
     server_thread.start()
@@ -50,9 +52,10 @@ def mock_scheduler():
     patcher.stop()
 
 
-def pytest_configure(config):
+def pytest_configure(config) -> None:
     config.addinivalue_line(
-        "markers", "e2e: end-to-end tests requiring real Jellyfin instance"
+        "markers",
+        "e2e: end-to-end tests requiring real Jellyfin instance",
     )
 
 
@@ -64,7 +67,7 @@ def app():
     flask_app.config.update(
         {
             "TESTING": True,
-        }
+        },
     )
 
     with flask_app.app_context():
@@ -99,6 +102,15 @@ def temp_config(tmp_path):
     # Restore original paths
     config.CONFIG_FILE = original_config_file
     config.CONFIG_DIR = original_config_dir
+
+
+@pytest.fixture(autouse=True)
+def _reset_sync_rate_limit():
+    import routes
+
+    routes._last_sync_by_ip.clear()
+    yield
+    routes._last_sync_by_ip.clear()
 
 
 @pytest.fixture

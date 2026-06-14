@@ -7,27 +7,19 @@ to either a global schedule (with exclusions) or per-group schedules.
 from __future__ import annotations
 
 import logging
-import re
 import threading
 from typing import Any
 
-from apscheduler.schedulers.background import (
-    BackgroundScheduler,  # type: ignore[import-untyped]
-)
-from apscheduler.triggers.cron import CronTrigger  # type: ignore[import-untyped]
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 from config import load_config
 from sync import run_cleanup_broken_symlinks, run_sync
 
 # Initialize the scheduler
-_scheduler = BackgroundScheduler()
+_scheduler: BackgroundScheduler = BackgroundScheduler()
 sync_lock = threading.Lock()
 logger = logging.getLogger(__name__)
-
-
-def _sanitize_job_id(name: str) -> str:
-    return re.sub(r"[^a-zA-Z0-9_-]", "_", name)
-
 
 __all__ = [
     "start_scheduler",
@@ -37,15 +29,24 @@ __all__ = [
 
 
 def start_scheduler() -> None:
-    """Start the background scheduler and load jobs from config."""
+    """Start the background scheduler and load jobs from config.
+
+    If the scheduler was already started (e.g., start_scheduler() is called
+    multiple times within the same process, during tests, or via reloader
+    child processes), starting the running instance is a no-op, but jobs are
+    still reloaded/refreshed via update_scheduler_jobs().
+    """
     if not _scheduler.running:
         _scheduler.start()
         logger.info("Background scheduler started")
+    else:
+        logger.debug("Background scheduler already running — refreshing jobs")
     update_scheduler_jobs()
 
 
 def _schedule_global_sync(
-    scheduler: BackgroundScheduler, sched_cfg: dict[str, Any]
+    scheduler: BackgroundScheduler,
+    sched_cfg: dict[str, Any],
 ) -> None:
     """Add the global sync job if enabled."""
     if not sched_cfg.get("global_enabled"):
@@ -63,37 +64,69 @@ def _schedule_global_sync(
             args=[excluded_names],
         )
         logger.info(
-            "Scheduled global sync: %s (excluding: %s)", cron_expr, excluded_names
+            "Scheduled global sync: %s (excluding: %s)",
+            cron_expr,
+            excluded_names,
         )
-    except (ValueError, KeyError, OSError):
-        logger.exception("Failed to schedule global sync")
+    except ValueError:
+        logger.exception("Failed to schedule global sync (invalid cron: %s)", cron_expr)
 
 
 def _schedule_group_syncs(scheduler: BackgroundScheduler, groups: list[Any]) -> None:
     """Add per-group sync jobs for groups that have scheduling enabled."""
+    seen_ids: set[str] = set()
     for group in groups:
         if not isinstance(group, dict):
+            logger.warning(
+                "Skipping invalid group entry (expected dict, got %s): %s",
+                type(group).__name__,
+                group,
+            )
             continue
         group_name = group.get("name")
         if not group_name:
+            logger.warning(
+                "Skipping group with schedule_enabled but missing name: %s",
+                group,
+            )
+            continue
+        if not isinstance(group_name, str):
+            logger.warning(
+                "Skipping group with schedule_enabled but non-string name: %s",
+                group_name,
+            )
             continue
         if group.get("schedule_enabled") and group.get("schedule"):
             cron_expr = group["schedule"]
+            job_id = f"group_sync_{group_name}"
+            if job_id in seen_ids:
+                logger.warning(
+                    "Duplicate group name %r — only one schedule job will run",
+                    group_name,
+                )
+                continue
+            seen_ids.add(job_id)
             try:
                 scheduler.add_job(
                     _run_group_sync_job,
                     CronTrigger.from_crontab(cron_expr),
-                    id=f"group_sync_{_sanitize_job_id(group_name)}",
+                    id=job_id,
                     name=f"Sync Group: {group_name}",
                     args=[group_name],
+                    replace_existing=False,
                 )
                 logger.info("Scheduled sync for group '%s': %s", group_name, cron_expr)
-            except (ValueError, KeyError, OSError):
-                logger.exception("Failed to schedule sync for group '%s'", group_name)
+            except ValueError:
+                logger.exception(
+                    "Failed to schedule sync for group '%s' (invalid cron: %s)",
+                    group_name,
+                    cron_expr,
+                )
 
 
 def _schedule_cleanup(
-    scheduler: BackgroundScheduler, sched_cfg: dict[str, Any]
+    scheduler: BackgroundScheduler,
+    sched_cfg: dict[str, Any],
 ) -> None:
     """Add the broken-symlink cleanup job if enabled."""
     if not sched_cfg.get("cleanup_enabled", True):
@@ -109,8 +142,11 @@ def _schedule_cleanup(
             name="Cleanup Broken Symlinks",
         )
         logger.info("Scheduled cleanup job: %s", cleanup_cron)
-    except (ValueError, KeyError, OSError):
-        logger.exception("Failed to schedule cleanup job")
+    except ValueError:
+        logger.exception(
+            "Failed to schedule cleanup job (invalid cron: %s)",
+            cleanup_cron,
+        )
 
 
 def update_scheduler_jobs() -> None:
@@ -142,10 +178,15 @@ def _run_global_sync_job(exclude_names: list[str]) -> None:
     if sync_names:
         logger.info("Background global sync starting for groups: %s", sync_names)
         with sync_lock:
-            run_sync(config, group_names=sync_names)
+            try:
+                run_sync(config, group_names=sync_names)
+            except (ValueError, OSError, RuntimeError):
+                logger.exception(
+                    "Background global sync failed",
+                )
     else:
         logger.info(
-            "Background global sync skipped: no groups to sync after exclusions"
+            "Background global sync skipped: no groups to sync after exclusions",
         )
 
 
@@ -154,7 +195,13 @@ def _run_group_sync_job(group_name: str) -> None:
     config = load_config()
     logger.info("Background sync starting for group: %s", group_name)
     with sync_lock:
-        run_sync(config, group_names=[group_name])
+        try:
+            run_sync(config, group_names=[group_name])
+        except (ValueError, OSError, RuntimeError):
+            logger.exception(
+                "Background sync failed for group '%s'",
+                group_name,
+            )
 
 
 def _run_cleanup_job() -> None:
@@ -164,7 +211,8 @@ def _run_cleanup_job() -> None:
     with sync_lock:
         deleted = run_cleanup_broken_symlinks(config)
         logger.info(
-            "Background cleanup job finished: deleted %s broken symlinks", deleted
+            "Background cleanup job finished: deleted %s broken symlinks",
+            deleted,
         )
 
 
@@ -178,10 +226,10 @@ def validate_cron(expr: str) -> str | None:
         ``None`` if valid, otherwise an error message string.
 
     """
-    if not expr or not expr.strip():
+    expr = expr.strip()
+    if not expr:
         return "Cron expression must not be empty"
 
-    expr = expr.strip()
     fields = expr.split()
     if len(fields) != 5:
         return f"Cron expression must have 5 fields (minute hour day month weekday), got {len(fields)}"

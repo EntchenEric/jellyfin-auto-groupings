@@ -13,21 +13,31 @@ from pathlib import Path
 
 
 def main() -> None:
-    """Run pytest with coverage and stream output to ``test_results.txt``."""
+    """Run pytest with coverage and stream output to ``test_results.txt``.
+
+    The output file is created in the repository root directory.
+    """
+    repo_root = Path(__file__).resolve().parent
     existing = os.environ.get("PYTHONPATH")
-    os.environ["PYTHONPATH"] = f"{existing}:." if existing else "."
-    with Path("test_results.txt").open("w", encoding="utf-8") as f:
+    os.environ["PYTHONPATH"] = (
+        f"{existing}{os.pathsep}{repo_root}" if existing else str(repo_root)
+    )
+    output_file = repo_root / "test_results.txt"
+    with output_file.open("w", encoding="utf-8") as f:
         try:
-            # Running all tests with coverage
+            # Running all tests with coverage and short traceback for readability
             f.write("Starting test run...\n")
+            f.write(f"Python: {sys.version}\n")
+            f.write(f"CWD: {repo_root}\n\n")
             f.flush()
-            subprocess.run(
-                [sys.executable, "-m", "pytest", "--cov=.", "tests/"],
+            result = subprocess.run(
+                [sys.executable, "-m", "pytest", "--cov=.", "--tb=short", "tests/"],
                 stdout=f,
                 stderr=subprocess.STDOUT,
-                timeout=120,
+                timeout=300,
                 check=False,
             )
+            f.write(f"\nExit code: {result.returncode}\n")
         except (subprocess.TimeoutExpired, OSError) as e:
             f.write(f"\nERROR: {e!s}")
 

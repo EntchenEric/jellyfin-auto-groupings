@@ -45,6 +45,7 @@ export const sortLabels = {
     'anilist_list_order': 'AniList List Order',
     'mal_list_order': 'MAL List Order',
     'letterboxd_list_order': 'Letterboxd List Order',
+    'recommendations_list_order': 'Recommendations Order',
     'CommunityRating': 'Community Rating',
     'ProductionYear': 'Production Year',
     'SortName': 'Name (A→Z)',

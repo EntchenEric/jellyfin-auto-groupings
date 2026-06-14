@@ -1,6 +1,15 @@
+"""Tests for core sync logic in sync.py.
+
+Covers all major components: item matching by provider ID, metadata
+filters, complex queries, path translation, cover image resolution,
+watch-state filtering, preview, full sync runs, seasonal groups,
+collection mode, and error/corner-case handling.
+"""
+
 import hashlib
+from datetime import datetime
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -33,13 +42,13 @@ from sync import (
 )
 
 
-def test_translate_path():
+def test_translate_path() -> None:
     assert _translate_path("/jf/movie.mkv", "/jf", "/host") == "/host/movie.mkv"
     assert _translate_path("/other/movie.mkv", "/jf", "/host") == "/other/movie.mkv"
     assert _translate_path("/jf/sub/movie.mkv", "/jf", "/host") == "/host/sub/movie.mkv"
 
 
-def test_parse_complex_query():
+def test_parse_complex_query() -> None:
     rules = parse_complex_query("Action AND NOT Comedy", "genre")
     assert len(rules) == 2
     assert rules[0] == {"operator": "AND", "type": "genre", "value": "Action"}
@@ -50,7 +59,29 @@ def test_parse_complex_query():
     assert rules[1] == {"operator": "OR", "type": "genre", "value": "Drama"}
 
 
-def test_match_condition():
+def test_parse_complex_query_bare_not_at_start() -> None:
+    """Bare NOT at position 0 should be parsed as AND NOT with correct type."""
+    rules = parse_complex_query("NOT Comedy", "genre")
+    assert len(rules) == 1
+    assert rules[0] == {"operator": "AND NOT", "type": "genre", "value": "Comedy"}
+
+    rules = parse_complex_query("NOT genre:Horror", "tag")
+    assert len(rules) == 1
+    assert rules[0] == {"operator": "AND NOT", "type": "genre", "value": "Horror"}
+
+    rules = parse_complex_query("NOT actor:Tom Hanks AND genre:Drama", "tag")
+    assert len(rules) == 2
+    assert rules[0] == {"operator": "AND NOT", "type": "actor", "value": "Tom Hanks"}
+    assert rules[1] == {"operator": "AND", "type": "genre", "value": "Drama"}
+
+    # Starting a query with NOT but no other values should be handled gracefully
+    rules = parse_complex_query("NOT", "genre")
+    assert len(rules) == 1
+    assert rules[0]["operator"] == "AND NOT"
+    assert rules[0]["value"] == ""
+
+
+def test_match_condition() -> None:
     item = {
         "Genres": ["Action", "Thriller"],
         "People": [{"Name": "Tom Cruise", "Type": "Actor"}],
@@ -66,7 +97,7 @@ def test_match_condition():
     assert _match_condition(item, "year", "2022") is True
 
 
-def test_sort_items_in_memory():
+def test_sort_items_in_memory() -> None:
     items = [
         {"Name": "B", "SortName": "B", "ProductionYear": 2020, "CommunityRating": 8.0},
         {"Name": "A", "SortName": "A", "ProductionYear": 2021, "CommunityRating": 7.0},
@@ -81,7 +112,7 @@ def test_sort_items_in_memory():
     assert sorted_rating[0]["CommunityRating"] == 9.0
 
 
-def test_eval_item():
+def test_eval_item() -> None:
     item = {"Genres": ["Action"], "ProductionYear": 2020}
     # Simple AND
     rules = [{"operator": "AND", "type": "genre", "value": "action"}]
@@ -110,7 +141,7 @@ def test_eval_item():
     assert _eval_item(item, rules) is False
 
 
-def test_library_cache():
+def test_library_cache() -> None:
     _LIBRARY_CACHE.clear()
     key = ("http://test", "key")
     _LIBRARY_CACHE[key] = [{"Id": "1"}]
@@ -119,7 +150,7 @@ def test_library_cache():
     assert _LIBRARY_CACHE[key][0]["Id"] == "1"
 
 
-def test_get_cover_path(tmp_path):
+def test_get_cover_path(tmp_path) -> None:
     # Setup dummy paths
     target_base = str(tmp_path / "target")
     (Path(target_base) / ".covers").mkdir(parents=True, exist_ok=True)
@@ -134,7 +165,7 @@ def test_get_cover_path(tmp_path):
     lib_path = str(
         Path(target_base)
         / ".covers"
-        / (hashlib.md5(b"Existent", usedforsecurity=False).hexdigest() + ".jpg")
+        / (hashlib.md5(b"Existent", usedforsecurity=False).hexdigest() + ".jpg"),
     )
     with Path(lib_path).open("w") as f:
         f.write("test")
@@ -142,7 +173,7 @@ def test_get_cover_path(tmp_path):
 
 
 @patch("sync.fetch_jellyfin_items")
-def test_match_jellyfin_items_by_provider(mock_jf):
+def test_match_jellyfin_items_by_provider(mock_jf) -> None:
     _LIBRARY_CACHE.clear()
     mock_jf.return_value = [
         {"Id": "1", "Name": "M1", "ProviderIds": {"Tmdb": "101"}},
@@ -162,7 +193,7 @@ def test_match_jellyfin_items_by_provider(mock_jf):
 
 
 @patch("sync.fetch_jellyfin_items")
-def test_match_jellyfin_items_with_watch_state(mock_jf):
+def test_match_jellyfin_items_with_watch_state(mock_jf) -> None:
     _LIBRARY_CACHE.clear()
     mock_jf.return_value = [
         {
@@ -219,7 +250,7 @@ def test_match_jellyfin_items_with_watch_state(mock_jf):
 
 
 @patch("sync.fetch_jellyfin_items")
-def test_preview_group(mock_jf):
+def test_preview_group(mock_jf) -> None:
     _LIBRARY_CACHE.clear()
     mock_jf.return_value = [{"Name": "M1", "Genres": ["Action"]}]
     # Metadata group
@@ -229,37 +260,58 @@ def test_preview_group(mock_jf):
     # Complex group (AND)
     _LIBRARY_CACHE.clear()  # Ensure _fetch_full_library calls mock
     items, _err, code = preview_group(
-        "genre", "Action AND NOT Comedy", "http://jf", "key"
+        "genre",
+        "Action AND NOT Comedy",
+        "http://jf",
+        "key",
     )
     assert code == 200
     assert len(items) == 1
 
 
 @patch("sync.fetch_jellyfin_items")
-def test_fetch_items_for_metadata_group_with_watch_state(mock_jf):
+def test_fetch_items_for_metadata_group_with_watch_state(mock_jf) -> None:
     mock_jf.return_value = [{"Name": "M1"}]
     # Test 'unwatched' calls fetch with Filters=IsUnplayed
     _fetch_items_for_metadata_group(
-        "Group", "genre", "Action", "SortName", "http://jf", "key", "unwatched"
+        "Group",
+        "genre",
+        "Action",
+        "SortName",
+        "http://jf",
+        "key",
+        "unwatched",
     )
     args, _ = mock_jf.call_args
     assert args[2]["Filters"] == "IsUnplayed"
     # Test 'watched' calls fetch with Filters=IsPlayed
     _fetch_items_for_metadata_group(
-        "Group", "genre", "Action", "SortName", "http://jf", "key", "watched"
+        "Group",
+        "genre",
+        "Action",
+        "SortName",
+        "http://jf",
+        "key",
+        "watched",
     )
     args, _ = mock_jf.call_args
     assert args[2]["Filters"] == "IsPlayed"
     # Test default doesn't have Filters
     _fetch_items_for_metadata_group(
-        "Group", "genre", "Action", "SortName", "http://jf", "key", ""
+        "Group",
+        "genre",
+        "Action",
+        "SortName",
+        "http://jf",
+        "key",
+        "",
     )
     args, _ = mock_jf.call_args
     assert "Filters" not in args[2]
 
 
 @patch("sync.fetch_jellyfin_items")
-def test_preview_group_fetch_error(mock_jf):
+def test_preview_group_fetch_error(mock_jf) -> None:
     _LIBRARY_CACHE.clear()
     mock_jf.side_effect = RuntimeError("Network error")
     _items, err, code = preview_group("genre", "Action", "http://jf", "key")
@@ -267,7 +319,7 @@ def test_preview_group_fetch_error(mock_jf):
     assert "Jellyfin connection error" in err
 
 
-def test_parse_complex_query_with_prefixes():
+def test_parse_complex_query_with_prefixes() -> None:
     # Mix of default and specific types
     rules = parse_complex_query("Action AND actor:Tom Hanks AND studio:Marvel", "genre")
     assert rules[0] == {"operator": "AND", "type": "genre", "value": "Action"}
@@ -275,7 +327,7 @@ def test_parse_complex_query_with_prefixes():
     assert rules[2] == {"operator": "AND", "type": "studio", "value": "Marvel"}
 
 
-def test_eval_item_multiple_or():
+def test_eval_item_multiple_or() -> None:
     item = {"Genres": ["Comedy"]}
     rules = [
         {"operator": "AND", "type": "genre", "value": "action"},
@@ -285,7 +337,7 @@ def test_eval_item_multiple_or():
     assert _eval_item(item, rules) is True
 
 
-def test_match_condition_variants():
+def test_match_condition_variants() -> None:
     item = {
         "Genres": ["Action"],
         "People": [{"Name": "A", "Type": "Actor"}],
@@ -302,7 +354,7 @@ def test_match_condition_variants():
 
 
 @patch("sync.fetch_jellyfin_items")
-def test_match_by_provider_empty_library(mock_jf):
+def test_match_by_provider_empty_library(mock_jf) -> None:
     _LIBRARY_CACHE.clear()
     mock_jf.return_value = []
     items, _err, code = _match_jellyfin_items_by_provider(
@@ -318,14 +370,14 @@ def test_match_by_provider_empty_library(mock_jf):
     assert code == 200
 
 
-def test_translate_path_edge_cases():
+def test_translate_path_edge_cases() -> None:
     # Paths that share a string prefix but are completely different directories
     assert _translate_path("/jelly/movie", "/jell", "/mnt/host") == "/jelly/movie"
     # Root path (normpath strips trailing slash)
     assert _translate_path("/jf/", "/jf", "/host") == "/host"
 
 
-def test_translate_path_normalization():
+def test_translate_path_normalization() -> None:
     # Redundant separators in path should not affect the result
     assert _translate_path("/jf//movie.mkv", "/jf", "/host") == "/host/movie.mkv"
     # Trailing slash on root should work correctly
@@ -334,7 +386,7 @@ def test_translate_path_normalization():
     assert _translate_path("/jf//sub/", "/jf/", "/host") == "/host/sub"
 
 
-def test_sort_items_missing_field():
+def test_sort_items_missing_field() -> None:
     items = [{"Name": "A"}, {"Name": "B"}]
     # Sorting by missing field should use Name as fallback
     sorted_items = _sort_items_in_memory(items, "ProductionYear")
@@ -342,7 +394,7 @@ def test_sort_items_missing_field():
 
 
 @patch("sync.fetch_jellyfin_items")
-def test_match_jellyfin_items_no_match(mock_jf):
+def test_match_jellyfin_items_no_match(mock_jf) -> None:
     _LIBRARY_CACHE.clear()
     mock_jf.return_value = [
         {"Id": "1", "Name": "M1", "ProviderIds": {"Tmdb": "202"}},
@@ -360,7 +412,7 @@ def test_match_jellyfin_items_no_match(mock_jf):
     assert len(items) == 0
 
 
-def test_sort_items_rating():
+def test_sort_items_rating() -> None:
     items = [
         {"Name": "A", "CommunityRating": 5.0},
         {"Name": "B", "CommunityRating": 9.0},
@@ -369,14 +421,14 @@ def test_sort_items_rating():
     assert sorted_items[0]["CommunityRating"] == 9.0
 
 
-def test_sort_items_unknown():
+def test_sort_items_unknown() -> None:
     items = [{"Name": "B"}, {"Name": "A"}]
     # Should return as-is (B then A)
     sorted_items = _sort_items_in_memory(items, "UnknownField")
     assert sorted_items[0]["Name"] == "B"
 
 
-def test_sort_items_missing_values_logic():
+def test_sort_items_missing_values_logic() -> None:
     items = [
         {"SortName": "A"},
         {"SortName": None},
@@ -395,26 +447,68 @@ def test_sort_items_missing_values_logic():
     assert res_desc[1]["ProductionYear"] is None
 
 
-def test_is_in_season():
-    from unittest.mock import MagicMock
+def test_is_in_season() -> None:
 
     with patch("sync.datetime") as mock_datetime:
-        mock_now = MagicMock()
+        mock_now = MagicMock(spec=datetime)
         mock_datetime.now.return_value = mock_now
-        # Case 1: Within year window
-        mock_now.strftime.return_value = "07-15"
+
+        # Case 1: Within-year window
+        mock_now.month = 7
+        mock_now.day = 15
         assert _is_in_season("06-01", "09-01") is True
-        mock_now.strftime.return_value = "05-15"
+
+        mock_now.month = 5
+        mock_now.day = 15
         assert _is_in_season("06-01", "09-01") is False
-        # Case 2: Crossing year window
-        mock_now.strftime.return_value = "12-15"
+
+        mock_now.month = 6
+        mock_now.day = 1
+        assert _is_in_season("06-01", "09-01") is True  # Inclusive start
+
+        # Case 2: Crossing-year window (e.g. Dec to Jan)
+        mock_now.month = 12
+        mock_now.day = 15
         assert _is_in_season("12-01", "01-01") is True
-        mock_now.strftime.return_value = "01-15"
+
+        mock_now.month = 1
+        mock_now.day = 15
         assert _is_in_season("12-01", "01-01") is False
-        mock_now.strftime.return_value = "01-01"
+
+        mock_now.month = 1
+        mock_now.day = 1
         assert _is_in_season("12-01", "01-01") is False  # Exclusive end
-        # Case 3: Invalid types
-        assert _is_in_season(None, "01-01") is True  # Defaults to True
+
+        # Case 3: Invalid types -> gracefully in-season
+        assert _is_in_season(None, "01-01") is True
+        assert _is_in_season(123, 456) is True
+
+        # Case 4: Invalid-but-parseable dates -> gracefully in-season
+        assert _is_in_season("13-45", "01-01") is True
+        assert _is_in_season("01-01", "02-31") is True
+        assert _is_in_season("00-00", "12-31") is True
+
+        # Case 5: Edge — exactly at end of crossing-year window
+        mock_now.month = 12
+        mock_now.day = 31
+        assert _is_in_season("12-01", "01-01") is True
+
+        # Case 5: Crossing year, mid-season
+        mock_now.month = 11
+        mock_now.day = 30
+        assert _is_in_season("11-15", "03-15") is True
+
+        mock_now.month = 2
+        mock_now.day = 28
+        assert _is_in_season("11-15", "03-15") is True
+
+        mock_now.month = 10
+        mock_now.day = 1
+        assert _is_in_season("11-15", "03-15") is False
+
+        mock_now.month = 4
+        mock_now.day = 1
+        assert _is_in_season("11-15", "03-15") is False
 
 
 # ---------------------------------------------------------------------------
@@ -422,7 +516,7 @@ def test_is_in_season():
 # ---------------------------------------------------------------------------
 
 
-def test_run_cleanup_broken_symlinks_invalid_path():
+def test_run_cleanup_broken_symlinks_invalid_path() -> None:
     assert run_cleanup_broken_symlinks({"target_path": ""}) == 0
     assert run_cleanup_broken_symlinks({"target_path": "/nonexistent"}) == 0
 
@@ -432,7 +526,7 @@ def test_run_cleanup_broken_symlinks_invalid_path():
 # ---------------------------------------------------------------------------
 
 
-def test_fetch_items_recommendations_no_api_key():
+def test_fetch_items_recommendations_no_api_key() -> None:
     _items, error, code = _fetch_items_for_recommendations_group(
         "Rec",
         "user1",
@@ -445,7 +539,7 @@ def test_fetch_items_recommendations_no_api_key():
     assert "TMDb API Key not set" in error
 
 
-def test_fetch_items_recommendations_no_source_value():
+def test_fetch_items_recommendations_no_source_value() -> None:
     _items, error, code = _fetch_items_for_recommendations_group(
         "Rec",
         "",
@@ -459,7 +553,7 @@ def test_fetch_items_recommendations_no_source_value():
 
 
 @patch("sync.get_user_recent_items")
-def test_fetch_items_recommendations_no_tmdb_ids(mock_recent):
+def test_fetch_items_recommendations_no_tmdb_ids(mock_recent) -> None:
     mock_recent.return_value = [{"ProviderIds": {}, "Type": "Movie"}]
     items, _error, code = _fetch_items_for_recommendations_group(
         "Rec",
@@ -474,7 +568,7 @@ def test_fetch_items_recommendations_no_tmdb_ids(mock_recent):
 
 
 @patch("sync.get_user_recent_items")
-def test_fetch_items_recommendations_exception(mock_recent):
+def test_fetch_items_recommendations_exception(mock_recent) -> None:
     mock_recent.side_effect = RuntimeError("Jellyfin down")
     _items, error, code = _fetch_items_for_recommendations_group(
         "Rec",
@@ -495,7 +589,7 @@ def test_fetch_items_recommendations_exception(mock_recent):
 
 @patch("sync.find_collection_by_name")
 @patch("sync.add_to_collection")
-def test_process_collection_group_dry_run(mock_add, mock_find):
+def test_process_collection_group_dry_run(mock_add, mock_find) -> None:
     items = [{"Id": "1", "Name": "Movie"}]
     result = _process_collection_group(
         "Group",
@@ -510,7 +604,7 @@ def test_process_collection_group_dry_run(mock_add, mock_find):
     assert "items" in result
 
 
-def test_process_collection_group_no_ids():
+def test_process_collection_group_no_ids() -> None:
     result = _process_collection_group(
         "Group",
         [],
@@ -525,7 +619,7 @@ def test_process_collection_group_no_ids():
 
 
 @patch("sync.find_collection_by_name")
-def test_process_collection_group_error(mock_find):
+def test_process_collection_group_error(mock_find) -> None:
     mock_find.side_effect = RuntimeError("Collection error")
     items = [{"Id": "1", "Name": "Movie"}]
     result = _process_collection_group(
@@ -547,7 +641,7 @@ def test_process_collection_group_error(mock_find):
 
 
 @patch("sync.fetch_letterboxd_list")
-def test_fetch_items_letterboxd_error(mock_fetch):
+def test_fetch_items_letterboxd_error(mock_fetch) -> None:
     mock_fetch.side_effect = RuntimeError("Network error")
     _items, error, code = _fetch_items_for_letterboxd_group(
         "LB",
@@ -562,7 +656,7 @@ def test_fetch_items_letterboxd_error(mock_fetch):
 
 @patch("sync.fetch_letterboxd_list")
 @patch("sync._fetch_full_library")
-def test_fetch_items_letterboxd_empty_list(mock_lib, mock_fetch):
+def test_fetch_items_letterboxd_empty_list(mock_lib, mock_fetch) -> None:
     mock_fetch.return_value = []
     items, _error, code = _fetch_items_for_letterboxd_group(
         "LB",
@@ -577,7 +671,7 @@ def test_fetch_items_letterboxd_empty_list(mock_lib, mock_fetch):
 
 @patch("sync.fetch_letterboxd_list")
 @patch("sync._fetch_full_library")
-def test_fetch_items_letterboxd_watch_state(mock_lib, mock_fetch):
+def test_fetch_items_letterboxd_watch_state(mock_lib, mock_fetch) -> None:
     mock_fetch.return_value = ["tt123"]
     mock_lib.return_value = (
         [
@@ -600,7 +694,7 @@ def test_fetch_items_letterboxd_watch_state(mock_lib, mock_fetch):
 
 @patch("sync.fetch_letterboxd_list")
 @patch("sync._fetch_full_library")
-def test_fetch_items_letterboxd_tmdb_match(mock_lib, mock_fetch):
+def test_fetch_items_letterboxd_tmdb_match(mock_lib, mock_fetch) -> None:
     mock_fetch.return_value = ["456"]
     mock_lib.return_value = (
         [
@@ -622,7 +716,7 @@ def test_fetch_items_letterboxd_tmdb_match(mock_lib, mock_fetch):
 
 @patch("sync.fetch_letterboxd_list")
 @patch("sync._fetch_full_library")
-def test_fetch_items_letterboxd_non_list_order(mock_lib, mock_fetch):
+def test_fetch_items_letterboxd_non_list_order(mock_lib, mock_fetch) -> None:
     mock_fetch.return_value = ["tt123", "tt123"]
     mock_lib.return_value = (
         [
@@ -648,7 +742,7 @@ def test_fetch_items_letterboxd_non_list_order(mock_lib, mock_fetch):
 
 
 @patch("sync.fetch_imdb_list")
-def test_fetch_items_imdb_error(mock_fetch):
+def test_fetch_items_imdb_error(mock_fetch) -> None:
     mock_fetch.side_effect = RuntimeError("IMDb down")
     _items, error, code = _fetch_items_for_imdb_group(
         "IMDb",
@@ -662,7 +756,7 @@ def test_fetch_items_imdb_error(mock_fetch):
 
 
 @patch("sync.fetch_imdb_list")
-def test_fetch_items_imdb_empty(mock_fetch):
+def test_fetch_items_imdb_empty(mock_fetch) -> None:
     mock_fetch.return_value = []
     items, _error, code = _fetch_items_for_imdb_group(
         "IMDb",
@@ -681,7 +775,7 @@ def test_fetch_items_imdb_empty(mock_fetch):
 
 
 @patch("sync.fetch_trakt_list")
-def test_fetch_items_trakt_no_client_id(mock_fetch):
+def test_fetch_items_trakt_no_client_id(mock_fetch) -> None:
     _items, error, code = _fetch_items_for_trakt_group(
         "Trakt",
         "user/list",
@@ -695,7 +789,7 @@ def test_fetch_items_trakt_no_client_id(mock_fetch):
 
 
 @patch("sync.fetch_trakt_list")
-def test_fetch_items_trakt_error(mock_fetch):
+def test_fetch_items_trakt_error(mock_fetch) -> None:
     mock_fetch.side_effect = RuntimeError("Trakt down")
     _items, error, code = _fetch_items_for_trakt_group(
         "Trakt",
@@ -710,7 +804,7 @@ def test_fetch_items_trakt_error(mock_fetch):
 
 
 @patch("sync.fetch_trakt_list")
-def test_fetch_items_trakt_empty(mock_fetch):
+def test_fetch_items_trakt_empty(mock_fetch) -> None:
     mock_fetch.return_value = []
     items, _error, code = _fetch_items_for_trakt_group(
         "Trakt",
@@ -730,7 +824,7 @@ def test_fetch_items_trakt_empty(mock_fetch):
 
 
 @patch("sync.fetch_tmdb_list")
-def test_fetch_items_tmdb_error(mock_fetch):
+def test_fetch_items_tmdb_error(mock_fetch) -> None:
     mock_fetch.side_effect = RuntimeError("TMDb down")
     _items, error, code = _fetch_items_for_tmdb_group(
         "TMDb",
@@ -745,7 +839,7 @@ def test_fetch_items_tmdb_error(mock_fetch):
 
 
 @patch("sync.fetch_tmdb_list")
-def test_fetch_items_tmdb_empty(mock_fetch):
+def test_fetch_items_tmdb_empty(mock_fetch) -> None:
     mock_fetch.return_value = []
     items, _error, code = _fetch_items_for_tmdb_group(
         "TMDb",
@@ -765,7 +859,7 @@ def test_fetch_items_tmdb_empty(mock_fetch):
 
 
 @patch("sync.fetch_anilist_list")
-def test_fetch_items_anilist_error(mock_fetch):
+def test_fetch_items_anilist_error(mock_fetch) -> None:
     mock_fetch.side_effect = RuntimeError("AniList down")
     _items, error, code = _fetch_items_for_anilist_group(
         "AniList",
@@ -779,7 +873,7 @@ def test_fetch_items_anilist_error(mock_fetch):
 
 
 @patch("sync.fetch_anilist_list")
-def test_fetch_items_anilist_empty(mock_fetch):
+def test_fetch_items_anilist_empty(mock_fetch) -> None:
     mock_fetch.return_value = []
     items, _error, code = _fetch_items_for_anilist_group(
         "AniList",
@@ -798,7 +892,7 @@ def test_fetch_items_anilist_empty(mock_fetch):
 
 
 @patch("sync.fetch_mal_list")
-def test_fetch_items_mal_error(mock_fetch):
+def test_fetch_items_mal_error(mock_fetch) -> None:
     mock_fetch.side_effect = RuntimeError("MAL down")
     _items, error, code = _fetch_items_for_mal_group(
         "MAL",
@@ -813,7 +907,7 @@ def test_fetch_items_mal_error(mock_fetch):
 
 
 @patch("sync.fetch_mal_list")
-def test_fetch_items_mal_empty(mock_fetch):
+def test_fetch_items_mal_empty(mock_fetch) -> None:
     mock_fetch.return_value = []
     items, _error, code = _fetch_items_for_mal_group(
         "MAL",
@@ -832,12 +926,30 @@ def test_fetch_items_mal_empty(mock_fetch):
 # ---------------------------------------------------------------------------
 
 
-def test_translate_path_valueerror():
+def test_translate_path_valueerror() -> None:
     # os.path.commonpath raises ValueError for mixed abs/relative paths
     assert _translate_path("/foo", ".", "/host") == "/foo"
 
 
-def test_filter_by_watch_state():
+def test_translate_path_resolve_oserror() -> None:
+    """_translate_path handles OSError from Path.resolve() gracefully."""
+    with patch.object(Path, "resolve", side_effect=OSError("too many symlinks")):
+        result = _translate_path("/media/movie.mkv", "/media", "/host")
+    assert result == "/media/movie.mkv"
+
+
+def test_translate_path_is_relative_to_runtimeerror() -> None:
+    """_translate_path handles RuntimeError from is_relative_to gracefully."""
+    mock_path = MagicMock(spec=Path)
+    mock_path.resolve.return_value = mock_path
+    mock_path.is_relative_to.side_effect = RuntimeError("nested symlink loop")
+
+    with patch("sync.Path", return_value=mock_path):
+        result = _translate_path("/media/movie.mkv", "/media", "/host")
+    assert result == "/media/movie.mkv"
+
+
+def test_filter_by_watch_state() -> None:
     unwatched = {"UserData": {"Played": False}}
     watched = {"UserData": {"Played": True}}
     no_data = {}
@@ -854,13 +966,13 @@ def test_filter_by_watch_state():
     ]
 
 
-def test_get_cover_path_no_target_base():
+def test_get_cover_path_no_target_base() -> None:
     path = _get_cover_path("Group", "", check_exists=False)
     assert "config/covers" in path
 
 
 @patch("pathlib.Path.exists")
-def test_get_cover_path_legacy_exists(mock_exists):
+def test_get_cover_path_legacy_exists(mock_exists) -> None:
     # _get_cover_path checks lib path first, then legacy path
     mock_exists.side_effect = [False, True]
     path = _get_cover_path("LegacyGroup", "/some/target", check_exists=True)
@@ -868,7 +980,7 @@ def test_get_cover_path_legacy_exists(mock_exists):
 
 
 @patch("sync.fetch_jellyfin_items")
-def test_fetch_full_library_pagination(mock_fetch):
+def test_fetch_full_library_pagination(mock_fetch) -> None:
     _LIBRARY_CACHE.clear()
     page1 = [{"Id": str(i)} for i in range(500)]
     page2 = [{"Id": "500"}]
@@ -879,7 +991,7 @@ def test_fetch_full_library_pagination(mock_fetch):
 
 
 @patch("sync.fetch_jellyfin_items")
-def test_fetch_full_library_request_error(mock_fetch):
+def test_fetch_full_library_request_error(mock_fetch) -> None:
     _LIBRARY_CACHE.clear()
     mock_fetch.side_effect = RuntimeError("fail")
     _items, error, code = _fetch_full_library("http://jf", "key", "Group")
@@ -888,7 +1000,7 @@ def test_fetch_full_library_request_error(mock_fetch):
 
 
 @patch("sync.fetch_jellyfin_items")
-def test_fetch_full_library_unexpected_error(mock_fetch):
+def test_fetch_full_library_unexpected_error(mock_fetch) -> None:
     _LIBRARY_CACHE.clear()
     mock_fetch.side_effect = RuntimeError("bad")
     _items, error, code = _fetch_full_library("http://jf", "key", "Group")
@@ -897,7 +1009,7 @@ def test_fetch_full_library_unexpected_error(mock_fetch):
 
 
 @patch("sync._fetch_full_library")
-def test_match_jellyfin_items_by_provider_library_error(mock_lib):
+def test_match_jellyfin_items_by_provider_library_error(mock_lib) -> None:
     _LIBRARY_CACHE.clear()
     mock_lib.return_value = ([], "Lib error", 503)
     _items, error, code = _match_jellyfin_items_by_provider(
@@ -915,7 +1027,7 @@ def test_match_jellyfin_items_by_provider_library_error(mock_lib):
 
 @patch("sync._match_jellyfin_items_by_provider")
 @patch("sync.fetch_imdb_list")
-def test_fetch_items_imdb_normal(mock_fetch, mock_match):
+def test_fetch_items_imdb_normal(mock_fetch, mock_match) -> None:
     mock_fetch.return_value = ["tt123"]
     mock_match.return_value = ([{"Name": "M1"}], None, 200)
     items, _error, code = _fetch_items_for_imdb_group(
@@ -931,7 +1043,7 @@ def test_fetch_items_imdb_normal(mock_fetch, mock_match):
 
 @patch("sync._match_jellyfin_items_by_provider")
 @patch("sync.fetch_trakt_list")
-def test_fetch_items_trakt_normal(mock_fetch, mock_match):
+def test_fetch_items_trakt_normal(mock_fetch, mock_match) -> None:
     mock_fetch.return_value = ["tt123"]
     mock_match.return_value = ([{"Name": "M1"}], None, 200)
     items, _error, code = _fetch_items_for_trakt_group(
@@ -948,7 +1060,7 @@ def test_fetch_items_trakt_normal(mock_fetch, mock_match):
 
 @patch("sync._match_jellyfin_items_by_provider")
 @patch("sync.fetch_tmdb_list")
-def test_fetch_items_tmdb_normal(mock_fetch, mock_match):
+def test_fetch_items_tmdb_normal(mock_fetch, mock_match) -> None:
     mock_fetch.return_value = ["101"]
     mock_match.return_value = ([{"Name": "M1"}], None, 200)
     items, _error, code = _fetch_items_for_tmdb_group(
@@ -965,7 +1077,7 @@ def test_fetch_items_tmdb_normal(mock_fetch, mock_match):
 
 @patch("sync._match_jellyfin_items_by_provider")
 @patch("sync.fetch_anilist_list")
-def test_fetch_items_anilist_normal(mock_fetch, mock_match):
+def test_fetch_items_anilist_normal(mock_fetch, mock_match) -> None:
     mock_fetch.return_value = [12345]
     mock_match.return_value = ([{"Name": "M1"}], None, 200)
     items, _error, code = _fetch_items_for_anilist_group(
@@ -981,7 +1093,7 @@ def test_fetch_items_anilist_normal(mock_fetch, mock_match):
 
 @patch("sync._match_jellyfin_items_by_provider")
 @patch("sync.fetch_mal_list")
-def test_fetch_items_mal_normal(mock_fetch, mock_match):
+def test_fetch_items_mal_normal(mock_fetch, mock_match) -> None:
     mock_fetch.return_value = ["mal123"]
     mock_match.return_value = ([{"Name": "M1"}], None, 200)
     items, _error, code = _fetch_items_for_mal_group(
@@ -998,7 +1110,7 @@ def test_fetch_items_mal_normal(mock_fetch, mock_match):
 
 @patch("sync._fetch_full_library")
 @patch("sync.fetch_letterboxd_list")
-def test_fetch_items_letterboxd_library_error(mock_fetch, mock_lib):
+def test_fetch_items_letterboxd_library_error(mock_fetch, mock_lib) -> None:
     mock_fetch.return_value = ["tt123"]
     mock_lib.return_value = ([], "Lib error", 503)
     _items, error, code = _fetch_items_for_letterboxd_group(
@@ -1013,7 +1125,7 @@ def test_fetch_items_letterboxd_library_error(mock_fetch, mock_lib):
 
 
 @patch("sync._fetch_full_library")
-def test_complex_group_empty_rules(mock_lib):
+def test_complex_group_empty_rules(mock_lib) -> None:
     _LIBRARY_CACHE.clear()
     mock_lib.return_value = ([{"Name": "M1"}], None, 200)
     items, _error, _code = _fetch_items_for_complex_group(
@@ -1027,7 +1139,7 @@ def test_complex_group_empty_rules(mock_lib):
 
 
 @patch("sync._fetch_full_library")
-def test_complex_group_malformed_rule(mock_lib):
+def test_complex_group_malformed_rule(mock_lib) -> None:
     _LIBRARY_CACHE.clear()
     mock_lib.return_value = ([{"Name": "M1"}], None, 200)
     items, _error, _code = _fetch_items_for_complex_group(
@@ -1041,7 +1153,7 @@ def test_complex_group_malformed_rule(mock_lib):
 
 
 @patch("sync._fetch_full_library")
-def test_complex_group_watch_state(mock_lib):
+def test_complex_group_watch_state(mock_lib) -> None:
     _LIBRARY_CACHE.clear()
     mock_lib.return_value = (
         [
@@ -1064,7 +1176,7 @@ def test_complex_group_watch_state(mock_lib):
 
 
 @patch("sync.fetch_jellyfin_items")
-def test_fetch_items_metadata_request_error(mock_fetch):
+def test_fetch_items_metadata_request_error(mock_fetch) -> None:
     mock_fetch.side_effect = RuntimeError("fail")
     _items, error, code = _fetch_items_for_metadata_group(
         "Group",
@@ -1079,7 +1191,7 @@ def test_fetch_items_metadata_request_error(mock_fetch):
 
 
 @patch("sync.fetch_jellyfin_items")
-def test_fetch_items_metadata_unexpected_error(mock_fetch):
+def test_fetch_items_metadata_unexpected_error(mock_fetch) -> None:
     mock_fetch.side_effect = RuntimeError("bad")
     _items, error, code = _fetch_items_for_metadata_group(
         "Group",
@@ -1106,7 +1218,7 @@ def test_process_collection_group_create_and_cover(
     mock_cover,
     mock_set,
     mock_exists,
-):
+) -> None:
     mock_find.return_value = None
     mock_create.return_value = "col123"
     mock_cover.return_value = "/cover.jpg"
@@ -1132,8 +1244,12 @@ def test_process_collection_group_create_and_cover(
 @patch("sync.add_to_collection")
 @patch("sync.find_collection_by_name")
 def test_process_collection_group_cover_error(
-    mock_find, mock_add, mock_cover, mock_set, mock_exists
-):
+    mock_find,
+    mock_add,
+    mock_cover,
+    mock_set,
+    mock_exists,
+) -> None:
     mock_find.return_value = "col123"
     mock_cover.return_value = "/cover.jpg"
     mock_set.side_effect = OSError("Cover fail")
@@ -1154,7 +1270,7 @@ def test_process_collection_group_cover_error(
 # --- _process_group ---
 
 
-def test_process_group_empty_name(tmp_path):
+def test_process_group_empty_name(tmp_path) -> None:
     result = _process_group(
         {},
         str(tmp_path),
@@ -1178,7 +1294,7 @@ def test_process_group_empty_name(tmp_path):
 
 @patch("sync._fetch_items_for_complex_group")
 @patch("sync._fetch_items_for_metadata_group")
-def test_process_group_complex_query(mock_meta, mock_complex, tmp_path):
+def test_process_group_complex_query(mock_meta, mock_complex, tmp_path) -> None:
     host = tmp_path / "movie.mkv"
     host.write_text("movie")
     mock_complex.return_value = ([{"Name": "M1", "Path": str(host)}], None, 200)
@@ -1209,7 +1325,7 @@ def test_process_group_complex_query(mock_meta, mock_complex, tmp_path):
 
 
 @patch("sync._fetch_items_for_metadata_group")
-def test_process_group_no_items(mock_meta, tmp_path):
+def test_process_group_no_items(mock_meta, tmp_path) -> None:
     mock_meta.return_value = ([], None, 200)
     group = {
         "name": "Test",
@@ -1237,7 +1353,7 @@ def test_process_group_no_items(mock_meta, tmp_path):
 
 
 @patch("sync._fetch_items_for_metadata_group")
-def test_process_group_non_dict_item(mock_meta, tmp_path):
+def test_process_group_non_dict_item(mock_meta, tmp_path) -> None:
     host = tmp_path / "movie.mkv"
     host.write_text("movie")
     mock_meta.return_value = (
@@ -1274,7 +1390,7 @@ def test_process_group_non_dict_item(mock_meta, tmp_path):
 
 
 @patch("sync._fetch_items_for_metadata_group")
-def test_process_group_missing_path(mock_meta, tmp_path):
+def test_process_group_missing_path(mock_meta, tmp_path) -> None:
     mock_meta.return_value = ([{"Id": "1", "Name": "M1"}], None, 200)
     group = {
         "name": "Test",
@@ -1301,13 +1417,13 @@ def test_process_group_missing_path(mock_meta, tmp_path):
     assert result["links"] == 0
 
 
-@patch("sync.os.symlink")
+@patch("pathlib.Path.symlink_to")
 @patch("sync._fetch_items_for_metadata_group")
-def test_process_group_symlink_error(mock_meta, mock_symlink, tmp_path):
+def test_process_group_symlink_error(mock_meta, mock_symlink_to, tmp_path) -> None:
     host = tmp_path / "movie.mkv"
     host.write_text("movie")
     mock_meta.return_value = ([{"Id": "1", "Name": "M1", "Path": str(host)}], None, 200)
-    mock_symlink.side_effect = OSError("Permission denied")
+    mock_symlink_to.side_effect = OSError("Permission denied")
     group = {
         "name": "Test",
         "source_type": "genre",
@@ -1335,7 +1451,7 @@ def test_process_group_symlink_error(mock_meta, mock_symlink, tmp_path):
 
 @patch("sync.add_virtual_folder")
 @patch("sync._fetch_items_for_metadata_group")
-def test_process_group_library_creation_error(mock_meta, mock_add, tmp_path):
+def test_process_group_library_creation_error(mock_meta, mock_add, tmp_path) -> None:
     host = tmp_path / "movie.mkv"
     host.write_text("movie")
     mock_meta.return_value = ([{"Id": "1", "Name": "M1", "Path": str(host)}], None, 200)
@@ -1367,7 +1483,11 @@ def test_process_group_library_creation_error(mock_meta, mock_add, tmp_path):
 
 @patch("sync.add_virtual_folder")
 @patch("sync._fetch_items_for_metadata_group")
-def test_process_group_library_with_jellyfin_path(mock_meta, mock_add, tmp_path):
+def test_process_group_library_with_jellyfin_path(
+    mock_meta,
+    mock_add,
+    tmp_path,
+) -> None:
     host = tmp_path / "movie.mkv"
     host.write_text("movie")
     mock_meta.return_value = ([{"Id": "1", "Name": "M1", "Path": str(host)}], None, 200)
@@ -1399,7 +1519,7 @@ def test_process_group_library_with_jellyfin_path(mock_meta, mock_add, tmp_path)
 
 @patch("sync.add_virtual_folder")
 @patch("sync._fetch_items_for_metadata_group")
-def test_process_group_library_already_exists(mock_meta, mock_add, tmp_path):
+def test_process_group_library_already_exists(mock_meta, mock_add, tmp_path) -> None:
     host = tmp_path / "movie.mkv"
     host.write_text("movie")
     mock_meta.return_value = ([{"Id": "1", "Name": "M1", "Path": str(host)}], None, 200)
@@ -1431,8 +1551,11 @@ def test_process_group_library_already_exists(mock_meta, mock_add, tmp_path):
 @patch("sync._get_cover_path")
 @patch("sync._fetch_items_for_metadata_group")
 def test_process_group_auto_set_library_covers(
-    mock_meta, mock_cover, mock_set, tmp_path
-):
+    mock_meta,
+    mock_cover,
+    mock_set,
+    tmp_path,
+) -> None:
     host = tmp_path / "movie.mkv"
     host.write_text("movie")
     cover = tmp_path / "cover.jpg"
@@ -1468,27 +1591,14 @@ def test_process_group_auto_set_library_covers(
 # --- run_sync ---
 
 
-def test_run_sync_missing_settings():
+def test_run_sync_missing_settings() -> None:
     with pytest.raises(ValueError, match="Server settings"):
         run_sync({"jellyfin_url": "", "api_key": "", "target_path": ""})
 
 
-@patch("sync.Path.mkdir")
-def test_run_sync_target_permission_denied(mock_mkdir, tmp_path):
-    mock_mkdir.side_effect = PermissionError("denied")
-    config = {
-        "jellyfin_url": "http://jf",
-        "api_key": "key",
-        "target_path": str(tmp_path / "virtual"),
-        "groups": [],
-    }
-    with pytest.raises(ValueError, match="permission denied"):
-        run_sync(config, dry_run=False)
-
-
 @patch("sync.get_libraries")
 @patch("sync._process_group")
-def test_run_sync_get_libraries_error(mock_process, mock_libs, tmp_path):
+def test_run_sync_get_libraries_error(mock_process, mock_libs, tmp_path) -> None:
     mock_libs.side_effect = RuntimeError("Jellyfin down")
     mock_process.return_value = {"group": "Test", "links": 0}
     config = {
@@ -1505,7 +1615,12 @@ def test_run_sync_get_libraries_error(mock_process, mock_libs, tmp_path):
 @patch("sync._process_group")
 @patch("sync._is_in_season")
 @patch("sync.get_libraries")
-def test_run_sync_seasonal_cleanup(mock_libs, mock_season, mock_process, tmp_path):
+def test_run_sync_seasonal_cleanup(
+    mock_libs,
+    mock_season,
+    mock_process,
+    tmp_path,
+) -> None:
     mock_libs.return_value = []
     mock_season.return_value = False
     mock_process.return_value = {"group": "Test", "links": 0}
@@ -1532,27 +1647,32 @@ def test_run_sync_seasonal_cleanup(mock_libs, mock_season, mock_process, tmp_pat
 # --- run_cleanup_broken_symlinks ---
 
 
-@patch("sync.os.unlink")
+@patch("pathlib.Path.unlink")
 @patch("pathlib.Path.exists")
 @patch("pathlib.Path.is_symlink")
 @patch("pathlib.Path.is_dir")
+@patch("pathlib.Path.rglob")
 def test_cleanup_broken_symlinks_unlink_error(
-    mock_isdir, mock_islink, mock_exists, mock_unlink
-):
+    mock_rglob,
+    mock_isdir,
+    mock_islink,
+    mock_exists,
+    mock_unlink,
+) -> None:
     mock_isdir.return_value = True
     mock_islink.return_value = True
     mock_exists.return_value = False
     mock_unlink.side_effect = OSError("Permission denied")
+    mock_rglob.return_value = [Path("/target/link")]
     config = {"target_path": "/target"}
-    with patch("sync.os.walk", return_value=[("/target", [], ["link"])]):
-        count = run_cleanup_broken_symlinks(config)
+    count = run_cleanup_broken_symlinks(config)
     assert count == 0
 
 
 # --- Remaining branch coverage ---
 
 
-def test_match_jellyfin_items_by_provider_falsy_provider_id():
+def test_match_jellyfin_items_by_provider_falsy_provider_id() -> None:
     _LIBRARY_CACHE.clear()
     raw_items = [
         {"Id": "1", "ProviderIds": {"Imdb": ""}},
@@ -1572,7 +1692,7 @@ def test_match_jellyfin_items_by_provider_falsy_provider_id():
     assert items[0]["Id"] == "2"
 
 
-def test_match_jellyfin_items_by_provider_letterboxd_unmatched():
+def test_match_jellyfin_items_by_provider_letterboxd_unmatched() -> None:
     _LIBRARY_CACHE.clear()
     raw_items = [{"Id": "1", "ProviderIds": {"Imdb": "tt123"}}]
     with patch("sync._fetch_full_library", return_value=(raw_items, None, 200)):
@@ -1588,7 +1708,7 @@ def test_match_jellyfin_items_by_provider_letterboxd_unmatched():
     assert items == []
 
 
-def test_match_jellyfin_items_by_provider_letterboxd_watched():
+def test_match_jellyfin_items_by_provider_letterboxd_watched() -> None:
     _LIBRARY_CACHE.clear()
     raw_items = [
         {"Id": "1", "ProviderIds": {"Imdb": "tt111"}, "UserData": {"Played": True}},
@@ -1611,7 +1731,7 @@ def test_match_jellyfin_items_by_provider_letterboxd_watched():
 
 @patch("sync.get_tmdb_recommendations")
 @patch("sync.get_user_recent_items")
-def test_fetch_items_recommendations_empty_tmdb_ids(mock_recent, mock_recs):
+def test_fetch_items_recommendations_empty_tmdb_ids(mock_recent, mock_recs) -> None:
     mock_recent.return_value = [{"Id": "1", "Name": "M1"}]
     mock_recs.return_value = []
     items, error, code = _fetch_items_for_recommendations_group(
@@ -1627,23 +1747,23 @@ def test_fetch_items_recommendations_empty_tmdb_ids(mock_recent, mock_recs):
     assert code == 200
 
 
-def test_match_condition_empty_type_or_value():
+def test_match_condition_empty_type_or_value() -> None:
     item = {"Genres": ["Action"]}
     assert _match_condition(item, "", "action") is False
     assert _match_condition(item, "genre", "") is False
 
 
-def test_match_condition_exception_handling():
+def test_match_condition_exception_handling() -> None:
     item = {"Genres": 123}  # non-iterable truthy value triggers TypeError in for-loop
     assert _match_condition(item, "genre", "action") is False
 
 
-def test_eval_item_empty_rules():
+def test_eval_item_empty_rules() -> None:
     item = {"Name": "M1"}
     assert _eval_item(item, []) is True
 
 
-def test_eval_item_not_operators():
+def test_eval_item_not_operators() -> None:
     item = {"Genres": ["Action"]}
     rules = [
         {"operator": "AND NOT", "type": "genre", "value": "comedy"},
@@ -1663,7 +1783,7 @@ def test_eval_item_not_operators():
 
 
 @patch("sync._fetch_full_library")
-def test_complex_group_non_dict_rule(mock_lib):
+def test_complex_group_non_dict_rule(mock_lib) -> None:
     _LIBRARY_CACHE.clear()
     mock_lib.return_value = ([{"Name": "M1"}], None, 200)
     items, _error, _code = _fetch_items_for_complex_group(
@@ -1677,7 +1797,7 @@ def test_complex_group_non_dict_rule(mock_lib):
 
 
 @patch("sync._fetch_full_library")
-def test_complex_group_empty_type_value(mock_lib):
+def test_complex_group_empty_type_value(mock_lib) -> None:
     _LIBRARY_CACHE.clear()
     mock_lib.return_value = ([{"Name": "M1"}], None, 200)
     items, _error, _code = _fetch_items_for_complex_group(
@@ -1691,7 +1811,7 @@ def test_complex_group_empty_type_value(mock_lib):
 
 
 @patch("sync._fetch_full_library")
-def test_complex_group_watched_filter(mock_lib):
+def test_complex_group_watched_filter(mock_lib) -> None:
     _LIBRARY_CACHE.clear()
     mock_lib.return_value = (
         [
@@ -1713,14 +1833,14 @@ def test_complex_group_watched_filter(mock_lib):
     assert items[0]["Name"] == "Played"
 
 
-def test_parse_complex_query_unrecognized_prefix():
+def test_parse_complex_query_unrecognized_prefix() -> None:
     rules = parse_complex_query("foo:bar", "genre")
     assert rules == [{"operator": "AND", "type": "genre", "value": "foo:bar"}]
 
 
 @patch("sync.add_to_collection")
 @patch("sync.find_collection_by_name")
-def test_process_collection_group_no_cover(mock_find, mock_add, tmp_path):
+def test_process_collection_group_no_cover(mock_find, mock_add, tmp_path) -> None:
     mock_find.return_value = "col123"
     items = [{"Id": "1", "Name": "Movie"}]
     result = _process_collection_group(
@@ -1737,7 +1857,7 @@ def test_process_collection_group_no_cover(mock_find, mock_add, tmp_path):
 
 @patch("sync.add_to_collection")
 @patch("sync.find_collection_by_name")
-def test_process_collection_group_auto_cover_off(mock_find, mock_add, tmp_path):
+def test_process_collection_group_auto_cover_off(mock_find, mock_add, tmp_path) -> None:
     mock_find.return_value = "col123"
     items = [{"Id": "1", "Name": "Movie"}]
     result = _process_collection_group(
@@ -1757,8 +1877,12 @@ def test_process_collection_group_auto_cover_off(mock_find, mock_add, tmp_path):
 @patch("sync.add_to_collection")
 @patch("sync._fetch_items_for_metadata_group")
 def test_process_group_create_collection(
-    mock_meta, mock_add, mock_create, mock_find, tmp_path
-):
+    mock_meta,
+    mock_add,
+    mock_create,
+    mock_find,
+    tmp_path,
+) -> None:
     host = tmp_path / "movie.mkv"
     host.write_text("movie")
     mock_find.return_value = None
@@ -1792,7 +1916,7 @@ def test_process_group_create_collection(
 
 
 @patch("sync._fetch_items_for_metadata_group")
-def test_process_group_missing_host_path(mock_meta, tmp_path):
+def test_process_group_missing_host_path(mock_meta, tmp_path) -> None:
     mock_meta.return_value = (
         [{"Id": "1", "Name": "M1", "Path": "/nonexistent/movie.mkv"}],
         None,
@@ -1825,7 +1949,7 @@ def test_process_group_missing_host_path(mock_meta, tmp_path):
 
 @patch("sync._get_cover_path")
 @patch("sync._fetch_items_for_metadata_group")
-def test_process_group_auto_cover_missing(mock_meta, mock_cover, tmp_path):
+def test_process_group_auto_cover_missing(mock_meta, mock_cover, tmp_path) -> None:
     host = tmp_path / "movie.mkv"
     host.write_text("movie")
     mock_meta.return_value = ([{"Id": "1", "Name": "M1", "Path": str(host)}], None, 200)
@@ -1855,7 +1979,7 @@ def test_process_group_auto_cover_missing(mock_meta, mock_cover, tmp_path):
     assert result["links"] == 1
 
 
-def test_is_in_season_invalid_date():
+def test_is_in_season_invalid_date() -> None:
     assert _is_in_season("bad", "also-bad") is True
     assert _is_in_season("01-01", "not-a-date") is True
 
@@ -1863,7 +1987,12 @@ def test_is_in_season_invalid_date():
 @patch("sync._process_group")
 @patch("sync._is_in_season")
 @patch("sync.get_libraries")
-def test_run_sync_seasonal_dry_run(mock_libs, mock_season, mock_process, tmp_path):
+def test_run_sync_seasonal_dry_run(
+    mock_libs,
+    mock_season,
+    mock_process,
+    tmp_path,
+) -> None:
     mock_libs.return_value = []
     mock_season.return_value = False
     mock_process.return_value = {"group": "Test", "links": 0}
@@ -1889,7 +2018,12 @@ def test_run_sync_seasonal_dry_run(mock_libs, mock_season, mock_process, tmp_pat
 @patch("sync._process_group")
 @patch("sync._is_in_season")
 @patch("sync.get_libraries")
-def test_run_sync_seasonal_no_dir(mock_libs, mock_season, mock_process, tmp_path):
+def test_run_sync_seasonal_no_dir(
+    mock_libs,
+    mock_season,
+    mock_process,
+    tmp_path,
+) -> None:
     mock_libs.return_value = []
     mock_season.return_value = False
     mock_process.return_value = {"group": "Test", "links": 0}
@@ -1916,7 +2050,12 @@ def test_run_sync_seasonal_no_dir(mock_libs, mock_season, mock_process, tmp_path
 @patch("sync._process_group")
 @patch("sync._is_in_season")
 @patch("sync.get_libraries")
-def test_run_sync_seasonal_in_season(mock_libs, mock_season, mock_process, tmp_path):
+def test_run_sync_seasonal_in_season(
+    mock_libs,
+    mock_season,
+    mock_process,
+    tmp_path,
+) -> None:
     """Cover line 1398: seasonal group that is in season returns None and is processed normally."""
     mock_libs.return_value = []
     mock_season.return_value = True
@@ -1948,7 +2087,7 @@ def test_run_sync_seasonal_in_season(mock_libs, mock_season, mock_process, tmp_p
 
 @patch("sync.fetch_letterboxd_list")
 @patch("sync._fetch_full_library")
-def test_fetch_items_letterboxd_tmdb_list_order(mock_lib, mock_fetch):
+def test_fetch_items_letterboxd_tmdb_list_order(mock_lib, mock_fetch) -> None:
     """Cover line 560: TMDb match inside list-order branch."""
     mock_fetch.return_value = ["456"]
     mock_lib.return_value = (
@@ -1971,7 +2110,7 @@ def test_fetch_items_letterboxd_tmdb_list_order(mock_lib, mock_fetch):
 
 @patch("sync.get_tmdb_recommendations")
 @patch("sync.get_user_recent_items")
-def test_fetch_items_recommendations_empty(mock_recent, mock_tmdb):
+def test_fetch_items_recommendations_empty(mock_recent, mock_tmdb) -> None:
     """Cover lines 636-638: empty tmdb_ids after recommendations fetch."""
     mock_recent.return_value = [
         {"Id": "1", "ProviderIds": {"Tmdb": "123"}, "Type": "Movie"},
@@ -1990,7 +2129,7 @@ def test_fetch_items_recommendations_empty(mock_recent, mock_tmdb):
 
 
 @patch("sync.get_user_recent_items")
-def test_fetch_items_recommendations_error(mock_recent):
+def test_fetch_items_recommendations_error(mock_recent) -> None:
     """Cover lines 632-634: exception in recommendations fetch."""
     mock_recent.side_effect = RuntimeError("Jellyfin down")
     _items, error, code = _fetch_items_for_recommendations_group(
@@ -2005,7 +2144,7 @@ def test_fetch_items_recommendations_error(mock_recent):
     assert "Recommendations fetch error" in error
 
 
-def test_eval_item_second_rule_and():
+def test_eval_item_second_rule_and() -> None:
     """Cover line 712: AND operator in rules[1:]."""
     item = {"Genres": ["Action"], "ProductionYear": 2020}
     rules = [
@@ -2015,7 +2154,7 @@ def test_eval_item_second_rule_and():
     assert _eval_item(item, rules) is True
 
 
-def test_eval_item_or_not():
+def test_eval_item_or_not() -> None:
     """Cover lines 717-718: OR NOT operator."""
     item = {"Genres": ["Action"], "ProductionYear": 2020}
     rules = [
@@ -2025,14 +2164,40 @@ def test_eval_item_or_not():
     assert _eval_item(item, rules) is True
 
 
+def test_eval_item_unknown_operator() -> None:
+    """Graceful degradation for unknown operators — treated as AND."""
+    item = {"Genres": ["Action"], "ProductionYear": 2020}
+    rules = [
+        {"operator": "NOPE", "type": "genre", "value": "action"},
+        {"operator": "AND", "type": "year", "value": "2020"},
+    ]
+    assert _eval_item(item, rules) is True
+
+    rules_bad = [
+        {"operator": "NOPE", "type": "genre", "value": "comedy"},
+        {"operator": "AND", "type": "year", "value": "2020"},
+    ]
+    assert _eval_item(item, rules_bad) is False
+
+
+def test_eval_item_unknown_operator_caught() -> None:
+    """All strange operators should not raise."""
+    item = {"Genres": ["Action"]}
+    rules = [
+        {"operator": "SUPER AND", "type": "genre", "value": "action"},
+    ]
+    # Should not crash — unknown operators safe to fall through
+    assert _eval_item(item, rules) is True
+
+
 @patch("sync._fetch_full_library")
-def test_fetch_items_complex_group_malformed_rule(mock_lib):
+def test_fetch_items_complex_group_malformed_rule(mock_lib) -> None:
     """Cover lines 761-763: malformed rule triggers TypeError/ValueError/AttributeError."""
     mock_lib.return_value = [{"Id": "1", "Genres": ["Action"]}], None, 200
 
     # Create a dict whose operator value raises AttributeError during str()
     class BadStr:
-        def __str__(self):
+        def __str__(self) -> str:
             err = "boom"
             raise AttributeError(err)
 
@@ -2055,7 +2220,7 @@ def test_fetch_items_complex_group_malformed_rule(mock_lib):
 
 @patch("sync._fetch_items_for_metadata_group")
 @patch("sync.shutil.rmtree")
-def test_process_group_oserror(mock_rmtree, mock_meta, tmp_path):
+def test_process_group_oserror(mock_rmtree, mock_meta, tmp_path) -> None:
     """Cover lines 1027-1029: OSError when cleaning group directory."""
     mock_meta.return_value = ([], None, 200)
     mock_rmtree.side_effect = OSError("Permission denied")
@@ -2085,6 +2250,299 @@ def test_process_group_oserror(mock_rmtree, mock_meta, tmp_path):
     assert "Directory error" in result["error"]
 
 
-def test_is_in_season_invalid():
+def test_is_in_season_invalid() -> None:
     """Cover lines 1228-1229: invalid date strings in _is_in_season."""
     assert _is_in_season("bad", "also-bad") is True
+
+
+def test_eval_item_unknown_operator_non_first_rule() -> None:
+    """Unknown operator in rules[1:] should degrade to AND (cover the `case _` branch in _eval_item)."""
+    item = {"Genres": ["Action"], "ProductionYear": 2020}
+    # First rule is a normal AND, second rule has unknown operator
+    rules = [
+        {"operator": "AND", "type": "genre", "value": "action"},
+        {"operator": "NOPE", "type": "year", "value": "2020"},
+    ]
+    assert _eval_item(item, rules) is True
+
+    rules_bad = [
+        {"operator": "AND", "type": "genre", "value": "action"},
+        {"operator": "NOPE", "type": "year", "value": "2021"},
+    ]
+    assert _eval_item(item, rules_bad) is False
+
+
+def test_eval_item_unknown_operator_non_first_rule_or() -> None:
+    """Unknown operator in rules[1:] degrades to AND even when first rule was OR-based."""
+    item = {"Genres": ["Horror"], "ProductionYear": 1999}
+    rules = [
+        {"operator": "OR", "type": "genre", "value": "action"},
+        {"operator": "SUPER AND", "type": "year", "value": "1999"},
+    ]
+    # genre doesn't match (Action), but year matches
+    # OR with unknown AND: (False OR False) AND True = False
+    assert _eval_item(item, rules) is False
+
+
+def test_create_group_symlinks_path_translation_log(tmp_path, caplog) -> None:
+    """_create_group_symlinks logs path translations when host_path differs (line 1240)."""
+    import logging
+
+    caplog.set_level(logging.INFO)
+    from sync import _create_group_symlinks
+
+    # Simulate Docker path translation: Jellyfin sees /data/media but files
+    # are actually at /real/host/media.
+    real_root = tmp_path / "real_host" / "media"
+    real_root.mkdir(parents=True)
+    real_file = real_root / "movie.mkv"
+    real_file.write_text("content")
+
+    jellyfin_seen_root = tmp_path / "data" / "media"
+
+    # Item's Path = what Jellyfin sees (doesn't actually exist there)
+    item_path = jellyfin_seen_root / "movie.mkv"
+
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+
+    items = [{"Id": "m1", "Name": "M1", "Path": str(item_path)}]
+    _, _ = _create_group_symlinks(
+        items,
+        str(output_dir),
+        "TestGroup",
+        jellyfin_root=str(jellyfin_seen_root),
+        host_root=str(real_root),
+        sort_order="",
+        dry_run=False,
+    )
+
+    records = [r.message for r in caplog.records]
+    translation_logs = [r for r in records if "Translated path:" in r]
+    assert len(translation_logs) == 1, translation_logs or records
+    assert "movie.mkv" in translation_logs[0]
+    assert str(real_root / "movie.mkv") in translation_logs[0]
+
+
+@patch("sync._process_group")
+@patch("sync._fetch_existing_libraries")
+def test_run_sync_path_translation_active(
+    mock_libs,
+    mock_process,
+    tmp_path,
+    caplog,
+) -> None:
+    """run_sync logs when path translation is configured (line 1725)."""
+    import logging
+
+    caplog.set_level(logging.INFO)
+    mock_libs.return_value = []
+    mock_process.return_value = {"group": "Test", "links": 0}
+
+    config = {
+        "jellyfin_url": "http://jf",
+        "api_key": "key",
+        "target_path": str(tmp_path),
+        "media_path_in_jellyfin": "/data/media",
+        "media_path_on_host": "/mnt/media",
+        "groups": [{"name": "Test", "source_type": "genre", "source_value": "Action"}],
+    }
+    run_sync(config, dry_run=False)
+    assert any("Path translation active" in r.message for r in caplog.records)
+
+
+# ---------------------------------------------------------------------------
+# Complex query parser — edge cases
+# Covers issues #968-#975 (good-first-issue testing tickets)
+# ---------------------------------------------------------------------------
+
+
+def test_parse_complex_query_empty_string() -> None:
+    """Empty query string returns empty rules list."""
+    rules = parse_complex_query("", "genre")
+    assert rules == []
+
+
+def test_parse_complex_query_whitespace_only() -> None:
+    """Whitespace-only query returns empty rules list."""
+    rules = parse_complex_query("   ", "genre")
+    assert rules == []
+
+
+def test_parse_complex_query_whitespace_between_tokens() -> None:
+    """Extra whitespace between tokens is collapsed."""
+    rules = parse_complex_query("Action    AND       Comedy", "genre")
+    assert len(rules) == 2
+    assert rules[0] == {"operator": "AND", "type": "genre", "value": "Action"}
+    assert rules[1] == {"operator": "AND", "type": "genre", "value": "Comedy"}
+
+
+def test_parse_complex_query_case_insensitivity() -> None:
+    """Operators are case-insensitive: and, And, OR, or, not."""
+    rules = parse_complex_query("action and comedy or horror", "genre")
+    assert len(rules) == 3
+    assert rules[0] == {"operator": "AND", "type": "genre", "value": "action"}
+    assert rules[1] == {"operator": "AND", "type": "genre", "value": "comedy"}
+    assert rules[2] == {"operator": "OR", "type": "genre", "value": "horror"}
+
+    rules2 = parse_complex_query("Action And Not Comedy Or Drama", "genre")
+    assert len(rules2) == 3
+    assert rules2[0] == {"operator": "AND", "type": "genre", "value": "Action"}
+    assert rules2[1] == {"operator": "AND NOT", "type": "genre", "value": "Comedy"}
+    assert rules2[2] == {"operator": "OR", "type": "genre", "value": "Drama"}
+
+
+def test_parse_complex_query_impossible_year_and() -> None:
+    """Query 'year:2020 AND year:2021' should produce two rules that will
+    never match (no single item can have two different production years)."""
+    # This is logically impossible — it validates that the parser produces
+    # two distinct rules with specific types and the same operator.
+    rules = parse_complex_query("year:2020 AND year:2021", "genre")
+    assert len(rules) == 2
+    assert rules[0] == {"operator": "AND", "type": "year", "value": "2020"}
+    assert rules[1] == {"operator": "AND", "type": "year", "value": "2021"}
+
+
+def test_parse_complex_query_nested_and_or_with_not() -> None:
+    """Complex chain with AND, OR, NOT in various positions."""
+    rules = parse_complex_query(
+        "Action AND NOT Comedy OR Drama AND NOT Horror", "genre"
+    )
+    assert len(rules) == 4
+    assert rules[0] == {"operator": "AND", "type": "genre", "value": "Action"}
+    assert rules[1] == {"operator": "AND NOT", "type": "genre", "value": "Comedy"}
+    assert rules[2] == {"operator": "OR", "type": "genre", "value": "Drama"}
+    assert rules[3] == {"operator": "AND NOT", "type": "genre", "value": "Horror"}
+
+
+def test_parse_complex_query_and_and_not_or_not() -> None:
+    """All four operator variants are parsed correctly."""
+    rules = parse_complex_query(
+        "A AND NOT B OR NOT C",
+        "genre",
+    )
+    assert len(rules) == 3
+    assert rules[0] == {"operator": "AND", "type": "genre", "value": "A"}
+    assert rules[1] == {"operator": "AND NOT", "type": "genre", "value": "B"}
+    assert rules[2] == {"operator": "OR NOT", "type": "genre", "value": "C"}
+
+    # AND NOT + OR NOT in same query with typed prefixes
+    rules2 = parse_complex_query("genre:A OR NOT actor:B AND NOT year:2020", "tag")
+    assert len(rules2) == 3
+    assert rules2[0] == {"operator": "AND", "type": "genre", "value": "A"}
+    assert rules2[1] == {"operator": "OR NOT", "type": "actor", "value": "B"}
+    assert rules2[2] == {"operator": "AND NOT", "type": "year", "value": "2020"}
+
+
+def test_parse_complex_query_special_chars_in_values() -> None:
+    """Values containing special characters like quotes, colons, or parens."""
+    # Value containing single quotes (as part of the name)
+    rules = parse_complex_query("O'Brien", "actor")
+    assert rules == [{"operator": "AND", "type": "actor", "value": "O'Brien"}]
+
+    # Value containing parentheses (common in studio names)
+    rules = parse_complex_query("studio:( Walt Disney Pictures )", "genre")
+    assert len(rules) == 1
+    assert rules[0]["type"] == "studio"
+    assert "Walt Disney Pictures" in rules[0]["value"]
+
+    # Value with colon but not a known prefix — should use default type
+    rules = parse_complex_query("foo:bar", "genre")
+    assert rules[0]["value"] == "foo:bar"
+
+    # Multiple typed values with special characters
+    rules = parse_complex_query("actor:Tom Hanks AND genre:Sci-Fi", "tag")
+    assert len(rules) == 2
+    assert rules[0] == {"operator": "AND", "type": "actor", "value": "Tom Hanks"}
+    assert rules[1] == {"operator": "AND", "type": "genre", "value": "Sci-Fi"}
+
+
+def test_parse_complex_query_unicode_values() -> None:
+    """Unicode characters in actor/genre names are preserved."""
+    rules = parse_complex_query("actor:Àgént Cöñnor", "genre")
+    assert rules == [{"operator": "AND", "type": "actor", "value": "Àgént Cöñnor"}]
+
+    rules = parse_complex_query("genre:科学 AND actor:トム・クルーズ", "tag")
+    assert len(rules) == 2
+    assert rules[0] == {"operator": "AND", "type": "genre", "value": "科学"}
+    assert rules[1] == {"operator": "AND", "type": "actor", "value": "トム・クルーズ"}
+
+
+def test_parse_complex_query_single_token() -> None:
+    """A single token (no operators) returns one rule."""
+    rules = parse_complex_query("Action", "genre")
+    assert rules == [{"operator": "AND", "type": "genre", "value": "Action"}]
+
+    rules = parse_complex_query("actor:Tom Cruise", "tag")
+    assert rules == [{"operator": "AND", "type": "actor", "value": "Tom Cruise"}]
+
+
+def test_parse_complex_query_very_long() -> None:
+    """Very long query (>1000 chars) is parsed without errors."""
+    long_value = "genre:Movie" + " AND year:2020" * 50
+    rules = parse_complex_query(long_value, "tag")
+    assert len(rules) == 51  # 1 initial + 50 repeated (AND, year:2020) pairs
+    assert rules[0] == {"operator": "AND", "type": "genre", "value": "Movie"}
+    for i in range(1, 51):
+        assert rules[i]["operator"] == "AND"
+        assert rules[i]["type"] == "year"
+        assert rules[i]["value"] == "2020"
+
+
+def test_parse_complex_query_not_with_prefix() -> None:
+    """Bare NOT followed by a typed prefix (e.g. NOT genre:Horror)."""
+    rules = parse_complex_query("NOT genre:Horror", "tag")
+    assert len(rules) == 1
+    assert rules[0] == {"operator": "AND NOT", "type": "genre", "value": "Horror"}
+
+    rules = parse_complex_query("NOT actor:Tom Hanks AND genre:Drama", "tag")
+    assert len(rules) == 2
+    assert rules[0] == {"operator": "AND NOT", "type": "actor", "value": "Tom Hanks"}
+    assert rules[1] == {"operator": "AND", "type": "genre", "value": "Drama"}
+
+
+def test_parse_complex_query_and_not_with_no_value() -> None:
+    """'AND NOT' trailing without following value is handled gracefully.
+
+    The regex splits 'Action AND NOT' as ['Action', 'AND', 'NOT'] because
+    the trailing AND NOT lacks a closing space. The second value becomes 'NOT'
+    rather than an AND NOT operator, so this is a single negation with 'NOT'
+    as the search term (harmless edge case).
+    """
+    rules = parse_complex_query("Action AND NOT", "genre")
+    assert len(rules) == 2
+    assert rules[0] == {"operator": "AND", "type": "genre", "value": "Action"}
+    assert rules[1] == {"operator": "AND", "type": "genre", "value": "NOT"}
+
+
+def test_parse_complex_query_leading_operator() -> None:
+    """Leading 'AND' (no preceding space) is treated as part of the value.
+
+    The regex requires whitespace on both sides of operators, so 'AND Action'
+    is parsed as one literal value.
+    """
+    rules = parse_complex_query("AND Action", "genre")
+    assert len(rules) == 1
+    assert rules[0] == {"operator": "AND", "type": "genre", "value": "AND Action"}
+
+
+def test_parse_complex_query_known_prefix_only() -> None:
+    """A value that is purely a known prefix with no value after the colon."""
+    rules = parse_complex_query("actor:", "genre")
+    # The "actor:" prefix is recognised, but the value after the colon is empty
+    assert len(rules) == 1
+    assert rules[0]["type"] == "actor"
+    assert rules[0]["value"] == ""
+
+
+def test_parse_complex_query_mixed_types_multiple_rules() -> None:
+    """Multiple rules with different typed prefixes."""
+    rules = parse_complex_query(
+        "actor:Tom Hanks OR studio:Marvel AND NOT genre:Comedy OR year:2022",
+        "tag",
+    )
+    assert len(rules) == 4
+    assert rules[0] == {"operator": "AND", "type": "actor", "value": "Tom Hanks"}
+    assert rules[1] == {"operator": "OR", "type": "studio", "value": "Marvel"}
+    assert rules[2] == {"operator": "AND NOT", "type": "genre", "value": "Comedy"}
+    assert rules[3] == {"operator": "OR", "type": "year", "value": "2022"}

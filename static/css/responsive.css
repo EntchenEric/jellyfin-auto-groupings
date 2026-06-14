@@ -1,4 +1,30 @@
 /* ─────────────────────────────────────────────────────────
+   TABLET  (768px - 1024px)
+───────────────────────────────────────────────────────── */
+@media (max-width: 1024px) and (min-width: 769px) {
+    #groups-list {
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    }
+
+    #sidebar {
+        width: 280px;
+        padding: 1.25rem;
+    }
+
+    #app-layout {
+        grid-template-columns: 280px 1fr;
+    }
+
+    .wizard-body {
+        padding: 2rem;
+    }
+
+    .wizard-footer {
+        padding: 1.25rem 2rem 2rem;
+    }
+}
+
+/* ─────────────────────────────────────────────────────────
    MOBILE  (< 768px)
 ───────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
@@ -10,17 +36,19 @@
     }
 
     #topbar {
-        padding: 0 1rem;
-        gap: 0.6rem;
+        padding: 0 0.75rem;
+        gap: 0.4rem;
     }
 
     #topbar .brand h1 {
-        font-size: 1rem;
+        font-size: 0.95rem;
     }
 
     #hamburger-btn {
         display: flex;
         align-items: center;
+        min-width: 36px;
+        min-height: 36px;
     }
 
     .topbar-actions .topbar-btn:not(.primary) {
@@ -46,10 +74,14 @@
         display: flex;
     }
 
+    #sidebar-resizer {
+        display: none; /* sidebar fills full width on mobile, no drag-resize needed */
+    }
+
     #main-content {
         height: auto;
         overflow: visible;
-        padding: 1rem;
+        padding: 0.75rem;
     }
 
     #groups-list {
@@ -62,5 +94,204 @@
 
     .btn-row {
         grid-template-columns: 1fr;
+    }
+
+    /* ── Mobile wizard responsive ─── */
+    .wizard-body {
+        padding: 1.5rem;
+    }
+
+    .wizard-footer {
+        padding: 1rem 1.5rem 1.5rem;
+        flex-direction: column;
+    }
+
+    .wizard-footer button {
+        width: 100%;
+        text-align: center;
+    }
+
+    .wizard-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .wizard-header p {
+        font-size: 0.85rem;
+    }
+
+    .wizard-illustration {
+        width: 80px;
+        height: 80px;
+        border-radius: 20px;
+    }
+
+    .wizard-illustration svg {
+        width: 36px;
+        height: 36px;
+    }
+
+    .wizard-box {
+        max-height: 85vh;
+    }
+
+    /* ── Group cards on mobile ─── */
+    .group-card {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .group-actions {
+        justify-content: flex-end;
+    }
+
+    /* ── Larger touch targets ─── */
+    .topbar-btn,
+    .browse-btn,
+    .close-btn,
+    .close-modal-btn {
+        min-height: 40px;
+    }
+
+    input,
+    select,
+    button {
+        font-size: 16px; /* prevents iOS zoom-on-focus */
+    }
+
+    /* ── Responsive tables on mobile ─── */
+    .table-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* ── Full-width modals on mobile ─── */
+    .modal-content {
+        margin: 0.5rem;
+        max-height: calc(100vh - 1rem);
+        border-radius: var(--radius-md);
+    }
+
+    /* ── Prevent body scroll when modal is open ─── */
+    body.modal-open {
+        overflow: hidden;
+        position: fixed;
+        width: 100%;
+    }
+}
+
+/* ── Sidebar resizer: hidden on touch-first devices ─── */
+@media (pointer: coarse) {
+    #sidebar-resizer {
+        display: none;
+    }
+}
+
+/* ─────────────────────────────────────────────────────────
+   ACCESSIBILITY: focus-visible outlines
+───────────────────────────────────────────────────────── */
+:focus-visible {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+}
+
+/* Remove focus outline for mouse clicks, keep for keyboard */
+:focus:not(:focus-visible) {
+    outline: none;
+}
+
+#hamburger-btn:focus-visible {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+}
+
+/* ── High contrast mode ─── */
+@media (prefers-contrast: high) {
+    * {
+        border-color: currentColor !important;
+    }
+    .glass-card,
+    .modal-content,
+    .group-card {
+        background: var(--surface-color);
+        border-width: 1px;
+    }
+    .badge {
+        border: 1px solid currentColor;
+    }
+    .text-secondary {
+        color: var(--text-primary);
+    }
+}
+
+/* ─────────────────────────────────────────────────────────
+   REDUCED MOTION
+───────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ─────────────────────────────────────────────────────────
+   PRINT  (docs, setup guides, troubleshooting)
+───────────────────────────────────────────────────────── */
+@media print {
+    * {
+        background: transparent !important;
+        color: #000 !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+    }
+
+    #sidebar,
+    #topbar,
+    .modal,
+    #status-msg,
+    .bg-blob,
+    #loading-overlay,
+    .skip-to-content {
+        display: none !important;
+    }
+
+    #app-layout {
+        position: static;
+        display: block;
+        margin-top: 0;
+        height: auto;
+    }
+
+    #main-content {
+        height: auto;
+        overflow: visible;
+        padding: 0;
+    }
+
+    .card,
+    .group-card {
+        border: 1px solid #ccc !important;
+        break-inside: avoid;
+    }
+
+    a[href]::after {
+        content: " (" attr(href) ")";
+        font-size: 0.75em;
+        color: #555 !important;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4 {
+        break-after: avoid;
+    }
+
+    pre,
+    code {
+        border: 1px solid #ccc !important;
+        font-size: 0.8rem;
     }
 }

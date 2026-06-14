@@ -1,24 +1,24 @@
 <!-- Import Modal -->
 <div id="import-modal" class="modal" role="dialog" aria-label="Import Settings" aria-modal="true">
-    <div class="card" style="max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;">
+    <div class="card modal-card import-modal-scroll">
         <h2>Import Settings</h2>
         <div id="import-step-1">
-            <p style="color: var(--text-secondary); margin-bottom: 1.25rem; font-size: 0.9rem;">Select a file to begin the import process.</p>
-            <button id="import-select-file-btn" style="width: 100%; margin-top:0;">Select JSON File</button>
-            <input type="file" id="import-file-input" style="display: none;" accept=".json">
+            <p class="modal-description">Select a file to begin the import process.</p>
+            <button type="button" id="import-select-file-btn" class="btn-full">Select JSON File</button>
+            <input type="file" id="import-file-input" class="file-input-hidden" accept=".json">
         </div>
-        <div id="import-step-2" style="display: none;">
-            <div id="import-warning" class="status-msg error" style="margin-bottom: 1.25rem; display: none;">
+        <div id="import-step-2" class="hidden-flex-col">
+            <div id="import-warning" class="status-msg error form-group-bottom-spacing">
                 WARNING: This will overwrite your entire current configuration!</div>
             <div id="import-selection-list">
                 <label>Select items to import</label>
-                <div id="import-groups-container" style="margin-top: 0.5rem;"></div>
+                <div id="import-groups-container" class="small-mt"></div>
             </div>
-            <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
-                <button id="confirm-import" style="flex: 2; margin-top:0;">Confirm Import</button>
-                <button class="secondary-btn close-modal-btn" style="flex: 1; margin-top:0;">Cancel</button>
+            <div class="action-row" style="margin-top: 1.5rem;">
+                <button type="button" id="confirm-import" class="flex-2 action-row-btn-nomargin">Confirm Import</button>
+                <button type="button" class="secondary-btn close-modal-btn flex-1 action-row-btn-nomargin">Cancel</button>
             </div>
         </div>
-        <button id="cancel-import-top" class="secondary-btn close-modal-btn" style="margin-top: 1.25rem; width: 100%;">Cancel</button>
+        <button type="button" id="cancel-import-top" class="secondary-btn close-modal-btn btn-full-mt">Cancel</button>
     </div>
 </div>

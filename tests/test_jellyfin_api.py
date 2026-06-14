@@ -1,3 +1,10 @@
+"""Tests for the Jellyfin API client layer (jellyfin.py).
+
+Covers all public API functions: item fetching, pagination, library
+management, collections, images, and error handling — all with mocked
+HTTP responses.
+"""
+
 import logging
 from unittest.mock import MagicMock, patch
 
@@ -25,7 +32,7 @@ TEST_KEY = "test_key"
 
 
 @patch("jellyfin.network.get")
-def test_get_libraries(mock_get):
+def test_get_libraries(mock_get) -> None:
     mock_response = MagicMock()
     mock_response.json.return_value = [{"Name": "Movies"}, {"Name": "TV Shows"}]
     mock_response.raise_for_status.return_value = None
@@ -41,7 +48,7 @@ def test_get_libraries(mock_get):
 
 
 @patch("jellyfin.network.get")
-def test_get_libraries_filters_empty_names(mock_get):
+def test_get_libraries_filters_empty_names(mock_get) -> None:
     mock_response = MagicMock()
     mock_response.json.return_value = [
         {"Name": "Movies"},
@@ -57,7 +64,7 @@ def test_get_libraries_filters_empty_names(mock_get):
 
 
 @patch("jellyfin.network.post")
-def test_add_virtual_folder_success(mock_post):
+def test_add_virtual_folder_success(mock_post) -> None:
     mock_response = MagicMock()
     mock_response.ok = True
     mock_response.status_code = 200
@@ -70,7 +77,7 @@ def test_add_virtual_folder_success(mock_post):
 
 
 @patch("jellyfin.network.post")
-def test_add_virtual_folder_already_exists(mock_post):
+def test_add_virtual_folder_already_exists(mock_post) -> None:
     mock_response_409 = MagicMock()
     mock_response_409.ok = False
     mock_response_409.status_code = 409
@@ -87,7 +94,7 @@ def test_add_virtual_folder_already_exists(mock_post):
 
 
 @patch("jellyfin.network.post")
-def test_add_virtual_folder_creation_failure(mock_post):
+def test_add_virtual_folder_creation_failure(mock_post) -> None:
     mock_response = MagicMock()
     mock_response.ok = False
     mock_response.status_code = 500
@@ -97,7 +104,7 @@ def test_add_virtual_folder_creation_failure(mock_post):
     import requests
 
     mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(
-        response=mock_response
+        response=mock_response,
     )
     mock_post.return_value = mock_response
 
@@ -110,7 +117,7 @@ def test_add_virtual_folder_creation_failure(mock_post):
 
 
 @patch("jellyfin.network.post")
-def test_add_virtual_folder_path_failure(mock_post):
+def test_add_virtual_folder_path_failure(mock_post) -> None:
     mock_response_ok = MagicMock()
     mock_response_ok.ok = True
     mock_response_ok.status_code = 200
@@ -123,7 +130,7 @@ def test_add_virtual_folder_path_failure(mock_post):
     import requests
 
     mock_response_fail.raise_for_status.side_effect = requests.exceptions.HTTPError(
-        response=mock_response_fail
+        response=mock_response_fail,
     )
 
     # OK on create, Fail on path
@@ -138,7 +145,7 @@ def test_add_virtual_folder_path_failure(mock_post):
 
 
 @patch("jellyfin.network.delete")
-def test_delete_virtual_folder(mock_delete):
+def test_delete_virtual_folder(mock_delete) -> None:
     mock_response = MagicMock()
     mock_response.ok = True
     mock_delete.return_value = mock_response
@@ -154,14 +161,18 @@ def test_delete_virtual_folder(mock_delete):
 
 
 @patch("jellyfin.network.post")
-def test_add_virtual_folder_mixed(mock_post):
+def test_add_virtual_folder_mixed(mock_post) -> None:
     mock_response = MagicMock()
     mock_response.ok = True
     mock_response.status_code = 200
     mock_post.return_value = mock_response
 
     add_virtual_folder(
-        TEST_URL, TEST_KEY, "MixedLib", ["/path1"], collection_type="mixed"
+        TEST_URL,
+        TEST_KEY,
+        "MixedLib",
+        ["/path1"],
+        collection_type="mixed",
     )
 
     # Check the first call (creation) parameters
@@ -174,7 +185,7 @@ def test_add_virtual_folder_mixed(mock_post):
 
 
 @patch("jellyfin.network.get")
-def test_get_library_id(mock_get):
+def test_get_library_id(mock_get) -> None:
     mock_response = MagicMock()
     mock_response.json.return_value = [
         {"Name": "Movies", "ItemId": "12345"},
@@ -193,12 +204,15 @@ def test_get_library_id(mock_get):
 
 
 @patch("mimetypes.guess_type")
-@patch("builtins.open")
+@patch("jellyfin.Path.open")
 @patch("jellyfin.network.post")
 @patch("jellyfin.get_library_id")
 def test_set_virtual_folder_image(
-    mock_get_library_id, mock_post, mock_open, mock_guess
-):
+    mock_get_library_id,
+    mock_post,
+    mock_open,
+    mock_guess,
+) -> None:
     mock_guess.return_value = ("image/jpeg", None)
     mock_get_library_id.return_value = "12345"
     mock_open.return_value.__enter__.return_value.read.return_value = b"image_data"
@@ -218,7 +232,7 @@ def test_set_virtual_folder_image(
 
 
 @patch("jellyfin.network.get")
-def test_get_users(mock_get):
+def test_get_users(mock_get) -> None:
     mock_response = MagicMock()
     mock_response.json.return_value = [
         {"Id": "u1", "Name": "Alice"},
@@ -240,7 +254,7 @@ def test_get_users(mock_get):
 
 
 @patch("jellyfin.network.get")
-def test_get_user_recent_items(mock_get):
+def test_get_user_recent_items(mock_get) -> None:
     mock_response = MagicMock()
     mock_response.json.return_value = {
         "Items": [{"Name": "Movie 1"}, {"Name": "Show 1"}],
@@ -271,19 +285,19 @@ def test_get_user_recent_items(mock_get):
 
 
 @patch("jellyfin.network.post")
-def test_add_virtual_folder_creation_failure_no_response(mock_post):
+def test_add_virtual_folder_creation_failure_no_response(mock_post) -> None:
     mock_post.side_effect = requests.exceptions.RequestException("Network Error")
 
     with pytest.raises(RuntimeError) as excinfo:
         add_virtual_folder(TEST_URL, TEST_KEY, "FailLib", ["/path1"])
 
     assert "Failed to create virtual folder 'FailLib': Network Error" in str(
-        excinfo.value
+        excinfo.value,
     )
 
 
 @patch("jellyfin.network.post")
-def test_add_virtual_folder_path_failure_no_response(mock_post):
+def test_add_virtual_folder_path_failure_no_response(mock_post) -> None:
     mock_response_ok = MagicMock()
     mock_response_ok.ok = True
     mock_response_ok.status_code = 200
@@ -304,7 +318,7 @@ def test_add_virtual_folder_path_failure_no_response(mock_post):
 
 
 @patch("jellyfin.network.post")
-def test_add_virtual_folder_refresh_failure(mock_post):
+def test_add_virtual_folder_refresh_failure(mock_post) -> None:
     mock_response_ok = MagicMock()
     mock_response_ok.ok = True
     mock_response_ok.status_code = 200
@@ -315,7 +329,7 @@ def test_add_virtual_folder_refresh_failure(mock_post):
     mock_response_fail.text = "Bad Gateway"
 
     mock_response_fail.raise_for_status.side_effect = requests.exceptions.HTTPError(
-        response=mock_response_fail
+        response=mock_response_fail,
     )
 
     # create OK, path OK, refresh HTTPError
@@ -331,7 +345,7 @@ def test_add_virtual_folder_refresh_failure(mock_post):
 
 
 @patch("jellyfin.network.post")
-def test_add_virtual_folder_refresh_failure_no_response(mock_post):
+def test_add_virtual_folder_refresh_failure_no_response(mock_post) -> None:
     mock_response_ok = MagicMock()
     mock_response_ok.ok = True
     mock_response_ok.status_code = 200
@@ -353,7 +367,7 @@ def test_add_virtual_folder_refresh_failure_no_response(mock_post):
 
 
 @patch("jellyfin.network.delete")
-def test_delete_virtual_folder_not_ok(mock_delete, caplog):
+def test_delete_virtual_folder_not_ok(mock_delete, caplog) -> None:
     mock_response = MagicMock()
     mock_response.ok = False
     mock_response.status_code = 404
@@ -367,7 +381,7 @@ def test_delete_virtual_folder_not_ok(mock_delete, caplog):
 
 
 @patch("jellyfin.network.get")
-def test_get_library_id_request_exception(mock_get):
+def test_get_library_id_request_exception(mock_get) -> None:
     mock_get.side_effect = requests.exceptions.RequestException("Fetch Error")
 
     with pytest.raises(RuntimeError) as excinfo:
@@ -376,7 +390,7 @@ def test_get_library_id_request_exception(mock_get):
 
 
 @patch("jellyfin.get_library_id")
-def test_set_virtual_folder_image_no_library_id(mock_get_library_id, caplog):
+def test_set_virtual_folder_image_no_library_id(mock_get_library_id, caplog) -> None:
     mock_get_library_id.return_value = None
 
     set_virtual_folder_image(TEST_URL, TEST_KEY, "MyLib", "/path/to/img.jpg")
@@ -385,10 +399,10 @@ def test_set_virtual_folder_image_no_library_id(mock_get_library_id, caplog):
 
 
 @patch("jellyfin.get_library_id")
-def test_set_virtual_folder_image_os_error(mock_get_library_id, caplog):
+def test_set_virtual_folder_image_os_error(mock_get_library_id, caplog) -> None:
     mock_get_library_id.return_value = "123"
 
-    with patch("builtins.open", side_effect=OSError("Permission Denied")):
+    with patch("jellyfin.Path.open", side_effect=OSError("Permission Denied")):
         set_virtual_folder_image(TEST_URL, TEST_KEY, "MyLib", "/path/to/img.jpg")
 
     assert (
@@ -397,12 +411,16 @@ def test_set_virtual_folder_image_os_error(mock_get_library_id, caplog):
 
 
 @patch("mimetypes.guess_type")
-@patch("builtins.open")
+@patch("jellyfin.Path.open")
 @patch("jellyfin.network.post")
 @patch("jellyfin.get_library_id")
 def test_set_virtual_folder_image_request_exception(
-    mock_get_library_id, mock_post, mock_open, mock_guess, caplog
-):
+    mock_get_library_id,
+    mock_post,
+    mock_open,
+    mock_guess,
+    caplog,
+) -> None:
     mock_guess.return_value = ("image/jpeg", None)
     mock_get_library_id.return_value = "123"
     mock_open.return_value.__enter__.return_value.read.return_value = b"image_data"
@@ -427,7 +445,7 @@ def test_set_virtual_folder_image_request_exception(
 
 
 @patch("mimetypes.guess_type")
-@patch("builtins.open")
+@patch("jellyfin.Path.open")
 @patch("jellyfin.network.post")
 @patch("jellyfin.get_library_id")
 def test_set_virtual_folder_image_request_exception_no_response(
@@ -436,7 +454,7 @@ def test_set_virtual_folder_image_request_exception_no_response(
     mock_open,
     mock_guess,
     caplog,
-):
+) -> None:
     mock_guess.return_value = ("image/jpeg", None)
     mock_get_library_id.return_value = "123"
     mock_open.return_value.__enter__.return_value.read.return_value = b"image_data"
@@ -454,14 +472,17 @@ def test_set_virtual_folder_image_request_exception_no_response(
 
 
 @patch("jellyfin.network.post")
-def test_create_collection_success(mock_post):
+def test_create_collection_success(mock_post) -> None:
     mock_response = MagicMock()
     mock_response.json.return_value = {"Id": "col_123"}
     mock_response.raise_for_status.return_value = None
     mock_post.return_value = mock_response
 
     col_id = create_collection(
-        TEST_URL, TEST_KEY, "My Collection", ["item_1", "item_2"]
+        TEST_URL,
+        TEST_KEY,
+        "My Collection",
+        ["item_1", "item_2"],
     )
     assert col_id == "col_123"
     mock_post.assert_called_once_with(
@@ -473,47 +494,49 @@ def test_create_collection_success(mock_post):
 
 
 @patch("jellyfin.network.post")
-def test_create_collection_no_id(mock_post):
+def test_create_collection_no_id(mock_post) -> None:
     mock_response = MagicMock()
     mock_response.json.return_value = {}
     mock_response.raise_for_status.return_value = None
     mock_post.return_value = mock_response
 
     with pytest.raises(
-        RuntimeError, match="Collection created but no Id returned for 'Bad'"
+        RuntimeError,
+        match="Collection created but no Id returned for 'Bad'",
     ):
         create_collection(TEST_URL, TEST_KEY, "Bad", ["item_1"])
 
 
 @patch("jellyfin.network.post")
-def test_create_collection_http_error(mock_post):
+def test_create_collection_http_error(mock_post) -> None:
     mock_response = MagicMock()
     mock_response.status_code = 500
     mock_response.text = "Server Error"
     mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(
-        response=mock_response
+        response=mock_response,
     )
     mock_post.return_value = mock_response
 
     with pytest.raises(RuntimeError) as excinfo:
         create_collection(TEST_URL, TEST_KEY, "Fail", ["item_1"])
     assert "Failed to create collection 'Fail' (Status 500): Server Error" in str(
-        excinfo.value
+        excinfo.value,
     )
 
 
 @patch("jellyfin.network.post")
-def test_create_collection_request_exception_no_response(mock_post):
+def test_create_collection_request_exception_no_response(mock_post) -> None:
     mock_post.side_effect = requests.exceptions.RequestException("Network down")
 
     with pytest.raises(
-        RuntimeError, match="Failed to create collection 'Fail': Network down"
+        RuntimeError,
+        match="Failed to create collection 'Fail': Network down",
     ):
         create_collection(TEST_URL, TEST_KEY, "Fail", ["item_1"])
 
 
 @patch("jellyfin.network.get")
-def test_find_collection_by_name_found(mock_get):
+def test_find_collection_by_name_found(mock_get) -> None:
     mock_response = MagicMock()
     mock_response.json.return_value = {
         "Items": [
@@ -530,7 +553,7 @@ def test_find_collection_by_name_found(mock_get):
 
 
 @patch("jellyfin.network.get")
-def test_find_collection_by_name_not_found(mock_get):
+def test_find_collection_by_name_not_found(mock_get) -> None:
     mock_response = MagicMock()
     mock_response.json.return_value = {
         "Items": [{"Name": "Other", "Id": "x"}],
@@ -544,7 +567,7 @@ def test_find_collection_by_name_not_found(mock_get):
 
 
 @patch("jellyfin.network.get")
-def test_find_collection_by_name_missing_id(mock_get):
+def test_find_collection_by_name_missing_id(mock_get) -> None:
     mock_response = MagicMock()
     mock_response.json.return_value = {
         "Items": [{"Name": "NoId"}],
@@ -558,7 +581,7 @@ def test_find_collection_by_name_missing_id(mock_get):
 
 
 @patch("jellyfin.network.get")
-def test_find_collection_by_name_request_exception(mock_get):
+def test_find_collection_by_name_request_exception(mock_get) -> None:
     mock_get.side_effect = requests.exceptions.RequestException("Timeout")
 
     with pytest.raises(RuntimeError) as excinfo:
@@ -567,7 +590,7 @@ def test_find_collection_by_name_request_exception(mock_get):
 
 
 @patch("jellyfin.network.get")
-def test_find_collection_by_name_on_second_page(mock_get):
+def test_find_collection_by_name_on_second_page(mock_get) -> None:
     page1 = MagicMock()
     page1.json.return_value = {
         "Items": [
@@ -593,7 +616,7 @@ def test_find_collection_by_name_on_second_page(mock_get):
 
 
 @patch("jellyfin.network.post")
-def test_add_to_collection_success(mock_post):
+def test_add_to_collection_success(mock_post) -> None:
     mock_response = MagicMock()
     mock_response.raise_for_status.return_value = None
     mock_post.return_value = mock_response
@@ -607,39 +630,40 @@ def test_add_to_collection_success(mock_post):
     )
 
 
-def test_add_to_collection_empty_ids():
+def test_add_to_collection_empty_ids() -> None:
     add_to_collection(TEST_URL, TEST_KEY, "col_1", [])
 
 
 @patch("jellyfin.network.post")
-def test_add_to_collection_http_error(mock_post):
+def test_add_to_collection_http_error(mock_post) -> None:
     mock_response = MagicMock()
     mock_response.status_code = 400
     mock_response.text = "Bad item"
     mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(
-        response=mock_response
+        response=mock_response,
     )
     mock_post.return_value = mock_response
 
     with pytest.raises(RuntimeError) as excinfo:
         add_to_collection(TEST_URL, TEST_KEY, "col_1", ["bad"])
     assert "Failed to add items to collection 'col_1' (Status 400): Bad item" in str(
-        excinfo.value
+        excinfo.value,
     )
 
 
 @patch("jellyfin.network.post")
-def test_add_to_collection_request_exception(mock_post):
+def test_add_to_collection_request_exception(mock_post) -> None:
     mock_post.side_effect = requests.exceptions.RequestException("Net fail")
 
     with pytest.raises(
-        RuntimeError, match="Failed to add items to collection 'col_1': Net fail"
+        RuntimeError,
+        match="Failed to add items to collection 'col_1': Net fail",
     ):
         add_to_collection(TEST_URL, TEST_KEY, "col_1", ["x"])
 
 
 @patch("jellyfin.network.delete")
-def test_remove_from_collection_success(mock_delete):
+def test_remove_from_collection_success(mock_delete) -> None:
     mock_response = MagicMock()
     mock_response.raise_for_status.return_value = None
     mock_delete.return_value = mock_response
@@ -653,17 +677,17 @@ def test_remove_from_collection_success(mock_delete):
     )
 
 
-def test_remove_from_collection_empty_ids():
+def test_remove_from_collection_empty_ids() -> None:
     remove_from_collection(TEST_URL, TEST_KEY, "col_1", [])
 
 
 @patch("jellyfin.network.delete")
-def test_remove_from_collection_http_error(mock_delete):
+def test_remove_from_collection_http_error(mock_delete) -> None:
     mock_response = MagicMock()
     mock_response.status_code = 404
     mock_response.text = "Not found"
     mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(
-        response=mock_response
+        response=mock_response,
     )
     mock_delete.return_value = mock_response
 
@@ -676,17 +700,18 @@ def test_remove_from_collection_http_error(mock_delete):
 
 
 @patch("jellyfin.network.delete")
-def test_remove_from_collection_request_exception(mock_delete):
+def test_remove_from_collection_request_exception(mock_delete) -> None:
     mock_delete.side_effect = requests.exceptions.RequestException("Timeout")
 
     with pytest.raises(
-        RuntimeError, match="Failed to remove items from collection 'col_1': Timeout"
+        RuntimeError,
+        match="Failed to remove items from collection 'col_1': Timeout",
     ):
         remove_from_collection(TEST_URL, TEST_KEY, "col_1", ["x"])
 
 
 @patch("jellyfin.network.delete")
-def test_delete_collection_success(mock_delete):
+def test_delete_collection_success(mock_delete) -> None:
     mock_response = MagicMock()
     mock_response.raise_for_status.return_value = None
     mock_delete.return_value = mock_response
@@ -700,24 +725,24 @@ def test_delete_collection_success(mock_delete):
 
 
 @patch("jellyfin.network.delete")
-def test_delete_collection_http_error(mock_delete):
+def test_delete_collection_http_error(mock_delete) -> None:
     mock_response = MagicMock()
     mock_response.status_code = 403
     mock_response.text = "Forbidden"
     mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(
-        response=mock_response
+        response=mock_response,
     )
     mock_delete.return_value = mock_response
 
     with pytest.raises(RuntimeError) as excinfo:
         delete_collection(TEST_URL, TEST_KEY, "col_1")
     assert "Failed to delete collection 'col_1' (Status 403): Forbidden" in str(
-        excinfo.value
+        excinfo.value,
     )
 
 
 @patch("jellyfin.network.delete")
-def test_delete_collection_request_exception(mock_delete):
+def test_delete_collection_request_exception(mock_delete) -> None:
     mock_delete.side_effect = requests.exceptions.RequestException("Gone")
 
     with pytest.raises(RuntimeError, match="Failed to delete collection 'col_1': Gone"):
@@ -725,9 +750,9 @@ def test_delete_collection_request_exception(mock_delete):
 
 
 @patch("mimetypes.guess_type")
-@patch("builtins.open")
+@patch("jellyfin.Path.open")
 @patch("jellyfin.network.post")
-def test_set_collection_image_success(mock_post, mock_open, mock_guess, caplog):
+def test_set_collection_image_success(mock_post, mock_open, mock_guess, caplog) -> None:
     mock_guess.return_value = ("image/png", None)
     mock_open.return_value.__enter__.return_value.read.return_value = b"png_data"
     mock_response = MagicMock()
@@ -745,8 +770,8 @@ def test_set_collection_image_success(mock_post, mock_open, mock_guess, caplog):
     assert "Successfully updated cover image for collection 'col_1'" in caplog.text
 
 
-@patch("builtins.open")
-def test_set_collection_image_os_error(mock_open, caplog):
+@patch("jellyfin.Path.open")
+def test_set_collection_image_os_error(mock_open, caplog) -> None:
     mock_open.side_effect = OSError("Permission denied")
 
     set_collection_image(TEST_URL, TEST_KEY, "col_1", "/bad/path.jpg")
@@ -754,9 +779,14 @@ def test_set_collection_image_os_error(mock_open, caplog):
 
 
 @patch("mimetypes.guess_type")
-@patch("builtins.open")
+@patch("jellyfin.Path.open")
 @patch("jellyfin.network.post")
-def test_set_collection_image_unknown_mime(mock_post, mock_open, mock_guess, caplog):
+def test_set_collection_image_unknown_mime(
+    mock_post,
+    mock_open,
+    mock_guess,
+    caplog,
+) -> None:
     mock_guess.return_value = (None, None)
     mock_open.return_value.__enter__.return_value.read.return_value = b"data"
     mock_response = MagicMock()
@@ -771,16 +801,21 @@ def test_set_collection_image_unknown_mime(mock_post, mock_open, mock_guess, cap
 
 
 @patch("mimetypes.guess_type")
-@patch("builtins.open")
+@patch("jellyfin.Path.open")
 @patch("jellyfin.network.post")
-def test_set_collection_image_http_error(mock_post, mock_open, mock_guess, caplog):
+def test_set_collection_image_http_error(
+    mock_post,
+    mock_open,
+    mock_guess,
+    caplog,
+) -> None:
     mock_guess.return_value = ("image/jpeg", None)
     mock_open.return_value.__enter__.return_value.read.return_value = b"jpeg_data"
     mock_response = MagicMock()
     mock_response.status_code = 400
     mock_response.text = "Bad Image"
     mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(
-        response=mock_response
+        response=mock_response,
     )
     mock_post.return_value = mock_response
 
@@ -791,11 +826,14 @@ def test_set_collection_image_http_error(mock_post, mock_open, mock_guess, caplo
 
 
 @patch("mimetypes.guess_type")
-@patch("builtins.open")
+@patch("jellyfin.Path.open")
 @patch("jellyfin.network.post")
 def test_set_collection_image_request_exception_no_response(
-    mock_post, mock_open, mock_guess, caplog
-):
+    mock_post,
+    mock_open,
+    mock_guess,
+    caplog,
+) -> None:
     mock_guess.return_value = ("image/jpeg", None)
     mock_open.return_value.__enter__.return_value.read.return_value = b"jpeg_data"
     mock_post.side_effect = requests.exceptions.RequestException("Upload Error")
@@ -805,7 +843,7 @@ def test_set_collection_image_request_exception_no_response(
 
 
 @patch("jellyfin.network.post")
-def test_post_or_raise_with_data(mock_post):
+def test_post_or_raise_with_data(mock_post) -> None:
     mock_post.return_value = MagicMock()
     mock_post.return_value.raise_for_status.return_value = None
     from jellyfin import _post_or_raise
@@ -820,15 +858,41 @@ def test_post_or_raise_with_data(mock_post):
     assert kwargs["data"] == "payload"
 
 
-def test_request_or_raise_unsupported_method():
+def test_request_or_raise_unsupported_method() -> None:
     from jellyfin import _request_or_raise
 
-    with pytest.raises(ValueError, match="Unsupported HTTP method: PUT"):
-        _request_or_raise("PUT", "http://test")
+    with pytest.raises(ValueError, match="Unsupported HTTP method: OPTIONS"):
+        _request_or_raise("OPTIONS", "http://test")
+
+
+@patch("jellyfin.network.put")
+@patch("jellyfin.network.get")
+def test_request_or_raise_put(mock_get, mock_put) -> None:
+    """PUT method delegates to network.put."""
+    mock_put.return_value = MagicMock()
+    mock_put.return_value.raise_for_status.return_value = None
+    from jellyfin import _request_or_raise
+
+    resp = _request_or_raise("PUT", "http://test")
+    assert resp is mock_put.return_value
+    mock_put.assert_called_once()
+
+
+@patch("jellyfin.network.patch")
+@patch("jellyfin.network.get")
+def test_request_or_raise_patch(mock_get, mock_patch) -> None:
+    """PATCH method delegates to network.patch."""
+    mock_patch.return_value = MagicMock()
+    mock_patch.return_value.raise_for_status.return_value = None
+    from jellyfin import _request_or_raise
+
+    resp = _request_or_raise("PATCH", "http://test")
+    assert resp is mock_patch.return_value
+    mock_patch.assert_called_once()
 
 
 @patch("jellyfin.network.get")
-def test_paginate_jellyfin_empty_page(mock_get):
+def test_paginate_jellyfin_empty_page(mock_get) -> None:
     mock_get.return_value = MagicMock()
     mock_get.return_value.json.return_value = {"Items": [], "TotalRecordCount": 0}
     mock_get.return_value.raise_for_status.return_value = None
@@ -838,21 +902,23 @@ def test_paginate_jellyfin_empty_page(mock_get):
     assert pages == [[]]
 
 
-def test_parse_json_decode_error():
+def test_parse_json_decode_error() -> None:
     from jellyfin import _parse_json
 
     mock_response = MagicMock()
     mock_response.status_code = 500
     mock_response.text = "not json"
     mock_response.json.side_effect = requests.exceptions.JSONDecodeError(
-        "test", "not json", 0
+        "test",
+        "not json",
+        0,
     )
     with pytest.raises(RuntimeError, match="Invalid JSON response"):
         _parse_json(mock_response)
 
 
 @patch("jellyfin.network.delete")
-def test_delete_virtual_folder_request_exception(mock_delete):
+def test_delete_virtual_folder_request_exception(mock_delete) -> None:
     mock_delete.side_effect = requests.exceptions.RequestException("Network down")
     with pytest.raises(RuntimeError, match="Failed to delete virtual folder"):
         delete_virtual_folder(TEST_URL, TEST_KEY, "FailFolder")

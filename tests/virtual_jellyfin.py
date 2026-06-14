@@ -1,4 +1,14 @@
+"""A lightweight Flask mock of the Jellyfin API for end-to-end testing.
+
+Provides stubbed endpoints for libraries, items, and user views so that
+the test suite can exercise the full sync pipeline without a live Jellyfin
+server.
+"""
+
+from __future__ import annotations
+
 import uuid
+from typing import Any
 
 from flask import Flask, jsonify, request
 
@@ -760,7 +770,7 @@ def get_system_info():
             "ServerName": "Virtual-Jellyfin-Mock",
             "Version": "10.8.10",
             "Id": "mock-server-id",
-        }
+        },
     )
 
 
@@ -873,7 +883,11 @@ def set_item_image(item_id):
 
 
 @app.route("/", methods=["GET"])
-def dashboard():
+def dashboard() -> str:
+    items: list[dict[str, Any]] = data["items"]  # type: ignore[assignment]
+    libraries: list[dict[str, Any]] = data["libraries"]  # type: ignore[assignment]
+    users: list[dict[str, Any]] = data["users"]  # type: ignore[assignment]
+    lib_paths: dict[str, Any] = data["library_paths"]  # type: ignore[assignment]
     return f"""
     <!DOCTYPE html>
     <html>
@@ -897,8 +911,8 @@ def dashboard():
                 <tr><th>Name</th><th>ItemId</th><th>CollectionType</th><th>Paths</th></tr>
                 {
         "".join(
-            f"<tr><td>{lib.get('Name')}</td><td>{lib.get('ItemId')}</td><td>{lib.get('CollectionType')}</td><td>{data['library_paths'].get(lib.get('Name'), [])}</td></tr>"
-            for lib in data["libraries"]
+            f"<tr><td>{lib.get('Name', '')}</td><td>{lib.get('ItemId', '')}</td><td>{lib.get('CollectionType', '')}</td><td>{lib_paths.get(lib.get('Name', ''), [])}</td></tr>"
+            for lib in libraries
         )
     }
             </table>
@@ -910,8 +924,7 @@ def dashboard():
                 <tr><th>Name</th><th>Id</th></tr>
                 {
         "".join(
-            f"<tr><td>{u.get('Name')}</td><td>{u.get('Id')}</td></tr>"
-            for u in data["users"]
+            f"<tr><td>{u.get('Name')}</td><td>{u.get('Id')}</td></tr>" for u in users
         )
     }
             </table>
@@ -928,7 +941,7 @@ def dashboard():
             f"<td>{i.get('Type')}</td>"
             f"<td>{i.get('ProductionYear')}</td>"
             f"<td>{i.get('ProviderIds', {}).get('Imdb', '')}</td></tr>"
-            for i in data["items"]
+            for i in items
         )
     }
             </table>

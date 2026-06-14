@@ -4,23 +4,13 @@
 
 services:
   jellyfin-groupings:
-    image: ghcr.io/entcheneric/jellyfin-groupings:latest
+    image: ghcr.io/entcheneric/jellyfin-groupings:${TAG:-latest}
     # build: . # Uncomment this if you want to build from source locally
     container_name: jellyfin-groupings
     restart: unless-stopped
     ports:
       - "5000:5000"
     environment:
-      # Optional HTTP Basic Auth password for the web UI and API (except / and /test).
-      # - APP_PASSWORD=${APP_PASSWORD:-}
-      # Host port override when running outside Docker (default 5000).
-      # - FLASK_PORT=5000
-      # Background scheduler: enabled by default. Set to 0 on extra gunicorn workers
-      # when GUNICORN_WORKERS>1, or use DISABLE_SCHEDULER=1 to disable entirely.
-      # - SCHEDULER_ENABLED=1
-      # - DISABLE_SCHEDULER=0
-      # Gunicorn worker count (default 1 in the image; raise only if SCHEDULER_ENABLED=0 on workers 2+).
-      # - GUNICORN_WORKERS=1
       # Use environment variables for sensitive API keys instead of
       # storing them in plaintext in config/config.json.
       # Values set here override whatever is in the config file.
@@ -28,8 +18,26 @@ services:
       - TRAKT_CLIENT_ID=${TRAKT_CLIENT_ID:-}
       - TMDB_API_KEY=${TMDB_API_KEY:-}
       - MAL_CLIENT_ID=${MAL_CLIENT_ID:-}
-      # Uncomment to disable debug mode in production:
+      # Override the AniList GraphQL API URL (e.g., for self-hosted proxies):
+      # - ANILIST_API_URL=https://graphql.anilist.co
+      # Set a password to enable HTTP Basic Auth on the web UI:
+      # - APP_PASSWORD=${APP_PASSWORD:-}
+      # Uncomment to override the Flask server port (default: 5000):
+      # - FLASK_PORT=5000
+      # Uncomment to disable debug mode in production (default: false):
       # - FLASK_DEBUG=false
+      # Override HTTP retry behaviour for external API calls:
+      # - NETWORK_RETRY_TOTAL=3
+      # - NETWORK_RETRY_BACKOFF_FACTOR=1.0
+      # - NETWORK_RETRY_STATUS_FORCELIST=429,500,502,503,504
+      # Comma-separated Flask endpoint names exempt from the X-Requested-With CSRF check:
+      # - ALLOWED_NON_CSRF_ENDPOINTS=main.webhook,main.callback
+      # Control log verbosity (DEBUG, INFO, WARNING, ERROR, CRITICAL; default: INFO):
+      # - LOG_LEVEL=INFO
+      # Gunicorn worker timeout in seconds for long-running sync (default: 120):
+      # - GUNICORN_TIMEOUT=120
+      # Number of gunicorn worker processes (default: 2):
+      # - GUNICORN_WORKERS=2
     volumes:
       # 1. Config persistence
       # Stores your API keys and group definitions. 
@@ -47,11 +55,19 @@ services:
       # In the Web UI, set "Same path on this machine" to: /media
       # - /path/to/your/media:/media:ro
 
+      # 4. Local covers directory (optional — library-local .covers/ takes
+      #    precedence; this is the legacy fallback location)
+      # - ./config/covers:/app/config/covers
+
+      # 5. Application logs (optional but helpful for troubleshooting)
+      # Logs are written to /app/logs/jellyfin-groupings.log by default.
+      # - ./logs:/app/logs
+
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/health')"]
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:5000/api/health', timeout=3).raise_for_status()"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 15s
     security_opt:
       - no-new-privileges:true
