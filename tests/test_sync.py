@@ -1473,6 +1473,19 @@ def test_run_sync_missing_settings():
         run_sync({"jellyfin_url": "", "api_key": "", "target_path": ""})
 
 
+@patch("sync.Path.mkdir")
+def test_run_sync_target_permission_denied(mock_mkdir, tmp_path):
+    mock_mkdir.side_effect = PermissionError("denied")
+    config = {
+        "jellyfin_url": "http://jf",
+        "api_key": "key",
+        "target_path": str(tmp_path / "virtual"),
+        "groups": [],
+    }
+    with pytest.raises(ValueError, match="permission denied"):
+        run_sync(config, dry_run=False)
+
+
 @patch("sync.get_libraries")
 @patch("sync._process_group")
 def test_run_sync_get_libraries_error(mock_process, mock_libs, tmp_path):

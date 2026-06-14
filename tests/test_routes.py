@@ -1146,3 +1146,21 @@ def test_get_jellyfin_config_null_values(mock_load_config):
     with pytest.raises(HTTPException) as excinfo:
         _get_jellyfin_config()
     assert excinfo.value.code == 400
+
+
+@patch("routes.fetch_jellyfin_items")
+@patch("routes.os.access")
+@patch("routes._search_local_filesystem")
+@pytest.mark.usefixtures("temp_config")
+def test_auto_detect_home_not_writable(
+    mock_search, mock_access, mock_fetch, client, monkeypatch
+):
+    save_config({"jellyfin_url": "http://test", "api_key": "key"})
+    mock_fetch.return_value = [{"Path": "/media/movies/M1.mkv"}]
+    mock_search.return_value = None
+    mock_access.return_value = False
+    monkeypatch.setattr("routes.Path.home", lambda: Path("/nonwritable"))
+    response = client.post("/api/jellyfin/auto-detect-paths")
+    assert response.status_code == 200
+    suggested = response.get_json()["detected"]["target_path"]
+    assert "jellyfin-groupings-virtual" in suggested

@@ -188,7 +188,16 @@ def test_fetch_trakt_pagination(mock_get):
 
 
 @patch("requests.post")
-def test_fetch_anilist_empty_data(mock_post):
+def test_fetch_anilist_non_dict_data_root(mock_post):
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"data": "not-a-dict"}
+    mock_post.return_value = mock_resp
+    assert fetch_anilist_list("u") == []
+
+
+@patch("requests.post")
+def test_fetch_anilist_graphql_errors(mock_post):
     mock_resp = MagicMock()
     mock_resp.status_code = 200
     mock_resp.json.return_value = {"errors": [{"message": "Too bad"}]}

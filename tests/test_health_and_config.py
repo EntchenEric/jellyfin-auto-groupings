@@ -97,6 +97,126 @@ def test_test_server_blocks_private_ip(client):
     assert resp.status_code == 400
 
 
+def test_test_server_rejects_non_http_scheme(client):
+    resp = client.post(
+        "/api/test-server",
+        json={"jellyfin_url": "ftp://example.com", "api_key": "test"},
+    )
+    assert resp.status_code == 400
+
+
+def test_test_server_rejects_missing_host(client):
+    resp = client.post(
+        "/api/test-server",
+        json={"jellyfin_url": "http://", "api_key": "test"},
+    )
+    assert resp.status_code == 400
+
+
+def test_test_server_rejects_rfc1918_ip(client):
+    resp = client.post(
+        "/api/test-server",
+        json={"jellyfin_url": "http://10.0.0.1:8096", "api_key": "test"},
+    )
+    assert resp.status_code == 400
+
+
+def test_post_config_rejects_non_list_groups(client):
+    payload = {
+        "jellyfin_url": "",
+        "api_key": "",
+        "groups": "not-a-list",
+        "scheduler": {
+            "global_enabled": False,
+            "global_schedule": "0 0 * * *",
+            "global_exclude_ids": [],
+        },
+    }
+    resp = client.post("/api/config", json=payload)
+    assert resp.status_code == 400
+
+
+def test_post_config_rejects_too_many_groups(client):
+    groups = [
+        {"name": f"G{i}", "source_type": "genre", "source_value": "Action"}
+        for i in range(201)
+    ]
+    payload = {
+        "jellyfin_url": "",
+        "api_key": "",
+        "groups": groups,
+        "scheduler": {
+            "global_enabled": False,
+            "global_schedule": "0 0 * * *",
+            "global_exclude_ids": [],
+        },
+    }
+    resp = client.post("/api/config", json=payload)
+    assert resp.status_code == 400
+
+
+def test_post_config_rejects_non_object_group(client):
+    payload = {
+        "jellyfin_url": "",
+        "api_key": "",
+        "groups": ["bad"],
+        "scheduler": {
+            "global_enabled": False,
+            "global_schedule": "0 0 * * *",
+            "global_exclude_ids": [],
+        },
+    }
+    resp = client.post("/api/config", json=payload)
+    assert resp.status_code == 400
+
+
+def test_api_requires_auth_when_app_password_set(client, monkeypatch):
+    monkeypatch.setattr("routes._APP_PASSWORD", "secret")
+    resp = client.get("/api/config")
+    assert resp.status_code == 401
+
+
+def test_health_exempt_from_app_password(client, monkeypatch):
+    monkeypatch.setattr("routes._APP_PASSWORD", "secret")
+    resp = client.get("/api/health")
+    assert resp.status_code == 200
+
+
+def test_static_exempt_from_app_password(client, monkeypatch):
+    monkeypatch.setattr("routes._APP_PASSWORD", "secret")
+    resp = client.get("/static/js/app.js")
+    assert resp.status_code != 401
+
+
+def test_api_auth_with_valid_password(client, monkeypatch):
+    monkeypatch.setattr("routes._APP_PASSWORD", "secret")
+    resp = client.get(
+        "/api/config",
+        headers={
+            "Authorization": "Basic "
+            + __import__("base64").b64encode(b"user:secret").decode()
+        },
+    )
+    assert resp.status_code == 200
+
+
+def test_test_server_blocks_link_local(client):
+    resp = client.post(
+        "/api/test-server",
+        json={"jellyfin_url": "http://169.254.169.254/", "api_key": "test"},
+    )
+    assert resp.status_code == 400
+
+
+def test_search_local_filesystem_skips_non_directory_root():
+    from routes import _search_local_filesystem
+
+    assert (
+        _search_local_filesystem("movie.mkv", ["/this/path/does/not/exist12345"])
+        is None
+    )
+
+
 @pytest.mark.parametrize(
     "query",
     [
