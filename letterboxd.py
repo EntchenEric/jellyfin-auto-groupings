@@ -43,19 +43,25 @@ def _extract_ids_from_list_page(html: str) -> dict[str, str]:
     found: dict[str, str] = {}
 
     for match in re.finditer(
-        r'data-film-slug="([^"]+)".*?data-tmdb-id="(\d+)"', html, re.DOTALL,
+        r'data-film-slug="([^"]+)".*?data-tmdb-id="(\d+)"',
+        html,
+        re.DOTALL,
     ):
         found[match.group(1)] = match.group(2)
 
     for match in re.finditer(
-        r'data-film-slug="([^"]+)".*?imdb\.com/title/(tt\d+)', html, re.DOTALL,
+        r'data-film-slug="([^"]+)".*?imdb\.com/title/(tt\d+)',
+        html,
+        re.DOTALL,
     ):
         slug = match.group(1)
         if slug not in found:
             found[slug] = match.group(2)
 
     for match in re.finditer(
-        r'data-film-slug="([^"]+)".*?themoviedb\.org/movie/(\d+)', html, re.DOTALL,
+        r'data-film-slug="([^"]+)".*?themoviedb\.org/movie/(\d+)',
+        html,
+        re.DOTALL,
     ):
         slug = match.group(1)
         if slug not in found:
@@ -119,7 +125,9 @@ def _fetch_id_for_slug(slug: str) -> str | None:
     """
     film_url = f"https://letterboxd.com/film/{slug}/"
     try:
-        resp = requests.get(film_url, headers=_REQUEST_HEADERS, timeout=_FILM_PAGE_TIMEOUT)
+        resp = requests.get(
+            film_url, headers=_REQUEST_HEADERS, timeout=_FILM_PAGE_TIMEOUT
+        )
         resp.raise_for_status()
         html = resp.text
 
@@ -136,7 +144,9 @@ def _fetch_id_for_slug(slug: str) -> str | None:
             return tmdb_attr.group(1)
 
     except requests.exceptions.RequestException:
-        logger.warning("Failed to fetch Letterboxd film page for '%s'", slug, exc_info=True)
+        logger.warning(
+            "Failed to fetch Letterboxd film page for '%s'", slug, exc_info=True
+        )
         return None
 
     return None
@@ -172,7 +182,9 @@ def fetch_letterboxd_list(list_url: str) -> list[str]:
         current_url = f"{list_url}/page/{page}/" if page > 1 else f"{list_url}/"
 
         try:
-            resp = requests.get(current_url, headers=_REQUEST_HEADERS, timeout=_LIST_PAGE_TIMEOUT)
+            resp = requests.get(
+                current_url, headers=_REQUEST_HEADERS, timeout=_LIST_PAGE_TIMEOUT
+            )
             if resp.status_code == 404 and page > 1:
                 break
             resp.raise_for_status()
@@ -196,7 +208,10 @@ def fetch_letterboxd_list(list_url: str) -> list[str]:
         slugs_to_fetch = [s for s in unique_slugs if s not in ids_from_list]
         logger.info(
             "Letterboxd page %d: %d slugs (%d from list, %d to fetch)",
-            page, len(unique_slugs), len(ids_from_list), len(slugs_to_fetch),
+            page,
+            len(unique_slugs),
+            len(ids_from_list),
+            len(slugs_to_fetch),
         )
 
         slug_results = _fetch_ids_for_slugs(slugs_to_fetch)

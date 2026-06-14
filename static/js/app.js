@@ -1,7 +1,7 @@
 // app.js – Application entry point
 
 import { state, metadataTypes } from './core/state.js';
-import { getEl, showToast, showErrorDialog, setLoading, showLoadingOverlay, updateLoadingStatus, hideLoadingOverlay } from './core/ui.js';
+import { getEl, showToast, showErrorDialog, setLoading, showLoadingOverlay, updateLoadingStatus, hideLoadingOverlay, hideModal } from './core/ui.js';
 
 import { initConfig, loadConfig, saveAllConfig, toggleGlobalScheduler, toggleCleanupScheduler } from './features/config.js';
 import { initWizard, openWizardManual } from './features/wizard.js';
@@ -13,7 +13,7 @@ import { initExportImport, openExportModal, openImportModal, handleFileSelected 
 import { initCoverGenerator } from './features/cover-generator.js';
 import { initPathPicker, openPathPicker, closePicker, confirmPicker, pickerOutsideClick } from './features/path-picker.js';
 import { initSidebarResizer } from './features/sidebar-resizer.js';
-import { renderGroups, cancelEdit, toggleSortOrder, toggleSeasonal, toggleGroupScheduler, populateSeasonalDays, resetFormUI } from './features/groupings.js';
+import { renderGroups, cancelEdit, toggleSortOrder, toggleSeasonal, toggleGroupScheduler, populateSeasonalDays, resetFormUI, clearAllGroups } from './features/groupings.js';
 
 // Listen for cross-module events
 document.addEventListener('groups-changed', () => renderGroups());
@@ -37,9 +37,13 @@ function wireTopbarButtons() {
     const topbarSyncBtn = getEl('topbar-sync-btn');
     if (topbarSyncBtn) {
         topbarSyncBtn.onclick = async () => {
-            setLoading(topbarSyncBtn, true);
-            try { await syncAll(); }
-            finally { setLoading(topbarSyncBtn, false); }
+            if (localStorage.getItem('confirm-sync-skip-next') === 'true') {
+                setLoading(topbarSyncBtn, true);
+                try { await syncAll(); }
+                finally { setLoading(topbarSyncBtn, false); }
+            } else {
+                await showConfirmSyncDialog();
+            }
         };
     }
 
@@ -84,7 +88,11 @@ function wireConfirmSyncDialog() {
 
     if (confirmGoBtn) {
         confirmGoBtn.onclick = async () => {
-            getEl('confirm-sync-modal').style.display = 'none';
+            const skipCb = getEl('confirm-sync-skip-next');
+            if (skipCb?.checked) {
+                localStorage.setItem('confirm-sync-skip-next', 'true');
+            }
+            hideModal('confirm-sync-modal');
             const topbarSyncBtn = getEl('topbar-sync-btn');
             setLoading(topbarSyncBtn, true);
             try { await syncAll(); }
@@ -94,7 +102,7 @@ function wireConfirmSyncDialog() {
 
     if (confirmPreviewBtn) {
         confirmPreviewBtn.onclick = async () => {
-            getEl('confirm-sync-modal').style.display = 'none';
+            hideModal('confirm-sync-modal');
             await previewSyncAll();
         };
     }
@@ -116,6 +124,11 @@ function wireMiscButtons() {
             getEl('sync-results-panel').style.display = 'none';
             getEl('sync-results-content').innerHTML = '';
         };
+    }
+
+    const clearAllBtn = getEl('clear-all-btn');
+    if (clearAllBtn) {
+        clearAllBtn.onclick = clearAllGroups;
     }
 }
 

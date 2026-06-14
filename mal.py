@@ -32,7 +32,9 @@ def _normalize_mal_status(status: str | None) -> str | None:
     return mapping.get(s, s)
 
 
-def fetch_mal_list(username: str, client_id: str, status: str | None = None) -> list[int]:
+def fetch_mal_list(
+    username: str, client_id: str, status: str | None = None
+) -> list[int]:
     """Fetch anime IDs from a user's MyAnimeList profile.
 
     Args:
@@ -51,6 +53,10 @@ def fetch_mal_list(username: str, client_id: str, status: str | None = None) -> 
 
     normalized_status = _normalize_mal_status(status)
 
+    if normalized_status and normalized_status not in _VALID_MAL_STATUSES:
+        msg = f"Invalid MAL status: {status}"
+        raise ValueError(msg)
+
     url = f"{MAL_API_BASE_URL}/users/{username}/animelist"
     params: dict[str, Any] = {
         "fields": "id",
@@ -66,7 +72,9 @@ def fetch_mal_list(username: str, client_id: str, status: str | None = None) -> 
     ids = []
 
     while url:
-        response = requests.get(url, params=params, headers=headers, timeout=_REQUEST_TIMEOUT)
+        response = requests.get(
+            url, params=params, headers=headers, timeout=_REQUEST_TIMEOUT
+        )
         response.raise_for_status()
 
         data = response.json()

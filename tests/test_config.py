@@ -17,6 +17,7 @@ def test_load_config_defaults(temp_config):
 def test_save_and_load_config(temp_config):
     """Test saving and then loading configuration."""
     import copy
+
     new_cfg = copy.deepcopy(DEFAULT_CONFIG)
     new_cfg["jellyfin_url"] = TEST_URL
     save_config(new_cfg)
@@ -77,3 +78,53 @@ def test_load_config_env_override(temp_config, monkeypatch):
     monkeypatch.setenv("JELLYFIN_API_KEY", "env_api_key")
     cfg = load_config()
     assert cfg["api_key"] == "env_api_key"
+
+
+def test_env_flag():
+    from config import _env_flag
+
+    assert _env_flag("MISSING_VAR", default=True) is True
+    assert _env_flag("MISSING_VAR", default=False) is False
+
+
+def test_load_config_oserror_on_read(temp_config):
+    import stat
+
+    config_path = Path(temp_config)
+    with config_path.open("w") as f:
+        json.dump({"jellyfin_url": "http://test"}, f)
+    config_path.chmod(0)
+    try:
+        cfg = load_config()
+    finally:
+        config_path.chmod(stat.S_IRUSR | stat.S_IWUSR)
+    assert cfg["jellyfin_url"] == ""
+
+
+def test_load_config_corrupt_backup_oserror(temp_config, monkeypatch):
+    with Path(temp_config).open("w") as f:
+        f.write("{bad json")
+
+    def fail_copy(*_args, **_kwargs):
+        msg = "backup failed"
+        raise OSError(msg)
+
+    monkeypatch.setattr("config.shutil.copy2", fail_copy)
+    cfg = load_config()
+    assert cfg["groups"] == []
+
+
+def test_save_config_cleans_temp_on_failure(temp_config, monkeypatch):
+    def fail_replace(self, _target):
+        msg = "replace failed"
+        raise OSError(msg)
+
+    monkeypatch.setattr(Path, "replace", fail_replace)
+    tmp = Path(temp_config).with_suffix(".json.tmp")
+    try:
+        import pytest
+
+        with pytest.raises(OSError):
+            save_config({"jellyfin_url": TEST_URL, "groups": []})
+    finally:
+        assert not tmp.exists()

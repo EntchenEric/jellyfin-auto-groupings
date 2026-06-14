@@ -7,6 +7,7 @@ to either a global schedule (with exclusions) or per-group schedules.
 from __future__ import annotations
 
 import logging
+import re
 import threading
 from typing import Any
 
@@ -23,6 +24,11 @@ _scheduler = BackgroundScheduler()
 sync_lock = threading.Lock()
 logger = logging.getLogger(__name__)
 
+
+def _sanitize_job_id(name: str) -> str:
+    return re.sub(r"[^a-zA-Z0-9_-]", "_", name)
+
+
 __all__ = [
     "start_scheduler",
     "update_scheduler_jobs",
@@ -38,7 +44,9 @@ def start_scheduler() -> None:
     update_scheduler_jobs()
 
 
-def _schedule_global_sync(scheduler: BackgroundScheduler, sched_cfg: dict[str, Any]) -> None:
+def _schedule_global_sync(
+    scheduler: BackgroundScheduler, sched_cfg: dict[str, Any]
+) -> None:
     """Add the global sync job if enabled."""
     if not sched_cfg.get("global_enabled"):
         return
@@ -54,7 +62,9 @@ def _schedule_global_sync(scheduler: BackgroundScheduler, sched_cfg: dict[str, A
             name="Global Sync (with exclusions)",
             args=[excluded_names],
         )
-        logger.info("Scheduled global sync: %s (excluding: %s)", cron_expr, excluded_names)
+        logger.info(
+            "Scheduled global sync: %s (excluding: %s)", cron_expr, excluded_names
+        )
     except (ValueError, KeyError, OSError):
         logger.exception("Failed to schedule global sync")
 
@@ -73,7 +83,7 @@ def _schedule_group_syncs(scheduler: BackgroundScheduler, groups: list[Any]) -> 
                 scheduler.add_job(
                     _run_group_sync_job,
                     CronTrigger.from_crontab(cron_expr),
-                    id=f"group_sync_{group_name}",
+                    id=f"group_sync_{_sanitize_job_id(group_name)}",
                     name=f"Sync Group: {group_name}",
                     args=[group_name],
                 )
@@ -82,7 +92,9 @@ def _schedule_group_syncs(scheduler: BackgroundScheduler, groups: list[Any]) -> 
                 logger.exception("Failed to schedule sync for group '%s'", group_name)
 
 
-def _schedule_cleanup(scheduler: BackgroundScheduler, sched_cfg: dict[str, Any]) -> None:
+def _schedule_cleanup(
+    scheduler: BackgroundScheduler, sched_cfg: dict[str, Any]
+) -> None:
     """Add the broken-symlink cleanup job if enabled."""
     if not sched_cfg.get("cleanup_enabled", True):
         return
@@ -132,7 +144,9 @@ def _run_global_sync_job(exclude_names: list[str]) -> None:
         with sync_lock:
             run_sync(config, group_names=sync_names)
     else:
-        logger.info("Background global sync skipped: no groups to sync after exclusions")
+        logger.info(
+            "Background global sync skipped: no groups to sync after exclusions"
+        )
 
 
 def _run_group_sync_job(group_name: str) -> None:
@@ -149,7 +163,9 @@ def _run_cleanup_job() -> None:
     logger.info("Background cleanup job starting")
     with sync_lock:
         deleted = run_cleanup_broken_symlinks(config)
-        logger.info("Background cleanup job finished: deleted %s broken symlinks", deleted)
+        logger.info(
+            "Background cleanup job finished: deleted %s broken symlinks", deleted
+        )
 
 
 def validate_cron(expr: str) -> str | None:

@@ -131,14 +131,17 @@ def test_get_cover_path(tmp_path):
     # Test non-existent with check_exists=True
     assert _get_cover_path("Missing Group", target_base, check_exists=True) is None
     # Test existent in lib
-    lib_path = str(Path(target_base) / ".covers" / (hashlib.md5(
-        b"Existent", usedforsecurity=False).hexdigest() + ".jpg"))
+    lib_path = str(
+        Path(target_base)
+        / ".covers"
+        / (hashlib.md5(b"Existent", usedforsecurity=False).hexdigest() + ".jpg")
+    )
     with Path(lib_path).open("w") as f:
         f.write("test")
     assert _get_cover_path("Existent", target_base, check_exists=True) == lib_path
 
 
-@patch('sync.fetch_jellyfin_items')
+@patch("sync.fetch_jellyfin_items")
 def test_match_jellyfin_items_by_provider(mock_jf):
     _LIBRARY_CACHE.clear()
     mock_jf.return_value = [
@@ -146,39 +149,76 @@ def test_match_jellyfin_items_by_provider(mock_jf):
         {"Id": "2", "Name": "M2", "ProviderIds": {"Tmdb": "202"}},
     ]
     items, _err, _code = _match_jellyfin_items_by_provider(
-        ["101"], "Tmdb", "tmdb_list_order", "tmdb_list_order", "http://jf", "key", "Group",
+        ["101"],
+        "Tmdb",
+        "tmdb_list_order",
+        "tmdb_list_order",
+        "http://jf",
+        "key",
+        "Group",
     )
     assert len(items) == 1
     assert items[0]["Name"] == "M1"
 
 
-@patch('sync.fetch_jellyfin_items')
+@patch("sync.fetch_jellyfin_items")
 def test_match_jellyfin_items_with_watch_state(mock_jf):
     _LIBRARY_CACHE.clear()
     mock_jf.return_value = [
-        {"Id": "1", "Name": "Played", "ProviderIds": {"Tmdb": "101"}, "UserData": {"Played": True}},
-        {"Id": "2", "Name": "Unplayed", "ProviderIds": {"Tmdb": "102"}, "UserData": {"Played": False}},
+        {
+            "Id": "1",
+            "Name": "Played",
+            "ProviderIds": {"Tmdb": "101"},
+            "UserData": {"Played": True},
+        },
+        {
+            "Id": "2",
+            "Name": "Unplayed",
+            "ProviderIds": {"Tmdb": "102"},
+            "UserData": {"Played": False},
+        },
     ]
     # All
     items, _, _ = _match_jellyfin_items_by_provider(
-        ["101", "102"], "Tmdb", "SortName", "SortName", "http://jf", "key", "Group", "",
+        ["101", "102"],
+        "Tmdb",
+        "SortName",
+        "SortName",
+        "http://jf",
+        "key",
+        "Group",
+        "",
     )
     assert len(items) == 2
     # Unwatched
     items, _, _ = _match_jellyfin_items_by_provider(
-        ["101", "102"], "Tmdb", "SortName", "SortName", "http://jf", "key", "Group", "unwatched",
+        ["101", "102"],
+        "Tmdb",
+        "SortName",
+        "SortName",
+        "http://jf",
+        "key",
+        "Group",
+        "unwatched",
     )
     assert len(items) == 1
     assert items[0]["Name"] == "Unplayed"
     # Watched
     items, _, _ = _match_jellyfin_items_by_provider(
-        ["101", "102"], "Tmdb", "SortName", "SortName", "http://jf", "key", "Group", "watched",
+        ["101", "102"],
+        "Tmdb",
+        "SortName",
+        "SortName",
+        "http://jf",
+        "key",
+        "Group",
+        "watched",
     )
     assert len(items) == 1
     assert items[0]["Name"] == "Played"
 
 
-@patch('sync.fetch_jellyfin_items')
+@patch("sync.fetch_jellyfin_items")
 def test_preview_group(mock_jf):
     _LIBRARY_CACHE.clear()
     mock_jf.return_value = [{"Name": "M1", "Genres": ["Action"]}]
@@ -188,29 +228,37 @@ def test_preview_group(mock_jf):
     assert len(items) == 1
     # Complex group (AND)
     _LIBRARY_CACHE.clear()  # Ensure _fetch_full_library calls mock
-    items, _err, code = preview_group("genre", "Action AND NOT Comedy", "http://jf", "key")
+    items, _err, code = preview_group(
+        "genre", "Action AND NOT Comedy", "http://jf", "key"
+    )
     assert code == 200
     assert len(items) == 1
 
 
-@patch('sync.fetch_jellyfin_items')
+@patch("sync.fetch_jellyfin_items")
 def test_fetch_items_for_metadata_group_with_watch_state(mock_jf):
     mock_jf.return_value = [{"Name": "M1"}]
     # Test 'unwatched' calls fetch with Filters=IsUnplayed
-    _fetch_items_for_metadata_group("Group", "genre", "Action", "SortName", "http://jf", "key", "unwatched")
+    _fetch_items_for_metadata_group(
+        "Group", "genre", "Action", "SortName", "http://jf", "key", "unwatched"
+    )
     args, _ = mock_jf.call_args
     assert args[2]["Filters"] == "IsUnplayed"
     # Test 'watched' calls fetch with Filters=IsPlayed
-    _fetch_items_for_metadata_group("Group", "genre", "Action", "SortName", "http://jf", "key", "watched")
+    _fetch_items_for_metadata_group(
+        "Group", "genre", "Action", "SortName", "http://jf", "key", "watched"
+    )
     args, _ = mock_jf.call_args
     assert args[2]["Filters"] == "IsPlayed"
     # Test default doesn't have Filters
-    _fetch_items_for_metadata_group("Group", "genre", "Action", "SortName", "http://jf", "key", "")
+    _fetch_items_for_metadata_group(
+        "Group", "genre", "Action", "SortName", "http://jf", "key", ""
+    )
     args, _ = mock_jf.call_args
     assert "Filters" not in args[2]
 
 
-@patch('sync.fetch_jellyfin_items')
+@patch("sync.fetch_jellyfin_items")
 def test_preview_group_fetch_error(mock_jf):
     _LIBRARY_CACHE.clear()
     mock_jf.side_effect = RuntimeError("Network error")
@@ -253,12 +301,18 @@ def test_match_condition_variants():
     assert _match_condition(item, "actor", "b") is False
 
 
-@patch('sync.fetch_jellyfin_items')
+@patch("sync.fetch_jellyfin_items")
 def test_match_by_provider_empty_library(mock_jf):
     _LIBRARY_CACHE.clear()
     mock_jf.return_value = []
     items, _err, code = _match_jellyfin_items_by_provider(
-        ["101"], "Tmdb", "tmdb_list_order", "tmdb_list_order", "http://jf", "key", "Group",
+        ["101"],
+        "Tmdb",
+        "tmdb_list_order",
+        "tmdb_list_order",
+        "http://jf",
+        "key",
+        "Group",
     )
     assert items == []
     assert code == 200
@@ -287,7 +341,7 @@ def test_sort_items_missing_field():
     assert len(sorted_items) == 2
 
 
-@patch('sync.fetch_jellyfin_items')
+@patch("sync.fetch_jellyfin_items")
 def test_match_jellyfin_items_no_match(mock_jf):
     _LIBRARY_CACHE.clear()
     mock_jf.return_value = [
@@ -295,7 +349,13 @@ def test_match_jellyfin_items_no_match(mock_jf):
     ]
     # Should return empty if no match
     items, _err, _code = _match_jellyfin_items_by_provider(
-        ["101"], "Tmdb", "tmdb_list_order", "tmdb_list_order", "http://jf", "key", "Group",
+        ["101"],
+        "Tmdb",
+        "tmdb_list_order",
+        "tmdb_list_order",
+        "http://jf",
+        "key",
+        "Group",
     )
     assert len(items) == 0
 
@@ -337,7 +397,8 @@ def test_sort_items_missing_values_logic():
 
 def test_is_in_season():
     from unittest.mock import MagicMock
-    with patch('sync.datetime') as mock_datetime:
+
+    with patch("sync.datetime") as mock_datetime:
         mock_now = MagicMock()
         mock_datetime.now.return_value = mock_now
         # Case 1: Within year window
@@ -360,6 +421,7 @@ def test_is_in_season():
 # run_cleanup_broken_symlinks
 # ---------------------------------------------------------------------------
 
+
 def test_run_cleanup_broken_symlinks_invalid_path():
     assert run_cleanup_broken_symlinks({"target_path": ""}) == 0
     assert run_cleanup_broken_symlinks({"target_path": "/nonexistent"}) == 0
@@ -369,9 +431,15 @@ def test_run_cleanup_broken_symlinks_invalid_path():
 # _fetch_items_for_recommendations_group
 # ---------------------------------------------------------------------------
 
+
 def test_fetch_items_recommendations_no_api_key():
     _items, error, code = _fetch_items_for_recommendations_group(
-        "Rec", "user1", "SortName", "http://jf", "key", None,
+        "Rec",
+        "user1",
+        "SortName",
+        "http://jf",
+        "key",
+        None,
     )
     assert code == 400
     assert "TMDb API Key not set" in error
@@ -379,27 +447,42 @@ def test_fetch_items_recommendations_no_api_key():
 
 def test_fetch_items_recommendations_no_source_value():
     _items, error, code = _fetch_items_for_recommendations_group(
-        "Rec", "", "SortName", "http://jf", "key", "api_key",
+        "Rec",
+        "",
+        "SortName",
+        "http://jf",
+        "key",
+        "api_key",
     )
     assert code == 400
     assert "User ID must be selected" in error
 
 
-@patch('sync.get_user_recent_items')
+@patch("sync.get_user_recent_items")
 def test_fetch_items_recommendations_no_tmdb_ids(mock_recent):
     mock_recent.return_value = [{"ProviderIds": {}, "Type": "Movie"}]
     items, _error, code = _fetch_items_for_recommendations_group(
-        "Rec", "user1", "SortName", "http://jf", "key", "api_key",
+        "Rec",
+        "user1",
+        "SortName",
+        "http://jf",
+        "key",
+        "api_key",
     )
     assert code == 200
     assert items == []
 
 
-@patch('sync.get_user_recent_items')
+@patch("sync.get_user_recent_items")
 def test_fetch_items_recommendations_exception(mock_recent):
     mock_recent.side_effect = RuntimeError("Jellyfin down")
     _items, error, code = _fetch_items_for_recommendations_group(
-        "Rec", "user1", "SortName", "http://jf", "key", "api_key",
+        "Rec",
+        "user1",
+        "SortName",
+        "http://jf",
+        "key",
+        "api_key",
     )
     assert code == 400
     assert "Recommendations fetch error" in error
@@ -409,12 +492,19 @@ def test_fetch_items_recommendations_exception(mock_recent):
 # _process_collection_group
 # ---------------------------------------------------------------------------
 
-@patch('sync.find_collection_by_name')
-@patch('sync.add_to_collection')
+
+@patch("sync.find_collection_by_name")
+@patch("sync.add_to_collection")
 def test_process_collection_group_dry_run(mock_add, mock_find):
     items = [{"Id": "1", "Name": "Movie"}]
     result = _process_collection_group(
-        "Group", items, "http://jf", "key", "/target", dry_run=True, auto_set_library_covers=False,
+        "Group",
+        items,
+        "http://jf",
+        "key",
+        "/target",
+        dry_run=True,
+        auto_set_library_covers=False,
     )
     assert result["links"] == 1
     assert "items" in result
@@ -422,18 +512,30 @@ def test_process_collection_group_dry_run(mock_add, mock_find):
 
 def test_process_collection_group_no_ids():
     result = _process_collection_group(
-        "Group", [], "http://jf", "key", "/target", dry_run=False, auto_set_library_covers=False,
+        "Group",
+        [],
+        "http://jf",
+        "key",
+        "/target",
+        dry_run=False,
+        auto_set_library_covers=False,
     )
     assert result["links"] == 0
     assert "No item IDs" in result["error"]
 
 
-@patch('sync.find_collection_by_name')
+@patch("sync.find_collection_by_name")
 def test_process_collection_group_error(mock_find):
     mock_find.side_effect = RuntimeError("Collection error")
     items = [{"Id": "1", "Name": "Movie"}]
     result = _process_collection_group(
-        "Group", items, "http://jf", "key", "/target", dry_run=False, auto_set_library_covers=False,
+        "Group",
+        items,
+        "http://jf",
+        "key",
+        "/target",
+        dry_run=False,
+        auto_set_library_covers=False,
     )
     assert result["links"] == 0
     assert "Collection error" in result["error"]
@@ -443,64 +545,98 @@ def test_process_collection_group_error(mock_find):
 # _fetch_items_for_letterboxd_group
 # ---------------------------------------------------------------------------
 
-@patch('sync.fetch_letterboxd_list')
+
+@patch("sync.fetch_letterboxd_list")
 def test_fetch_items_letterboxd_error(mock_fetch):
     mock_fetch.side_effect = RuntimeError("Network error")
     _items, error, code = _fetch_items_for_letterboxd_group(
-        "LB", "user/list", "SortName", "http://jf", "key",
+        "LB",
+        "user/list",
+        "SortName",
+        "http://jf",
+        "key",
     )
     assert code == 400
     assert "Letterboxd fetch error" in error
 
 
-@patch('sync.fetch_letterboxd_list')
-@patch('sync._fetch_full_library')
+@patch("sync.fetch_letterboxd_list")
+@patch("sync._fetch_full_library")
 def test_fetch_items_letterboxd_empty_list(mock_lib, mock_fetch):
     mock_fetch.return_value = []
     items, _error, code = _fetch_items_for_letterboxd_group(
-        "LB", "user/list", "SortName", "http://jf", "key",
+        "LB",
+        "user/list",
+        "SortName",
+        "http://jf",
+        "key",
     )
     assert code == 200
     assert items == []
 
 
-@patch('sync.fetch_letterboxd_list')
-@patch('sync._fetch_full_library')
+@patch("sync.fetch_letterboxd_list")
+@patch("sync._fetch_full_library")
 def test_fetch_items_letterboxd_watch_state(mock_lib, mock_fetch):
     mock_fetch.return_value = ["tt123"]
-    mock_lib.return_value = [
-        {"Id": "1", "ProviderIds": {"Imdb": "tt123"}, "UserData": {"Played": True}},
-    ], None, 200
+    mock_lib.return_value = (
+        [
+            {"Id": "1", "ProviderIds": {"Imdb": "tt123"}, "UserData": {"Played": True}},
+        ],
+        None,
+        200,
+    )
     items, _error, code = _fetch_items_for_letterboxd_group(
-        "LB", "user/list", "SortName", "http://jf", "key", watch_state="unwatched",
+        "LB",
+        "user/list",
+        "SortName",
+        "http://jf",
+        "key",
+        watch_state="unwatched",
     )
     assert code == 200
     assert items == []
 
 
-@patch('sync.fetch_letterboxd_list')
-@patch('sync._fetch_full_library')
+@patch("sync.fetch_letterboxd_list")
+@patch("sync._fetch_full_library")
 def test_fetch_items_letterboxd_tmdb_match(mock_lib, mock_fetch):
     mock_fetch.return_value = ["456"]
-    mock_lib.return_value = [
-        {"Id": "1", "ProviderIds": {"Tmdb": "456"}},
-    ], None, 200
+    mock_lib.return_value = (
+        [
+            {"Id": "1", "ProviderIds": {"Tmdb": "456"}},
+        ],
+        None,
+        200,
+    )
     items, _error, code = _fetch_items_for_letterboxd_group(
-        "LB", "user/list", "SortName", "http://jf", "key",
+        "LB",
+        "user/list",
+        "SortName",
+        "http://jf",
+        "key",
     )
     assert code == 200
     assert len(items) == 1
 
 
-@patch('sync.fetch_letterboxd_list')
-@patch('sync._fetch_full_library')
+@patch("sync.fetch_letterboxd_list")
+@patch("sync._fetch_full_library")
 def test_fetch_items_letterboxd_non_list_order(mock_lib, mock_fetch):
     mock_fetch.return_value = ["tt123", "tt123"]
-    mock_lib.return_value = [
-        {"Id": "1", "ProviderIds": {"Imdb": "tt123"}},
-    ], None, 200
+    mock_lib.return_value = (
+        [
+            {"Id": "1", "ProviderIds": {"Imdb": "tt123"}},
+        ],
+        None,
+        200,
+    )
     items, _error, code = _fetch_items_for_letterboxd_group(
-        "LB", "user/list", "SortName", "http://jf", "key",
+        "LB",
+        "user/list",
+        "SortName",
+        "http://jf",
+        "key",
     )
     assert code == 200
     assert len(items) == 1
@@ -510,21 +646,30 @@ def test_fetch_items_letterboxd_non_list_order(mock_lib, mock_fetch):
 # _fetch_items_for_imdb_group
 # ---------------------------------------------------------------------------
 
-@patch('sync.fetch_imdb_list')
+
+@patch("sync.fetch_imdb_list")
 def test_fetch_items_imdb_error(mock_fetch):
     mock_fetch.side_effect = RuntimeError("IMDb down")
     _items, error, code = _fetch_items_for_imdb_group(
-        "IMDb", "list_id", "SortName", "http://jf", "key",
+        "IMDb",
+        "list_id",
+        "SortName",
+        "http://jf",
+        "key",
     )
     assert code == 400
     assert "IMDb fetch error" in error
 
 
-@patch('sync.fetch_imdb_list')
+@patch("sync.fetch_imdb_list")
 def test_fetch_items_imdb_empty(mock_fetch):
     mock_fetch.return_value = []
     items, _error, code = _fetch_items_for_imdb_group(
-        "IMDb", "list_id", "SortName", "http://jf", "key",
+        "IMDb",
+        "list_id",
+        "SortName",
+        "http://jf",
+        "key",
     )
     assert code == 200
     assert items == []
@@ -534,30 +679,46 @@ def test_fetch_items_imdb_empty(mock_fetch):
 # _fetch_items_for_trakt_group
 # ---------------------------------------------------------------------------
 
-@patch('sync.fetch_trakt_list')
+
+@patch("sync.fetch_trakt_list")
 def test_fetch_items_trakt_no_client_id(mock_fetch):
     _items, error, code = _fetch_items_for_trakt_group(
-        "Trakt", "user/list", "SortName", "http://jf", "key", None,
+        "Trakt",
+        "user/list",
+        "SortName",
+        "http://jf",
+        "key",
+        None,
     )
     assert code == 400
     assert "Trakt Client ID not set" in error
 
 
-@patch('sync.fetch_trakt_list')
+@patch("sync.fetch_trakt_list")
 def test_fetch_items_trakt_error(mock_fetch):
     mock_fetch.side_effect = RuntimeError("Trakt down")
     _items, error, code = _fetch_items_for_trakt_group(
-        "Trakt", "user/list", "SortName", "http://jf", "key", "client_id",
+        "Trakt",
+        "user/list",
+        "SortName",
+        "http://jf",
+        "key",
+        "client_id",
     )
     assert code == 400
     assert "Trakt fetch error" in error
 
 
-@patch('sync.fetch_trakt_list')
+@patch("sync.fetch_trakt_list")
 def test_fetch_items_trakt_empty(mock_fetch):
     mock_fetch.return_value = []
     items, _error, code = _fetch_items_for_trakt_group(
-        "Trakt", "user/list", "SortName", "http://jf", "key", "client_id",
+        "Trakt",
+        "user/list",
+        "SortName",
+        "http://jf",
+        "key",
+        "client_id",
     )
     assert code == 200
     assert items == []
@@ -567,21 +728,32 @@ def test_fetch_items_trakt_empty(mock_fetch):
 # _fetch_items_for_tmdb_group
 # ---------------------------------------------------------------------------
 
-@patch('sync.fetch_tmdb_list')
+
+@patch("sync.fetch_tmdb_list")
 def test_fetch_items_tmdb_error(mock_fetch):
     mock_fetch.side_effect = RuntimeError("TMDb down")
     _items, error, code = _fetch_items_for_tmdb_group(
-        "TMDb", "123", "SortName", "http://jf", "key", "api_key",
+        "TMDb",
+        "123",
+        "SortName",
+        "http://jf",
+        "key",
+        "api_key",
     )
     assert code == 400
     assert "TMDb fetch error" in error
 
 
-@patch('sync.fetch_tmdb_list')
+@patch("sync.fetch_tmdb_list")
 def test_fetch_items_tmdb_empty(mock_fetch):
     mock_fetch.return_value = []
     items, _error, code = _fetch_items_for_tmdb_group(
-        "TMDb", "123", "SortName", "http://jf", "key", "api_key",
+        "TMDb",
+        "123",
+        "SortName",
+        "http://jf",
+        "key",
+        "api_key",
     )
     assert code == 200
     assert items == []
@@ -591,21 +763,30 @@ def test_fetch_items_tmdb_empty(mock_fetch):
 # _fetch_items_for_anilist_group
 # ---------------------------------------------------------------------------
 
-@patch('sync.fetch_anilist_list')
+
+@patch("sync.fetch_anilist_list")
 def test_fetch_items_anilist_error(mock_fetch):
     mock_fetch.side_effect = RuntimeError("AniList down")
     _items, error, code = _fetch_items_for_anilist_group(
-        "AniList", "user", "SortName", "http://jf", "key",
+        "AniList",
+        "user",
+        "SortName",
+        "http://jf",
+        "key",
     )
     assert code == 400
     assert "AniList fetch error" in error
 
 
-@patch('sync.fetch_anilist_list')
+@patch("sync.fetch_anilist_list")
 def test_fetch_items_anilist_empty(mock_fetch):
     mock_fetch.return_value = []
     items, _error, code = _fetch_items_for_anilist_group(
-        "AniList", "user", "SortName", "http://jf", "key",
+        "AniList",
+        "user",
+        "SortName",
+        "http://jf",
+        "key",
     )
     assert code == 200
     assert items == []
@@ -615,21 +796,32 @@ def test_fetch_items_anilist_empty(mock_fetch):
 # _fetch_items_for_mal_group
 # ---------------------------------------------------------------------------
 
-@patch('sync.fetch_mal_list')
+
+@patch("sync.fetch_mal_list")
 def test_fetch_items_mal_error(mock_fetch):
     mock_fetch.side_effect = RuntimeError("MAL down")
     _items, error, code = _fetch_items_for_mal_group(
-        "MAL", "user", "SortName", "http://jf", "key", "client_id",
+        "MAL",
+        "user",
+        "SortName",
+        "http://jf",
+        "key",
+        "client_id",
     )
     assert code == 400
     assert "MAL fetch error" in error
 
 
-@patch('sync.fetch_mal_list')
+@patch("sync.fetch_mal_list")
 def test_fetch_items_mal_empty(mock_fetch):
     mock_fetch.return_value = []
     items, _error, code = _fetch_items_for_mal_group(
-        "MAL", "user", "SortName", "http://jf", "key", "client_id",
+        "MAL",
+        "user",
+        "SortName",
+        "http://jf",
+        "key",
+        "client_id",
     )
     assert code == 200
     assert items == []
@@ -650,9 +842,16 @@ def test_filter_by_watch_state():
     watched = {"UserData": {"Played": True}}
     no_data = {}
 
-    assert _filter_by_watch_state([unwatched, watched, no_data], "unwatched") == [unwatched, no_data]
+    assert _filter_by_watch_state([unwatched, watched, no_data], "unwatched") == [
+        unwatched,
+        no_data,
+    ]
     assert _filter_by_watch_state([unwatched, watched, no_data], "watched") == [watched]
-    assert _filter_by_watch_state([unwatched, watched, no_data], "all") == [unwatched, watched, no_data]
+    assert _filter_by_watch_state([unwatched, watched, no_data], "all") == [
+        unwatched,
+        watched,
+        no_data,
+    ]
 
 
 def test_get_cover_path_no_target_base():
@@ -660,7 +859,7 @@ def test_get_cover_path_no_target_base():
     assert "config/covers" in path
 
 
-@patch('pathlib.Path.exists')
+@patch("pathlib.Path.exists")
 def test_get_cover_path_legacy_exists(mock_exists):
     # _get_cover_path checks lib path first, then legacy path
     mock_exists.side_effect = [False, True]
@@ -668,7 +867,7 @@ def test_get_cover_path_legacy_exists(mock_exists):
     assert "config/covers" in path
 
 
-@patch('sync.fetch_jellyfin_items')
+@patch("sync.fetch_jellyfin_items")
 def test_fetch_full_library_pagination(mock_fetch):
     _LIBRARY_CACHE.clear()
     page1 = [{"Id": str(i)} for i in range(500)]
@@ -679,7 +878,7 @@ def test_fetch_full_library_pagination(mock_fetch):
     assert code == 200
 
 
-@patch('sync.fetch_jellyfin_items')
+@patch("sync.fetch_jellyfin_items")
 def test_fetch_full_library_request_error(mock_fetch):
     _LIBRARY_CACHE.clear()
     mock_fetch.side_effect = RuntimeError("fail")
@@ -688,7 +887,7 @@ def test_fetch_full_library_request_error(mock_fetch):
     assert "Jellyfin connection error" in error
 
 
-@patch('sync.fetch_jellyfin_items')
+@patch("sync.fetch_jellyfin_items")
 def test_fetch_full_library_unexpected_error(mock_fetch):
     _LIBRARY_CACHE.clear()
     mock_fetch.side_effect = RuntimeError("bad")
@@ -697,110 +896,151 @@ def test_fetch_full_library_unexpected_error(mock_fetch):
     assert "Jellyfin connection error" in error
 
 
-@patch('sync._fetch_full_library')
+@patch("sync._fetch_full_library")
 def test_match_jellyfin_items_by_provider_library_error(mock_lib):
     _LIBRARY_CACHE.clear()
     mock_lib.return_value = ([], "Lib error", 503)
     _items, error, code = _match_jellyfin_items_by_provider(
-        ["101"], "Tmdb", "tmdb_list_order", "tmdb_list_order", "http://jf", "key", "Group",
+        ["101"],
+        "Tmdb",
+        "tmdb_list_order",
+        "tmdb_list_order",
+        "http://jf",
+        "key",
+        "Group",
     )
     assert code == 503
     assert error == "Lib error"
 
 
-@patch('sync._match_jellyfin_items_by_provider')
-@patch('sync.fetch_imdb_list')
+@patch("sync._match_jellyfin_items_by_provider")
+@patch("sync.fetch_imdb_list")
 def test_fetch_items_imdb_normal(mock_fetch, mock_match):
     mock_fetch.return_value = ["tt123"]
     mock_match.return_value = ([{"Name": "M1"}], None, 200)
     items, _error, code = _fetch_items_for_imdb_group(
-        "IMDb", "list_id", "SortName", "http://jf", "key",
+        "IMDb",
+        "list_id",
+        "SortName",
+        "http://jf",
+        "key",
     )
     assert code == 200
     assert len(items) == 1
 
 
-@patch('sync._match_jellyfin_items_by_provider')
-@patch('sync.fetch_trakt_list')
+@patch("sync._match_jellyfin_items_by_provider")
+@patch("sync.fetch_trakt_list")
 def test_fetch_items_trakt_normal(mock_fetch, mock_match):
     mock_fetch.return_value = ["tt123"]
     mock_match.return_value = ([{"Name": "M1"}], None, 200)
     items, _error, code = _fetch_items_for_trakt_group(
-        "Trakt", "user/list", "SortName", "http://jf", "key", "client_id",
+        "Trakt",
+        "user/list",
+        "SortName",
+        "http://jf",
+        "key",
+        "client_id",
     )
     assert code == 200
     assert len(items) == 1
 
 
-@patch('sync._match_jellyfin_items_by_provider')
-@patch('sync.fetch_tmdb_list')
+@patch("sync._match_jellyfin_items_by_provider")
+@patch("sync.fetch_tmdb_list")
 def test_fetch_items_tmdb_normal(mock_fetch, mock_match):
     mock_fetch.return_value = ["101"]
     mock_match.return_value = ([{"Name": "M1"}], None, 200)
     items, _error, code = _fetch_items_for_tmdb_group(
-        "TMDb", "123", "SortName", "http://jf", "key", "api_key",
+        "TMDb",
+        "123",
+        "SortName",
+        "http://jf",
+        "key",
+        "api_key",
     )
     assert code == 200
     assert len(items) == 1
 
 
-@patch('sync._match_jellyfin_items_by_provider')
-@patch('sync.fetch_anilist_list')
+@patch("sync._match_jellyfin_items_by_provider")
+@patch("sync.fetch_anilist_list")
 def test_fetch_items_anilist_normal(mock_fetch, mock_match):
     mock_fetch.return_value = [12345]
     mock_match.return_value = ([{"Name": "M1"}], None, 200)
     items, _error, code = _fetch_items_for_anilist_group(
-        "AniList", "user", "SortName", "http://jf", "key",
+        "AniList",
+        "user",
+        "SortName",
+        "http://jf",
+        "key",
     )
     assert code == 200
     assert len(items) == 1
 
 
-@patch('sync._match_jellyfin_items_by_provider')
-@patch('sync.fetch_mal_list')
+@patch("sync._match_jellyfin_items_by_provider")
+@patch("sync.fetch_mal_list")
 def test_fetch_items_mal_normal(mock_fetch, mock_match):
     mock_fetch.return_value = ["mal123"]
     mock_match.return_value = ([{"Name": "M1"}], None, 200)
     items, _error, code = _fetch_items_for_mal_group(
-        "MAL", "user", "SortName", "http://jf", "key", "client_id",
+        "MAL",
+        "user",
+        "SortName",
+        "http://jf",
+        "key",
+        "client_id",
     )
     assert code == 200
     assert len(items) == 1
 
 
-@patch('sync._fetch_full_library')
-@patch('sync.fetch_letterboxd_list')
+@patch("sync._fetch_full_library")
+@patch("sync.fetch_letterboxd_list")
 def test_fetch_items_letterboxd_library_error(mock_fetch, mock_lib):
     mock_fetch.return_value = ["tt123"]
     mock_lib.return_value = ([], "Lib error", 503)
     _items, error, code = _fetch_items_for_letterboxd_group(
-        "LB", "user/list", "SortName", "http://jf", "key",
+        "LB",
+        "user/list",
+        "SortName",
+        "http://jf",
+        "key",
     )
     assert code == 503
     assert error == "Lib error"
 
 
-@patch('sync._fetch_full_library')
+@patch("sync._fetch_full_library")
 def test_complex_group_empty_rules(mock_lib):
     _LIBRARY_CACHE.clear()
     mock_lib.return_value = ([{"Name": "M1"}], None, 200)
     items, _error, _code = _fetch_items_for_complex_group(
-        "Group", [], "SortName", "http://jf", "key",
+        "Group",
+        [],
+        "SortName",
+        "http://jf",
+        "key",
     )
     assert items == []
 
 
-@patch('sync._fetch_full_library')
+@patch("sync._fetch_full_library")
 def test_complex_group_malformed_rule(mock_lib):
     _LIBRARY_CACHE.clear()
     mock_lib.return_value = ([{"Name": "M1"}], None, 200)
     items, _error, _code = _fetch_items_for_complex_group(
-        "Group", [{"type": 123, "value": None}], "SortName", "http://jf", "key",
+        "Group",
+        [{"type": 123, "value": None}],
+        "SortName",
+        "http://jf",
+        "key",
     )
     assert items == []
 
 
-@patch('sync._fetch_full_library')
+@patch("sync._fetch_full_library")
 def test_complex_group_watch_state(mock_lib):
     _LIBRARY_CACHE.clear()
     mock_lib.return_value = (
@@ -823,34 +1063,49 @@ def test_complex_group_watch_state(mock_lib):
     assert items[0]["Name"] == "Unplayed"
 
 
-@patch('sync.fetch_jellyfin_items')
+@patch("sync.fetch_jellyfin_items")
 def test_fetch_items_metadata_request_error(mock_fetch):
     mock_fetch.side_effect = RuntimeError("fail")
     _items, error, code = _fetch_items_for_metadata_group(
-        "Group", "genre", "Action", "SortName", "http://jf", "key",
+        "Group",
+        "genre",
+        "Action",
+        "SortName",
+        "http://jf",
+        "key",
     )
     assert code == 500
     assert "Jellyfin connection error" in error
 
 
-@patch('sync.fetch_jellyfin_items')
+@patch("sync.fetch_jellyfin_items")
 def test_fetch_items_metadata_unexpected_error(mock_fetch):
     mock_fetch.side_effect = RuntimeError("bad")
     _items, error, code = _fetch_items_for_metadata_group(
-        "Group", "genre", "Action", "SortName", "http://jf", "key",
+        "Group",
+        "genre",
+        "Action",
+        "SortName",
+        "http://jf",
+        "key",
     )
     assert code == 500
     assert "Jellyfin connection error" in error
 
 
-@patch('pathlib.Path.exists')
-@patch('sync.set_collection_image')
-@patch('sync._get_cover_path')
-@patch('sync.add_to_collection')
-@patch('sync.create_collection')
-@patch('sync.find_collection_by_name')
+@patch("pathlib.Path.exists")
+@patch("sync.set_collection_image")
+@patch("sync._get_cover_path")
+@patch("sync.add_to_collection")
+@patch("sync.create_collection")
+@patch("sync.find_collection_by_name")
 def test_process_collection_group_create_and_cover(
-    mock_find, mock_create, mock_add, mock_cover, mock_set, mock_exists,
+    mock_find,
+    mock_create,
+    mock_add,
+    mock_cover,
+    mock_set,
+    mock_exists,
 ):
     mock_find.return_value = None
     mock_create.return_value = "col123"
@@ -858,26 +1113,40 @@ def test_process_collection_group_create_and_cover(
     mock_exists.return_value = True
     items = [{"Id": "1", "Name": "Movie"}]
     result = _process_collection_group(
-        "Group", items, "http://jf", "key", "/target", dry_run=False, auto_set_library_covers=True,
+        "Group",
+        items,
+        "http://jf",
+        "key",
+        "/target",
+        dry_run=False,
+        auto_set_library_covers=True,
     )
     assert result["links"] == 1
     mock_create.assert_called_once()
     mock_set.assert_called_once()
 
 
-@patch('pathlib.Path.exists')
-@patch('sync.set_collection_image')
-@patch('sync._get_cover_path')
-@patch('sync.add_to_collection')
-@patch('sync.find_collection_by_name')
-def test_process_collection_group_cover_error(mock_find, mock_add, mock_cover, mock_set, mock_exists):
+@patch("pathlib.Path.exists")
+@patch("sync.set_collection_image")
+@patch("sync._get_cover_path")
+@patch("sync.add_to_collection")
+@patch("sync.find_collection_by_name")
+def test_process_collection_group_cover_error(
+    mock_find, mock_add, mock_cover, mock_set, mock_exists
+):
     mock_find.return_value = "col123"
     mock_cover.return_value = "/cover.jpg"
     mock_set.side_effect = OSError("Cover fail")
     mock_exists.return_value = True
     items = [{"Id": "1", "Name": "Movie"}]
     result = _process_collection_group(
-        "Group", items, "http://jf", "key", "/target", dry_run=False, auto_set_library_covers=True,
+        "Group",
+        items,
+        "http://jf",
+        "key",
+        "/target",
+        dry_run=False,
+        auto_set_library_covers=True,
     )
     assert result["links"] == 1
 
@@ -887,15 +1156,28 @@ def test_process_collection_group_cover_error(mock_find, mock_add, mock_cover, m
 
 def test_process_group_empty_name(tmp_path):
     result = _process_group(
-        {}, str(tmp_path), "http://jf", "key", "", "", "", "", "", False, False, False, None, "",
+        {},
+        str(tmp_path),
+        "http://jf",
+        "key",
+        "",
+        "",
+        "",
+        "",
+        "",
+        False,
+        False,
+        False,
+        None,
+        "",
     )
     assert result["group"] == "(unnamed)"
     assert result["links"] == 0
     assert result["error"] == "Empty group name"
 
 
-@patch('sync._fetch_items_for_complex_group')
-@patch('sync._fetch_items_for_metadata_group')
+@patch("sync._fetch_items_for_complex_group")
+@patch("sync._fetch_items_for_metadata_group")
 def test_process_group_complex_query(mock_meta, mock_complex, tmp_path):
     host = tmp_path / "movie.mkv"
     host.write_text("movie")
@@ -907,13 +1189,26 @@ def test_process_group_complex_query(mock_meta, mock_complex, tmp_path):
         "sort_order": "SortName",
     }
     result = _process_group(
-        group, str(tmp_path), "http://jf", "key", "", "", "", "", "", False, False, False, None, "",
+        group,
+        str(tmp_path),
+        "http://jf",
+        "key",
+        "",
+        "",
+        "",
+        "",
+        "",
+        False,
+        False,
+        False,
+        None,
+        "",
     )
     mock_complex.assert_called_once()
     assert result["links"] == 1
 
 
-@patch('sync._fetch_items_for_metadata_group')
+@patch("sync._fetch_items_for_metadata_group")
 def test_process_group_no_items(mock_meta, tmp_path):
     mock_meta.return_value = ([], None, 200)
     group = {
@@ -923,12 +1218,25 @@ def test_process_group_no_items(mock_meta, tmp_path):
         "sort_order": "SortName",
     }
     result = _process_group(
-        group, str(tmp_path), "http://jf", "key", "", "", "", "", "", False, False, False, None, "",
+        group,
+        str(tmp_path),
+        "http://jf",
+        "key",
+        "",
+        "",
+        "",
+        "",
+        "",
+        False,
+        False,
+        False,
+        None,
+        "",
     )
     assert result["links"] == 0
 
 
-@patch('sync._fetch_items_for_metadata_group')
+@patch("sync._fetch_items_for_metadata_group")
 def test_process_group_non_dict_item(mock_meta, tmp_path):
     host = tmp_path / "movie.mkv"
     host.write_text("movie")
@@ -947,12 +1255,25 @@ def test_process_group_non_dict_item(mock_meta, tmp_path):
         "sort_order": "SortName",
     }
     result = _process_group(
-        group, str(tmp_path), "http://jf", "key", "", "", "", "", "", False, False, False, None, "",
+        group,
+        str(tmp_path),
+        "http://jf",
+        "key",
+        "",
+        "",
+        "",
+        "",
+        "",
+        False,
+        False,
+        False,
+        None,
+        "",
     )
     assert result["links"] == 1
 
 
-@patch('sync._fetch_items_for_metadata_group')
+@patch("sync._fetch_items_for_metadata_group")
 def test_process_group_missing_path(mock_meta, tmp_path):
     mock_meta.return_value = ([{"Id": "1", "Name": "M1"}], None, 200)
     group = {
@@ -962,13 +1283,26 @@ def test_process_group_missing_path(mock_meta, tmp_path):
         "sort_order": "SortName",
     }
     result = _process_group(
-        group, str(tmp_path), "http://jf", "key", "", "", "", "", "", False, False, False, None, "",
+        group,
+        str(tmp_path),
+        "http://jf",
+        "key",
+        "",
+        "",
+        "",
+        "",
+        "",
+        False,
+        False,
+        False,
+        None,
+        "",
     )
     assert result["links"] == 0
 
 
-@patch('sync.os.symlink')
-@patch('sync._fetch_items_for_metadata_group')
+@patch("sync.os.symlink")
+@patch("sync._fetch_items_for_metadata_group")
 def test_process_group_symlink_error(mock_meta, mock_symlink, tmp_path):
     host = tmp_path / "movie.mkv"
     host.write_text("movie")
@@ -981,13 +1315,26 @@ def test_process_group_symlink_error(mock_meta, mock_symlink, tmp_path):
         "sort_order": "SortName",
     }
     result = _process_group(
-        group, str(tmp_path), "http://jf", "key", "", "", "", "", "", False, False, False, None, "",
+        group,
+        str(tmp_path),
+        "http://jf",
+        "key",
+        "",
+        "",
+        "",
+        "",
+        "",
+        False,
+        False,
+        False,
+        None,
+        "",
     )
     assert result["links"] == 0
 
 
-@patch('sync.add_virtual_folder')
-@patch('sync._fetch_items_for_metadata_group')
+@patch("sync.add_virtual_folder")
+@patch("sync._fetch_items_for_metadata_group")
 def test_process_group_library_creation_error(mock_meta, mock_add, tmp_path):
     host = tmp_path / "movie.mkv"
     host.write_text("movie")
@@ -1018,8 +1365,8 @@ def test_process_group_library_creation_error(mock_meta, mock_add, tmp_path):
     assert "library_error" in result
 
 
-@patch('sync.add_virtual_folder')
-@patch('sync._fetch_items_for_metadata_group')
+@patch("sync.add_virtual_folder")
+@patch("sync._fetch_items_for_metadata_group")
 def test_process_group_library_with_jellyfin_path(mock_meta, mock_add, tmp_path):
     host = tmp_path / "movie.mkv"
     host.write_text("movie")
@@ -1050,8 +1397,8 @@ def test_process_group_library_with_jellyfin_path(mock_meta, mock_add, tmp_path)
     assert "/jf/target/Test" in call_args[3]
 
 
-@patch('sync.add_virtual_folder')
-@patch('sync._fetch_items_for_metadata_group')
+@patch("sync.add_virtual_folder")
+@patch("sync._fetch_items_for_metadata_group")
 def test_process_group_library_already_exists(mock_meta, mock_add, tmp_path):
     host = tmp_path / "movie.mkv"
     host.write_text("movie")
@@ -1080,10 +1427,12 @@ def test_process_group_library_already_exists(mock_meta, mock_add, tmp_path):
     mock_add.assert_not_called()
 
 
-@patch('sync.set_virtual_folder_image')
-@patch('sync._get_cover_path')
-@patch('sync._fetch_items_for_metadata_group')
-def test_process_group_auto_set_library_covers(mock_meta, mock_cover, mock_set, tmp_path):
+@patch("sync.set_virtual_folder_image")
+@patch("sync._get_cover_path")
+@patch("sync._fetch_items_for_metadata_group")
+def test_process_group_auto_set_library_covers(
+    mock_meta, mock_cover, mock_set, tmp_path
+):
     host = tmp_path / "movie.mkv"
     host.write_text("movie")
     cover = tmp_path / "cover.jpg"
@@ -1124,8 +1473,21 @@ def test_run_sync_missing_settings():
         run_sync({"jellyfin_url": "", "api_key": "", "target_path": ""})
 
 
-@patch('sync.get_libraries')
-@patch('sync._process_group')
+@patch("sync.Path.mkdir")
+def test_run_sync_target_permission_denied(mock_mkdir, tmp_path):
+    mock_mkdir.side_effect = PermissionError("denied")
+    config = {
+        "jellyfin_url": "http://jf",
+        "api_key": "key",
+        "target_path": str(tmp_path / "virtual"),
+        "groups": [],
+    }
+    with pytest.raises(ValueError, match="permission denied"):
+        run_sync(config, dry_run=False)
+
+
+@patch("sync.get_libraries")
+@patch("sync._process_group")
 def test_run_sync_get_libraries_error(mock_process, mock_libs, tmp_path):
     mock_libs.side_effect = RuntimeError("Jellyfin down")
     mock_process.return_value = {"group": "Test", "links": 0}
@@ -1140,9 +1502,9 @@ def test_run_sync_get_libraries_error(mock_process, mock_libs, tmp_path):
     assert results[0]["links"] == 0
 
 
-@patch('sync._process_group')
-@patch('sync._is_in_season')
-@patch('sync.get_libraries')
+@patch("sync._process_group")
+@patch("sync._is_in_season")
+@patch("sync.get_libraries")
 def test_run_sync_seasonal_cleanup(mock_libs, mock_season, mock_process, tmp_path):
     mock_libs.return_value = []
     mock_season.return_value = False
@@ -1169,22 +1531,26 @@ def test_run_sync_seasonal_cleanup(mock_libs, mock_season, mock_process, tmp_pat
 
 # --- run_cleanup_broken_symlinks ---
 
-@patch('sync.os.unlink')
-@patch('pathlib.Path.exists')
-@patch('pathlib.Path.is_symlink')
-@patch('pathlib.Path.is_dir')
-def test_cleanup_broken_symlinks_unlink_error(mock_isdir, mock_islink, mock_exists, mock_unlink):
+
+@patch("sync.os.unlink")
+@patch("pathlib.Path.exists")
+@patch("pathlib.Path.is_symlink")
+@patch("pathlib.Path.is_dir")
+def test_cleanup_broken_symlinks_unlink_error(
+    mock_isdir, mock_islink, mock_exists, mock_unlink
+):
     mock_isdir.return_value = True
     mock_islink.return_value = True
     mock_exists.return_value = False
     mock_unlink.side_effect = OSError("Permission denied")
     config = {"target_path": "/target"}
-    with patch('sync.os.walk', return_value=[("/target", [], ["link"])]):
+    with patch("sync.os.walk", return_value=[("/target", [], ["link"])]):
         count = run_cleanup_broken_symlinks(config)
     assert count == 0
 
 
 # --- Remaining branch coverage ---
+
 
 def test_match_jellyfin_items_by_provider_falsy_provider_id():
     _LIBRARY_CACHE.clear()
@@ -1192,9 +1558,15 @@ def test_match_jellyfin_items_by_provider_falsy_provider_id():
         {"Id": "1", "ProviderIds": {"Imdb": ""}},
         {"Id": "2", "ProviderIds": {"Imdb": "tt123"}},
     ]
-    with patch('sync._fetch_full_library', return_value=(raw_items, None, 200)):
+    with patch("sync._fetch_full_library", return_value=(raw_items, None, 200)):
         items, _error, _code = _match_jellyfin_items_by_provider(
-            ["tt123"], "Imdb", "imdb_list_order", "SortName", "http://jf", "key", "Group",
+            ["tt123"],
+            "Imdb",
+            "imdb_list_order",
+            "SortName",
+            "http://jf",
+            "key",
+            "Group",
         )
     assert len(items) == 1
     assert items[0]["Id"] == "2"
@@ -1203,9 +1575,15 @@ def test_match_jellyfin_items_by_provider_falsy_provider_id():
 def test_match_jellyfin_items_by_provider_letterboxd_unmatched():
     _LIBRARY_CACHE.clear()
     raw_items = [{"Id": "1", "ProviderIds": {"Imdb": "tt123"}}]
-    with patch('sync._fetch_full_library', return_value=(raw_items, None, 200)):
+    with patch("sync._fetch_full_library", return_value=(raw_items, None, 200)):
         items, _error, _code = _match_jellyfin_items_by_provider(
-            ["tt999", "456"], "Tmdb", "letterboxd_list_order", "SortName", "http://jf", "key", "Group",
+            ["tt999", "456"],
+            "Tmdb",
+            "letterboxd_list_order",
+            "SortName",
+            "http://jf",
+            "key",
+            "Group",
         )
     assert items == []
 
@@ -1216,21 +1594,33 @@ def test_match_jellyfin_items_by_provider_letterboxd_watched():
         {"Id": "1", "ProviderIds": {"Imdb": "tt111"}, "UserData": {"Played": True}},
         {"Id": "2", "ProviderIds": {"Imdb": "tt222"}, "UserData": {"Played": False}},
     ]
-    with patch('sync._fetch_full_library', return_value=(raw_items, None, 200)):
+    with patch("sync._fetch_full_library", return_value=(raw_items, None, 200)):
         items, _error, _code = _match_jellyfin_items_by_provider(
-            ["tt111", "tt222"], "Imdb", "letterboxd_list_order", "SortName", "http://jf", "key", "Group", watch_state="watched",
+            ["tt111", "tt222"],
+            "Imdb",
+            "letterboxd_list_order",
+            "SortName",
+            "http://jf",
+            "key",
+            "Group",
+            watch_state="watched",
         )
     assert len(items) == 1
     assert items[0]["Id"] == "1"
 
 
-@patch('sync.get_tmdb_recommendations')
-@patch('sync.get_user_recent_items')
+@patch("sync.get_tmdb_recommendations")
+@patch("sync.get_user_recent_items")
 def test_fetch_items_recommendations_empty_tmdb_ids(mock_recent, mock_recs):
     mock_recent.return_value = [{"Id": "1", "Name": "M1"}]
     mock_recs.return_value = []
     items, error, code = _fetch_items_for_recommendations_group(
-        "Group", "user1", "SortName", "http://jf", "key", "tmdb_key",
+        "Group",
+        "user1",
+        "SortName",
+        "http://jf",
+        "key",
+        "tmdb_key",
     )
     assert items == []
     assert error is None
@@ -1272,27 +1662,35 @@ def test_eval_item_not_operators():
     assert _eval_item(item, rules) is True
 
 
-@patch('sync._fetch_full_library')
+@patch("sync._fetch_full_library")
 def test_complex_group_non_dict_rule(mock_lib):
     _LIBRARY_CACHE.clear()
     mock_lib.return_value = ([{"Name": "M1"}], None, 200)
     items, _error, _code = _fetch_items_for_complex_group(
-        "Group", [123], "SortName", "http://jf", "key",
+        "Group",
+        [123],
+        "SortName",
+        "http://jf",
+        "key",
     )
     assert items == []
 
 
-@patch('sync._fetch_full_library')
+@patch("sync._fetch_full_library")
 def test_complex_group_empty_type_value(mock_lib):
     _LIBRARY_CACHE.clear()
     mock_lib.return_value = ([{"Name": "M1"}], None, 200)
     items, _error, _code = _fetch_items_for_complex_group(
-        "Group", [{"type": "", "value": ""}], "SortName", "http://jf", "key",
+        "Group",
+        [{"type": "", "value": ""}],
+        "SortName",
+        "http://jf",
+        "key",
     )
     assert items == []
 
 
-@patch('sync._fetch_full_library')
+@patch("sync._fetch_full_library")
 def test_complex_group_watched_filter(mock_lib):
     _LIBRARY_CACHE.clear()
     mock_lib.return_value = (
@@ -1320,33 +1718,47 @@ def test_parse_complex_query_unrecognized_prefix():
     assert rules == [{"operator": "AND", "type": "genre", "value": "foo:bar"}]
 
 
-@patch('sync.add_to_collection')
-@patch('sync.find_collection_by_name')
+@patch("sync.add_to_collection")
+@patch("sync.find_collection_by_name")
 def test_process_collection_group_no_cover(mock_find, mock_add, tmp_path):
     mock_find.return_value = "col123"
     items = [{"Id": "1", "Name": "Movie"}]
     result = _process_collection_group(
-        "Group", items, "http://jf", "key", str(tmp_path), dry_run=False, auto_set_library_covers=True,
+        "Group",
+        items,
+        "http://jf",
+        "key",
+        str(tmp_path),
+        dry_run=False,
+        auto_set_library_covers=True,
     )
     assert result["links"] == 1
 
 
-@patch('sync.add_to_collection')
-@patch('sync.find_collection_by_name')
+@patch("sync.add_to_collection")
+@patch("sync.find_collection_by_name")
 def test_process_collection_group_auto_cover_off(mock_find, mock_add, tmp_path):
     mock_find.return_value = "col123"
     items = [{"Id": "1", "Name": "Movie"}]
     result = _process_collection_group(
-        "Group", items, "http://jf", "key", str(tmp_path), dry_run=False, auto_set_library_covers=False,
+        "Group",
+        items,
+        "http://jf",
+        "key",
+        str(tmp_path),
+        dry_run=False,
+        auto_set_library_covers=False,
     )
     assert result["links"] == 1
 
 
-@patch('sync.find_collection_by_name')
-@patch('sync.create_collection')
-@patch('sync.add_to_collection')
-@patch('sync._fetch_items_for_metadata_group')
-def test_process_group_create_collection(mock_meta, mock_add, mock_create, mock_find, tmp_path):
+@patch("sync.find_collection_by_name")
+@patch("sync.create_collection")
+@patch("sync.add_to_collection")
+@patch("sync._fetch_items_for_metadata_group")
+def test_process_group_create_collection(
+    mock_meta, mock_add, mock_create, mock_find, tmp_path
+):
     host = tmp_path / "movie.mkv"
     host.write_text("movie")
     mock_find.return_value = None
@@ -1360,15 +1772,32 @@ def test_process_group_create_collection(mock_meta, mock_add, mock_create, mock_
         "create_as_collection": True,
     }
     result = _process_group(
-        group, str(tmp_path), "http://jf", "key", "", "", "", "", "", False, False, False, None, "",
+        group,
+        str(tmp_path),
+        "http://jf",
+        "key",
+        "",
+        "",
+        "",
+        "",
+        "",
+        False,
+        False,
+        False,
+        None,
+        "",
     )
     assert result["links"] == 1
     mock_create.assert_called_once()
 
 
-@patch('sync._fetch_items_for_metadata_group')
+@patch("sync._fetch_items_for_metadata_group")
 def test_process_group_missing_host_path(mock_meta, tmp_path):
-    mock_meta.return_value = ([{"Id": "1", "Name": "M1", "Path": "/nonexistent/movie.mkv"}], None, 200)
+    mock_meta.return_value = (
+        [{"Id": "1", "Name": "M1", "Path": "/nonexistent/movie.mkv"}],
+        None,
+        200,
+    )
     group = {
         "name": "Test",
         "source_type": "genre",
@@ -1376,13 +1805,26 @@ def test_process_group_missing_host_path(mock_meta, tmp_path):
         "sort_order": "SortName",
     }
     result = _process_group(
-        group, str(tmp_path), "http://jf", "key", "", "", "", "", "", False, False, False, None, "",
+        group,
+        str(tmp_path),
+        "http://jf",
+        "key",
+        "",
+        "",
+        "",
+        "",
+        "",
+        False,
+        False,
+        False,
+        None,
+        "",
     )
     assert result["links"] == 0
 
 
-@patch('sync._get_cover_path')
-@patch('sync._fetch_items_for_metadata_group')
+@patch("sync._get_cover_path")
+@patch("sync._fetch_items_for_metadata_group")
 def test_process_group_auto_cover_missing(mock_meta, mock_cover, tmp_path):
     host = tmp_path / "movie.mkv"
     host.write_text("movie")
@@ -1418,9 +1860,9 @@ def test_is_in_season_invalid_date():
     assert _is_in_season("01-01", "not-a-date") is True
 
 
-@patch('sync._process_group')
-@patch('sync._is_in_season')
-@patch('sync.get_libraries')
+@patch("sync._process_group")
+@patch("sync._is_in_season")
+@patch("sync.get_libraries")
 def test_run_sync_seasonal_dry_run(mock_libs, mock_season, mock_process, tmp_path):
     mock_libs.return_value = []
     mock_season.return_value = False
@@ -1444,9 +1886,9 @@ def test_run_sync_seasonal_dry_run(mock_libs, mock_season, mock_process, tmp_pat
     assert results[0]["status"] == "out_of_season"
 
 
-@patch('sync._process_group')
-@patch('sync._is_in_season')
-@patch('sync.get_libraries')
+@patch("sync._process_group")
+@patch("sync._is_in_season")
+@patch("sync.get_libraries")
 def test_run_sync_seasonal_no_dir(mock_libs, mock_season, mock_process, tmp_path):
     mock_libs.return_value = []
     mock_season.return_value = False
@@ -1471,9 +1913,9 @@ def test_run_sync_seasonal_no_dir(mock_libs, mock_season, mock_process, tmp_path
     assert results[0]["status"] == "out_of_season"
 
 
-@patch('sync._process_group')
-@patch('sync._is_in_season')
-@patch('sync.get_libraries')
+@patch("sync._process_group")
+@patch("sync._is_in_season")
+@patch("sync.get_libraries")
 def test_run_sync_seasonal_in_season(mock_libs, mock_season, mock_process, tmp_path):
     """Cover line 1398: seasonal group that is in season returns None and is processed normally."""
     mock_libs.return_value = []
@@ -1503,23 +1945,32 @@ def test_run_sync_seasonal_in_season(mock_libs, mock_season, mock_process, tmp_p
 # Remaining branch coverage for sync.py
 # ---------------------------------------------------------------------------
 
-@patch('sync.fetch_letterboxd_list')
-@patch('sync._fetch_full_library')
+
+@patch("sync.fetch_letterboxd_list")
+@patch("sync._fetch_full_library")
 def test_fetch_items_letterboxd_tmdb_list_order(mock_lib, mock_fetch):
     """Cover line 560: TMDb match inside list-order branch."""
     mock_fetch.return_value = ["456"]
-    mock_lib.return_value = [
-        {"Id": "1", "ProviderIds": {"Tmdb": "456"}},
-    ], None, 200
+    mock_lib.return_value = (
+        [
+            {"Id": "1", "ProviderIds": {"Tmdb": "456"}},
+        ],
+        None,
+        200,
+    )
     items, _error, code = _fetch_items_for_letterboxd_group(
-        "LB", "user/list", "letterboxd_list_order", "http://jf", "key",
+        "LB",
+        "user/list",
+        "letterboxd_list_order",
+        "http://jf",
+        "key",
     )
     assert code == 200
     assert len(items) == 1
 
 
-@patch('sync.get_tmdb_recommendations')
-@patch('sync.get_user_recent_items')
+@patch("sync.get_tmdb_recommendations")
+@patch("sync.get_user_recent_items")
 def test_fetch_items_recommendations_empty(mock_recent, mock_tmdb):
     """Cover lines 636-638: empty tmdb_ids after recommendations fetch."""
     mock_recent.return_value = [
@@ -1527,18 +1978,28 @@ def test_fetch_items_recommendations_empty(mock_recent, mock_tmdb):
     ]
     mock_tmdb.return_value = []
     items, _error, code = _fetch_items_for_recommendations_group(
-        "Rec", "user-id", "SortName", "http://jf", "key", "tmdb_key",
+        "Rec",
+        "user-id",
+        "SortName",
+        "http://jf",
+        "key",
+        "tmdb_key",
     )
     assert code == 200
     assert items == []
 
 
-@patch('sync.get_user_recent_items')
+@patch("sync.get_user_recent_items")
 def test_fetch_items_recommendations_error(mock_recent):
     """Cover lines 632-634: exception in recommendations fetch."""
     mock_recent.side_effect = RuntimeError("Jellyfin down")
     _items, error, code = _fetch_items_for_recommendations_group(
-        "Rec", "user-id", "SortName", "http://jf", "key", "tmdb_key",
+        "Rec",
+        "user-id",
+        "SortName",
+        "http://jf",
+        "key",
+        "tmdb_key",
     )
     assert code == 400
     assert "Recommendations fetch error" in error
@@ -1564,10 +2025,11 @@ def test_eval_item_or_not():
     assert _eval_item(item, rules) is True
 
 
-@patch('sync._fetch_full_library')
+@patch("sync._fetch_full_library")
 def test_fetch_items_complex_group_malformed_rule(mock_lib):
     """Cover lines 761-763: malformed rule triggers TypeError/ValueError/AttributeError."""
     mock_lib.return_value = [{"Id": "1", "Genres": ["Action"]}], None, 200
+
     # Create a dict whose operator value raises AttributeError during str()
     class BadStr:
         def __str__(self):
@@ -1591,8 +2053,8 @@ def test_fetch_items_complex_group_malformed_rule(mock_lib):
     assert items == []
 
 
-@patch('sync._fetch_items_for_metadata_group')
-@patch('sync.shutil.rmtree')
+@patch("sync._fetch_items_for_metadata_group")
+@patch("sync.shutil.rmtree")
 def test_process_group_oserror(mock_rmtree, mock_meta, tmp_path):
     """Cover lines 1027-1029: OSError when cleaning group directory."""
     mock_meta.return_value = ([], None, 200)

@@ -225,7 +225,7 @@
             <button id="refreshBtn" onclick="fetchResults()">
                 Refresh Logs
             </button>
-            <button id="runBtn" onclick="runTests()">
+            <button id="runBtn" disabled title="Run via pytest on the host">
                 <div class="loader" id="runLoader"></div>
                 <span id="runText">Run Test Suite</span>
             </button>
@@ -310,6 +310,7 @@
             terminal.scrollTop = terminal.scrollHeight;
         }
 
+        /*
         async function runTests() {
             const btn = document.getElementById('runBtn');
             const loader = document.getElementById('runLoader');
@@ -325,7 +326,6 @@
                 
                 if (data.status === 'success') {
                     await fetchResults();
-                    // Reload iframe
                     document.getElementById('jellyfinIframe').src = document.getElementById('jellyfinIframe').src;
                 } else {
                     alert('Error running tests: ' + data.message);
@@ -338,6 +338,7 @@
                 text.innerText = 'Run Test Suite';
             }
         }
+        */
 
         // Initial load
         fetchResults();

@@ -1,6 +1,7 @@
 // cleanup.js – Cleanup modal logic
 
-import { showToast, getEl } from '../core/ui.js';
+import { showToast, showErrorDialog, getEl } from '../core/ui.js';
+import { getCleanupItems, performCleanup } from '../core/api.js';
 
 export async function openCleanupModal() {
     getEl('cleanup-modal').style.display = 'flex';
@@ -9,8 +10,7 @@ export async function openCleanupModal() {
     getEl('cleanup-error').style.display = 'none';
 
     try {
-        const response = await fetch('/api/cleanup');
-        const result = await response.json();
+        const result = await getCleanupItems();
 
         if (result.status === 'success') {
             const listContainer = getEl('cleanup-list');
@@ -93,12 +93,7 @@ export async function execCleanup() {
     btn.disabled = true;
 
     try {
-        const response = await fetch('/api/cleanup', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ folders })
-        });
-        const result = await response.json();
+        const result = await performCleanup(folders);
 
         btn.innerHTML = 'Delete Selected <span id="cleanup-count"></span>';
         btn.disabled = false;
@@ -106,15 +101,16 @@ export async function execCleanup() {
 
         if (result.status === 'success' || result.status === 'partial_success') {
             getEl('cleanup-modal').style.display = 'none';
-            alert(`Successfully deleted ${result.deleted} folder(s). ${result.errors ? 'Errors: ' + result.errors.join(', ') : ''}`);
+            const msg = `Successfully deleted ${result.deleted} folder(s).${result.errors ? ' Errors: ' + result.errors.join(', ') : ''}`;
+            showToast(msg, 'success');
         } else {
-            alert('Error deleting folders: ' + result.message);
+            showErrorDialog('Error deleting folders: ' + result.message);
         }
     } catch (err) {
         btn.innerHTML = 'Delete Selected <span id="cleanup-count"></span>';
         btn.disabled = false;
         updateCleanupCount();
-        alert('Network error while deleting folders.');
+        showErrorDialog('Network error while deleting folders.');
     }
 }
 

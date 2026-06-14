@@ -13,7 +13,7 @@ def test_fetch_tmdb_list_missing_args():
         fetch_tmdb_list("", "api_key")
 
 
-@patch('requests.get')
+@patch("requests.get")
 def test_fetch_tmdb_list_success(mock_get):
     mock_resp_1 = MagicMock()
     mock_resp_1.status_code = 200
@@ -34,7 +34,7 @@ def test_fetch_tmdb_list_success(mock_get):
     assert mock_get.call_count == 2
 
 
-@patch('requests.get')
+@patch("requests.get")
 def test_fetch_tmdb_list_url_parsing(mock_get):
     mock_resp = MagicMock()
     mock_resp.status_code = 200
@@ -44,13 +44,15 @@ def test_fetch_tmdb_list_url_parsing(mock_get):
     }
     mock_get.return_value = mock_resp
 
-    ids = fetch_tmdb_list("https://www.themoviedb.org/list/456?language=en-US", "test_key")
+    ids = fetch_tmdb_list(
+        "https://www.themoviedb.org/list/456?language=en-US", "test_key"
+    )
     assert ids == ["101"]
     args, _kwargs = mock_get.call_args
     assert "/list/456" in args[0]
 
 
-@patch('requests.get')
+@patch("requests.get")
 def test_fetch_tmdb_list_failure(mock_get):
     mock_get.side_effect = requests.exceptions.RequestException("Network Error")
     with pytest.raises(RuntimeError, match="Failed to fetch TMDb list page 1"):
@@ -62,7 +64,7 @@ def test_get_tmdb_recommendations_missing_key():
         get_tmdb_recommendations([("101", "movie")], "")
 
 
-@patch('requests.get')
+@patch("requests.get")
 def test_get_tmdb_recommendations_success(mock_get):
     mock_resp_movie = MagicMock()
     mock_resp_movie.status_code = 200
@@ -89,7 +91,7 @@ def test_get_tmdb_recommendations_success(mock_get):
     assert recs == ["202", "201", "203"]
 
 
-@patch('requests.get')
+@patch("requests.get")
 def test_get_tmdb_recommendations_failure_skipped(mock_get):
     mock_resp_movie = MagicMock()
     mock_resp_movie.status_code = 200
@@ -97,7 +99,12 @@ def test_get_tmdb_recommendations_failure_skipped(mock_get):
         "results": [{"id": 201}],
     }
 
-    mock_get.side_effect = [requests.exceptions.RequestException("Error"), mock_resp_movie]
+    mock_get.side_effect = [
+        requests.exceptions.RequestException("Error"),
+        mock_resp_movie,
+    ]
 
-    recs = get_tmdb_recommendations([("error_id", "movie"), ("101", "movie")], "test_key")
+    recs = get_tmdb_recommendations(
+        [("error_id", "movie"), ("101", "movie")], "test_key"
+    )
     assert recs == ["201"]

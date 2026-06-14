@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -43,6 +44,7 @@ CONFIG_FILE: str = str(_CONFIG_PATH / "config.json")
 # ---------------------------------------------------------------------------
 
 DEFAULT_CONFIG: dict[str, Any] = {
+    "CONFIG_SCHEMA_VERSION": 1,
     "jellyfin_url": "",
     "api_key": "",
     "target_path": "",
@@ -68,6 +70,10 @@ DEFAULT_CONFIG: dict[str, Any] = {
 # ---------------------------------------------------------------------------
 # Public helpers
 # ---------------------------------------------------------------------------
+
+
+def _env_flag(name: str, *, default: bool = True) -> bool:
+    return os.environ.get(name, "1" if default else "0") == "1"
 
 
 def _fill_defaults(cfg: dict[str, Any], defaults: dict[str, Any]) -> None:
@@ -122,8 +128,19 @@ def load_config() -> dict[str, Any]:
                 cfg = json.load(fh)
             _fill_defaults(cfg, DEFAULT_CONFIG)
             _migrate_legacy_keys(cfg)
-        except (json.JSONDecodeError, OSError):
-            # If the file is corrupt or unreadable, fall back to safe defaults
+        except json.JSONDecodeError:
+            corrupt_backup = Path(CONFIG_FILE).with_suffix(".json.corrupt.bak")
+            try:
+                shutil.copy2(CONFIG_FILE, corrupt_backup)
+                logger.warning("Backed up corrupt config to %s", corrupt_backup)
+            except OSError:
+                logger.warning("Could not back up corrupt config file", exc_info=True)
+            logger.warning(
+                "Could not read config file, falling back to defaults",
+                exc_info=True,
+            )
+            cfg = DEFAULT_CONFIG.copy()
+        except OSError:
             logger.warning(
                 "Could not read config file, falling back to defaults",
                 exc_info=True,
@@ -146,6 +163,13 @@ def save_config(config: dict[str, Any]) -> None:
         config: The configuration dictionary to write.
 
     """
+    config_path = Path(CONFIG_FILE)
     Path(CONFIG_DIR).mkdir(parents=True, exist_ok=True)
-    with Path(CONFIG_FILE).open("w", encoding="utf-8") as fh:
-        json.dump(config, fh, indent=4)
+    tmp_path = config_path.with_suffix(".json.tmp")
+    try:
+        with tmp_path.open("w", encoding="utf-8") as fh:
+            json.dump(config, fh, indent=4)
+        tmp_path.replace(config_path)
+    except BaseException:
+        tmp_path.unlink(missing_ok=True)
+        raise

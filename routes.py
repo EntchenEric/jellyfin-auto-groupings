@@ -10,13 +10,17 @@ from __future__ import annotations
 
 import base64
 import binascii
+import copy
+import ipaddress
 import logging
 import os
 import shutil
 import time
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from urllib.parse import urlparse
 
 import requests
 from flask import (
@@ -45,7 +49,7 @@ from jellyfin import (
     fetch_jellyfin_items,
     get_users,
 )
-from scheduler import update_scheduler_jobs, validate_cron
+from scheduler import _scheduler, sync_lock, update_scheduler_jobs, validate_cron
 from sync import _get_cover_path, preview_group, run_sync
 
 logger = logging.getLogger(__name__)
@@ -53,6 +57,9 @@ logger = logging.getLogger(__name__)
 __all__ = ["bp"]
 
 bp = Blueprint("main", __name__)
+
+_APP_START_TIME = datetime.now(UTC)
+_SYNC_REQUESTS_TOTAL = 0
 
 
 @bp.errorhandler(400)
@@ -91,14 +98,47 @@ _AUTO_DETECT_MAX_FILES = 50_000
 _AUTO_DETECT_MAX_DEPTH = 6
 
 # Test result filenames
-_TEST_RESULT_FILENAMES = ("test_results.txt", "current_test_out.txt", "test_api_out.txt")
+_TEST_RESULT_FILENAMES = (
+    "test_results.txt",
+    "current_test_out.txt",
+    "test_api_out.txt",
+)
+
+# Allowed group source types
+_VALID_SOURCE_TYPES: frozenset[str] = frozenset(
+    {
+        "general",
+        "genre",
+        "actor",
+        "studio",
+        "tag",
+        "year",
+        "complex",
+        "imdb_list",
+        "trakt_list",
+        "tmdb_list",
+        "anilist_list",
+        "mal_list",
+        "letterboxd_list",
+        "recommendations",
+    },
+)
+
+_MAX_GROUPS = 200
+
+_SENSITIVE_CONFIG_KEYS: tuple[str, ...] = (
+    "api_key",
+    "trakt_client_id",
+    "tmdb_api_key",
+    "mal_client_id",
+)
+
+_CONFIG_MASK = "****"
 
 # Allowed preview metadata types
 _ALLOWED_PREVIEW_TYPES: frozenset[str] = frozenset(
     {"genre", "studio", "tag", "year", "actor", "general", "complex"},
 )
-
-# Default filesystem search roots for auto-detect
 _DEFAULT_SEARCH_ROOTS: tuple[str, ...] = (
     str(Path.home()),
     "/media",
@@ -132,7 +172,12 @@ def _check_auth() -> ResponseReturnValue | None:
     if not _APP_PASSWORD:
         return None
     # Allow unauthenticated access to the main UI and static assets
-    if request.endpoint in ("main.index", "main.test_dashboard"):
+    if request.endpoint in (
+        "main.index",
+        "main.test_dashboard",
+        "main.health",
+        "main.metrics",
+    ):
         return None
     if request.path.startswith("/static/"):
         return None
@@ -163,6 +208,7 @@ def _check_csrf() -> ResponseReturnValue | None:
 # Security helpers for the filesystem browser
 # ---------------------------------------------------------------------------
 
+
 def _is_valid_folder_name(name: str) -> bool:
     """Return True if *name* is a safe, non-empty folder name without path separators."""
     return (
@@ -191,10 +237,7 @@ def _path_is_allowed(path: str) -> bool:
 
     """
     real = os.path.realpath(path)
-    return any(
-        real == root or real.startswith(root + os.sep)
-        for root in _BROWSE_ROOTS
-    )
+    return any(real == root or real.startswith(root + os.sep) for root in _BROWSE_ROOTS)
 
 
 def _get_jellyfin_config(
@@ -224,6 +267,85 @@ def _get_jellyfin_config(
 # ---------------------------------------------------------------------------
 
 
+def _mask_config_for_client(config: dict[str, Any]) -> dict[str, Any]:
+    masked = copy.deepcopy(config)
+    for key in _SENSITIVE_CONFIG_KEYS:
+        if masked.get(key):
+            masked[key] = _CONFIG_MASK
+    return masked
+
+
+def _validate_groups(groups: Any) -> list[str]:
+    errors: list[str] = []
+    if not isinstance(groups, list):
+        return ["'groups' must be a list"]
+    if len(groups) > _MAX_GROUPS:
+        errors.append(f"Maximum {_MAX_GROUPS} groups allowed, got {len(groups)}")
+    seen_names: set[str] = set()
+    for index, group in enumerate(groups):
+        if not isinstance(group, dict):
+            errors.append(f"Group at index {index} must be an object")
+            continue
+        name = group.get("name")
+        if not isinstance(name, str) or not name.strip():
+            errors.append(f"Group at index {index} has an empty name")
+            continue
+        if name in seen_names:
+            errors.append(f"Duplicate group name: {name}")
+        seen_names.add(name)
+        source_type = group.get("source_type")
+        if source_type is not None and source_type not in _VALID_SOURCE_TYPES:
+            errors.append(f"Group '{name}': invalid source_type '{source_type}'")
+    return errors
+
+
+def _url_targets_blocked_host(url: str) -> str | None:
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        return "URL must use http or https"
+    host = parsed.hostname
+    if not host:
+        return "Invalid URL"
+    try:
+        addr = ipaddress.ip_address(host)
+    except ValueError:
+        return None
+    if addr.is_private or addr.is_link_local:
+        return "Connections to private or link-local addresses are not allowed"
+    return None
+
+
+@bp.route("/api/health", methods=["GET"])
+def health() -> ResponseReturnValue:
+    config = load_config()
+    uptime = (datetime.now(UTC) - _APP_START_TIME).total_seconds()
+    jellyfin_url = str(config.get("jellyfin_url") or "").strip()
+    api_key = str(config.get("api_key") or "").strip()
+    return jsonify(
+        {
+            "status": "ok",
+            "uptime_seconds": uptime,
+            "started_at": _APP_START_TIME.isoformat(),
+            "jellyfin_configured": bool(jellyfin_url and api_key),
+            "scheduler_running": _scheduler.running,
+        }
+    )
+
+
+@bp.route("/api/metrics", methods=["GET"])
+def metrics() -> ResponseReturnValue:
+    uptime = (datetime.now(UTC) - _APP_START_TIME).total_seconds()
+    body = (
+        "# HELP sync_requests_total Total sync requests received\n"
+        "# TYPE sync_requests_total counter\n"
+        f"sync_requests_total {_SYNC_REQUESTS_TOTAL}\n"
+        "# HELP uptime_seconds Process uptime in seconds\n"
+        "# TYPE uptime_seconds gauge\n"
+        f"uptime_seconds {uptime}\n"
+    )
+    return Response(body, mimetype="text/plain; version=0.0.4; charset=utf-8")
+
+
 @bp.route("/api/config", methods=["GET"])
 def get_config() -> ResponseReturnValue:
     """Return the current application configuration as JSON.
@@ -232,7 +354,7 @@ def get_config() -> ResponseReturnValue:
         JSON-serialised configuration dictionary.
 
     """
-    return jsonify(load_config())
+    return jsonify(_mask_config_for_client(load_config()))
 
 
 def _validate_cron_expressions(new_config: dict[str, Any]) -> list[str]:
@@ -271,6 +393,10 @@ def update_config() -> ResponseReturnValue:
     new_config = request.get_json(silent=True)
     if not isinstance(new_config, dict):
         return _error("Request body must be a JSON object", 400)
+
+    group_errors = _validate_groups(new_config.get("groups", []))
+    if group_errors:
+        return _error("Invalid group configuration", 400, errors=group_errors)
 
     cron_errors = _validate_cron_expressions(new_config)
     if cron_errors:
@@ -319,6 +445,10 @@ def test_server() -> ResponseReturnValue:
     if not url or not api_key:
         return _error("URL and API Key are required", 400)
 
+    blocked = _url_targets_blocked_host(url)
+    if blocked:
+        return _error(blocked, 400)
+
     try:
         response = network.get(
             f"{url}/System/Info",
@@ -365,7 +495,12 @@ def _fetch_jellyfin_endpoint(
     items: list[dict[str, Any]] = []
     try:
         for page in _paginate_jellyfin(
-            base_url, api_key, endpoint, extra_params, limit=_PAGE_LIMIT, timeout=timeout,
+            base_url,
+            api_key,
+            endpoint,
+            extra_params,
+            limit=_PAGE_LIMIT,
+            timeout=timeout,
         ):
             items.extend(page)
     except RuntimeError:
@@ -397,7 +532,9 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
         with ThreadPoolExecutor(max_workers=4) as pool:
             futures: dict[str, Any] = {
                 "genre": pool.submit(_fetch_jellyfin_endpoint, url, api_key, "Genres"),
-                "studio": pool.submit(_fetch_jellyfin_endpoint, url, api_key, "Studios"),
+                "studio": pool.submit(
+                    _fetch_jellyfin_endpoint, url, api_key, "Studios"
+                ),
                 "actor": pool.submit(
                     _fetch_jellyfin_endpoint,
                     url,
@@ -414,7 +551,9 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
                         item.get("Name", "") for item in items if item.get("Name")
                     ]
                 except (RuntimeError, ValueError):
-                    logger.warning("Failed to process metadata key %r", key, exc_info=True)
+                    logger.warning(
+                        "Failed to process metadata key %r", key, exc_info=True
+                    )
                     result[key] = []
                     failed += 1
 
@@ -515,9 +654,12 @@ def upload_cover() -> ResponseReturnValue:
 
 def _run_sync_handler(dry_run: bool = False) -> ResponseReturnValue:
     """Run sync (or preview) and return a JSON response."""
+    global _SYNC_REQUESTS_TOTAL
+    _SYNC_REQUESTS_TOTAL += 1
     try:
         config: dict[str, Any] = load_config()
-        sync_results = run_sync(config, dry_run=dry_run)
+        with sync_lock:
+            sync_results = run_sync(config, dry_run=dry_run)
         if dry_run:
             return _success(
                 "Preview generated successfully",
@@ -595,7 +737,9 @@ def preview_grouping() -> ResponseReturnValue:
 
     try:
         # Resolve items using the public sync API
-        items, error, status_code = preview_group(type_name, val, url, api_key, watch_state)
+        items, error, status_code = preview_group(
+            type_name, val, url, api_key, watch_state
+        )
 
         if error is not None:
             return _error(error, status_code)
@@ -625,7 +769,9 @@ def get_cleanup_items() -> ResponseReturnValue:
     if not target_base or not Path(target_base).exists():
         return _success("", items=[])
 
-    configured_groups: set[str] = {str(g.get("name")) for g in config.get("groups", []) if g.get("name")}
+    configured_groups: set[str] = {
+        str(g.get("name")) for g in config.get("groups", []) if g.get("name")
+    }
 
     try:
         entries = [
@@ -693,14 +839,18 @@ def perform_cleanup() -> ResponseReturnValue:
         if not _is_valid_folder_name(name):
             errors.append(f"Invalid folder name: {name}")
             continue
-        removed, err = _delete_folder(name, target_base, auto_create_libraries, url, api_key)
+        removed, err = _delete_folder(
+            name, target_base, auto_create_libraries, url, api_key
+        )
         if removed:
             deleted += 1
         elif err:
             errors.append(err)
 
     if errors:
-        return jsonify({"status": "partial_success", "deleted": deleted, "errors": errors}), 207
+        return jsonify(
+            {"status": "partial_success", "deleted": deleted, "errors": errors}
+        ), 207
     return _success("", deleted=deleted)
 
 
@@ -755,7 +905,9 @@ def _search_local_filesystem(
     return None
 
 
-def _compute_common_root(jellyfin_path: str, host_path: str) -> tuple[str | None, str | None]:
+def _compute_common_root(
+    jellyfin_path: str, host_path: str
+) -> tuple[str | None, str | None]:
     """Infer the common root prefixes from a Jellyfin path and its host match.
 
     Counts matching trailing path components and returns the inferred
