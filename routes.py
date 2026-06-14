@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import copy
 import logging
 import math
 import os
@@ -123,6 +124,18 @@ _DEFAULT_SEARCH_ROOTS: tuple[str, ...] = (
     "/media",
     "/mnt",
 )
+
+# Sync rate limiting (per client IP)
+_SYNC_RATE_LIMIT_SECONDS = 5
+_last_sync_by_ip: dict[str, float] = {}
+
+_SENSITIVE_CONFIG_KEYS: tuple[str, ...] = (
+    "api_key",
+    "trakt_client_id",
+    "tmdb_api_key",
+    "mal_client_id",
+)
+_CONFIG_MASK = "****"
 
 # Server connection-test timeout (seconds)
 _TEST_SERVER_TIMEOUT: int = 5
@@ -278,20 +291,22 @@ def _get_jellyfin_config(
     return url, api_key
 
 
-# ---------------------------------------------------------------------------
-# Config routes
-# ---------------------------------------------------------------------------
+def _mask_config(config: dict[str, Any]) -> dict[str, Any]:
+    masked = copy.deepcopy(config)
+    for key in _SENSITIVE_CONFIG_KEYS:
+        if masked.get(key):
+            masked[key] = _CONFIG_MASK
+    return masked
 
 
-@bp.route("/api/config", methods=["GET"])
-def get_config() -> ResponseReturnValue:
-    """Return the current application configuration as JSON.
-
-    Returns:
-        JSON-serialised configuration dictionary.
-
-    """
-    return jsonify(load_config())
+def _check_sync_rate_limit() -> ResponseReturnValue | None:
+    ip = request.remote_addr or "unknown"
+    now = time.monotonic()
+    last = _last_sync_by_ip.get(ip, 0.0)
+    if now - last < _SYNC_RATE_LIMIT_SECONDS:
+        return _error("Please wait before syncing again", 429)
+    _last_sync_by_ip[ip] = now
+    return None
 
 
 def _validate_cron_expressions(new_config: dict[str, Any]) -> list[str]:
@@ -451,6 +466,12 @@ def _validate_config_types(new_config: dict[str, Any]) -> list[str]:
         errors.append("'jellyfin_url' must start with http:// or https://")
 
     return errors
+
+
+@bp.route("/api/config", methods=["GET"])
+def get_config() -> ResponseReturnValue:
+    """Return the current application configuration as JSON."""
+    return jsonify(_mask_config(load_config()))
 
 
 @bp.route("/api/config", methods=["POST"])
@@ -748,6 +769,9 @@ def upload_cover() -> ResponseReturnValue:
 
 def _run_sync_handler(dry_run: bool = False) -> ResponseReturnValue:
     """Run sync (or preview) and return a JSON response."""
+    rate_limited = _check_sync_rate_limit()
+    if rate_limited is not None:
+        return rate_limited
     try:
         config: dict[str, Any] = load_config()
         sync_results = run_sync(config, dry_run=dry_run)

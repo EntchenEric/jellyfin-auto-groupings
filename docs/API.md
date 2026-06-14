@@ -6,7 +6,9 @@ All `/api/*` routes return JSON unless noted. State-changing requests (`POST`, `
 X-Requested-With: XMLHttpRequest
 ```
 
-When `APP_PASSWORD` is set, most `/api/*` routes also require HTTP Basic Auth (password only; username is ignored). Exceptions: `/api/health` and `/api/metrics` are unauthenticated for monitoring.
+When `APP_PASSWORD` is set, most `/api/*` routes also require HTTP Basic Auth (password only; username is ignored). The main UI (`GET /`) and `/static/*` assets load without credentials; the SPA prompts for the password on the first `401` response.
+
+When `APP_PASSWORD` is **not** set, the web UI and API are unauthenticated. Do not expose the service to untrusted networks without setting `APP_PASSWORD` or placing it behind a reverse proxy with authentication.
 
 Error responses use `{ "status": "error", "message": "..." }` with an appropriate HTTP status. Success responses use `{ "status": "success", ... }`.
 
@@ -16,29 +18,18 @@ Error responses use `{ "status": "error", "message": "..." }` with an appropriat
 
 Health check for load balancers and orchestrators.
 
-**Auth:** None (when `APP_PASSWORD` is set, still public)
+**Auth:** Required when `APP_PASSWORD` is set (same as other `/api/*` routes).
 
 **Response `200`:**
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `status` | string | `"ok"` |
-| `uptime_seconds` | number | Process uptime |
-| `started_at` | string | ISO 8601 UTC start time |
-| `jellyfin_configured` | boolean | Both Jellyfin URL and API key present |
-| `scheduler_running` | boolean | Background scheduler state |
-
----
-
-## `GET /api/metrics`
-
-Prometheus exposition format (plain text).
-
-**Auth:** None (when `APP_PASSWORD` is set, still public)
-
-**Response `200`:** `text/plain; version=0.0.4`
-
-Metrics include `sync_requests_total` (counter) and `uptime_seconds` (gauge).
+| `status` | string | `"ok"` or `"error"` |
+| `healthcheck.ok` | boolean | Service health |
+| `healthcheck.configured` | boolean | Jellyfin URL, API key, and target path present |
+| `healthcheck.groups` | number | Count of configured groupings |
+| `server.uptime_seconds` | number | Process uptime |
+| `server.started_at` | string | ISO 8601 UTC start time |
 
 ---
 
@@ -167,7 +158,7 @@ Run a full sync for all configured groups (creates symlinks, libraries, collecti
 }
 ```
 
-**Errors:** `400` validation errors; `500` sync failure.
+**Errors:** `400` validation errors; `429` rate limit (wait before retrying); `500` sync failure.
 
 ---
 
