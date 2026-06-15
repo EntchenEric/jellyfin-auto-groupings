@@ -33,6 +33,11 @@ def _resolve_log_level(name: str) -> int:
     Accepts case-insensitive level names (DEBUG, INFO, WARNING, ERROR,
     CRITICAL) and returns the corresponding :mod:`logging` constant.
     Falls back to ``logging.INFO`` for unset, empty, or unrecognised values.
+
+
+    Args:
+            name: The name of the logging level constant.
+
     """
     raw = os.environ.get(name, "").strip().upper()
     level = getattr(logging, raw, None)
@@ -79,6 +84,8 @@ def _configure_logging() -> None:
 
 _configure_logging()
 
+logger = logging.getLogger(__name__)
+
 __all__ = ["app"]
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -90,7 +97,13 @@ if (
     and _env_flag("SCHEDULER_ENABLED", default=True)
     and (not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true")
 ):
-    start_scheduler()
+    try:
+        start_scheduler()
+    except Exception:
+        logger.exception(
+            "Failed to start background scheduler — "
+            "scheduled syncs will not run.",
+        )
 
 
 # ---------------------------------------------------------------------------

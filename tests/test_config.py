@@ -254,7 +254,6 @@ def test_load_config_corrupt_file_backup_rename_failure(temp_config) -> None:
 
 def test_load_config_corrupt_file_backup_success(temp_config, caplog) -> None:
     """Test that corrupt config backup creates a .corrupt.bak file."""
-
     with Path(temp_config).open("w") as f:
         f.write("this is not json{{{ ")
 

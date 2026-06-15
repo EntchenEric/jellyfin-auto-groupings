@@ -2,7 +2,7 @@
 
 import { state } from '../core/state.js';
 import { autoDetectPaths as apiAutoDetect } from '../core/api.js';
-import { showToast, showErrorDialog, getEl } from '../core/ui.js';
+import { showModal, hideModal, showToast, showErrorDialog, getEl } from '../core/ui.js';
 
 /** @type {string|null} ID of the form input field being picked for */
 let _pickerTargetId = null;
@@ -39,7 +39,7 @@ export async function openPathPicker(fieldId) {
     } else {
         titleEl.textContent = 'Select Media Path (this machine)';
     }
-    getEl('path-picker-modal').style.display = 'flex';
+    showModal('path-picker-modal');
     await browseDir(currentVal || '');
 }
 
@@ -106,7 +106,7 @@ export function confirmPicker() {
 }
 
 export function closePicker() {
-    getEl('path-picker-modal').style.display = 'none';
+    hideModal('path-picker-modal');
     _pickerTargetId = null;
 }
 

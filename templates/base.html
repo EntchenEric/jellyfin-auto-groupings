@@ -19,7 +19,7 @@
 <body>
     <a href="#main-content" class="skip-to-content">Skip to main content</a>
 
-    <div id="loading-overlay" class="loading-overlay" role="dialog" aria-modal="true" aria-labelledby="loading-overlay-title">
+    <div id="loading-overlay" class="loading-overlay" role="dialog" aria-modal="true" aria-labelledby="loading-overlay-title" aria-hidden="true">
         <div class="loading-overlay-card">
             <span class="loading-spinner" aria-hidden="true"></span>
             <h3 id="loading-overlay-title">Connecting to Jellyfin</h3>
@@ -65,7 +65,7 @@
     {% include 'partials/modals/path-picker.html' %}
     {% include 'partials/modals/error-dialog.html' %}
 
-    <div id="status-msg" class="status-msg" role="status" aria-live="polite"></div>
+    <div id="status-msg" class="status-msg" role="status" aria-live="polite" aria-hidden="true"></div>
 
     <script type="module" src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>

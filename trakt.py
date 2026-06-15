@@ -29,7 +29,12 @@ _TRAKT_API_BASE: str = "https://api.trakt.tv"
 
 
 def _parse_trakt_list_url(list_url: str) -> tuple[str, str]:
-    """Parse username and list slug from a Trakt URL or shorthand."""
+    """Parse username and list slug from a Trakt URL or shorthand.
+
+    Args:
+        list_url: The Trakt list URL.
+
+    """
     full_url_match = re.search(
         r"trakt\.tv/users/([^/]+)/lists/([^/?#]+)",
         list_url,

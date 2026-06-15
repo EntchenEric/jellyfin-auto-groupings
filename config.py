@@ -89,6 +89,12 @@ def _env_flag(name: str, *, default: bool = False) -> bool:
     Accepts ``"false"``, ``"0"``, ``"no"`` (case-insensitive) as falsy.
     If the variable is unset or empty, return *default*.
     All other values return *default*.
+
+
+    Args:
+        name: The environment variable name.
+        default: Default value if the var is unset or empty.
+
     """
     raw = os.environ.get(name, "").strip().lower()
     if raw in ("true", "1", "yes"):
@@ -104,6 +110,12 @@ def _fill_defaults(cfg: dict[str, Any], defaults: dict[str, Any]) -> None:
     Recursively walks *defaults* so that deeply nested structures (e.g.
     scheduler config with arbitrary sub-keys) are properly populated without
     requiring the caller to specify every intermediate level.
+
+
+    Args:
+            cfg: The configuration dict.
+            defaults: Default values dict.
+
     """
     for key, default_value in defaults.items():
         if key not in cfg:
@@ -124,6 +136,11 @@ def _migrate_legacy_keys(cfg: dict[str, Any]) -> bool:
     """Migrate legacy keys to their new names. Returns True if any changes were made.
 
     The caller is responsible for persisting changes when this returns True.
+
+
+    Args:
+            cfg: The configuration dict.
+
     """
     migrated = False
     if cfg.get("jellyfin_root") and not cfg.get("media_path_in_jellyfin"):

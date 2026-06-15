@@ -76,7 +76,12 @@ SORT_MAP: dict[str, tuple[str, str]] = {
 
 
 def _auth_headers(api_key: str) -> dict[str, str]:
-    """Return Jellyfin authentication headers for *api_key*."""
+    """Return Jellyfin authentication headers for *api_key*.
+
+    Args:
+        api_key: Jellyfin API key.
+
+    """
     return {"X-Emby-Token": api_key}
 
 
@@ -84,7 +89,13 @@ def _format_request_error(
     exc: requests.exceptions.RequestException,
     prefix: str,
 ) -> str:
-    """Build a human-readable error message from *exc* with response details."""
+    """Build a human-readable error message from *exc* with response details.
+
+    Args:
+        exc: The exception that was raised.
+        prefix: Dot-separated path prefix for error messages.
+
+    """
     msg = prefix
     if exc.response is not None:
         status = getattr(exc.response, "status_code", "?")
@@ -99,12 +110,23 @@ def _raise_request_error(
     exc: requests.exceptions.RequestException,
     prefix: str,
 ) -> NoReturn:
-    """Format *exc* into a ``RuntimeError`` with response details if available."""
+    """Format *exc* into a ``RuntimeError`` with response details if available.
+
+    Args:
+        exc: The exception that was raised.
+        prefix: Dot-separated path prefix for error messages.
+
+    """
     raise RuntimeError(_format_request_error(exc, prefix)) from exc
 
 
 def _parse_json(response: requests.Response) -> Any:
-    """Safely parse *response* JSON, translating decode failures into RuntimeError."""
+    """Safely parse *response* JSON, translating decode failures into RuntimeError.
+
+    Args:
+        response: The HTTP response object.
+
+    """
     try:
         return response.json()
     except requests.exceptions.JSONDecodeError as exc:
@@ -121,6 +143,12 @@ def _get_json(
     timeout: int = _DEFAULT_TIMEOUT,
 ) -> Any:
     """GET *url* and return the parsed JSON response.
+
+    Args:
+        url: The URL to request.
+        headers: Optional HTTP headers to include.
+        params: Optional query-string parameters.
+        timeout: Request timeout in seconds (default ``_DEFAULT_TIMEOUT``).
 
     Raises:
         RuntimeError: If the request fails or the response body is not valid JSON.
@@ -152,6 +180,17 @@ def _request_or_raise(
 ) -> requests.Response:
     """Send a *method* request to *url*, translating errors into ``RuntimeError``.
 
+    Args:
+        method: HTTP method (``"POST"``, ``"PUT"``, ``"PATCH"``,
+                ``"DELETE"``).
+        url: The URL to request.
+        headers: Optional HTTP headers to include.
+        params: Optional query-string parameters.
+        data: Optional raw request body.
+        json: Optional JSON-serialisable request body.
+        timeout: Request timeout in seconds (default ``_DEFAULT_TIMEOUT``).
+        error_prefix: Prefix for error messages on failure.
+
     Raises:
         RuntimeError: On any ``RequestException``.
 
@@ -165,18 +204,21 @@ def _request_or_raise(
         kwargs["data"] = data
     if json is not None:
         kwargs["json"] = json
+
+    valid_methods: dict[str, Any] = {
+        "POST": network.post,
+        "PUT": network.put,
+        "PATCH": network.patch,
+        "DELETE": network.delete,
+    }
+
+    http_func = valid_methods.get(method)
+    if http_func is None:
+        msg = f"Unsupported HTTP method: {method}"
+        raise ValueError(msg)
+
     try:
-        if method == "POST":
-            response = network.post(url, timeout=timeout, **kwargs)
-        elif method == "PUT":
-            response = network.put(url, timeout=timeout, **kwargs)
-        elif method == "PATCH":
-            response = network.patch(url, timeout=timeout, **kwargs)
-        elif method == "DELETE":
-            response = network.delete(url, timeout=timeout, **kwargs)
-        else:
-            msg = f"Unsupported HTTP method: {method}"
-            raise ValueError(msg)
+        response = http_func(url, timeout=timeout, **kwargs)
         response.raise_for_status()
     except requests.exceptions.RequestException as exc:
         _raise_request_error(exc, error_prefix)
@@ -194,7 +236,12 @@ def _post_or_raise(
     timeout: int = _DEFAULT_TIMEOUT,
     error_prefix: str = "",
 ) -> requests.Response:
-    """POST to *url*, translating errors into ``RuntimeError``."""
+    """POST to *url*, translating errors into ``RuntimeError``.
+
+    Args:
+        url: The URL to request.
+
+    """
     return _request_or_raise(
         "POST",
         url,
@@ -217,7 +264,12 @@ def _post_json(
     timeout: int = _DEFAULT_TIMEOUT,
     error_prefix: str = "",
 ) -> Any:
-    """POST to *url* and return parsed JSON, translating errors into RuntimeError."""
+    """POST to *url* and return parsed JSON, translating errors into RuntimeError.
+
+    Args:
+        url: The URL to request.
+
+    """
     return _parse_json(
         _post_or_raise(
             url,
@@ -239,7 +291,12 @@ def _delete_or_raise(
     timeout: int = _DEFAULT_TIMEOUT,
     error_prefix: str = "",
 ) -> requests.Response:
-    """DELETE *url*, translating errors into ``RuntimeError``."""
+    """DELETE *url*, translating errors into ``RuntimeError``.
+
+    Args:
+        url: The URL to request.
+
+    """
     return _request_or_raise(
         "DELETE",
         url,

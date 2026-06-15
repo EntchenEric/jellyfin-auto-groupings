@@ -168,6 +168,10 @@ def _reraise_timeout(exc: requests.ConnectionError) -> None:
 
     - ``ReadTimeoutError`` -> :class:`requests.Timeout`
     - ``ConnectTimeoutError`` -> :class:`requests.ConnectionError`
+
+    Args:
+        exc: The connection error to inspect.
+
     """
     inner = exc.args[0] if exc.args else None
     if not isinstance(inner, MaxRetryError):
@@ -183,7 +187,17 @@ def _reraise_timeout(exc: requests.ConnectionError) -> None:
 
 
 def _request(method: str, url: str, **kwargs: Any) -> requests.Response:
-    """Send a *method* request to *url* through the retry-enabled session."""
+    """Send a *method* request to *url* through the retry-enabled session.
+
+    Args:
+        method: HTTP method (e.g. ``"get"``, ``"post"``).
+        url: The URL to request.
+        **kwargs: Additional arguments passed to the requests call.
+
+    Returns:
+        The HTTP response object.
+
+    """
     try:
         http_fn = cast(
             "Callable[..., requests.Response]",
@@ -196,25 +210,70 @@ def _request(method: str, url: str, **kwargs: Any) -> requests.Response:
 
 
 def get(url: str, **kwargs: Any) -> requests.Response:
-    """GET *url* through the retry-enabled session."""
+    """GET *url* through the retry-enabled session.
+
+    Args:
+        url: The URL to request.
+        **kwargs: Additional arguments passed to :func:`requests.get`.
+
+    Returns:
+        The HTTP response object.
+
+    """
     return _request("get", url, **kwargs)
 
 
 def post(url: str, **kwargs: Any) -> requests.Response:
-    """POST to *url* through the retry-enabled session."""
+    """POST to *url* through the retry-enabled session.
+
+    Args:
+        url: The URL to request.
+        **kwargs: Additional arguments passed to :func:`requests.post`.
+
+    Returns:
+        The HTTP response object.
+
+    """
     return _request("post", url, **kwargs)
 
 
 def put(url: str, **kwargs: Any) -> requests.Response:
-    """PUT *url* through the retry-enabled session."""
+    """PUT *url* through the retry-enabled session.
+
+    Args:
+        url: The URL to request.
+        **kwargs: Additional arguments passed to :func:`requests.put`.
+
+    Returns:
+        The HTTP response object.
+
+    """
     return _request("put", url, **kwargs)
 
 
 def patch(url: str, **kwargs: Any) -> requests.Response:
-    """PATCH *url* through the retry-enabled session."""
+    """PATCH *url* through the retry-enabled session.
+
+    Args:
+        url: The URL to request.
+        **kwargs: Additional arguments passed to :func:`requests.patch`.
+
+    Returns:
+        The HTTP response object.
+
+    """
     return _request("patch", url, **kwargs)
 
 
 def delete(url: str, **kwargs: Any) -> requests.Response:
-    """DELETE *url* through the retry-enabled session."""
+    """DELETE *url* through the retry-enabled session.
+
+    Args:
+        url: The URL to request.
+        **kwargs: Additional arguments passed to :func:`requests.delete`.
+
+    Returns:
+        The HTTP response object.
+
+    """
     return _request("delete", url, **kwargs)

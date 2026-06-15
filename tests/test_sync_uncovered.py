@@ -1,5 +1,6 @@
 """Additional tests covering uncovered lines in sync.py (PermissionError, OSError, etc.)."""
 
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -165,7 +166,8 @@ def test_is_in_season_same_year_window() -> None:
 
 def test_is_in_season_single_day_season() -> None:
     """Single-day season (same start/end) never matches (window is [start, end)).
-    Covers issue #982."""
+    Covers issue #982.
+    """
     from datetime import UTC, datetime
 
     from sync import _is_in_season
@@ -185,7 +187,8 @@ def test_is_in_season_single_day_season() -> None:
 
 def test_is_in_season_dec_31_to_jan_1_wrap() -> None:
     """Dec 31 to Jan 1 wrap-around: only Dec 31 is in season.
-    Covers issue #976."""
+    Covers issue #976.
+    """
     from datetime import UTC, datetime
 
     from sync import _is_in_season
@@ -207,7 +210,8 @@ def test_is_in_season_dec_31_to_jan_1_wrap() -> None:
 
 def test_is_in_season_mar_1_to_feb_29_cross_leap() -> None:
     """Mar 1 to Feb 29 wrap-around (leap year — Feb 29 valid).
-    Covers issue #977."""
+    Covers issue #977.
+    """
     from datetime import UTC, datetime
 
     from sync import _is_in_season
@@ -221,7 +225,8 @@ def test_is_in_season_mar_1_to_feb_29_cross_leap() -> None:
 
 def test_is_in_season_leap_feb_29_as_start() -> None:
     """Feb 29 as start date (leap year).
-    Covers issue #977."""
+    Covers issue #977.
+    """
     from datetime import UTC, datetime
 
     from sync import _is_in_season
@@ -234,7 +239,8 @@ def test_is_in_season_leap_feb_29_as_start() -> None:
 
 def test_is_in_season_invalid_mmdd_feb_31() -> None:
     """Invalid MM-DD like Feb 31 falls back to (0, 0) -> returns True.
-    Covers issue #983."""
+    Covers issue #983.
+    """
     from sync import _is_in_season
 
     # Feb 31 is not a valid date, so _parse_mmdd returns (0,0) -> graceful degradation
@@ -244,7 +250,8 @@ def test_is_in_season_invalid_mmdd_feb_31() -> None:
 
 def test_parse_mmdd_feb_31_invalid() -> None:
     """Feb 31 is not a valid date -> returns (0, 0).
-    Covers issue #983."""
+    Covers issue #983.
+    """
     from sync import _parse_mmdd
 
     assert _parse_mmdd("02-31") == (0, 0)
@@ -252,7 +259,8 @@ def test_parse_mmdd_feb_31_invalid() -> None:
 
 def test_maybe_handle_seasonal_empty_name(tmp_path) -> None:
     """Out-of-season group with empty name is handled gracefully.
-    Covers issue #979."""
+    Covers issue #979.
+    """
     with patch("sync._is_in_season", return_value=False):
         result = _maybe_handle_seasonal(
             {
@@ -271,7 +279,8 @@ def test_maybe_handle_seasonal_empty_name(tmp_path) -> None:
 
 def test_maybe_handle_seasonal_disabled_mid_season(tmp_path) -> None:
     """Group with seasonal_enabled=False returns None regardless.
-    Covers issue #980."""
+    Covers issue #980.
+    """
     result = _maybe_handle_seasonal(
         {"seasonal_enabled": False},
         "test-group",
@@ -283,7 +292,8 @@ def test_maybe_handle_seasonal_disabled_mid_season(tmp_path) -> None:
 
 def test_maybe_handle_seasonal_dry_run_out_of_season(tmp_path) -> None:
     """Dry-run out-of-season: no directory deletion, returns result.
-    Covers issue #981."""
+    Covers issue #981.
+    """
     group_dir = tmp_path / "dry-seasonal"
     group_dir.mkdir()
     (group_dir / "movie.mkv").write_text("data")
@@ -306,7 +316,8 @@ def test_maybe_handle_seasonal_dry_run_out_of_season(tmp_path) -> None:
 
 def test_maybe_handle_seasonal_live_delete_out_of_season(tmp_path) -> None:
     """Live run out-of-season: directory is deleted.
-    Covers issue #981."""
+    Covers issue #981.
+    """
     group_dir = tmp_path / "live-seasonal"
     group_dir.mkdir()
     (group_dir / "movie.mkv").write_text("data")
@@ -329,7 +340,8 @@ def test_maybe_handle_seasonal_live_delete_out_of_season(tmp_path) -> None:
 
 def test_maybe_handle_seasonal_no_name_out_of_season(tmp_path) -> None:
     """Out-of-season group with no name key returns (unnamed).
-    Covers issue #979."""
+    Covers issue #979.
+    """
     with patch("sync._is_in_season", return_value=False):
         result = _maybe_handle_seasonal(
             {
@@ -578,7 +590,7 @@ def test_sort_items_in_memory_missing_key() -> None:
     """Items missing the sort field sort to end."""
     from sync import _sort_items_in_memory
 
-    items = [
+    items: list[dict[str, Any]] = [
         {"Name": "A", "ProductionYear": 2020},
         {"Name": "B"},
         {"Name": "C", "ProductionYear": 2010},
@@ -595,7 +607,7 @@ def test_sort_items_in_memory_descending() -> None:
     """Descending sort works correctly."""
     from sync import _sort_items_in_memory
 
-    items = [
+    items: list[dict[str, Any]] = [
         {"Name": "A", "ProductionYear": 2010},
         {"Name": "B"},
         {"Name": "C", "ProductionYear": 2020},
