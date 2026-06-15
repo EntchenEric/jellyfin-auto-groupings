@@ -1,5 +1,6 @@
 """Additional tests covering uncovered lines in sync.py (PermissionError, OSError, etc.)."""
 
+import time
 from typing import Any
 from unittest.mock import patch
 
@@ -666,8 +667,8 @@ def test_fetch_full_library_stale_cache_eviction() -> None:
     from sync import _LIBRARY_CACHE, _fetch_full_library
 
     cache_key = ("http://jf:8096", "testkey")
-    # Insert an expired cache entry (timestamp far in the past)
-    _LIBRARY_CACHE[cache_key] = (0.0, [{"Id": "stale-item"}])
+    # Insert an expired cache entry (timestamp well in the past)
+    _LIBRARY_CACHE[cache_key] = (time.monotonic() - 3600, [{"Id": "stale-item"}])
 
     # The fetch will see the stale entry, evict it, then try to re-fetch.
     # We mock fetch_all_jellyfin_items to return fresh data.

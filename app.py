@@ -101,8 +101,7 @@ if (
         start_scheduler()
     except Exception:
         logger.exception(
-            "Failed to start background scheduler — "
-            "scheduled syncs will not run.",
+            "Failed to start background scheduler — scheduled syncs will not run.",
         )
 
 
