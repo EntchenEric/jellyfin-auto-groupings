@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `README.md`: update test count from 642+ to exact 749 and improve
+  `_validate_group_entry` docstring. (PR #1039)
+
 ### Added
 
 - `routes.py`: add health check endpoint at `/api/health` for Docker/Kubernetes
