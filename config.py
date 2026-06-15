@@ -6,6 +6,7 @@ backwards-compatible key migration and first-run default creation.
 
 from __future__ import annotations
 
+import contextlib
 import copy
 import json
 import logging
@@ -17,11 +18,11 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    "_active_env_overrides",
-    "_ENV_TO_CONFIG",
     "CONFIG_DIR",
     "CONFIG_FILE",
     "DEFAULT_CONFIG",
+    "_ENV_TO_CONFIG",
+    "_active_env_overrides",
     "load_config",
     "save_config",
 ]
@@ -253,8 +254,6 @@ def save_config(config: dict[str, Any]) -> None:
         tmp_file.rename(cfg_file)
     except Exception:
         # Clean up temp file on failure
-        try:
+        with contextlib.suppress(OSError):
             tmp_file.unlink(missing_ok=True)
-        except OSError:
-            pass
         raise

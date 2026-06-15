@@ -310,7 +310,7 @@ def get_config() -> ResponseReturnValue:
 
     The response includes a top-level ``_active_env_overrides`` key listing
     any config keys that are currently overridden by environment variables
-    (see :mod:`config`).
+    (see :mod:`config`). Sensitive values are masked.
 
     Returns:
         JSON-serialised configuration dictionary with an extra
@@ -319,7 +319,7 @@ def get_config() -> ResponseReturnValue:
     """
     config = load_config()
     config["_active_env_overrides"] = _active_env_overrides()
-    return jsonify(config)
+    return jsonify(_mask_config(config))
 
 
 def _check_sync_rate_limit() -> ResponseReturnValue | None:
@@ -536,12 +536,6 @@ def _validate_config_types(new_config: dict[str, Any]) -> list[str]:
             )
 
     return errors
-
-
-@bp.route("/api/config", methods=["GET"])
-def get_config() -> ResponseReturnValue:
-    """Return the current application configuration as JSON."""
-    return jsonify(_mask_config(load_config()))
 
 
 @bp.route("/api/config", methods=["POST"])

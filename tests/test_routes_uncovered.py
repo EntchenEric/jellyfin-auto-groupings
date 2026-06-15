@@ -464,6 +464,7 @@ def test_validate_config_types_target_path_not_dir(tmp_path) -> None:
 def test_validate_config_types_target_path_not_writable(tmp_path, monkeypatch) -> None:
     """target_path that is not writable is flagged."""
     import os as os_mod
+
     from routes import _validate_config_types
 
     dir_path = tmp_path / "readonly"
@@ -495,6 +496,7 @@ def test_validate_config_types_media_path_not_dir(tmp_path) -> None:
 def test_validate_config_types_media_path_not_readable(tmp_path, monkeypatch) -> None:
     """media_path_on_host that is not readable is flagged."""
     import os as os_mod
+
     from routes import _validate_config_types
 
     dir_path = tmp_path / "no_read"
@@ -507,6 +509,7 @@ def test_validate_config_types_media_path_not_readable(tmp_path, monkeypatch) ->
 def test_validate_config_types_path_oserror(tmp_path) -> None:
     """OSError during path validation is caught gracefully."""
     from unittest.mock import patch
+
     from routes import _validate_config_types
 
     dir_path = tmp_path / "error"
@@ -519,6 +522,7 @@ def test_validate_config_types_path_oserror(tmp_path) -> None:
 def test_validate_config_types_path_oserror_media(tmp_path) -> None:
     """OSError during media_path_on_host validation is caught gracefully."""
     from unittest.mock import patch
+
     from routes import _validate_config_types
 
     dir_path = tmp_path / "error"
@@ -539,6 +543,7 @@ def test_validate_config_types_jellyfin_url_no_netloc() -> None:
 def test_validate_config_types_jellyfin_url_unparseable() -> None:
     """Exception during URL parsing is caught gracefully."""
     from unittest.mock import patch
+
     from routes import _validate_config_types
 
     with patch("urllib.parse.urlparse", side_effect=ValueError("mock")):
