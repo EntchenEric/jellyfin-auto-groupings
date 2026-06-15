@@ -87,7 +87,7 @@ app.register_blueprint(bp)
 # Start the background sync scheduler
 if (
     not app.testing
-    and os.environ.get("SCHEDULER_ENABLED", "1") != "0"
+    and _env_flag("SCHEDULER_ENABLED", default=True)
     and (not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true")
 ):
     start_scheduler()
