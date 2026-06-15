@@ -17,6 +17,7 @@ import logging
 import re
 import shutil
 import threading
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -104,6 +105,12 @@ _FULL_LIBRARY_TIMEOUT: int = 30
 
 # Jellyfin API timeout for metadata group fetches (seconds)
 _METADATA_FETCH_TIMEOUT: int = 30
+
+# TTL for the full-library cache (seconds).  The cache is shared across
+# all groups in a single run_sync() call and persists across calls within
+# this window, avoiding redundant paginated fetches when the scheduler
+# triggers multiple syncs in quick succession.
+_LIBRARY_CACHE_TTL: int = 300  # 5 minutes
 
 # Source types that use external list fetchers (not Jellyfin metadata filters)
 _LIST_SOURCE_TYPES: frozenset[str] = frozenset(
@@ -229,7 +236,7 @@ def _get_cover_path(
     return None
 
 
-_LIBRARY_CACHE: dict[tuple[str, str], list[dict[str, Any]]] = {}
+_LIBRARY_CACHE: dict[tuple[str, str], tuple[float, list[dict[str, Any]]]] = {}
 _LIBRARY_CACHE_LOCK = threading.RLock()
 
 
@@ -242,6 +249,11 @@ def clear_library_cache() -> None:
     with _LIBRARY_CACHE_LOCK:
         _LIBRARY_CACHE.clear()
     logger.debug("Jellyfin library cache cleared")
+
+
+def _is_cache_fresh(entry: tuple[float, list[dict[str, Any]]]) -> bool:
+    """Check whether a cache entry is still within its TTL window."""
+    return (time.monotonic() - entry[0]) < _LIBRARY_CACHE_TTL
 
 
 def _filter_by_watch_state(
@@ -271,10 +283,17 @@ def _fetch_full_library(
     api_key: str,
     group_name: str,
 ) -> tuple[list[dict[str, Any]], str | None, int]:
-    """Fetch the full Jellyfin library once per run for matching.
+    """Fetch the full Jellyfin library, cached with a TTL.
 
     Uses double-checked locking with a reentrant lock to avoid redundant
-    fetches when multiple groups share the same Jellyfin server.
+    fetches when multiple groups share the same Jellyfin server.  The
+    cache entry includes a monotonic timestamp so that repeated
+    ``run_sync()`` calls (e.g. from the scheduler) can reuse the data
+    within the TTL window without re-fetching.
+
+    The cache is explicitly invalidated by :func:`clear_library_cache`
+    (called when the server URL or API key changes) or when the TTL
+    expires.
 
     Args:
         url: Jellyfin base URL.
@@ -288,7 +307,11 @@ def _fetch_full_library(
     cache_key = (url, api_key)
     with _LIBRARY_CACHE_LOCK:
         if cache_key in _LIBRARY_CACHE:
-            return _LIBRARY_CACHE[cache_key].copy(), None, 200
+            entry = _LIBRARY_CACHE[cache_key]
+            if _is_cache_fresh(entry):
+                return entry[1].copy(), None, 200
+            # TTL expired — remove stale entry so it gets re-fetched
+            del _LIBRARY_CACHE[cache_key]
 
     try:
         all_items = fetch_all_jellyfin_items(
@@ -307,7 +330,7 @@ def _fetch_full_library(
         with _LIBRARY_CACHE_LOCK:
             # Double-check: another thread may have populated the cache while we fetched
             if cache_key not in _LIBRARY_CACHE:
-                _LIBRARY_CACHE[cache_key] = all_items
+                _LIBRARY_CACHE[cache_key] = (time.monotonic(), all_items)
     except (RuntimeError, OSError, ValueError) as exc:
         logger.exception(
             "Infrastructure error fetching Jellyfin library for group %r",
@@ -1905,9 +1928,9 @@ def run_sync(
     if auto_create_libraries:
         existing_libraries = _fetch_existing_libraries(url, api_key)
 
-    # Clear any stale cached library data before starting a fresh sync
-    with _LIBRARY_CACHE_LOCK:
-        _LIBRARY_CACHE.clear()
+    # The full-library cache is now TTL-based and persists across
+    # run_sync() calls.  Stale entries are evicted on access in
+    # _fetch_full_library, so we no longer clear the cache here.
 
     results: list[dict[str, Any]] = []
     if not groups:
