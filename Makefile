@@ -1,4 +1,4 @@
-.PHONY: install install-dev test test-all test-cov test-to-file lint format-check typecheck clean format run virtual-jellyfin docker-build docker-run
+.PHONY: install install-dev test test-all test-cov test-fast test-to-file lint format-check typecheck clean format run virtual-jellyfin docker-build docker-run
 
 # ── Installation ────────────────────────────────────────────────────────────
 
