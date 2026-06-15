@@ -13,6 +13,7 @@ from scheduler import (
     _run_cleanup_job,
     _run_global_sync_job,
     _run_group_sync_job,
+    _validate_group_entry,
     start_scheduler,
     update_scheduler_jobs,
     validate_cron,
@@ -340,3 +341,50 @@ def test_update_scheduler_jobs_duplicate_group_names(mock_load, mock_sched) -> N
     assert mock_sched.add_job.call_count == 1
     _args, kwargs = mock_sched.add_job.call_args
     assert kwargs["id"] == "group_sync_SameName"
+
+
+# ---------------------------------------------------------------------------
+# _validate_group_entry tests
+# ---------------------------------------------------------------------------
+
+
+def test_validate_group_entry_valid() -> None:
+    """Valid group dict returns its name."""
+    result = _validate_group_entry({"name": "MyGroup"})
+    assert result == "MyGroup"
+
+
+def test_validate_group_entry_not_dict() -> None:
+    """Non-dict entries return None."""
+    assert _validate_group_entry("not_a_dict") is None
+    assert _validate_group_entry(42) is None
+    assert _validate_group_entry(None) is None
+
+
+def test_validate_group_entry_missing_name() -> None:
+    """Dict without a name key returns None."""
+    assert _validate_group_entry({"schedule_enabled": True}) is None
+
+
+def test_validate_group_entry_non_string_name() -> None:
+    """Non-string name values return None."""
+    assert _validate_group_entry({"name": 42}) is None
+    assert _validate_group_entry({"name": []}) is None
+    assert _validate_group_entry({"name": None}) is None
+
+
+def test_validate_group_entry_whitespace_only_name() -> None:
+    """Whitespace-only group names return None (stripped to empty)."""
+    assert _validate_group_entry({"name": "   "}) is None
+    assert _validate_group_entry({"name": "\t\n"}) is None
+
+
+def test_validate_group_entry_strips_whitespace() -> None:
+    """Group names with surrounding whitespace are stripped."""
+    result = _validate_group_entry({"name": "  MyGroup  "})
+    assert result == "MyGroup"
+
+
+def test_validate_group_entry_empty_string_name() -> None:
+    """Empty string name returns None."""
+    assert _validate_group_entry({"name": ""}) is None
