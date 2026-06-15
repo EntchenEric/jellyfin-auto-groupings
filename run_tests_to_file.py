@@ -16,30 +16,39 @@ def main() -> None:
     """Run pytest with coverage and stream output to ``test_results.txt``.
 
     The output file is created in the repository root directory.
+    The test timeout can be controlled via the ``TEST_TIMEOUT`` environment
+    variable (default: 300 seconds).
     """
     repo_root = Path(__file__).resolve().parent
     existing = os.environ.get("PYTHONPATH")
     os.environ["PYTHONPATH"] = (
         f"{existing}{os.pathsep}{repo_root}" if existing else str(repo_root)
     )
+
     output_file = repo_root / "test_results.txt"
-    with output_file.open("w", encoding="utf-8") as f:
-        try:
-            # Running all tests with coverage and short traceback for readability
+    timeout = int(os.environ.get("TEST_TIMEOUT", "300"))
+
+    try:
+        with output_file.open("w", encoding="utf-8") as f:
             f.write("Starting test run...\n")
             f.write(f"Python: {sys.version}\n")
-            f.write(f"CWD: {repo_root}\n\n")
+            f.write(f"CWD: {repo_root}\n")
+            f.write(f"Timeout: {timeout}s\n\n")
             f.flush()
+
             result = subprocess.run(
                 [sys.executable, "-m", "pytest", "--cov=.", "--tb=short", "tests/"],
                 stdout=f,
                 stderr=subprocess.STDOUT,
-                timeout=300,
+                timeout=timeout,
                 check=False,
             )
+
             f.write(f"\nExit code: {result.returncode}\n")
-        except (subprocess.TimeoutExpired, OSError) as e:
-            f.write(f"\nERROR: {e!s}")
+    except (subprocess.TimeoutExpired, OSError) as e:
+        msg = f"\nERROR: {e!s}"
+        with output_file.open("a", encoding="utf-8") as f:
+            f.write(msg)
 
 
 if __name__ == "__main__":
