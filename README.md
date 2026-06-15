@@ -439,6 +439,12 @@ An Unraid Community Applications template is available in the `unraid/` director
 
 ## 🐳 Docker Environment Variables
 
+> **Multi-arch support:** Images are built for both `linux/amd64` and `linux/arm64`.
+> Raspberry Pi and other ARM-based homelab users can pull the same image tag.
+
+> **Offline/air-gapped deployments:** All fonts (Inter, Outfit) are self-hosted.
+> No external CDN requests are made at page load.
+
 When running via Docker, you can set environment variables to override sensitive config values:
 
 ```yaml
@@ -596,6 +602,10 @@ a `message` field:
 
 Errors also include an `error` field in the response body with a human-readable description.
 When preview or sync fails, the error is shown in a modal dialog within the UI.
+
+> **Delete confirmations:** Deleting a grouping or clearing all groupings uses
+> an in-app modal dialog instead of the browser's native `confirm()` prompt,
+> providing a consistent experience across browsers and platforms.
 
 ---
 

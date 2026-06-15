@@ -115,6 +115,62 @@ export function showErrorDialog(msg) {
     showModal('error-dialog-modal');
 }
 
+/**
+ * Show a confirm dialog modal that resolves to true/false.
+ * @param {string} title - Dialog title
+ * @param {string} message - Dialog body text
+ * @param {string} [confirmText='Confirm'] - Text for the confirm button
+ * @param {string} [cancelText='Cancel'] - Text for the cancel button
+ * @returns {Promise<boolean>} Resolves to true if confirmed, false if cancelled
+ */
+export function showConfirmDialog(title, message, confirmText = 'Confirm', cancelText = 'Cancel') {
+    return new Promise((resolve) => {
+        const modal = getEl('confirm-dialog-modal');
+        const titleEl = getEl('confirm-dialog-title');
+        const msgEl = getEl('confirm-dialog-message');
+        const okBtn = getEl('confirm-dialog-ok-btn');
+        const cancelBtn = getEl('confirm-dialog-cancel-btn');
+        if (!modal || !titleEl || !msgEl || !okBtn || !cancelBtn) {
+            // Fallback to native confirm if modal elements are missing
+            resolve(confirm(message));
+            return;
+        }
+
+        titleEl.textContent = title;
+        msgEl.textContent = message;
+        okBtn.textContent = confirmText;
+        cancelBtn.textContent = cancelText;
+
+        const cleanup = () => {
+            okBtn.removeEventListener('click', onConfirm);
+            cancelBtn.removeEventListener('click', onCancel);
+            // Remove any close-modal-btn listeners that might fire
+            const closeBtns = modal.querySelectorAll('.close-modal-btn');
+            closeBtns.forEach(btn => btn.removeEventListener('click', onCancel));
+        };
+
+        const onConfirm = () => {
+            hideModal('confirm-dialog-modal');
+            cleanup();
+            resolve(true);
+        };
+
+        const onCancel = () => {
+            hideModal('confirm-dialog-modal');
+            cleanup();
+            resolve(false);
+        };
+
+        okBtn.addEventListener('click', onConfirm);
+        cancelBtn.addEventListener('click', onCancel);
+        // Also close on backdrop click or X button
+        const closeBtns = modal.querySelectorAll('.close-modal-btn');
+        closeBtns.forEach(btn => btn.addEventListener('click', onCancel));
+
+        showModal('confirm-dialog-modal');
+    });
+}
+
 let _progressTotal = 0;
 let _progressStep = 0;
 let _progressStartTime = 0;
