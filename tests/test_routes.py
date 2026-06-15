@@ -1130,6 +1130,116 @@ def test_preview_grouping_invalid_body(client) -> None:
     assert "Request body must be JSON" in response.get_json()["message"]
 
 
+@patch("routes.preview_group")
+@pytest.mark.usefixtures("temp_config")
+def test_preview_grouping_imdb_list(mock_preview, client) -> None:
+    """Preview with imdb_list type is accepted."""
+    mock_preview.return_value = ([{"Name": "M1"}], None, 200)
+    save_config({"jellyfin_url": "http://t", "api_key": "k"})
+    response = client.post(
+        "/api/grouping/preview",
+        json={"type": "imdb_list", "value": "ls000000001"},
+    )
+    assert response.status_code == 200
+    assert response.get_json()["count"] == 1
+
+
+@patch("routes.preview_group")
+@pytest.mark.usefixtures("temp_config")
+def test_preview_grouping_trakt_list(mock_preview, client) -> None:
+    """Preview with trakt_list type is accepted."""
+    mock_preview.return_value = ([{"Name": "M1"}], None, 200)
+    save_config({
+        "jellyfin_url": "http://t", "api_key": "k",
+        "trakt_client_id": "test_client_id",
+    })
+    response = client.post(
+        "/api/grouping/preview",
+        json={"type": "trakt_list", "value": "https://trakt.tv/users/foo/lists/bar"},
+    )
+    assert response.status_code == 200
+    assert response.get_json()["count"] == 1
+
+
+@patch("routes.preview_group")
+@pytest.mark.usefixtures("temp_config")
+def test_preview_grouping_tmdb_list(mock_preview, client) -> None:
+    """Preview with tmdb_list type is accepted."""
+    mock_preview.return_value = ([{"Name": "M1"}], None, 200)
+    save_config({
+        "jellyfin_url": "http://t", "api_key": "k",
+        "tmdb_api_key": "test_key",
+    })
+    response = client.post(
+        "/api/grouping/preview",
+        json={"type": "tmdb_list", "value": "12345"},
+    )
+    assert response.status_code == 200
+    assert response.get_json()["count"] == 1
+
+
+@patch("routes.preview_group")
+@pytest.mark.usefixtures("temp_config")
+def test_preview_grouping_anilist_list(mock_preview, client) -> None:
+    """Preview with anilist_list type is accepted."""
+    mock_preview.return_value = ([{"Name": "M1"}], None, 200)
+    save_config({"jellyfin_url": "http://t", "api_key": "k"})
+    response = client.post(
+        "/api/grouping/preview",
+        json={"type": "anilist_list", "value": "12345"},
+    )
+    assert response.status_code == 200
+    assert response.get_json()["count"] == 1
+
+
+@patch("routes.preview_group")
+@pytest.mark.usefixtures("temp_config")
+def test_preview_grouping_mal_list(mock_preview, client) -> None:
+    """Preview with mal_list type is accepted."""
+    mock_preview.return_value = ([{"Name": "M1"}], None, 200)
+    save_config({
+        "jellyfin_url": "http://t", "api_key": "k",
+        "mal_client_id": "test_client",
+    })
+    response = client.post(
+        "/api/grouping/preview",
+        json={"type": "mal_list", "value": "12345"},
+    )
+    assert response.status_code == 200
+    assert response.get_json()["count"] == 1
+
+
+@patch("routes.preview_group")
+@pytest.mark.usefixtures("temp_config")
+def test_preview_grouping_letterboxd_list(mock_preview, client) -> None:
+    """Preview with letterboxd_list type is accepted."""
+    mock_preview.return_value = ([{"Name": "M1"}], None, 200)
+    save_config({"jellyfin_url": "http://t", "api_key": "k"})
+    response = client.post(
+        "/api/grouping/preview",
+        json={"type": "letterboxd_list", "value": "https://letterboxd.com/user/list/foo/"},
+    )
+    assert response.status_code == 200
+    assert response.get_json()["count"] == 1
+
+
+@patch("routes.preview_group")
+@pytest.mark.usefixtures("temp_config")
+def test_preview_grouping_recommendations(mock_preview, client) -> None:
+    """Preview with recommendations type is accepted."""
+    mock_preview.return_value = ([{"Name": "M1"}], None, 200)
+    save_config({
+        "jellyfin_url": "http://t", "api_key": "k",
+        "tmdb_api_key": "test_key",
+    })
+    response = client.post(
+        "/api/grouping/preview",
+        json={"type": "recommendations", "value": "tt1234567"},
+    )
+    assert response.status_code == 200
+    assert response.get_json()["count"] == 1
+
+
 # Preview grouping server not configured (lines 491-492)
 @pytest.mark.usefixtures("temp_config")
 def test_preview_grouping_no_config(client) -> None:

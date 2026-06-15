@@ -419,6 +419,36 @@ Run tests and save output to a file:
 python3 run_tests_to_file.py
 ```
 
+#### Frontend Tests
+
+The frontend JavaScript uses [Vitest](https://vitest.dev/) with jsdom for unit tests:
+
+```bash
+# Install frontend dependencies
+npm install
+
+# Run frontend tests
+npm test
+
+# Run with coverage
+npm run test:coverage
+```
+
+#### E2E Tests
+
+End-to-end tests require a running Jellyfin instance and the app server. They are run in CI but can also be executed locally:
+
+```bash
+# Start E2E services (Jellyfin + app)
+docker compose -f e2e/docker-compose.e2e.yml up -d
+
+# Run E2E tests
+python3 -m pytest tests/test_e2e/ -v
+
+# Stop and clean up
+docker compose -f e2e/docker-compose.e2e.yml down -v
+```
+
 #### Virtual Jellyfin for Development
 If you don't have a real Jellyfin server handy, or want to test without affecting your real setup, you can run a **mock Jellyfin server**:
 

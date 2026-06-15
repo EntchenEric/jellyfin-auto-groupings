@@ -275,9 +275,15 @@ export async function previewGrouping() {
     const val = getFilterValue();
     const resultDiv = getEl('preview_result');
 
-    if (!metadataTypes.includes(type) && type !== 'general') {
+    // External list sources and recommendations also support preview
+    const previewableTypes = [...metadataTypes, 'general',
+        'imdb_list', 'trakt_list', 'tmdb_list',
+        'anilist_list', 'mal_list', 'letterboxd_list',
+        'recommendations'];
+
+    if (!previewableTypes.includes(type)) {
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<span style="color:var(--text-secondary);">Preview supports Jellyfin metadata types (Genre, Actor, etc).</span>';
+        resultDiv.innerHTML = '<span style="color:var(--text-secondary);">Preview not supported for this source type.</span>';
         return;
     }
     if (!val) {

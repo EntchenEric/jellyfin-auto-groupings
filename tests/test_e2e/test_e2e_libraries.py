@@ -1,3 +1,5 @@
+pytestmark = pytest.mark.e2e
+
 """E2E tests for Jellyfin library creation features."""
 
 import pytest

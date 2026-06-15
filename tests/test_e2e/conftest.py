@@ -1,3 +1,5 @@
+pytestmark = pytest.mark.e2e
+
 """E2E test configuration and fixtures.
 
 These tests require a running Jellyfin instance and the app server.

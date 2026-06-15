@@ -1,3 +1,5 @@
+pytestmark = pytest.mark.e2e
+
 """E2E tests for server connection."""
 
 import pytest
