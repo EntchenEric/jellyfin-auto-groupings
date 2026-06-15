@@ -82,19 +82,20 @@ def _validate_group_entry(group: Any) -> str | None:
         )
         return None
     group_name = group.get("name")
-    if not group_name:
-        logger.warning(
-            "Skipping group with schedule_enabled but missing name: %s",
-            group,
-        )
-        return None
     if not isinstance(group_name, str):
         logger.warning(
             "Skipping group with schedule_enabled but non-string name: %s",
             group_name,
         )
         return None
-    return group_name
+    stripped = group_name.strip()
+    if not stripped:
+        logger.warning(
+            "Skipping group with schedule_enabled but empty/whitespace-only name: %s",
+            group_name,
+        )
+        return None
+    return stripped
 
 
 def _schedule_group_syncs(scheduler: BackgroundScheduler, groups: list[Any]) -> None:
