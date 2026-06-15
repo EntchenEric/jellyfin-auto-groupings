@@ -1,9 +1,9 @@
-pytestmark = pytest.mark.e2e
-
 """E2E tests for full sync cycle."""
 
 import pytest
 import requests
+
+pytestmark = pytest.mark.e2e
 
 from .conftest import api_get, api_post
 

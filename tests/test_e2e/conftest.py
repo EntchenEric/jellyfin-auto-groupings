@@ -1,5 +1,3 @@
-pytestmark = pytest.mark.e2e
-
 """E2E test configuration and fixtures.
 
 These tests require a running Jellyfin instance and the app server.
@@ -11,6 +9,8 @@ import time
 
 import pytest
 import requests
+
+pytestmark = pytest.mark.e2e
 
 E2E_APP_URL = os.environ.get("E2E_APP_URL", "http://localhost:5005")
 E2E_JELLYFIN_URL = os.environ.get("E2E_JELLYFIN_URL", "http://localhost:8096")

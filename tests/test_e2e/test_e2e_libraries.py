@@ -1,9 +1,9 @@
-pytestmark = pytest.mark.e2e
-
 """E2E tests for Jellyfin library creation features."""
 
 import pytest
 import requests
+
+pytestmark = pytest.mark.e2e
 
 from .conftest import api_get
 

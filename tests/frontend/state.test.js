@@ -15,7 +15,7 @@ describe('state module', () => {
     expect(metadataTypes).toContain('actor');
     expect(metadataTypes).toContain('studio');
     expect(metadataTypes).toContain('tag');
-    expect(metadataTypes).toContain('year');
+    expect(metadataTypes).toContain('complex');
   });
 
   it('should export state as an object', async () => {

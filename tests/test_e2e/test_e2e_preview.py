@@ -1,8 +1,8 @@
-pytestmark = pytest.mark.e2e
-
 """E2E tests for grouping preview functionality."""
 
 import pytest
+
+pytestmark = pytest.mark.e2e
 
 from .conftest import api_post
 

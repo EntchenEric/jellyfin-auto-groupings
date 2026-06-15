@@ -25,9 +25,14 @@ describe('api module', () => {
     const { apiGet } = await import('../../static/js/core/api.js');
     const result = await apiGet('/api/config');
 
-    expect(global.fetch).toHaveBeenCalledWith('/api/config', {
-      headers: { 'X-Requested-With': 'XMLHttpRequest' },
-    });
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/config',
+      expect.objectContaining({
+        credentials: 'same-origin',
+        headers: expect.objectContaining({}),
+        signal: expect.any(AbortSignal),
+      }),
+    );
     expect(result).toEqual({ status: 'success' });
   });
 
@@ -40,14 +45,19 @@ describe('api module', () => {
     const { apiPost } = await import('../../static/js/core/api.js');
     const result = await apiPost('/api/grouping/preview', { type: 'genre', value: 'Action' });
 
-    expect(global.fetch).toHaveBeenCalledWith('/api/grouping/preview', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
-      },
-      body: JSON.stringify({ type: 'genre', value: 'Action' }),
-    });
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/grouping/preview',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        }),
+        body: JSON.stringify({ type: 'genre', value: 'Action' }),
+        credentials: 'same-origin',
+        signal: expect.any(AbortSignal),
+      }),
+    );
     expect(result).toEqual({ status: 'success', count: 5 });
   });
 

@@ -913,10 +913,11 @@ def preview_grouping() -> ResponseReturnValue:
 
     # Load config for external list API keys
     config = load_config()
-    trakt_client_id = str(config.get("trakt_client_id") or "")
-    tmdb_api_key = str(config.get("tmdb_api_key") or "")
-    mal_client_id = str(config.get("mal_client_id") or "")
-    anilist_api_url = config.get("anilist_api_url") or None
+    trakt_client_id = str(config.get("trakt_client_id") or "").strip()
+    tmdb_api_key = str(config.get("tmdb_api_key") or "").strip()
+    mal_client_id = str(config.get("mal_client_id") or "").strip()
+    raw_url = config.get("anilist_api_url") or None
+    anilist_api_url = raw_url.strip() if raw_url else None
 
     try:
         # Resolve items using the public sync API

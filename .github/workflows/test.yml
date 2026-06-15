@@ -9,10 +9,16 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-    - uses: actions/checkout@v6
+    # actions/checkout@v6 → pinned SHA
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v6
+      with:
+        persist-credentials: false
+    # actions/setup-python@v6 → pinned SHA
     - name: Set up Python
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v6
       with:
         python-version: '3.12'
     - name: Install dependencies
@@ -26,10 +32,14 @@ jobs:
 
   typecheck:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v6
+      with:
+        persist-credentials: false
     - name: Set up Python
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v6
       with:
         python-version: '3.12'
     - name: Install dependencies
@@ -41,14 +51,20 @@ jobs:
 
   frontend-test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v6
+      with:
+        persist-credentials: false
+    # actions/setup-node@v6 → pinned SHA
     - name: Set up Node.js
-      uses: actions/setup-node@v6
+      uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v6
       with:
         node-version: '22'
+    # actions/cache@v5 → pinned SHA
     - name: Cache npm packages
-      uses: actions/cache@v5
+      uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v5
       with:
         path: ~/.npm
         key: ${{ runner.os }}-npm-${{ hashFiles('package-lock.json', 'package.json') }}
@@ -61,17 +77,21 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       matrix:
         python-version: ['3.11', '3.12', '3.13']
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v6
+      with:
+        persist-credentials: false
     - name: Set up Python
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v6
       with:
         python-version: ${{ matrix.python-version }}
     - name: Cache pip packages
-      uses: actions/cache@v5
+      uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v5
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml', 'requirements.txt', 'requirements-dev.txt') }}

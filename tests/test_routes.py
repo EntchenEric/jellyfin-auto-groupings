@@ -1133,7 +1133,7 @@ def test_preview_grouping_invalid_body(client) -> None:
 @patch("routes.preview_group")
 @pytest.mark.usefixtures("temp_config")
 def test_preview_grouping_imdb_list(mock_preview, client) -> None:
-    """Preview with imdb_list type is accepted."""
+    """Preview with imdb_list type is accepted and forwards correctly."""
     mock_preview.return_value = ([{"Name": "M1"}], None, 200)
     save_config({"jellyfin_url": "http://t", "api_key": "k"})
     response = client.post(
@@ -1142,12 +1142,16 @@ def test_preview_grouping_imdb_list(mock_preview, client) -> None:
     )
     assert response.status_code == 200
     assert response.get_json()["count"] == 1
+    mock_preview.assert_called_once()
+    _, kwargs = mock_preview.call_args
+    assert kwargs["type_name"] == "imdb_list"
+    assert kwargs["val"] == "ls000000001"
 
 
 @patch("routes.preview_group")
 @pytest.mark.usefixtures("temp_config")
 def test_preview_grouping_trakt_list(mock_preview, client) -> None:
-    """Preview with trakt_list type is accepted."""
+    """Preview with trakt_list type forwards trakt_client_id."""
     mock_preview.return_value = ([{"Name": "M1"}], None, 200)
     save_config({
         "jellyfin_url": "http://t", "api_key": "k",
@@ -1159,12 +1163,19 @@ def test_preview_grouping_trakt_list(mock_preview, client) -> None:
     )
     assert response.status_code == 200
     assert response.get_json()["count"] == 1
+    mock_preview.assert_called_once()
+    _, kwargs = mock_preview.call_args
+    assert kwargs["type_name"] == "trakt_list"
+    assert kwargs["val"] == "https://trakt.tv/users/foo/lists/bar"
+    assert kwargs["trakt_client_id"] == "test_client_id"
+    assert kwargs["tmdb_api_key"] == ""
+    assert kwargs["mal_client_id"] == ""
 
 
 @patch("routes.preview_group")
 @pytest.mark.usefixtures("temp_config")
 def test_preview_grouping_tmdb_list(mock_preview, client) -> None:
-    """Preview with tmdb_list type is accepted."""
+    """Preview with tmdb_list type forwards tmdb_api_key."""
     mock_preview.return_value = ([{"Name": "M1"}], None, 200)
     save_config({
         "jellyfin_url": "http://t", "api_key": "k",
@@ -1176,6 +1187,9 @@ def test_preview_grouping_tmdb_list(mock_preview, client) -> None:
     )
     assert response.status_code == 200
     assert response.get_json()["count"] == 1
+    mock_preview.assert_called_once()
+    _, kwargs = mock_preview.call_args
+    assert kwargs["tmdb_api_key"] == "test_key"
 
 
 @patch("routes.preview_group")
@@ -1190,12 +1204,16 @@ def test_preview_grouping_anilist_list(mock_preview, client) -> None:
     )
     assert response.status_code == 200
     assert response.get_json()["count"] == 1
+    mock_preview.assert_called_once()
+    _, kwargs = mock_preview.call_args
+    assert kwargs["type_name"] == "anilist_list"
+    assert kwargs["val"] == "12345"
 
 
 @patch("routes.preview_group")
 @pytest.mark.usefixtures("temp_config")
 def test_preview_grouping_mal_list(mock_preview, client) -> None:
-    """Preview with mal_list type is accepted."""
+    """Preview with mal_list type forwards mal_client_id."""
     mock_preview.return_value = ([{"Name": "M1"}], None, 200)
     save_config({
         "jellyfin_url": "http://t", "api_key": "k",
@@ -1207,6 +1225,10 @@ def test_preview_grouping_mal_list(mock_preview, client) -> None:
     )
     assert response.status_code == 200
     assert response.get_json()["count"] == 1
+    mock_preview.assert_called_once()
+    _, kwargs = mock_preview.call_args
+    assert kwargs["type_name"] == "mal_list"
+    assert kwargs["mal_client_id"] == "test_client"
 
 
 @patch("routes.preview_group")
@@ -1221,12 +1243,16 @@ def test_preview_grouping_letterboxd_list(mock_preview, client) -> None:
     )
     assert response.status_code == 200
     assert response.get_json()["count"] == 1
+    mock_preview.assert_called_once()
+    _, kwargs = mock_preview.call_args
+    assert kwargs["type_name"] == "letterboxd_list"
+    assert kwargs["val"] == "https://letterboxd.com/user/list/foo/"
 
 
 @patch("routes.preview_group")
 @pytest.mark.usefixtures("temp_config")
 def test_preview_grouping_recommendations(mock_preview, client) -> None:
-    """Preview with recommendations type is accepted."""
+    """Preview with recommendations type forwards tmdb_api_key."""
     mock_preview.return_value = ([{"Name": "M1"}], None, 200)
     save_config({
         "jellyfin_url": "http://t", "api_key": "k",
@@ -1238,6 +1264,10 @@ def test_preview_grouping_recommendations(mock_preview, client) -> None:
     )
     assert response.status_code == 200
     assert response.get_json()["count"] == 1
+    mock_preview.assert_called_once()
+    _, kwargs = mock_preview.call_args
+    assert kwargs["type_name"] == "recommendations"
+    assert kwargs["tmdb_api_key"] == "test_key"
 
 
 # Preview grouping server not configured (lines 491-492)

@@ -1,8 +1,8 @@
-pytestmark = pytest.mark.e2e
-
 """E2E tests for cleanup functionality."""
 
 import pytest
+
+pytestmark = pytest.mark.e2e
 
 from .conftest import api_get, api_post
 
