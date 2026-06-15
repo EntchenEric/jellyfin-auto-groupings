@@ -507,6 +507,7 @@ services:
       - GUNICORN_TIMEOUT=120            # optional: gunicorn worker timeout in seconds (default: 120)
       - GUNICORN_WORKERS=2              # optional: gunicorn worker process count (default: 2)
       - FLASK_PORT=5000                 # optional: server port (default: 5000)
+      - SCHEDULER_ENABLED=1              # optional: set to 0 to disable background scheduler (default: 1)
       - FLASK_DEBUG=false               # optional: set to true for debug mode (default: false)
     restart: unless-stopped
 ```
