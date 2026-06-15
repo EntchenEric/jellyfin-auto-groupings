@@ -121,9 +121,19 @@ _TEST_RESULT_FILENAMES = (
 # Allowed preview metadata types, including external list sources
 _ALLOWED_PREVIEW_TYPES: frozenset[str] = frozenset(
     {
-        "genre", "studio", "tag", "year", "actor", "general", "complex",
-        "imdb_list", "trakt_list", "tmdb_list",
-        "anilist_list", "mal_list", "letterboxd_list",
+        "genre",
+        "studio",
+        "tag",
+        "year",
+        "actor",
+        "general",
+        "complex",
+        "imdb_list",
+        "trakt_list",
+        "tmdb_list",
+        "anilist_list",
+        "mal_list",
+        "letterboxd_list",
         "recommendations",
     },
 )
@@ -248,7 +258,8 @@ def _add_security_headers(response: Response) -> Response:
 
 
 def _is_valid_folder_name(name: str) -> bool:
-    """Return True if *name* is a safe, non-empty folder name without path separators."""
+    """Return True if *name* is a safe, non-empty folder name\
+ without path separators."""
     return (
         isinstance(name, str)
         and bool(name)
@@ -285,7 +296,8 @@ def _get_jellyfin_config(
     """Load and validate Jellyfin URL + API key from the active config.
 
     Raises:
-        werkzeug.exceptions.HTTPException: 400 or 500 if the config is missing or invalid.
+        werkzeug.exceptions.HTTPException: 400 or 500 if the config
+        is missing or invalid.
 
     Returns:
         ``(url, api_key)`` on success.
@@ -302,6 +314,12 @@ def _get_jellyfin_config(
 
 
 def _mask_config(config: dict[str, Any]) -> dict[str, Any]:
+    """Mask sensitive config values for safe serialisation.
+
+    Replaces values for keys in :data:`_SENSITIVE_CONFIG_KEYS` with
+    :data:`_CONFIG_MASK` (``"****"``) so they are never exposed to the
+    frontend.
+    """
     masked = copy.deepcopy(config)
     for key in _SENSITIVE_CONFIG_KEYS:
         if masked.get(key):
@@ -328,6 +346,12 @@ def get_config() -> ResponseReturnValue:
 
 
 def _check_sync_rate_limit() -> ResponseReturnValue | None:
+    """Enforce a per-IP rate limit on sync operations.
+
+    Returns a 429 error response if the client has called sync within
+    :data:`_SYNC_RATE_LIMIT_SECONDS`, otherwise records the current
+    timestamp and returns ``None``.
+    """
     ip = request.remote_addr or "unknown"
     now = time.monotonic()
     last = _last_sync_by_ip.get(ip, 0.0)
@@ -495,7 +519,7 @@ def _validate_config_types(new_config: dict[str, Any]) -> list[str]:
                 parsed = urllib.parse.urlparse(jellyfin_url)
                 if not parsed.netloc:
                     errors.append(
-                        "'jellyfin_url' is not a well-formed URL (missing hostname)"
+                        "'jellyfin_url' is not a well-formed URL (missing hostname)",
                     )
             except Exception:
                 errors.append("'jellyfin_url' contains unparseable characters")
@@ -521,11 +545,11 @@ def _validate_config_types(new_config: dict[str, Any]) -> list[str]:
             mp = Path(media_path_val)
             if not mp.exists():
                 errors.append(
-                    f"'media_path_on_host' path does not exist: {media_path_val}"
+                    f"'media_path_on_host' path does not exist: {media_path_val}",
                 )
             elif not mp.is_dir():
                 errors.append(
-                    f"'media_path_on_host' is not a directory: {media_path_val}"
+                    f"'media_path_on_host' is not a directory: {media_path_val}",
                 )
             elif not os.access(str(mp), os.R_OK | os.X_OK):
                 errors.append(f"'media_path_on_host' is not readable: {media_path_val}")
@@ -864,9 +888,11 @@ def sync_groupings() -> ResponseReturnValue:
 
 @bp.route("/api/sync/preview_all", methods=["POST"])
 def preview_all_sync() -> ResponseReturnValue:
-    """Preview a full synchronisation of all configured groupings without creating symlinks.
+    """Preview a full synchronisation of all configured groupings\
+ without creating symlinks.
 
-    Reads the current configuration, delegates to :func:`sync.run_sync` with dry_run=True,
+    Reads the current configuration, delegates to
+    :func:`sync.run_sync` with dry_run=True,
     and returns per-group preview results.
     """
     return _run_sync_handler(dry_run=True)
@@ -1345,7 +1371,7 @@ def health_check() -> ResponseReturnValue:
                             if run_time is not None:
                                 entry["next_run"] = str(run_time.isoformat())
                             next_runs.append(entry)
-                        except Exception:
+                        except (AttributeError, TypeError, ValueError, RuntimeError):
                             continue
                     scheduler_info["next_run_times"] = next_runs
         except Exception:

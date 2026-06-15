@@ -1,10 +1,9 @@
 """E2E tests for metadata retrieval from real Jellyfin."""
 
 import pytest
+from .conftest import api_get
 
 pytestmark = pytest.mark.e2e
-
-from .conftest import api_get
 
 
 @pytest.mark.e2e

@@ -232,7 +232,10 @@ def validate_cron(expr: str) -> str | None:
 
     fields = expr.split()
     if len(fields) != 5:
-        return f"Cron expression must have 5 fields (minute hour day month weekday), got {len(fields)}"
+        return (
+            "Cron expression must have 5 fields"
+            f" (minute hour day month weekday), got {len(fields)}"
+        )
 
     try:
         CronTrigger.from_crontab(expr)

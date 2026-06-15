@@ -150,7 +150,7 @@ def _request_or_raise(
     timeout: int = _DEFAULT_TIMEOUT,
     error_prefix: str = "",
 ) -> requests.Response:
-    """Send a *method* request to *url* and return the response, translating errors into ``RuntimeError``.
+    """Send a *method* request to *url*, translating errors into ``RuntimeError``.
 
     Raises:
         RuntimeError: On any ``RequestException``.
@@ -194,7 +194,7 @@ def _post_or_raise(
     timeout: int = _DEFAULT_TIMEOUT,
     error_prefix: str = "",
 ) -> requests.Response:
-    """POST to *url* and return the response, translating errors into ``RuntimeError``."""
+    """POST to *url*, translating errors into ``RuntimeError``."""
     return _request_or_raise(
         "POST",
         url,
@@ -217,7 +217,7 @@ def _post_json(
     timeout: int = _DEFAULT_TIMEOUT,
     error_prefix: str = "",
 ) -> Any:
-    """POST to *url* and return the parsed JSON response, translating errors into ``RuntimeError``."""
+    """POST to *url* and return parsed JSON, translating errors into RuntimeError."""
     return _parse_json(
         _post_or_raise(
             url,
@@ -239,7 +239,7 @@ def _delete_or_raise(
     timeout: int = _DEFAULT_TIMEOUT,
     error_prefix: str = "",
 ) -> requests.Response:
-    """DELETE *url* and return the response, translating errors into ``RuntimeError``."""
+    """DELETE *url*, translating errors into ``RuntimeError``."""
     return _request_or_raise(
         "DELETE",
         url,
@@ -502,7 +502,7 @@ def add_virtual_folder(
         timeout: HTTP request timeout.
 
     """
-    # Strategy: Try to create with all info in query string first (most common for simple cases)
+    # Strategy: create with query string first (common for simple cases)
     # If it already exists, we skip creation.
 
     headers = _auth_headers(api_key)

@@ -1,10 +1,9 @@
 """E2E tests for grouping preview functionality."""
 
 import pytest
+from .conftest import api_post
 
 pytestmark = pytest.mark.e2e
-
-from .conftest import api_post
 
 
 @pytest.mark.e2e

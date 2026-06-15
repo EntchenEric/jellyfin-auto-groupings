@@ -2,10 +2,9 @@
 
 import pytest
 import requests
+from .conftest import api_get
 
 pytestmark = pytest.mark.e2e
-
-from .conftest import api_get
 
 
 @pytest.mark.e2e

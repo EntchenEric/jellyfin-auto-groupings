@@ -39,6 +39,7 @@ config/
 # Docker
 Dockerfile
 docker-compose.yml
+compose.yml
 .dockerignore
 
 # CI / GitHub
