@@ -383,6 +383,12 @@ A `Makefile` is provided for common development tasks:
 | `clean` | Remove `__pycache__`, `.pytest_cache`, and build artifacts |
 | `run` | Start the Flask development server (`python app.py`) |
 | `virtual-jellyfin` | Start the mock Jellyfin server for testing |
+| `test-frontend` | Run frontend Vitest tests (`npm test`) |
+| `test-frontend-cov` | Run frontend tests with coverage (`npm run test:coverage`) |
+| `install-frontend` | Install frontend dependencies (`npm install`) |
+| `e2e-up` | Start E2E services (Jellyfin + app) |
+| `e2e-run` | Run E2E test suite |
+| `e2e-down` | Stop and clean up E2E services |
 | `docker-build` | Build the Docker image |
 | `docker-run` | Run the Docker container |
 
