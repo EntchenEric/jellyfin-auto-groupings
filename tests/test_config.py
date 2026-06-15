@@ -365,9 +365,9 @@ def test_save_config_backup_rotation(tmp_path) -> None:
 
 def test_save_config_backup_rotation_cleanup_on_failure(tmp_path) -> None:
     """save_config cleans up temp file on write failure."""
-    import config
-
     from unittest.mock import patch
+
+    import config
 
     orig_dir = config.CONFIG_DIR
     orig_file = config.CONFIG_FILE
@@ -384,9 +384,11 @@ def test_save_config_backup_rotation_cleanup_on_failure(tmp_path) -> None:
         assert test_file.exists()
 
         # Mock json.dump to fail
-        with patch("json.dump", side_effect=OSError("write error")):
-            with pytest.raises(OSError):
-                config.save_config({"version": 2})
+        with (
+            patch("json.dump", side_effect=OSError("write error")),
+            pytest.raises(OSError),
+        ):
+            config.save_config({"version": 2})
 
         # Temp file should be cleaned up
         tmp_files = list(test_dir.glob("*.json.tmp"))

@@ -630,11 +630,11 @@ def test_health_check_scheduler_job_exception_skipped(client) -> None:
     # A job whose .next_run_time.isoformat() raises
     class BadJob:
         @property
-        def id(self):  # noqa: A003
+        def id(self):
             return "bad_job"
 
         @property
-        def name(self):  # noqa: A003
+        def name(self):
             return "bad"
 
         @property
@@ -693,7 +693,10 @@ def test_health_check_scheduler_job_with_next_run(client) -> None:
     assert response.status_code == 200
     data = response.get_json()
     assert data["scheduler"]["running"] is True
-    assert data["scheduler"]["next_run_times"][0]["next_run"] == "2026-06-16T02:00:00+00:00"
+    assert (
+        data["scheduler"]["next_run_times"][0]["next_run"]
+        == "2026-06-16T02:00:00+00:00"
+    )
 
 
 @pytest.mark.usefixtures("temp_config")
