@@ -300,5 +300,4 @@ Return contents of test output log files (development test dashboard).
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/` | Main SPA |
-| `GET` | `/test` | Test dashboard |
 | `GET` | `/static/*` | Static assets |
