@@ -93,6 +93,9 @@ services:
 docker compose up -d
 ```
 
+> **Podman users:** Run ``podman compose up -d`` instead. For SELinux-enabled hosts, append ``:Z``
+> to volume mounts (e.g., ``/mnt/user/media:/media:ro,Z``) so the container can access the files.
+
 Access the UI at `http://your-server-ip:5000`.
 
 ---

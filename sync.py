@@ -135,7 +135,17 @@ def _build_preview_item(
     item: dict[str, Any],
     file_name: str | None = None,
 ) -> dict[str, Any]:
-    """Build a preview dict from a Jellyfin item."""
+    """Build a preview dict from a Jellyfin item.
+
+    Args:
+        item: A Jellyfin item dictionary.
+        file_name: Optional file name to include in the preview.
+
+    Returns:
+        A preview dictionary with ``Name`` and ``Year`` keys, and
+        optionally ``FileName``.
+
+    """
     preview: dict[str, Any] = {
         "Name": item.get("Name", "Unknown"),
         "Year": item.get("ProductionYear", ""),
@@ -252,7 +262,15 @@ def clear_library_cache() -> None:
 
 
 def _is_cache_fresh(entry: tuple[float, list[dict[str, Any]]]) -> bool:
-    """Check whether a cache entry is still within its TTL window."""
+    """Check whether a cache entry is still within its TTL window.
+
+    Args:
+        entry: A cache entry ``(timestamp, items)`` tuple.
+
+    Returns:
+        ``True`` if the entry is still fresh, ``False`` otherwise.
+
+    """
     return (time.monotonic() - entry[0]) < _LIBRARY_CACHE_TTL
 
 
@@ -429,6 +447,13 @@ def _sort_items_in_memory(
         The *missing* component is set so that tuples for absent values are
         always larger than tuples for present values, regardless of whether
         the overall sort is ascending or descending.
+
+        Args:
+            item: The Jellyfin item dict.
+
+        Returns:
+            A ``(priority, value)`` tuple used for sorting.
+
         """
         value = item.get(primary_key)
         if value is None:
@@ -507,7 +532,20 @@ def _fetch_items_for_imdb_group(
     api_key: str,
     watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
-    """Resolve Jellyfin items for an IMDb-list-backed group."""
+    """Resolve Jellyfin items for an IMDb-list-backed group.
+
+    Args:
+        group_name: The group name (for logging).
+        source_value: The IMDb list URL.
+        sort_order: The requested sort order.
+        url: Jellyfin base URL.
+        api_key: Jellyfin API key.
+        watch_state: Optional watch-state filter.
+
+    Returns:
+        A ``(items, error, status_code)`` tuple.
+
+    """
     return _fetch_and_resolve(
         group_name,
         lambda: fetch_imdb_list(source_value),
@@ -531,7 +569,21 @@ def _fetch_items_for_trakt_group(
     trakt_client_id: str,
     watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
-    """Resolve Jellyfin items for a Trakt-list-backed group."""
+    """Resolve Jellyfin items for a Trakt-list-backed group.
+
+    Args:
+        group_name: The group name (for logging).
+        source_value: The Trakt list URL.
+        sort_order: The requested sort order.
+        url: Jellyfin base URL.
+        api_key: Jellyfin API key.
+        trakt_client_id: Trakt API client ID.
+        watch_state: Optional watch-state filter.
+
+    Returns:
+        A ``(items, error, status_code)`` tuple.
+
+    """
     if not trakt_client_id:
         msg = "Trakt Client ID not set — add trakt_client_id in Server Settings"
         logger.info("No Trakt Client ID configured for group %r", group_name)
@@ -560,7 +612,21 @@ def _fetch_items_for_tmdb_group(
     tmdb_api_key: str,
     watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
-    """Resolve Jellyfin items for a TMDb-list-backed group."""
+    """Resolve Jellyfin items for a TMDb-list-backed group.
+
+    Args:
+        group_name: The group name (for logging).
+        source_value: The TMDb list ID or URL.
+        sort_order: The requested sort order.
+        url: Jellyfin base URL.
+        api_key: Jellyfin API key.
+        tmdb_api_key: TMDb API key.
+        watch_state: Optional watch-state filter.
+
+    Returns:
+        A ``(items, error, status_code)`` tuple.
+
+    """
     if not tmdb_api_key:
         msg = "TMDb API Key not set — add tmdb_api_key in Server Settings"
         logger.info("No TMDb API Key configured for group %r", group_name)
@@ -589,7 +655,21 @@ def _fetch_items_for_anilist_group(
     watch_state: str = "",
     anilist_api_url: str | None = None,
 ) -> tuple[list[dict[str, Any]], str | None, int]:
-    """Resolve Jellyfin items for an AniList-list-backed group."""
+    """Resolve Jellyfin items for an AniList-list-backed group.
+
+    Args:
+        group_name: The group name (for logging).
+        source_value: The AniList username and optional status.
+        sort_order: The requested sort order.
+        url: Jellyfin base URL.
+        api_key: Jellyfin API key.
+        watch_state: Optional watch-state filter.
+        anilist_api_url: Optional custom AniList API URL.
+
+    Returns:
+        A ``(items, error, status_code)`` tuple.
+
+    """
     username = source_value
     status = None
     if "/" in source_value:
@@ -620,7 +700,21 @@ def _fetch_items_for_mal_group(
     mal_client_id: str,
     watch_state: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
-    """Resolve Jellyfin items for a MyAnimeList-list-backed group."""
+    """Resolve Jellyfin items for a MyAnimeList-list-backed group.
+
+    Args:
+        group_name: The group name (for logging).
+        source_value: The MAL username and optional status.
+        sort_order: The requested sort order.
+        url: Jellyfin base URL.
+        api_key: Jellyfin API key.
+        mal_client_id: MyAnimeList client ID.
+        watch_state: Optional watch-state filter.
+
+    Returns:
+        A ``(items, error, status_code)`` tuple.
+
+    """
     if not mal_client_id:
         msg = "MyAnimeList Client ID not set — add mal_client_id in Server Settings"
         logger.info("No MAL Client ID configured for group %r", group_name)
@@ -652,7 +746,17 @@ def _match_letterboxd_id(
     items_by_imdb: dict[str, dict[str, Any]],
     items_by_tmdb: dict[str, dict[str, Any]],
 ) -> dict[str, Any] | None:
-    """Return the Jellyfin item matching a single Letterboxd external ID."""
+    """Return the Jellyfin item matching a single Letterboxd external ID.
+
+    Args:
+        eid: The external ID (``tt...`` for IMDb, numeric for TMDb).
+        items_by_imdb: Items indexed by lowercase IMDb ID.
+        items_by_tmdb: Items indexed by TMDb ID.
+
+    Returns:
+        The matching Jellyfin item, or ``None``.
+
+    """
     if str(eid).startswith("tt"):
         return items_by_imdb.get(str(eid).lower())
     return items_by_tmdb.get(str(eid))
@@ -661,7 +765,7 @@ def _match_letterboxd_id(
 def _fetch_items_for_letterboxd_group(
     group_name: str,
     source_value: str,
-    sort_order: str,
+    _sort_order: str,
     url: str,
     api_key: str,
     watch_state: str = "",
@@ -671,7 +775,9 @@ def _fetch_items_for_letterboxd_group(
     Args:
         group_name: Human-readable group name (used for logging).
         source_value: Letterboxd list URL.
-        sort_order: Requested sort order key.
+        _sort_order: Requested sort order key (accepted for consistent
+                     interface with other ``_fetch_items_for_*_group``
+                     functions; list order is preserved automatically).
         url: Jellyfin base URL.
         api_key: Jellyfin API key.
         watch_state: Optional filter for watch state ("unwatched", "watched").
@@ -730,6 +836,15 @@ def _build_letterboxd_items(
     The external list order is preserved.
     Duplicates (the same Jellyfin item matched via both IMDb and TMDb ID)
     are skipped to avoid duplicate symlinks.
+
+    Args:
+        external_ids: Ordered list of external IDs from Letterboxd.
+        items_by_imdb: Items indexed by IMDb ID.
+        items_by_tmdb: Items indexed by TMDb ID.
+
+    Returns:
+        Ordered list of matching Jellyfin items.
+
     """
     items: list[dict[str, Any]] = []
     seen_jf_ids: set[str] = set()
@@ -1058,7 +1173,15 @@ def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
     rules: list[dict[str, Any]] = []
 
     def _parse_item(item_str: str) -> tuple[str, str]:
-        """Parse a single query fragment into ``(type, value)``."""
+        """Parse a single query fragment into ``(type, value)``.
+
+        Args:
+            item_str: A query fragment like ``"genre:Action"``.
+
+        Returns:
+            A ``(type, value)`` tuple, or the default type if unparseable.
+
+        """
         if ":" in item_str:
             t, v = item_str.split(":", 1)
             t = t.strip().lower()
@@ -1069,8 +1192,13 @@ def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
     def _detect_bare_not(val: str) -> tuple[bool, str]:
         """Check if *val* starts with a bare NOT operator.
 
-        Returns (is_not, remainder) where *remainder* is the text after
-        the "NOT " prefix (or empty if just "NOT").
+        Args:
+            val: The value to check.
+
+        Returns:
+            A ``(is_not, remainder)`` tuple where *remainder* is the text
+            after the "NOT " prefix (or empty if just "NOT").
+
         """
         upper_val = val.upper()
         if upper_val == "NOT":
@@ -1196,6 +1324,20 @@ def _process_collection_group(
     Finds or creates a collection named *group_name*, then adds all resolved
     item IDs to it.  Jellyfin ignores duplicate additions, so we do not need
     to diff against the existing membership.
+
+    Args:
+        group_name: Name of the group/collection.
+        items: Resolved Jellyfin items to add to the collection.
+        url: Jellyfin base URL.
+        api_key: Jellyfin API key.
+        target_base: Root directory for cover storage.
+        dry_run: If True, do not create the collection; return preview items.
+        auto_set_library_covers: Whether to set the collection cover image.
+
+    Returns:
+        A result dict with ``"group"``, ``"links"``, and optionally
+        ``"error"`` and ``"items"`` (in dry run).
+
     """
     item_ids = [
         item["Id"] for item in items if isinstance(item, dict) and item.get("Id")
@@ -1266,6 +1408,22 @@ def _auto_create_library(
     """Create a Jellyfin library for the group if configured.
 
     Mutates *existing_libraries* to prevent double creation in the same run.
+
+    Args:
+        result: The current result dict for the group.
+        group_name: The group name.
+        group_dir: The filesystem path of the group directory.
+        url: Jellyfin base URL.
+        api_key: Jellyfin API key.
+        dry_run: If True, do not actually create the library.
+        auto_create_libraries: Whether auto-creation is enabled.
+        links_created: Number of symlinks created for this group.
+        existing_libraries: List of libraries already created this run.
+        target_path_in_jellyfin: Path prefix for Jellyfin library paths.
+
+    Returns:
+        The updated result dict.
+
     """
     if (
         not dry_run
@@ -1309,7 +1467,17 @@ def _auto_set_library_cover(
     dry_run: bool,
     auto_set_library_covers: bool,
 ) -> None:
-    """Set the library cover image via API if configured."""
+    """Set the library cover image via API if configured.
+
+    Args:
+        group_name: The group name.
+        source_cover: Path to the cover image, or ``None``.
+        url: Jellyfin base URL.
+        api_key: Jellyfin API key.
+        dry_run: If True, do not actually set the cover.
+        auto_set_library_covers: Whether auto-setting is enabled.
+
+    """
     if (
         not dry_run
         and auto_set_library_covers
@@ -1329,6 +1497,14 @@ def _create_or_preview_link(
     preview_items: list[dict[str, Any]],
 ) -> bool:
     """Create a symlink or append a preview item.
+
+    Args:
+        item: The Jellyfin item dict.
+        host_path: The resolved host-side path of the media file.
+        dest_path: The destination directory for the symlink.
+        file_name: The name of the symlink to create.
+        dry_run: If True, record a preview entry instead of creating a symlink.
+        preview_items: List to append preview entries to.
 
     Returns:
         True if the link was (or would be) created successfully.
@@ -1358,6 +1534,15 @@ def _create_group_symlinks(
     dry_run: bool,
 ) -> tuple[int, list[dict[str, Any]]]:
     """Create symlinks (or preview items) for *items* inside *group_dir*.
+
+    Args:
+        items: The resolved Jellyfin items to link.
+        group_dir: The destination directory for symlinks.
+        group_name: The group name (for logging).
+        jellyfin_root: Jellyfin-side media path prefix.
+        host_root: Host-side media path prefix.
+        sort_order: The sort order to use for numbering.
+        dry_run: If True, do not create symlinks; return preview items.
 
     Returns:
         A tuple of ``(links_created, preview_items)``.
@@ -1420,6 +1605,12 @@ def _prepare_group_directory(
     If *dry_run* is ``True`` the directory is not modified, but the cover path
     is still resolved (if any) so callers can use it for preview purposes.
 
+    Args:
+        group_dir: The filesystem path of the group directory.
+        group_name: The group name (for cover lookup).
+        target_base: The root target directory (for cover lookup).
+        dry_run: If True, do not actually create the directory.
+
     Returns:
         The path to the source cover image (or ``None`` if none found).
 
@@ -1470,6 +1661,23 @@ def _dispatch_list_source(
     Each external list source has a slightly different parameter signature;
     this helper normalises the call site so the dispatch table can remain
     a simple name-to-function mapping.
+
+    Args:
+        source_type: The external list type (e.g. ``"imdb_list"``).
+        group_name: The group name (for logging).
+        source_value: The list URL or identifier.
+        sort_order: The requested sort order.
+        url: Jellyfin base URL.
+        api_key: Jellyfin API key.
+        watch_state: Optional watch-state filter.
+        trakt_client_id: Trakt API client ID.
+        tmdb_api_key: TMDb API key.
+        mal_client_id: MyAnimeList client ID.
+        anilist_api_url: Optional custom AniList API URL.
+
+    Returns:
+        A ``(items, error, status_code)`` tuple.
+
     """
     match source_type:
         case "imdb_list":
@@ -1563,6 +1771,20 @@ def _resolve_group_source(
     Dispatches to the appropriate fetch function based on *source_type*.
     External list sources (IMDb, Trakt, etc.) use their dedicated fetchers;
     metadata sources use Jellyfin API filters or complex rule evaluation.
+
+    Args:
+        group: The group configuration dict.
+        group_name: The group name (for logging).
+        source_type: The source type (e.g. ``"genre"``, ``"imdb_list"``).
+        source_value: The source value (e.g. ``"Action"``, list URL).
+        sort_order: The requested sort order.
+        url: Jellyfin base URL.
+        api_key: Jellyfin API key.
+        trakt_client_id: Trakt API client ID.
+        tmdb_api_key: TMDb API key.
+        mal_client_id: MyAnimeList client ID.
+        watch_state: Optional watch-state filter.
+        anilist_api_url: Optional custom AniList API URL.
 
     Returns:
         A ``(items, error, status_code)`` tuple.
@@ -1774,6 +1996,12 @@ def _parse_mmdd(value: str | None) -> tuple[int, int]:
     Validates that month is 1-12 and that *day* is valid for the given month.
     Returns ``(0, 0)`` for unparseable or out-of-range values so they never match.
 
+    Args:
+        value: The ``MM-DD`` string to parse, or ``None``.
+
+    Returns:
+        A ``(month, day)`` tuple, or ``(0, 0)`` for invalid input.
+
     Examples:
         >>> _parse_mmdd("06-15")
         (6, 15)
@@ -1804,7 +2032,9 @@ def _parse_mmdd(value: str | None) -> tuple[int, int]:
     _, max_day = calendar.monthrange(2024, month)
     if not (1 <= day <= max_day):
         logger.debug(
-            "Invalid MM-DD format: %r — day out of range for month %d", value, month
+            "Invalid MM-DD format: %r — day out of range for month %d",
+            value,
+            month,
         )
         return (0, 0)
     return (month, day)
@@ -1817,6 +2047,10 @@ def _is_in_season(start_str: str | None, end_str: str | None) -> bool:
     of *start* and **exclusive** of *end* so that two windows can cleanly
     abut without overlap.  Year-boundaries are handled correctly (e.g.
     ``12-01`` to ``01-01`` means the period covering all of December).
+
+    Args:
+        start_str: Start date in ``MM-DD`` format.
+        end_str: End date in ``MM-DD`` format.
 
     Returns:
         ``True`` if the current date falls within the seasonal window.
@@ -1844,7 +2078,16 @@ def _is_in_season(start_str: str | None, end_str: str | None) -> bool:
 
 
 def _fetch_existing_libraries(url: str, api_key: str) -> list[str]:
-    """Return existing Jellyfin libraries, logging any fetch errors."""
+    """Return existing Jellyfin libraries, logging any fetch errors.
+
+    Args:
+        url: Jellyfin base URL.
+        api_key: Jellyfin API key.
+
+    Returns:
+        A list of library names (strings).
+
+    """
     try:
         libraries = get_libraries(url, api_key)
         logger.info("Found %s existing virtual folders in Jellyfin", len(libraries))
@@ -1863,7 +2106,16 @@ def _maybe_handle_seasonal(
 ) -> dict[str, Any] | None:
     """If the group is seasonal and out of season, clean up and return a result.
 
-    Returns ``None`` when the group should be processed normally.
+    Args:
+        group: The group configuration dict.
+        name: The group name.
+        target_base: The root target directory.
+        dry_run: If True, do not actually remove directories.
+
+    Returns:
+        A result dict if the group is out of season, or ``None`` if it is
+        in season (or not a seasonal group).
+
     """
     if not group.get("seasonal_enabled"):
         return None

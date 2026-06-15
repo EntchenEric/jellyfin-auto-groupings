@@ -10,7 +10,8 @@ from mal import fetch_mal_list
 @patch("mal.network.get")
 def test_fetch_mal_json_decode_error(mock_get) -> None:
     """When the MAL API returns non-JSON (e.g. HTML error page),
-    fetch_mal_list should raise RuntimeError with a clear message."""
+    fetch_mal_list should raise RuntimeError with a clear message.
+    """
     mock_resp = MagicMock()
     mock_resp.status_code = 200
     # Simulate non-JSON response (e.g. HTML error page)

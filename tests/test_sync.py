@@ -2502,7 +2502,8 @@ def test_parse_complex_query_case_insensitivity() -> None:
 
 def test_parse_complex_query_impossible_year_and() -> None:
     """Query 'year:2020 AND year:2021' should produce two rules that will
-    never match (no single item can have two different production years)."""
+    never match (no single item can have two different production years).
+    """
     # This is logically impossible — it validates that the parser produces
     # two distinct rules with specific types and the same operator.
     rules = parse_complex_query("year:2020 AND year:2021", "genre")

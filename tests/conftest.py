@@ -118,7 +118,8 @@ def _clear_library_cache():
     """Clear the TTL-based library cache before each test to ensure
     test isolation.  The cache persists across run_sync() calls, so
     without this fixture a previous test's cached data could leak into
-    the next test."""
+    the next test.
+    """
     from sync import clear_library_cache
 
     clear_library_cache()

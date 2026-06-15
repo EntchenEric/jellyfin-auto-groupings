@@ -65,7 +65,12 @@ bp = Blueprint("main", __name__)
 
 
 def _handle_http_error(exc: HTTPException) -> ResponseReturnValue:
-    """Translate blueprint HTTP exceptions into JSON error responses."""
+    """Translate blueprint HTTP exceptions into JSON error responses.
+
+    Args:
+        exc: The exception that was raised.
+
+    """
     if exc.code is None:
         raise exc
     return jsonify({"status": "error", "message": exc.description}), exc.code
@@ -75,7 +80,13 @@ bp.register_error_handler(HTTPException, _handle_http_error)
 
 
 def _error(message: str, status_code: int = 400, **extra: Any) -> ResponseReturnValue:
-    """Return a JSON error response."""
+    """Return a JSON error response.
+
+    Args:
+        message: The message for the response.
+        status_code: HTTP status code for the response.
+
+    """
     payload: dict[str, Any] = {"status": "error", "message": message}
     if extra:
         payload.update(extra)
@@ -83,7 +94,13 @@ def _error(message: str, status_code: int = 400, **extra: Any) -> ResponseReturn
 
 
 def _success(message: str, status_code: int = 200, **extra: Any) -> ResponseReturnValue:
-    """Return a JSON success response."""
+    """Return a JSON success response.
+
+    Args:
+        message: The message for the response.
+        status_code: HTTP status code for the response.
+
+    """
     payload: dict[str, Any] = {"status": "success", "message": message}
     if extra:
         payload.update(extra)
@@ -247,6 +264,11 @@ def _add_security_headers(response: Response) -> Response:
 
     * ``X-Content-Type-Options: nosniff`` — prevents MIME-type sniffing.
     * ``X-Frame-Options: DENY`` — prevents clickjacking in frames.
+
+
+    Args:
+            response: The HTTP response object.
+
     """
     response.headers.set("X-Content-Type-Options", "nosniff")
     response.headers.set("X-Frame-Options", "DENY")
@@ -259,7 +281,15 @@ def _add_security_headers(response: Response) -> Response:
 
 def _is_valid_folder_name(name: str) -> bool:
     """Return True if *name* is a safe, non-empty folder name\
- without path separators."""
+ without path separators.
+
+    Args:
+        name: The folder name to validate.
+
+    Returns:
+        ``True`` if the name is valid, ``False`` otherwise.
+
+    """
     return (
         isinstance(name, str)
         and bool(name)
@@ -302,6 +332,11 @@ def _get_jellyfin_config(
     Returns:
         ``(url, api_key)`` on success.
 
+
+
+    Args:
+            missing_msg: Message to include if config is missing.
+
     """
     config = load_config()
     if not isinstance(config, dict):
@@ -319,6 +354,11 @@ def _mask_config(config: dict[str, Any]) -> dict[str, Any]:
     Replaces values for keys in :data:`_SENSITIVE_CONFIG_KEYS` with
     :data:`_CONFIG_MASK` (``"****"``) so they are never exposed to the
     frontend.
+
+
+    Args:
+            config: The configuration dict.
+
     """
     masked = copy.deepcopy(config)
     for key in _SENSITIVE_CONFIG_KEYS:
@@ -362,7 +402,12 @@ def _check_sync_rate_limit() -> ResponseReturnValue | None:
 
 
 def _validate_cron_expressions(new_config: dict[str, Any]) -> list[str]:
-    """Validate all cron expressions in *new_config*, returning a list of errors."""
+    """Validate all cron expressions in *new_config*, returning a list of errors.
+
+    Args:
+        new_config: The new configuration dict to validate.
+
+    """
     cron_errors: list[str] = []
     sched_cfg = new_config.get("scheduler", {})
     if sched_cfg.get("global_enabled"):
@@ -384,14 +429,28 @@ def _validate_cron_expressions(new_config: dict[str, Any]) -> list[str]:
 
 
 def _check_type(val: Any, expected_type: type, path: str, errors: list[str]) -> None:
-    """Append an error to *errors* if *val* is not None and not of *expected_type*."""
+    """Append an error to *errors* if *val* is not None and not of *expected_type*.
+
+    Args:
+        val: The value to check.
+        expected_type: The expected type (e.g. ``str``, ``list``).
+        path: The ``path`` parameter.
+        errors: List to append error messages to.
+
+    """
     if val is not None and not isinstance(val, expected_type):
         type_name = expected_type.__name__
         errors.append(f"'{path}' must be a {type_name}")
 
 
 def _validate_scheduler_types(sched: dict[str, Any], errors: list[str]) -> None:
-    """Validate type correctness of scheduler sub-object fields."""
+    """Validate type correctness of scheduler sub-object fields.
+
+    Args:
+        sched: The scheduler configuration dict section.
+        errors: List to append error messages to.
+
+    """
     if not isinstance(sched, dict):
         errors.append("'scheduler' must be an object")
         return
@@ -412,7 +471,14 @@ def _validate_group_rules(
     prefix: str,
     errors: list[str],
 ) -> None:
-    """Validate type correctness of a group's complex query rules."""
+    """Validate type correctness of a group's complex query rules.
+
+    Args:
+        rules: List of rule strings to validate.
+        prefix: Dot-separated path prefix for error messages.
+        errors: List to append error messages to.
+
+    """
     for j, rule in enumerate(rules):
         if not isinstance(rule, dict):
             errors.append(f"{prefix}.rules[{j}] must be an object")
@@ -429,7 +495,14 @@ def _validate_group_types(
     prefix: str,
     errors: list[str],
 ) -> None:
-    """Validate type correctness of a single group definition."""
+    """Validate type correctness of a single group definition.
+
+    Args:
+        group: The group configuration dict.
+        prefix: Dot-separated path prefix for error messages.
+        errors: List to append error messages to.
+
+    """
     if not isinstance(group, dict):
         errors.append(f"{prefix} must be an object")
         return
@@ -468,7 +541,12 @@ def _validate_group_types(
 
 
 def _validate_config_types(new_config: dict[str, Any]) -> list[str]:
-    """Validate basic types in *new_config*, returning a list of errors."""
+    """Validate basic types in *new_config*, returning a list of errors.
+
+    Args:
+        new_config: The new configuration dict to validate.
+
+    """
     errors: list[str] = []
 
     # Top-level string fields
@@ -521,7 +599,7 @@ def _validate_config_types(new_config: dict[str, Any]) -> list[str]:
                     errors.append(
                         "'jellyfin_url' is not a well-formed URL (missing hostname)",
                     )
-            except Exception:
+            except (ValueError, AttributeError, TypeError):
                 errors.append("'jellyfin_url' contains unparseable characters")
 
     # Validate target_path exists and is writable when provided
@@ -853,7 +931,12 @@ def upload_cover() -> ResponseReturnValue:
 
 
 def _run_sync_handler(dry_run: bool = False) -> ResponseReturnValue:
-    """Run sync (or preview) and return a JSON response."""
+    """Run sync (or preview) and return a JSON response.
+
+    Args:
+        dry_run: If True, perform a dry run without side effects.
+
+    """
     rate_limited = _check_sync_rate_limit()
     if rate_limited is not None:
         return rate_limited
@@ -1125,6 +1208,12 @@ def _search_local_filesystem(
     *max_files* cap, and stops at _AUTO_DETECT_MAX_DEPTH path-component depth.
 
     Returns the absolute path of the first match found, or ``None``.
+
+
+    Args:
+            filename: The filename to search for.
+            search_roots: List of root directories to search in.
+
     """
     walk_start = time.monotonic()
     files_scanned = 0
@@ -1176,6 +1265,12 @@ def _compute_common_root(
 
     Counts matching trailing path components and returns the inferred
     ``(jellyfin_root, host_root)`` pair.
+
+
+    Args:
+            jellyfin_path: Jellyfin-side media path.
+            host_path: Host-side media path.
+
     """
     j_parts = Path(jellyfin_path).parts
     h_parts = Path(host_path).parts
@@ -1374,7 +1469,7 @@ def health_check() -> ResponseReturnValue:
                         except (AttributeError, TypeError, ValueError, RuntimeError):
                             continue
                     scheduler_info["next_run_times"] = next_runs
-        except Exception:
+        except (ValueError, OSError, RuntimeError):
             logger.debug("Could not fetch scheduler details", exc_info=True)
 
         # Jellyfin reachability check (lightweight ping)

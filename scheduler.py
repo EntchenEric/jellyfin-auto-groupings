@@ -48,7 +48,13 @@ def _schedule_global_sync(
     scheduler: BackgroundScheduler,
     sched_cfg: dict[str, Any],
 ) -> None:
-    """Add the global sync job if enabled."""
+    """Add the global sync job if enabled.
+
+    Args:
+        scheduler: The APScheduler instance.
+        sched_cfg: The scheduler configuration dict.
+
+    """
     if not sched_cfg.get("global_enabled"):
         return
     cron_expr = sched_cfg.get("global_schedule")
@@ -81,6 +87,11 @@ def _validate_group_entry(group: Any) -> str | None:
     - Name must not be empty or whitespace-only after stripping
 
     Returns the stripped name on success, ``None`` on failure (with a warning logged).
+
+
+    Args:
+            group: The group configuration dict.
+
     """
     if not isinstance(group, dict):
         logger.warning(
@@ -107,7 +118,13 @@ def _validate_group_entry(group: Any) -> str | None:
 
 
 def _schedule_group_syncs(scheduler: BackgroundScheduler, groups: list[Any]) -> None:
-    """Add per-group sync jobs for groups that have scheduling enabled."""
+    """Add per-group sync jobs for groups that have scheduling enabled.
+
+    Args:
+        scheduler: The APScheduler instance.
+        groups: The ``groups`` parameter.
+
+    """
     seen_ids: set[str] = set()
     for group in groups:
         group_name = _validate_group_entry(group)
@@ -145,7 +162,13 @@ def _schedule_cleanup(
     scheduler: BackgroundScheduler,
     sched_cfg: dict[str, Any],
 ) -> None:
-    """Add the broken-symlink cleanup job if enabled."""
+    """Add the broken-symlink cleanup job if enabled.
+
+    Args:
+        scheduler: The APScheduler instance.
+        sched_cfg: The scheduler configuration dict.
+
+    """
     if not sched_cfg.get("cleanup_enabled", True):
         return
     cleanup_cron = sched_cfg.get("cleanup_schedule", "0 * * * *")
@@ -180,7 +203,12 @@ def update_scheduler_jobs() -> None:
 
 
 def _run_global_sync_job(exclude_names: list[str]) -> None:
-    """Job handler for global sync."""
+    """Job handler for global sync.
+
+    Args:
+        exclude_names: Group names to exclude from the sync.
+
+    """
     config = load_config()
     all_groups = config.get("groups", [])
 
@@ -208,7 +236,12 @@ def _run_global_sync_job(exclude_names: list[str]) -> None:
 
 
 def _run_group_sync_job(group_name: str) -> None:
-    """Job handler for a single group sync."""
+    """Job handler for a single group sync.
+
+    Args:
+        group_name: The group name to sync.
+
+    """
     config = load_config()
     logger.info("Background sync starting for group: %s", group_name)
     with sync_lock:

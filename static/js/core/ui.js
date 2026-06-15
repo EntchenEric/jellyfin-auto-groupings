@@ -14,11 +14,13 @@ export function showToast(msg, type = 'success', duration = null) {
     el.dataset.toastId = msgId;
     el.textContent = msg;
     el.className = `status-msg ${type}`;
+    // Show toast to screen readers when visible
+    el.removeAttribute('aria-hidden');
     // Add close button
     const closeBtn = document.createElement('button');
     closeBtn.className = 'close-btn toast-close';
     closeBtn.innerHTML = '&times;';
-    closeBtn.onclick = () => { el.style.display = 'none'; clearTimeout(toastTimer); };
+    closeBtn.onclick = () => { el.style.display = 'none'; el.setAttribute('aria-hidden', 'true'); clearTimeout(toastTimer); };
     // Remove existing close buttons
     el.querySelectorAll('.toast-close').forEach(b => b.remove());
     el.appendChild(closeBtn);
@@ -29,6 +31,7 @@ export function showToast(msg, type = 'success', duration = null) {
         // Only dismiss if no newer toast replaced this one
         if (el.dataset.toastId === String(msgId)) {
             el.style.display = 'none';
+            el.setAttribute('aria-hidden', 'true');
         }
     }, duration);
 }
@@ -42,15 +45,49 @@ export function showModal(id) {
     const el = document.getElementById(id);
     if (el) {
         el.style.display = 'flex';
+        // Mark the modal as visible for assistive technology
+        el.removeAttribute('aria-hidden');
+        // Trap focus inside the modal
+        const previousActive = document.activeElement;
+        el.dataset.previousActive = previousActive && previousActive !== document.body
+            ? previousActive.id || ''
+            : '';
         // Focus first focusable element
-        const focusable = el.querySelector('button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
-        if (focusable) setTimeout(() => focusable.focus(), 100);
+        const focusable = el.querySelector('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])');
+        if (focusable) {
+            setTimeout(() => focusable.focus(), 100);
+        }
+        // Add body class to prevent background scroll
+        document.body.classList.add('modal-open');
     }
 }
 
 export function hideModal(id) {
     const el = document.getElementById(id);
-    if (el) el.style.display = 'none';
+    if (el) {
+        el.style.display = 'none';
+        // Hide modal from assistive technology when not visible
+        el.setAttribute('aria-hidden', 'true');
+        // Return focus to the element that triggered the modal
+        const prevId = el.dataset.previousActive;
+        if (prevId) {
+            const prev = document.getElementById(prevId);
+            if (prev) prev.focus();
+        }
+        // Remove body class when no more modals are visible
+        const anyVisible = document.querySelectorAll('.modal');
+        let hasVisible = false;
+        for (const m of anyVisible) {
+            const style = window.getComputedStyle(m);
+            if (style.display !== 'none') {
+                hasVisible = true;
+                break;
+            }
+        }
+        if (!hasVisible) {
+            document.body.classList.remove('modal-open');
+        }
+    }
 }
 
 // Close modal on Escape key — hide the topmost visible modal
@@ -65,7 +102,11 @@ document.addEventListener('keydown', (e) => {
             }
         }
         if (topmost) {
-            topmost.style.display = 'none';
+            hideModal(topmost.id);
+            // Restore focus to trigger
+            const modalId = topmost.id;
+            const trigger = document.querySelector(`[onclick*="${modalId}"], [data-modal="${modalId}"]`);
+            if (trigger) trigger.focus();
         }
     }
 });
@@ -74,7 +115,7 @@ document.addEventListener('keydown', (e) => {
 document.addEventListener('click', (e) => {
     const modal = e.target.closest('.modal');
     if (modal && e.target === modal) {
-        modal.style.display = 'none';
+        hideModal(modal.id);
     }
 });
 
@@ -216,6 +257,7 @@ export function showLoadingOverlay(title, status, totalSteps = 0) {
     _updateProgressBar();
 
     overlay.style.display = 'flex';
+    overlay.removeAttribute('aria-hidden');
 }
 
 export function updateLoadingStatus(status, advanceStep = false) {
@@ -230,7 +272,10 @@ export function updateLoadingStatus(status, advanceStep = false) {
 
 export function hideLoadingOverlay() {
     const overlay = getEl('loading-overlay');
-    if (overlay) overlay.style.display = 'none';
+    if (overlay) {
+        overlay.style.display = 'none';
+        overlay.setAttribute('aria-hidden', 'true');
+    }
     _progressTotal = 0;
     _progressStep = 0;
     _progressStartTime = 0;

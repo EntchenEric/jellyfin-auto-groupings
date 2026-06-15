@@ -33,6 +33,13 @@ def _fetch_tmdb_page(
     Raises:
         RuntimeError: If an HTTP error occurs.
 
+
+
+    Args:
+            list_id: The TMDb list ID.
+            api_key: Jellyfin API key.
+            page: Page number to fetch.
+
     """
     url = f"{_TMDB_API_BASE}/list/{list_id}"
     params = {
@@ -54,7 +61,14 @@ def _collect_tmdb_ids_from_page(
     ids: list[str],
     seen: set[str],
 ) -> None:
-    """Extract TMDb IDs from a page response, deduplicating via *seen*."""
+    """Extract TMDb IDs from a page response, deduplicating via *seen*.
+
+    Args:
+        data: The API response data dict.
+        ids: List to collect IDs into.
+        seen: Set of already-seen IDs for deduplication.
+
+    """
     for item in data.get("items", []):
         tmdb_id = item.get("id")
         if tmdb_id:
@@ -65,7 +79,12 @@ def _collect_tmdb_ids_from_page(
 
 
 def _normalize_tmdb_list_id(list_id: str) -> str:
-    """Normalize *list_id*: strip whitespace, extract from URL if needed."""
+    """Normalize *list_id*: strip whitespace, extract from URL if needed.
+
+    Args:
+        list_id: The TMDb list ID.
+
+    """
     list_id = list_id.strip()
     if "themoviedb.org/list/" in list_id:
         parsed = urlparse(list_id)

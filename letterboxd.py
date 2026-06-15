@@ -57,6 +57,11 @@ def _extract_ids_from_list_page(html: str) -> dict[str, str]:
 
     Returns a mapping of ``slug -> id`` for films where an ID was found
     directly on the list page, avoiding a per-film page fetch.
+
+
+    Args:
+            html: The HTML content of the Letterboxd list page.
+
     """
     found: dict[str, str] = {}
 
@@ -70,7 +75,12 @@ def _extract_ids_from_list_page(html: str) -> dict[str, str]:
 
 
 def _deduplicate_slugs(slugs: list[str]) -> list[str]:
-    """Preserve order while removing duplicate slugs."""
+    """Preserve order while removing duplicate slugs.
+
+    Args:
+        slugs: List of Letterboxd film slugs.
+
+    """
     seen: set[str] = set()
     result: list[str] = []
     for slug in slugs:
@@ -81,7 +91,12 @@ def _deduplicate_slugs(slugs: list[str]) -> list[str]:
 
 
 def _fetch_ids_for_slugs(slugs: list[str]) -> dict[str, str | None]:
-    """Resolve slugs to IDs in parallel using ThreadPoolExecutor."""
+    """Resolve slugs to IDs in parallel using ThreadPoolExecutor.
+
+    Args:
+        slugs: List of Letterboxd film slugs.
+
+    """
     results: dict[str, str | None] = {}
     if not slugs:
         return results
@@ -104,7 +119,16 @@ def _merge_page_results(
     ids: list[str],
     seen_ids: set[str],
 ) -> None:
-    """Append newly discovered IDs to *ids* while tracking *seen_ids*."""
+    """Append newly discovered IDs to *ids* while tracking *seen_ids*.
+
+    Args:
+        unique_slugs: Deduplicated list of slugs.
+        ids_from_list: IDs extracted from the list page HTML.
+        slug_results: Results from fetching IDs for each slug.
+        ids: List to collect IDs into.
+        seen_ids: Set of already-seen IDs.
+
+    """
     for slug in unique_slugs:
         film_id = ids_from_list.get(slug) or slug_results.get(slug)
         if film_id and film_id not in seen_ids:
