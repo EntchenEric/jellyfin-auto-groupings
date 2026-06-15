@@ -296,7 +296,9 @@ To set a cover for a group, upload an image via the group editor UI.
 
 ## 💻 Development
 
-<a id="development"></a>
+> [!TIP]
+> Looking for a quick way to jump in? Run `make install-dev test run` after cloning
+> to install dependencies, verify the test suite, and start the development server.
 
 ### Environment Variables
 
@@ -312,6 +314,7 @@ The application reads the following environment variables (which take precedence
 | `FLASK_PORT` | Server port (default: `5000`) |
 | `FLASK_DEBUG` | Enable Flask debug mode (`true`/`false`) |
 | `LOG_LEVEL` | Log level for application output. Accepts `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` (default: `INFO`) |
+| `SCHEDULER_ENABLED` | Set to `0` to disable the background scheduler (default: `1`). Useful when running multiple instances or during testing |
 | `GUNICORN_TIMEOUT` | Gunicorn worker timeout in seconds for long-running API calls (default: `120`). Increase this if sync operations time out |
 | `GUNICORN_WORKERS` | Number of gunicorn worker processes for handling concurrent requests (default: `2`). Increase for multi-core hosts |
 | `ANILIST_API_URL` | AniList GraphQL endpoint (default: `https://graphql.anilist.co`) |
@@ -367,6 +370,7 @@ A `Makefile` is provided for common development tasks:
 | `install-dev` | Install with dev extras (`pip install -e ".[dev]"`) |
 | `test` | Run the test suite (skips slow integration tests) |
 | `test-all` | Run the full test suite including integration tests |
+| `test-fast` | Run only core unit tests (config, cleanup, scheduler, network, sync) — quickest smoke test |
 | `test-cov` | Run tests with a coverage report |
 | `test-to-file` | Run tests and write output to a file (`python run_tests_to_file.py`) |
 | `lint` | Run Ruff linter and format check (`ruff check .` + `ruff format --check .`) |
