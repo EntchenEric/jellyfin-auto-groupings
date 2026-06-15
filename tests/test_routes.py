@@ -6,6 +6,7 @@ CSRF protection, and error handling — all with mocked dependencies.
 """
 
 import os
+from datetime import UTC
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -670,7 +671,7 @@ def test_health_check_scheduler_job_exception_skipped(client) -> None:
 @pytest.mark.usefixtures("temp_config")
 def test_health_check_scheduler_job_with_next_run(client) -> None:
     """Health check includes next_run_time when job has one."""
-    from datetime import datetime, timezone
+    from datetime import datetime
     from unittest.mock import PropertyMock
 
     from apscheduler.job import Job
@@ -678,7 +679,7 @@ def test_health_check_scheduler_job_with_next_run(client) -> None:
     mock_job = MagicMock(spec=Job)
     mock_job.id = "sync_job_2"
     mock_job.name = "nightly_sync"
-    mock_job.next_run_time = datetime(2026, 6, 16, 2, 0, 0, tzinfo=timezone.utc)
+    mock_job.next_run_time = datetime(2026, 6, 16, 2, 0, 0, tzinfo=UTC)
 
     with (
         patch("routes._scheduler") as mock_sched,

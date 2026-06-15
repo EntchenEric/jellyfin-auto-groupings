@@ -13,6 +13,8 @@ jobs:
     steps:
       # actions/checkout@v6 → pinned SHA for supply-chain security
       - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+        with:
+          persist-credentials: false
 
       # docker/setup-qemu-action@v4 → pinned SHA
       - name: Set up QEMU for multi-arch builds
