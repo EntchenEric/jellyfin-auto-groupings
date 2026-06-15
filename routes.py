@@ -118,9 +118,14 @@ _TEST_RESULT_FILENAMES = (
     "test_api_out.txt",
 )
 
-# Allowed preview metadata types
+# Allowed preview metadata types, including external list sources
 _ALLOWED_PREVIEW_TYPES: frozenset[str] = frozenset(
-    {"genre", "studio", "tag", "year", "actor", "general", "complex"},
+    {
+        "genre", "studio", "tag", "year", "actor", "general", "complex",
+        "imdb_list", "trakt_list", "tmdb_list",
+        "anilist_list", "mal_list", "letterboxd_list",
+        "recommendations",
+    },
 )
 
 # Default filesystem search roots for auto-detect
@@ -906,6 +911,14 @@ def preview_grouping() -> ResponseReturnValue:
 
     watch_state = (data.get("watch_state") or "").strip().lower()
 
+    # Load config for external list API keys
+    config = load_config()
+    trakt_client_id = str(config.get("trakt_client_id") or "").strip()
+    tmdb_api_key = str(config.get("tmdb_api_key") or "").strip()
+    mal_client_id = str(config.get("mal_client_id") or "").strip()
+    raw_url = config.get("anilist_api_url") or None
+    anilist_api_url = raw_url.strip() if raw_url else None
+
     try:
         # Resolve items using the public sync API
         items, error, status_code = preview_group(
@@ -914,6 +927,10 @@ def preview_grouping() -> ResponseReturnValue:
             url,
             api_key,
             watch_state,
+            trakt_client_id=trakt_client_id,
+            tmdb_api_key=tmdb_api_key,
+            mal_client_id=mal_client_id,
+            anilist_api_url=anilist_api_url,
         )
 
         if error is not None:

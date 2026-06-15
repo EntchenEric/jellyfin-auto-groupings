@@ -2,6 +2,8 @@
 
 import pytest
 
+pytestmark = pytest.mark.e2e
+
 from .conftest import api_get
 
 

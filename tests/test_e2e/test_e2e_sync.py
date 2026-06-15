@@ -3,6 +3,8 @@
 import pytest
 import requests
 
+pytestmark = pytest.mark.e2e
+
 from .conftest import api_get, api_post
 
 

@@ -1115,23 +1115,52 @@ def preview_group(
     url: str,
     api_key: str,
     watch_state: str = "",
+    trakt_client_id: str = "",
+    tmdb_api_key: str = "",
+    mal_client_id: str = "",
+    anilist_api_url: str | None = None,
 ) -> tuple[list[dict[str, Any]], str | None, int]:
     """Resolve items for a grouping preview.
 
-    If the *val* contains logical operators (AND, OR, etc.), it is parsed as a
-    complex query. Otherwise, it is treated as a simple metadata filter.
+    Handles both metadata-based sources (genre, actor, studio, tag, year)
+    and external list sources (imdb_list, trakt_list, tmdb_list, etc.).
+    For metadata types, if *val* contains logical operators (AND, OR, etc.),
+    it is parsed as a complex query.
 
     Args:
-        type_name: The metadata type (genre, actor, studio, tag, year).
-        val: The filter value or complex query string.
+        type_name: The source type (genre, actor, studio, tag, year,
+            imdb_list, trakt_list, tmdb_list, anilist_list, mal_list,
+            letterboxd_list, recommendations).
+        val: The filter value or external list URL/ID.
         url: Jellyfin base URL.
         api_key: Jellyfin API key.
         watch_state: Optional watch-state filter (watched, unwatched).
+        trakt_client_id: Trakt API client ID (required for trakt_list).
+        tmdb_api_key: TMDb API key (required for tmdb_list).
+        mal_client_id: MyAnimeList client ID (required for mal_list).
+        anilist_api_url: Optional custom AniList API URL.
 
     Returns:
         A ``(items, error, status_code)`` tuple.
 
     """
+    # External list sources dispatch
+    if type_name in _LIST_SOURCE_TYPES:
+        return _dispatch_list_source(
+            type_name,
+            "Preview",
+            val,
+            "",  # sort_order — default to no sort for preview
+            url,
+            api_key,
+            watch_state,
+            trakt_client_id=trakt_client_id,
+            tmdb_api_key=tmdb_api_key,
+            mal_client_id=mal_client_id,
+            anilist_api_url=anilist_api_url,
+        )
+
+    # Complex query (metadata-based)
     if _COMPLEX_QUERY_RE.search(val):
         rules = parse_complex_query(val, type_name)
         return _fetch_items_for_complex_group(

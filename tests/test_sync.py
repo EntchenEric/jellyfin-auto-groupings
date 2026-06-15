@@ -319,6 +319,112 @@ def test_preview_group_fetch_error(mock_jf) -> None:
     assert "Jellyfin connection error" in err
 
 
+@patch("sync.fetch_imdb_list")
+def test_preview_group_imdb_list(mock_imdb) -> None:
+    """preview_group dispatches to _dispatch_list_source for imdb_list type."""
+    _LIBRARY_CACHE.clear()
+    mock_imdb.return_value = ["tt1234567"]
+    with patch("sync.fetch_jellyfin_items") as mock_jf:
+        mock_jf.return_value = [{"Name": "M1", "ProviderIds": {"Imdb": "tt1234567"}}]
+        items, err, code = preview_group(
+            "imdb_list", "ls000000001", "http://jf", "key"
+        )
+    assert code == 200
+    assert err is None
+    assert len(items) == 1
+    assert items[0]["Name"] == "M1"
+
+
+@patch("sync.fetch_trakt_list")
+def test_preview_group_trakt_list(mock_trakt) -> None:
+    """preview_group dispatches to _dispatch_list_source for trakt_list type."""
+    mock_trakt.return_value = ["tt1234567"]
+    with patch("sync.fetch_jellyfin_items") as mock_jf:
+        mock_jf.return_value = [{"Name": "M1", "ProviderIds": {"Imdb": "tt1234567"}}]
+        items, err, code = preview_group(
+            "trakt_list", "https://trakt.tv/users/foo/lists/bar",
+            "http://jf", "key", trakt_client_id="test_client_id"
+        )
+    assert code == 200
+    assert err is None
+    assert len(items) == 1
+
+
+@patch("sync.fetch_tmdb_list")
+def test_preview_group_tmdb_list(mock_tmdb) -> None:
+    """preview_group dispatches to _dispatch_list_source for tmdb_list type."""
+    mock_tmdb.return_value = ["12345"]
+    with patch("sync.fetch_jellyfin_items") as mock_jf:
+        mock_jf.return_value = [{"Name": "M1", "ProviderIds": {"Tmdb": "12345"}}]
+        items, err, code = preview_group(
+            "tmdb_list", "12345", "http://jf", "key", tmdb_api_key="test_key"
+        )
+    assert code == 200
+    assert err is None
+    assert len(items) == 1
+
+
+@patch("sync.fetch_anilist_list")
+def test_preview_group_anilist_list(mock_anilist) -> None:
+    """preview_group dispatches to _dispatch_list_source for anilist_list type."""
+    mock_anilist.return_value = ["12345"]
+    with patch("sync.fetch_jellyfin_items") as mock_jf:
+        mock_jf.return_value = [{"Name": "A1", "ProviderIds": {"AniList": "12345"}}]
+        items, err, code = preview_group(
+            "anilist_list", "12345", "http://jf", "key"
+        )
+    assert code == 200
+    assert err is None
+    assert len(items) == 1
+
+
+@patch("sync.fetch_mal_list")
+def test_preview_group_mal_list(mock_mal) -> None:
+    """preview_group dispatches to _dispatch_list_source for mal_list type."""
+    mock_mal.return_value = ["12345"]
+    with patch("sync.fetch_jellyfin_items") as mock_jf:
+        mock_jf.return_value = [{"Name": "A1", "ProviderIds": {"Mal": "12345"}}]
+        items, err, code = preview_group(
+            "mal_list", "12345", "http://jf", "key", mal_client_id="test_client"
+        )
+    assert code == 200
+    assert err is None
+    assert len(items) == 1
+
+
+@patch("sync.fetch_letterboxd_list")
+def test_preview_group_letterboxd_list(mock_lb) -> None:
+    """preview_group dispatches to _dispatch_list_source for letterboxd_list type."""
+    mock_lb.return_value = ["tt1234567"]
+    with patch("sync.fetch_jellyfin_items") as mock_jf:
+        mock_jf.return_value = [{"Name": "M1", "Id": "item1", "ProviderIds": {"Imdb": "tt1234567"}}]
+        items, err, code = preview_group(
+            "letterboxd_list", "https://letterboxd.com/user/list/foo/",
+            "http://jf", "key"
+        )
+    assert code == 200
+    assert err is None
+    assert len(items) == 1
+
+
+@patch("sync.get_user_recent_items")
+@patch("sync.get_tmdb_recommendations")
+def test_preview_group_recommendations(mock_rec, mock_recent) -> None:
+    """preview_group dispatches to _dispatch_list_source for recommendations type."""
+    mock_recent.return_value = [{"ProviderIds": {"Tmdb": "12345"}, "Type": "Movie"}]
+    mock_rec.return_value = ["12345"]
+    _LIBRARY_CACHE.clear()
+    with patch("sync.fetch_jellyfin_items") as mock_jf:
+        mock_jf.return_value = [{"Name": "M1", "ProviderIds": {"Tmdb": "12345"}}]
+        items, err, code = preview_group(
+            "recommendations", "user123", "http://jf", "key",
+            tmdb_api_key="test_key"
+        )
+    assert code == 200
+    assert err is None
+    assert len(items) == 1
+
+
 def test_parse_complex_query_with_prefixes() -> None:
     # Mix of default and specific types
     rules = parse_complex_query("Action AND actor:Tom Hanks AND studio:Marvel", "genre")

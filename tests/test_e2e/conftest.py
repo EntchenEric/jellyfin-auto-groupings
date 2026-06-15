@@ -10,6 +10,8 @@ import time
 import pytest
 import requests
 
+pytestmark = pytest.mark.e2e
+
 E2E_APP_URL = os.environ.get("E2E_APP_URL", "http://localhost:5005")
 E2E_JELLYFIN_URL = os.environ.get("E2E_JELLYFIN_URL", "http://localhost:8096")
 E2E_JELLYFIN_URL_INTERNAL = os.environ.get(
