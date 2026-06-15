@@ -32,6 +32,8 @@ services:
       # - NETWORK_RETRY_STATUS_FORCELIST=429,500,502,503,504
       # Comma-separated Flask endpoint names exempt from the X-Requested-With CSRF check:
       # - ALLOWED_NON_CSRF_ENDPOINTS=main.webhook,main.callback
+      # Uncomment to disable the background scheduler (default: 1):
+      # - SCHEDULER_ENABLED=1
       # Control log verbosity (DEBUG, INFO, WARNING, ERROR, CRITICAL; default: INFO):
       # - LOG_LEVEL=INFO
       # Gunicorn worker timeout in seconds for long-running sync (default: 120):
