@@ -42,7 +42,7 @@ RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 # Unraid Community Applications labels
 # ------------------------------------------------------------------
 LABEL org.opencontainers.image.title="Jellyfin Groupings" \
-      org.opencontainers.image.description="Create virtual Jellyfin libraries by grouping media via symlinks, filtered by genre, actor, studio, IMDb list, or Trakt list." \
+      org.opencontainers.image.description="Create virtual Jellyfin libraries by grouping media via symlinks, filtered by genre, actor, studio, year, or external lists (IMDb, Trakt, TMDb, Letterboxd, AniList, MyAnimeList)." \
       org.opencontainers.image.url="https://github.com/entcheneric/jellyfin-auto-groupings" \
       org.opencontainers.image.source="https://github.com/entcheneric/jellyfin-auto-groupings" \
       org.opencontainers.image.version="1.0.0" \
