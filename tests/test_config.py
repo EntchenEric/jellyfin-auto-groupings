@@ -8,6 +8,8 @@ corrupt/empty file recovery, and all environment variable overrides
 import json
 from pathlib import Path
 
+import pytest
+
 from config import DEFAULT_CONFIG, load_config, save_config
 
 TEST_URL = "http://localhost:8096"
@@ -204,6 +206,32 @@ def test_env_flag_false_values(monkeypatch) -> None:
     assert _env_flag("TEST_ENV_FLAG_8") is False
 
 
+def test_active_env_overrides_empty(monkeypatch) -> None:
+    """_active_env_overrides returns empty dict when no env vars are set."""
+    from config import _active_env_overrides
+
+    # Clear relevant env vars
+    for var in ["JELLYFIN_URL", "JELLYFIN_API_KEY", "TRAKT_CLIENT_ID"]:
+        monkeypatch.delenv(var, raising=False)
+
+    result = _active_env_overrides()
+    assert result == {}
+
+
+def test_active_env_overrides_with_values(monkeypatch) -> None:
+    """_active_env_overrides returns overrides when env vars are set."""
+    from config import _active_env_overrides
+
+    monkeypatch.setenv("JELLYFIN_API_KEY", "secret-key")
+    monkeypatch.setenv("TRAKT_CLIENT_ID", "trakt-id")
+
+    result = _active_env_overrides()
+    assert "api_key" in result
+    assert result["api_key"] == "JELLYFIN_API_KEY"
+    assert "trakt_client_id" in result
+    assert result["trakt_client_id"] == "TRAKT_CLIENT_ID"
+
+
 def test_load_config_corrupt_file_backup_rename_failure(temp_config) -> None:
     """Test that corrupt config backup rename failure is handled gracefully."""
     with Path(temp_config).open("w") as f:
@@ -295,6 +323,81 @@ def test_save_config_path_objects(tmp_path) -> None:
         with test_file.open() as f:
             data = json.load(f)
         assert data["key"] == "value"
+    finally:
+        config.CONFIG_DIR = orig_dir
+        config.CONFIG_FILE = orig_file
+
+
+def test_save_config_backup_rotation(tmp_path) -> None:
+    """save_config creates a timestamped .bak when a previous config exists."""
+    import config
+
+    orig_dir = config.CONFIG_DIR
+    orig_file = config.CONFIG_FILE
+
+    try:
+        test_dir = tmp_path / "cfg"
+        test_dir.mkdir()
+        test_file = test_dir / "config.json"
+        config.CONFIG_DIR = str(test_dir)
+        config.CONFIG_FILE = str(test_file)
+
+        # First save — no backup expected
+        config.save_config({"version": 1})
+        assert test_file.exists()
+
+        # Second save — backup should be created
+        config.save_config({"version": 2})
+        assert test_file.exists()
+        # Verify backup file exists
+        backups = list(test_dir.glob("*.bak"))
+        assert len(backups) >= 1
+        # Verify current file has new content
+        import json
+
+        with test_file.open() as f:
+            data = json.load(f)
+        assert data["version"] == 2
+    finally:
+        config.CONFIG_DIR = orig_dir
+        config.CONFIG_FILE = orig_file
+
+
+def test_save_config_backup_rotation_cleanup_on_failure(tmp_path) -> None:
+    """save_config cleans up temp file on write failure."""
+    import config
+
+    from unittest.mock import patch
+
+    orig_dir = config.CONFIG_DIR
+    orig_file = config.CONFIG_FILE
+
+    try:
+        test_dir = tmp_path / "cfg_fail"
+        test_dir.mkdir()
+        test_file = test_dir / "config.json"
+        config.CONFIG_DIR = str(test_dir)
+        config.CONFIG_FILE = str(test_file)
+
+        # Create an existing config
+        config.save_config({"version": 1})
+        assert test_file.exists()
+
+        # Mock json.dump to fail
+        with patch("json.dump", side_effect=OSError("write error")):
+            with pytest.raises(OSError):
+                config.save_config({"version": 2})
+
+        # Temp file should be cleaned up
+        tmp_files = list(test_dir.glob("*.json.tmp"))
+        assert len(tmp_files) == 0
+        # Original config should still exist
+        assert test_file.exists()
+        with test_file.open() as f:
+            import json
+
+            data = json.load(f)
+        assert data["version"] == 1
     finally:
         config.CONFIG_DIR = orig_dir
         config.CONFIG_FILE = orig_file

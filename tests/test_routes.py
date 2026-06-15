@@ -583,6 +583,196 @@ def test_health_check_error_path(client) -> None:
     assert data["healthcheck"]["error"] == "internal_error"
 
 
+@pytest.mark.usefixtures("temp_config")
+def test_health_check_scheduler_running(client) -> None:
+    """Health check includes scheduler info when scheduler is running."""
+    from unittest.mock import PropertyMock
+
+    from apscheduler.job import Job
+
+    mock_job = MagicMock(spec=Job)
+    mock_job.id = "sync_job_1"
+    mock_job.name = "sync_groups"
+    mock_job.next_run_time = None
+
+    with (
+        patch("routes._scheduler") as mock_sched,
+        patch("routes.network.get") as mock_get,
+    ):
+        type(mock_sched).running = PropertyMock(return_value=True)
+        mock_sched.get_jobs.return_value = [mock_job]
+        mock_get.return_value.status_code = 200
+
+        response = client.get("/api/health")
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["scheduler"]["running"] is True
+    assert data["scheduler"]["job_count"] == 1
+    assert len(data["scheduler"]["next_run_times"]) == 1
+    assert data["scheduler"]["next_run_times"][0]["id"] == "sync_job_1"
+    assert data["scheduler"]["next_run_times"][0]["name"] == "sync_groups"
+    assert "next_run" not in data["scheduler"]["next_run_times"][0]
+
+
+@pytest.mark.usefixtures("temp_config")
+def test_health_check_scheduler_job_exception_skipped(client) -> None:
+    """Health check skips jobs that raise during attribute access."""
+    from unittest.mock import PropertyMock
+
+    from apscheduler.job import Job
+
+    good_job = MagicMock(spec=Job)
+    good_job.id = "good_job"
+    good_job.name = "good"
+    good_job.next_run_time = None
+
+    # A job whose .next_run_time.isoformat() raises
+    class BadJob:
+        @property
+        def id(self):  # noqa: A003
+            return "bad_job"
+
+        @property
+        def name(self):  # noqa: A003
+            return "bad"
+
+        @property
+        def next_run_time(self):
+            class BadTime:
+                def isoformat(self):
+                    msg = "isoformat error"
+                    raise RuntimeError(msg)
+
+            return BadTime()
+
+    bad_job = BadJob()
+
+    with (
+        patch("routes._scheduler") as mock_sched,
+        patch("routes.network.get") as mock_get,
+    ):
+        type(mock_sched).running = PropertyMock(return_value=True)
+        mock_sched.get_jobs.return_value = [good_job, bad_job]
+        mock_get.return_value.status_code = 200
+
+        response = client.get("/api/health")
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["scheduler"]["running"] is True
+    assert data["scheduler"]["job_count"] == 2
+    # Only the good job should appear in next_run_times
+    assert len(data["scheduler"]["next_run_times"]) == 1
+    assert data["scheduler"]["next_run_times"][0]["id"] == "good_job"
+
+
+@pytest.mark.usefixtures("temp_config")
+def test_health_check_scheduler_job_with_next_run(client) -> None:
+    """Health check includes next_run_time when job has one."""
+    from datetime import datetime, timezone
+    from unittest.mock import PropertyMock
+
+    from apscheduler.job import Job
+
+    mock_job = MagicMock(spec=Job)
+    mock_job.id = "sync_job_2"
+    mock_job.name = "nightly_sync"
+    mock_job.next_run_time = datetime(2026, 6, 16, 2, 0, 0, tzinfo=timezone.utc)
+
+    with (
+        patch("routes._scheduler") as mock_sched,
+        patch("routes.network.get") as mock_get,
+    ):
+        type(mock_sched).running = PropertyMock(return_value=True)
+        mock_sched.get_jobs.return_value = [mock_job]
+        mock_get.return_value.status_code = 200
+
+        response = client.get("/api/health")
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["scheduler"]["running"] is True
+    assert data["scheduler"]["next_run_times"][0]["next_run"] == "2026-06-16T02:00:00+00:00"
+
+
+@pytest.mark.usefixtures("temp_config")
+def test_health_check_scheduler_not_running(client) -> None:
+    """Health check reports scheduler not running when scheduler is off."""
+    from unittest.mock import PropertyMock
+
+    with (
+        patch("routes._scheduler") as mock_sched,
+        patch("routes.network.get") as mock_get,
+    ):
+        type(mock_sched).running = PropertyMock(return_value=False)
+        mock_get.return_value.status_code = 200
+
+        response = client.get("/api/health")
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["scheduler"]["running"] is False
+    assert data["scheduler"]["job_count"] == 0
+
+
+@pytest.mark.usefixtures("temp_config")
+def test_health_check_scheduler_exception(client) -> None:
+    """Health check gracefully handles scheduler exception."""
+    with (
+        patch("routes._scheduler") as mock_sched,
+        patch("routes.network.get") as mock_get,
+    ):
+        mock_sched.get_jobs.side_effect = RuntimeError("scheduler error")
+        mock_get.return_value.status_code = 200
+
+        response = client.get("/api/health")
+
+    assert response.status_code == 200
+    data = response.get_json()
+    # The scheduler block is entered (hasattr succeeds on MagicMock),
+    # running is set to True, then get_jobs() raises, so job_count stays 0
+    assert data["scheduler"]["running"] is True
+    assert data["scheduler"]["job_count"] == 0
+
+
+@pytest.mark.usefixtures("temp_config")
+def test_health_check_jellyfin_reachable(client) -> None:
+    """Health check reports Jellyfin reachable when ping succeeds."""
+    save_config({"jellyfin_url": "http://jellyfin:8096", "api_key": "test"})
+    with patch("routes.network.get") as mock_get:
+        mock_get.return_value.status_code = 200
+        response = client.get("/api/health")
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["jellyfin"]["reachable"] is True
+
+
+@pytest.mark.usefixtures("temp_config")
+def test_health_check_jellyfin_unreachable(client) -> None:
+    """Health check reports Jellyfin unreachable when ping fails."""
+    save_config({"jellyfin_url": "http://jellyfin:8096", "api_key": "test"})
+    with patch("routes.network.get", side_effect=requests.RequestException("timeout")):
+        response = client.get("/api/health")
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["jellyfin"]["reachable"] is False
+
+
+@pytest.mark.usefixtures("temp_config")
+def test_health_check_jellyfin_no_url(client) -> None:
+    """Health check returns None for reachable when no URL configured."""
+    save_config({"jellyfin_url": "", "api_key": "", "target_path": ""})
+    response = client.get("/api/health")
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["jellyfin"]["reachable"] is None
+    assert data["healthcheck"]["configured"] is False
+
+
 # ---------------------------------------------------------------------------
 # get_cleanup_items
 # ---------------------------------------------------------------------------
