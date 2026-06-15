@@ -8,7 +8,7 @@ server.
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import Any, cast
 
 from flask import Flask, jsonify, request
 
@@ -884,10 +884,10 @@ def set_item_image(item_id):
 
 @app.route("/", methods=["GET"])
 def dashboard() -> str:
-    items: list[dict[str, Any]] = data["items"]  # type: ignore[assignment]
-    libraries: list[dict[str, Any]] = data["libraries"]  # type: ignore[assignment]
-    users: list[dict[str, Any]] = data["users"]  # type: ignore[assignment]
-    lib_paths: dict[str, Any] = data["library_paths"]  # type: ignore[assignment]
+    items = cast("list[dict[str, Any]]", data["items"])
+    libraries = cast("list[dict[str, Any]]", data["libraries"])
+    users = cast("list[dict[str, Any]]", data["users"])
+    lib_paths = cast("dict[str, Any]", data["library_paths"])
     return f"""
     <!DOCTYPE html>
     <html>

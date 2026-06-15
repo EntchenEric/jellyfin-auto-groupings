@@ -1,5 +1,6 @@
 """Additional tests covering uncovered lines in sync.py (PermissionError, OSError, etc.)."""
 
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -578,7 +579,7 @@ def test_sort_items_in_memory_missing_key() -> None:
     """Items missing the sort field sort to end."""
     from sync import _sort_items_in_memory
 
-    items = [
+    items: list[dict[str, Any]] = [
         {"Name": "A", "ProductionYear": 2020},
         {"Name": "B"},
         {"Name": "C", "ProductionYear": 2010},
@@ -595,7 +596,7 @@ def test_sort_items_in_memory_descending() -> None:
     """Descending sort works correctly."""
     from sync import _sort_items_in_memory
 
-    items = [
+    items: list[dict[str, Any]] = [
         {"Name": "A", "ProductionYear": 2010},
         {"Name": "B"},
         {"Name": "C", "ProductionYear": 2020},
