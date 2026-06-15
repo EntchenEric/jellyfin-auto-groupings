@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────
-# docker-compose.yml  –  Deployment for Jellyfin Groupings
+# compose.yml  –  Deployment for Jellyfin Groupings
 # ─────────────────────────────────────────────────────────────
 
 services:

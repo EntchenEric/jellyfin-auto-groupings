@@ -61,7 +61,7 @@ Instead of messing with Jellyfin's internal collections or duplicating multi-gig
 
 The easiest way to run Jellyfin Groupings is via Docker Compose.
 
-### 1. Create `docker-compose.yml`
+### 1. Create `compose.yml`
 
 ```yaml
 services:
@@ -90,7 +90,7 @@ services:
 ### 2. Launch the app
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 Access the UI at `http://your-server-ip:5000`.
@@ -520,7 +520,7 @@ Set the ``LOG_LEVEL`` environment variable to ``DEBUG`` to get more
 detailed logs:
 
 ```bash
-# Docker: add to docker-compose.yml environment section
+# Docker: add to compose.yml environment section
 # LOG_LEVEL=DEBUG
 
 # Native: export before running the app
@@ -535,7 +535,7 @@ file handler (10 MB max, 3 backups).
 If syncing large libraries triggers a 504 timeout or the sync operation
 hangs without completing, the gunicorn worker may be hitting its timeout
 limit. Increase it by setting ``GUNICORN_TIMEOUT`` in your
-``docker-compose.yml`` environment section:
+``compose.yml`` environment section:
 
 ```yaml
 environment:
@@ -589,7 +589,7 @@ If symlinks point to non-existent files, verify your path mapping:
 - Verify the Jellyfin server is reachable from the app container.
 - Check the app logs for detailed error messages. Logs are written to
   `/app/logs/jellyfin-groupings.log` inside the container. To persist them
-  across restarts, add a volume mount in your docker-compose:
+  across restarts, add a volume mount in your compose file:
 
   ```yaml
   volumes:

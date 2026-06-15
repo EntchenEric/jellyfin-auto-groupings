@@ -4,8 +4,8 @@ Provides explicit :func:`get`, :func:`post`, and :func:`delete` helpers
 that delegate to a shared :class:`requests.Session` configured with
 exponential-backoff retry on transient failures (5xx, connection errors).
 
-Import these helpers instead of ``requests.get`` / ``requests.post`` / ``requests.delete``
-to benefit from retry logic with **zero monkey-patching**.
+Import these helpers instead of ``requests.get`` / ``requests.post``
+``requests.delete`` to benefit from retry logic with **zero monkey-patching**.
 """
 
 from __future__ import annotations
@@ -83,7 +83,8 @@ def _parse_retry_config() -> tuple[int, float, list[int]]:
             backoff = 1.0
     except ValueError:
         logger.warning(
-            "Invalid NETWORK_RETRY_BACKOFF_FACTOR value %r, falling back to default 1.0",
+            "Invalid NETWORK_RETRY_BACKOFF_FACTOR value %r, "
+            "falling back to default 1.0",
             raw_backoff,
         )
         backoff = 1.0
@@ -107,7 +108,10 @@ def _parse_retry_config() -> tuple[int, float, list[int]]:
             )
             continue
         if not (_HTTP_STATUS_MIN <= code <= _HTTP_STATUS_MAX):
-            msg = f"NETWORK_RETRY_STATUS_FORCELIST contains invalid HTTP status code: {code}"
+            msg = (
+                f"NETWORK_RETRY_STATUS_FORCELIST contains invalid"
+                f" HTTP status code: {code}"
+            )
             raise ValueError(
                 msg,
             )

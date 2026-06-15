@@ -179,7 +179,7 @@ def load_config() -> dict[str, Any]:
                     # Avoid collision by appending a timestamp
                     timestamp = datetime.now(tz=UTC).strftime("%Y%m%d_%H%M%S")
                     backup_path = cfg_path.with_name(
-                        cfg_path.name + f".corrupt.{timestamp}.bak"
+                        cfg_path.name + f".corrupt.{timestamp}.bak",
                     )
                 cfg_path.rename(backup_path)
                 logger.info("Backed up corrupt config to %s", backup_path)
@@ -209,12 +209,11 @@ def load_config() -> dict[str, Any]:
 
 
 def _active_env_overrides() -> dict[str, str]:
-    """Return a mapping of config keys that are being overridden by environment variables.
+    """Return config keys overridden by environment variables.
 
     Returns a dict like ``{"api_key": "JELLYFIN_API_KEY", ...}`` for any
-    environment variable that is currently set and differs from the saved
-    config, **or** ``{"api_key": "JELLYFIN_API_KEY", ...}`` simply reporting
-    which env overrides are active.
+    environment variable that is currently set, regardless of whether the
+    value differs from the saved config.
     """
     overrides: dict[str, str] = {}
     for cfg_key, env_var in _ENV_OVERRIDES.items():

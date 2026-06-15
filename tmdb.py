@@ -65,7 +65,7 @@ def _collect_tmdb_ids_from_page(
 
 
 def _normalize_tmdb_list_id(list_id: str) -> str:
-    """Normalize *list_id* by stripping whitespace and extracting from a full URL if needed."""
+    """Normalize *list_id*: strip whitespace, extract from URL if needed."""
     list_id = list_id.strip()
     if "themoviedb.org/list/" in list_id:
         parsed = urlparse(list_id)
@@ -123,11 +123,13 @@ def get_tmdb_recommendations(
     """Fetch recommendations for a list of TMDb IDs.
 
     Args:
-        items_with_type: A list of tuples (tmdb_id, media_type) where media_type is "movie" or "tv".
+        items_with_type: List of (tmdb_id, media_type) where media_type
+            is "movie" or "tv".
         api_key: TMDb API Key (v3).
 
     Returns:
-        A list of recommended TMDb IDs (as strings), sorted by recommendation frequency and rank.
+        A list of recommended TMDb IDs (as strings), sorted by
+        recommendation frequency and rank.
 
     Raises:
         ValueError: If *api_key* is empty.

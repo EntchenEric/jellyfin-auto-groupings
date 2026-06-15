@@ -433,8 +433,8 @@ def _sort_items_in_memory(
         value = item.get(primary_key)
         if value is None:
             # Sentinel for items missing the sort field — always sorts to the end.
-            # When reverse=False:  missing=(1, ""), present=(0, value)  → missing sorts last
-            # When reverse=True:   missing=(0, ""), present=(1, value)  → with reverse, missing sorts last
+            # reverse=False:  missing=(1, ""), present=(0, value)  → missing sorts last
+            # reverse=True:   missing=(0, ""), present=(1, value)  → missing sorts last
             return (0, "") if reverse else (1, "")
         return (1, value) if reverse else (0, value)
 
@@ -858,7 +858,7 @@ def _match_condition(item: dict[str, Any], r_type: str, r_val: str) -> bool:
         if r_type == "year":
             val = item.get("ProductionYear")
             if val is not None:
-                return str(val).strip().lower() == r_val
+                return str(val).strip() == r_val
     except (AttributeError, TypeError, ValueError):
         pass
 
@@ -1221,11 +1221,13 @@ def _process_collection_group(
                 group_name,
                 collection_id,
             )
-            # Add items to the existing collection; duplicates are safely ignored by Jellyfin
+            # Add items to existing collection; duplicates are safely
+            # ignored by Jellyfin
             add_to_collection(url, api_key, collection_id, item_ids)
             logger.info("Added %s items to collection %r", len(item_ids), group_name)
         else:
-            # create_collection already includes the item_ids, so no separate add_to_collection needed
+            # create_collection already includes the item_ids, so
+            # no separate add_to_collection needed
             collection_id = create_collection(url, api_key, group_name, item_ids)
             logger.info(
                 "Created collection %r (id=%s) with %s items",
@@ -1787,17 +1789,23 @@ def _parse_mmdd(value: str | None) -> tuple[int, int]:
         return (0, 0)
     parts = value.strip().split("-", 1)
     if len(parts) < 2:
+        logger.debug("Invalid MM-DD format: %r — missing dash", value)
         return (0, 0)
     try:
         month = int(parts[0])
         day = int(parts[1])
     except (ValueError, IndexError):
+        logger.debug("Invalid MM-DD format: %r — non-numeric parts", value)
         return (0, 0)
     if not (1 <= month <= 12):
+        logger.debug("Invalid MM-DD format: %r — month out of range", value)
         return (0, 0)
     # Use a leap year (2024) for monthrange so Feb 29 is valid
     _, max_day = calendar.monthrange(2024, month)
     if not (1 <= day <= max_day):
+        logger.debug(
+            "Invalid MM-DD format: %r — day out of range for month %d", value, month
+        )
         return (0, 0)
     return (month, day)
 

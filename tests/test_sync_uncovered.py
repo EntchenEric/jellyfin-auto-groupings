@@ -499,3 +499,143 @@ def test_parse_complex_query_mixed_operators() -> None:
     assert rules[1]["value"] == "Comedy"
     assert rules[2]["operator"] == "OR"
     assert rules[2]["value"] == "Drama"
+
+
+# ---------------------------------------------------------------------------
+# _filter_by_watch_state edge cases
+# ---------------------------------------------------------------------------
+
+
+def test_filter_by_watch_state_none() -> None:
+    """None watch_state returns items unchanged."""
+    from sync import _filter_by_watch_state
+
+    items = [{"Name": "A"}, {"Name": "B"}]
+    result = _filter_by_watch_state(items, "")
+    assert result is items
+
+
+def test_filter_by_watch_state_unmatched_state() -> None:
+    """Arbitrary watch_state returns items unchanged."""
+    from sync import _filter_by_watch_state
+
+    items = [{"Name": "A"}, {"Name": "B"}]
+    result = _filter_by_watch_state(items, "favorite")
+    assert result is items
+
+
+# ---------------------------------------------------------------------------
+# _build_preview_item edge cases
+# ---------------------------------------------------------------------------
+
+
+def test_build_preview_item_with_file_name() -> None:
+    """_build_preview_item includes FileName when file_name is provided."""
+    from sync import _build_preview_item
+
+    result = _build_preview_item(
+        {"Name": "Test", "ProductionYear": 2025}, file_name="test.mp4",
+    )
+    assert result["Name"] == "Test"
+    assert result["Year"] == 2025
+    assert result["FileName"] == "test.mp4"
+
+
+def test_build_preview_item_missing_year() -> None:
+    """_build_preview_item tolerates missing ProductionYear."""
+    from sync import _build_preview_item
+
+    result = _build_preview_item({"Name": "No Year"})
+    assert result["Name"] == "No Year"
+    assert result["Year"] == ""
+
+
+def test_build_preview_item_missing_name() -> None:
+    """_build_preview_item falls back to Unknown when Name is absent."""
+    from sync import _build_preview_item
+
+    result = _build_preview_item({})
+    assert result["Name"] == "Unknown"
+    assert result["Year"] == ""
+
+
+# ---------------------------------------------------------------------------
+# _sort_items_in_memory edge cases
+# ---------------------------------------------------------------------------
+
+
+def test_sort_items_in_memory_unknown_order() -> None:
+    """Unknown sort_order returns items unchanged."""
+    from sync import _sort_items_in_memory
+
+    items = [{"Name": "B"}, {"Name": "A"}]
+    result = _sort_items_in_memory(items, "nonexistent_order")
+    assert result is items
+
+
+def test_sort_items_in_memory_missing_key() -> None:
+    """Items missing the sort field sort to end."""
+    from sync import _sort_items_in_memory
+
+    items = [
+        {"Name": "A", "ProductionYear": 2020},
+        {"Name": "B"},
+        {"Name": "C", "ProductionYear": 2010},
+    ]
+    result = _sort_items_in_memory(items, "year_ascending")
+    assert len(result) == 3
+    assert result[0]["Name"] == "C"  # 2010
+    assert result[1]["Name"] == "A"  # 2020
+    assert result[2]["Name"] == "B"  # no year
+
+
+def test_sort_items_in_memory_descending() -> None:
+    """Descending sort works correctly."""
+    from sync import _sort_items_in_memory
+
+    items = [
+        {"Name": "A", "ProductionYear": 2010},
+        {"Name": "B"},
+        {"Name": "C", "ProductionYear": 2020},
+    ]
+    result = _sort_items_in_memory(items, "year_descending")
+    assert len(result) == 3
+    assert result[0]["Name"] == "C"  # 2020
+    assert result[1]["Name"] == "A"  # 2010
+    assert result[2]["Name"] == "B"  # no year
+
+
+def test_sort_items_in_memory_all_missing() -> None:
+    """All items missing the sort field: order is stable (unchanged)."""
+    from sync import _sort_items_in_memory
+
+    items = [{"Name": "A"}, {"Name": "B"}, {"Name": "C"}]
+    result = _sort_items_in_memory(items, "year_ascending")
+    # All missing, so all have the same sentinel → relative order preserved
+    assert [r["Name"] for r in result] == ["A", "B", "C"]
+
+
+# ---------------------------------------------------------------------------
+# _get_cover_path edge cases
+# ---------------------------------------------------------------------------
+
+
+def test_get_cover_path_no_covers_dir(tmp_path) -> None:
+    """Returns None when no cover file exists and check_exists is True."""
+    from sync import _get_cover_path
+
+    result = _get_cover_path("Test Group", str(tmp_path), check_exists=True)
+    assert result is None
+
+
+def test_get_cover_path_check_exists_false_without_target(tmp_path) -> None:
+    """check_exists=False falls back to legacy path when target_base is not a dir."""
+    from sync import _get_cover_path
+
+    result = _get_cover_path(
+        "Test Group",
+        "/nonexistent",
+        check_exists=False,
+    )
+    assert result is not None
+    assert ".covers" not in result
