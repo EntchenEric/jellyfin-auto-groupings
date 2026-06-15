@@ -72,29 +72,37 @@ def _schedule_global_sync(
         logger.exception("Failed to schedule global sync (invalid cron: %s)", cron_expr)
 
 
+def _validate_group_entry(group: Any) -> str | None:
+    """Validate a group dict and return its name, or None if invalid."""
+    if not isinstance(group, dict):
+        logger.warning(
+            "Skipping invalid group entry (expected dict, got %s): %s",
+            type(group).__name__,
+            group,
+        )
+        return None
+    group_name = group.get("name")
+    if not group_name:
+        logger.warning(
+            "Skipping group with schedule_enabled but missing name: %s",
+            group,
+        )
+        return None
+    if not isinstance(group_name, str):
+        logger.warning(
+            "Skipping group with schedule_enabled but non-string name: %s",
+            group_name,
+        )
+        return None
+    return group_name
+
+
 def _schedule_group_syncs(scheduler: BackgroundScheduler, groups: list[Any]) -> None:
     """Add per-group sync jobs for groups that have scheduling enabled."""
     seen_ids: set[str] = set()
     for group in groups:
-        if not isinstance(group, dict):
-            logger.warning(
-                "Skipping invalid group entry (expected dict, got %s): %s",
-                type(group).__name__,
-                group,
-            )
-            continue
-        group_name = group.get("name")
-        if not group_name:
-            logger.warning(
-                "Skipping group with schedule_enabled but missing name: %s",
-                group,
-            )
-            continue
-        if not isinstance(group_name, str):
-            logger.warning(
-                "Skipping group with schedule_enabled but non-string name: %s",
-                group_name,
-            )
+        group_name = _validate_group_entry(group)
+        if group_name is None:
             continue
         if group.get("schedule_enabled") and group.get("schedule"):
             cron_expr = group["schedule"]
