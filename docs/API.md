@@ -28,8 +28,13 @@ Health check for load balancers and orchestrators.
 | `healthcheck.ok` | boolean | Service health |
 | `healthcheck.configured` | boolean | Jellyfin URL, API key, and target path present |
 | `healthcheck.groups` | number | Count of configured groupings |
+| `healthcheck.env_overrides` | array&lt;string&gt; | Active runtime config overrides from environment variables |
 | `server.uptime_seconds` | number | Process uptime |
 | `server.started_at` | string | ISO 8601 UTC start time |
+| `scheduler.running` | boolean | Whether the background scheduler is running |
+| `scheduler.job_count` | number | Number of registered scheduler jobs |
+| `scheduler.next_run_times` | array&lt;object&gt; | List of scheduled jobs with their next run time; each object has `id`, `name`, and optionally `next_run` |
+| `jellyfin.reachable` | boolean or null | Whether the Jellyfin server responded to a lightweight ping; `null` if no server URL is set |
 
 ---
 
