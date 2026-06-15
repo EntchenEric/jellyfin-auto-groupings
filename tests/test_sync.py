@@ -326,9 +326,7 @@ def test_preview_group_imdb_list(mock_imdb) -> None:
     mock_imdb.return_value = ["tt1234567"]
     with patch("sync.fetch_jellyfin_items") as mock_jf:
         mock_jf.return_value = [{"Name": "M1", "ProviderIds": {"Imdb": "tt1234567"}}]
-        items, err, code = preview_group(
-            "imdb_list", "ls000000001", "http://jf", "key"
-        )
+        items, err, code = preview_group("imdb_list", "ls000000001", "http://jf", "key")
     assert code == 200
     assert err is None
     assert len(items) == 1
@@ -342,8 +340,11 @@ def test_preview_group_trakt_list(mock_trakt) -> None:
     with patch("sync.fetch_jellyfin_items") as mock_jf:
         mock_jf.return_value = [{"Name": "M1", "ProviderIds": {"Imdb": "tt1234567"}}]
         items, err, code = preview_group(
-            "trakt_list", "https://trakt.tv/users/foo/lists/bar",
-            "http://jf", "key", trakt_client_id="test_client_id"
+            "trakt_list",
+            "https://trakt.tv/users/foo/lists/bar",
+            "http://jf",
+            "key",
+            trakt_client_id="test_client_id",
         )
     assert code == 200
     assert err is None
@@ -370,9 +371,7 @@ def test_preview_group_anilist_list(mock_anilist) -> None:
     mock_anilist.return_value = ["12345"]
     with patch("sync.fetch_jellyfin_items") as mock_jf:
         mock_jf.return_value = [{"Name": "A1", "ProviderIds": {"AniList": "12345"}}]
-        items, err, code = preview_group(
-            "anilist_list", "12345", "http://jf", "key"
-        )
+        items, err, code = preview_group("anilist_list", "12345", "http://jf", "key")
     assert code == 200
     assert err is None
     assert len(items) == 1
@@ -397,10 +396,14 @@ def test_preview_group_letterboxd_list(mock_lb) -> None:
     """preview_group dispatches to _dispatch_list_source for letterboxd_list type."""
     mock_lb.return_value = ["tt1234567"]
     with patch("sync.fetch_jellyfin_items") as mock_jf:
-        mock_jf.return_value = [{"Name": "M1", "Id": "item1", "ProviderIds": {"Imdb": "tt1234567"}}]
+        mock_jf.return_value = [
+            {"Name": "M1", "Id": "item1", "ProviderIds": {"Imdb": "tt1234567"}}
+        ]
         items, err, code = preview_group(
-            "letterboxd_list", "https://letterboxd.com/user/list/foo/",
-            "http://jf", "key"
+            "letterboxd_list",
+            "https://letterboxd.com/user/list/foo/",
+            "http://jf",
+            "key",
         )
     assert code == 200
     assert err is None
@@ -417,8 +420,7 @@ def test_preview_group_recommendations(mock_rec, mock_recent) -> None:
     with patch("sync.fetch_jellyfin_items") as mock_jf:
         mock_jf.return_value = [{"Name": "M1", "ProviderIds": {"Tmdb": "12345"}}]
         items, err, code = preview_group(
-            "recommendations", "user123", "http://jf", "key",
-            tmdb_api_key="test_key"
+            "recommendations", "user123", "http://jf", "key", tmdb_api_key="test_key"
         )
     assert code == 200
     assert err is None

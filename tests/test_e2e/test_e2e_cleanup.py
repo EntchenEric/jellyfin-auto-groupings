@@ -1,6 +1,7 @@
 """E2E tests for cleanup functionality."""
 
 import pytest
+
 from .conftest import api_get, api_post
 
 pytestmark = pytest.mark.e2e

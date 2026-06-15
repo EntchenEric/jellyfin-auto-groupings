@@ -6,6 +6,7 @@ CSRF protection, and error handling — all with mocked dependencies.
 """
 
 import os
+from datetime import UTC
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -670,7 +671,7 @@ def test_health_check_scheduler_job_exception_skipped(client) -> None:
 @pytest.mark.usefixtures("temp_config")
 def test_health_check_scheduler_job_with_next_run(client) -> None:
     """Health check includes next_run_time when job has one."""
-    from datetime import datetime, timezone
+    from datetime import datetime
     from unittest.mock import PropertyMock
 
     from apscheduler.job import Job
@@ -678,7 +679,7 @@ def test_health_check_scheduler_job_with_next_run(client) -> None:
     mock_job = MagicMock(spec=Job)
     mock_job.id = "sync_job_2"
     mock_job.name = "nightly_sync"
-    mock_job.next_run_time = datetime(2026, 6, 16, 2, 0, 0, tzinfo=timezone.utc)
+    mock_job.next_run_time = datetime(2026, 6, 16, 2, 0, 0, tzinfo=UTC)
 
     with (
         patch("routes._scheduler") as mock_sched,
@@ -1143,9 +1144,10 @@ def test_preview_grouping_imdb_list(mock_preview, client) -> None:
     assert response.status_code == 200
     assert response.get_json()["count"] == 1
     mock_preview.assert_called_once()
-    _, kwargs = mock_preview.call_args
-    assert kwargs["type_name"] == "imdb_list"
-    assert kwargs["val"] == "ls000000001"
+    args, _kwargs = mock_preview.call_args
+    # type_name and val are positional args in preview_group()
+    assert args[0] == "imdb_list"
+    assert args[1] == "ls000000001"
 
 
 @patch("routes.preview_group")
@@ -1153,10 +1155,13 @@ def test_preview_grouping_imdb_list(mock_preview, client) -> None:
 def test_preview_grouping_trakt_list(mock_preview, client) -> None:
     """Preview with trakt_list type forwards trakt_client_id."""
     mock_preview.return_value = ([{"Name": "M1"}], None, 200)
-    save_config({
-        "jellyfin_url": "http://t", "api_key": "k",
-        "trakt_client_id": "test_client_id",
-    })
+    save_config(
+        {
+            "jellyfin_url": "http://t",
+            "api_key": "k",
+            "trakt_client_id": "test_client_id",
+        }
+    )
     response = client.post(
         "/api/grouping/preview",
         json={"type": "trakt_list", "value": "https://trakt.tv/users/foo/lists/bar"},
@@ -1164,9 +1169,9 @@ def test_preview_grouping_trakt_list(mock_preview, client) -> None:
     assert response.status_code == 200
     assert response.get_json()["count"] == 1
     mock_preview.assert_called_once()
-    _, kwargs = mock_preview.call_args
-    assert kwargs["type_name"] == "trakt_list"
-    assert kwargs["val"] == "https://trakt.tv/users/foo/lists/bar"
+    args, kwargs = mock_preview.call_args
+    assert args[0] == "trakt_list"
+    assert args[1] == "https://trakt.tv/users/foo/lists/bar"
     assert kwargs["trakt_client_id"] == "test_client_id"
     assert kwargs["tmdb_api_key"] == ""
     assert kwargs["mal_client_id"] == ""
@@ -1177,10 +1182,13 @@ def test_preview_grouping_trakt_list(mock_preview, client) -> None:
 def test_preview_grouping_tmdb_list(mock_preview, client) -> None:
     """Preview with tmdb_list type forwards tmdb_api_key."""
     mock_preview.return_value = ([{"Name": "M1"}], None, 200)
-    save_config({
-        "jellyfin_url": "http://t", "api_key": "k",
-        "tmdb_api_key": "test_key",
-    })
+    save_config(
+        {
+            "jellyfin_url": "http://t",
+            "api_key": "k",
+            "tmdb_api_key": "test_key",
+        }
+    )
     response = client.post(
         "/api/grouping/preview",
         json={"type": "tmdb_list", "value": "12345"},
@@ -1205,9 +1213,9 @@ def test_preview_grouping_anilist_list(mock_preview, client) -> None:
     assert response.status_code == 200
     assert response.get_json()["count"] == 1
     mock_preview.assert_called_once()
-    _, kwargs = mock_preview.call_args
-    assert kwargs["type_name"] == "anilist_list"
-    assert kwargs["val"] == "12345"
+    args, _kwargs = mock_preview.call_args
+    assert args[0] == "anilist_list"
+    assert args[1] == "12345"
 
 
 @patch("routes.preview_group")
@@ -1215,10 +1223,13 @@ def test_preview_grouping_anilist_list(mock_preview, client) -> None:
 def test_preview_grouping_mal_list(mock_preview, client) -> None:
     """Preview with mal_list type forwards mal_client_id."""
     mock_preview.return_value = ([{"Name": "M1"}], None, 200)
-    save_config({
-        "jellyfin_url": "http://t", "api_key": "k",
-        "mal_client_id": "test_client",
-    })
+    save_config(
+        {
+            "jellyfin_url": "http://t",
+            "api_key": "k",
+            "mal_client_id": "test_client",
+        }
+    )
     response = client.post(
         "/api/grouping/preview",
         json={"type": "mal_list", "value": "12345"},
@@ -1226,8 +1237,8 @@ def test_preview_grouping_mal_list(mock_preview, client) -> None:
     assert response.status_code == 200
     assert response.get_json()["count"] == 1
     mock_preview.assert_called_once()
-    _, kwargs = mock_preview.call_args
-    assert kwargs["type_name"] == "mal_list"
+    args, kwargs = mock_preview.call_args
+    assert args[0] == "mal_list"
     assert kwargs["mal_client_id"] == "test_client"
 
 
@@ -1239,14 +1250,17 @@ def test_preview_grouping_letterboxd_list(mock_preview, client) -> None:
     save_config({"jellyfin_url": "http://t", "api_key": "k"})
     response = client.post(
         "/api/grouping/preview",
-        json={"type": "letterboxd_list", "value": "https://letterboxd.com/user/list/foo/"},
+        json={
+            "type": "letterboxd_list",
+            "value": "https://letterboxd.com/user/list/foo/",
+        },
     )
     assert response.status_code == 200
     assert response.get_json()["count"] == 1
     mock_preview.assert_called_once()
-    _, kwargs = mock_preview.call_args
-    assert kwargs["type_name"] == "letterboxd_list"
-    assert kwargs["val"] == "https://letterboxd.com/user/list/foo/"
+    args, _kwargs = mock_preview.call_args
+    assert args[0] == "letterboxd_list"
+    assert args[1] == "https://letterboxd.com/user/list/foo/"
 
 
 @patch("routes.preview_group")
@@ -1254,10 +1268,13 @@ def test_preview_grouping_letterboxd_list(mock_preview, client) -> None:
 def test_preview_grouping_recommendations(mock_preview, client) -> None:
     """Preview with recommendations type forwards tmdb_api_key."""
     mock_preview.return_value = ([{"Name": "M1"}], None, 200)
-    save_config({
-        "jellyfin_url": "http://t", "api_key": "k",
-        "tmdb_api_key": "test_key",
-    })
+    save_config(
+        {
+            "jellyfin_url": "http://t",
+            "api_key": "k",
+            "tmdb_api_key": "test_key",
+        }
+    )
     response = client.post(
         "/api/grouping/preview",
         json={"type": "recommendations", "value": "tt1234567"},
@@ -1265,8 +1282,8 @@ def test_preview_grouping_recommendations(mock_preview, client) -> None:
     assert response.status_code == 200
     assert response.get_json()["count"] == 1
     mock_preview.assert_called_once()
-    _, kwargs = mock_preview.call_args
-    assert kwargs["type_name"] == "recommendations"
+    args, kwargs = mock_preview.call_args
+    assert args[0] == "recommendations"
     assert kwargs["tmdb_api_key"] == "test_key"
 
 

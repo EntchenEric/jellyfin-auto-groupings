@@ -534,7 +534,8 @@ def test_build_preview_item_with_file_name() -> None:
     from sync import _build_preview_item
 
     result = _build_preview_item(
-        {"Name": "Test", "ProductionYear": 2025}, file_name="test.mp4",
+        {"Name": "Test", "ProductionYear": 2025},
+        file_name="test.mp4",
     )
     assert result["Name"] == "Test"
     assert result["Year"] == 2025
@@ -584,8 +585,9 @@ def test_sort_items_in_memory_missing_key() -> None:
     ]
     result = _sort_items_in_memory(items, "ProductionYear")
     assert len(result) == 3
-    assert result[0]["Name"] == "C"  # 2010
-    assert result[1]["Name"] == "A"  # 2020
+    # ProductionYear sorts Descending (newest first)
+    assert result[0]["Name"] == "A"  # 2020
+    assert result[1]["Name"] == "C"  # 2010
     assert result[2]["Name"] == "B"  # no year
 
 
@@ -600,9 +602,10 @@ def test_sort_items_in_memory_descending() -> None:
     ]
     result = _sort_items_in_memory(items, "CommunityRating")
     assert len(result) == 3
-    assert result[0]["Name"] == "C"  # 2020 (CommunityRating descending, all None → stable)
-    assert result[1]["Name"] == "A"  # 2010
-    assert result[2]["Name"] == "B"  # no year
+    # All missing CommunityRating → same sentinel → stable order preserved
+    assert result[0]["Name"] == "A"
+    assert result[1]["Name"] == "B"
+    assert result[2]["Name"] == "C"
 
 
 def test_sort_items_in_memory_all_missing() -> None:
@@ -659,7 +662,9 @@ def test_fetch_full_library_stale_cache_eviction() -> None:
     with patch("sync.fetch_all_jellyfin_items") as mock_fetch:
         mock_fetch.return_value = [{"Id": "fresh-item"}]
         items, error, code = _fetch_full_library(
-            "http://jf:8096", "testkey", "test-group",
+            "http://jf:8096",
+            "testkey",
+            "test-group",
         )
     assert code == 200
     assert error is None
