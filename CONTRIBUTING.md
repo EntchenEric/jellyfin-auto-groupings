@@ -48,7 +48,25 @@ single commit use ``git commit --no-verify`` (not recommended).
 
 ### Type Hints
 
-All Python code should use type hints. The project targets Python 3.11+.
+All Python code should use type hints. The project targets Python 3.11+ and passes mypy in strict mode for all 14 source files.
+
+### External List Source Types
+
+The project supports multiple external list sources, each with its own fetcher module:
+
+- **IMDb** (`imdb.py`) — HTML scraping of public list pages
+- **Trakt** (`trakt.py`) — Trakt v2 API
+- **TMDb** (`tmdb.py`) — TMDb v3 API (lists + content-based recommendations)
+- **Letterboxd** (`letterboxd.py`) — HTML scraping with parallel film-page resolution for IDs
+- **AniList** (`anilist.py`) — AniList GraphQL API
+- **MyAnimeList** (`mal.py`) — MyAnimeList v2 REST API
+
+When adding a new external source, follow the existing pattern:
+1. Create a new fetcher module with a `fetch_*_list(list_id, ...)` function that returns IDs as strings.
+2. Add a ``_fetch_items_for_*_group`` function in `sync.py` that calls the fetcher and matches IDs against the Jellyfin library.
+3. Register the source type in `_LIST_SOURCE_TYPES` and `_dispatch_list_source`.
+4. Add validation for the new source type in `routes.py`'s `_validate_config_types`.
+5. Update API docs and the README environment variable table.
 
 ### Running Tests and Coverage
 
