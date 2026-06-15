@@ -73,7 +73,15 @@ def _schedule_global_sync(
 
 
 def _validate_group_entry(group: Any) -> str | None:
-    """Validate a group dict and return its name, or None if invalid."""
+    """Validate a group dict and return its stripped name, or None if invalid.
+
+    Checks performed:
+    - Entry must be a dict
+    - Must have a ``name`` key with a string value
+    - Name must not be empty or whitespace-only after stripping
+
+    Returns the stripped name on success, ``None`` on failure (with a warning logged).
+    """
     if not isinstance(group, dict):
         logger.warning(
             "Skipping invalid group entry (expected dict, got %s): %s",
