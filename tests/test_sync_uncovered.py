@@ -582,7 +582,7 @@ def test_sort_items_in_memory_missing_key() -> None:
         {"Name": "B"},
         {"Name": "C", "ProductionYear": 2010},
     ]
-    result = _sort_items_in_memory(items, "year_ascending")
+    result = _sort_items_in_memory(items, "ProductionYear")
     assert len(result) == 3
     assert result[0]["Name"] == "C"  # 2010
     assert result[1]["Name"] == "A"  # 2020
@@ -598,9 +598,9 @@ def test_sort_items_in_memory_descending() -> None:
         {"Name": "B"},
         {"Name": "C", "ProductionYear": 2020},
     ]
-    result = _sort_items_in_memory(items, "year_descending")
+    result = _sort_items_in_memory(items, "CommunityRating")
     assert len(result) == 3
-    assert result[0]["Name"] == "C"  # 2020
+    assert result[0]["Name"] == "C"  # 2020 (CommunityRating descending, all None → stable)
     assert result[1]["Name"] == "A"  # 2010
     assert result[2]["Name"] == "B"  # no year
 
@@ -610,7 +610,7 @@ def test_sort_items_in_memory_all_missing() -> None:
     from sync import _sort_items_in_memory
 
     items = [{"Name": "A"}, {"Name": "B"}, {"Name": "C"}]
-    result = _sort_items_in_memory(items, "year_ascending")
+    result = _sort_items_in_memory(items, "SortName")
     # All missing, so all have the same sentinel → relative order preserved
     assert [r["Name"] for r in result] == ["A", "B", "C"]
 
@@ -639,3 +639,35 @@ def test_get_cover_path_check_exists_false_without_target(tmp_path) -> None:
     )
     assert result is not None
     assert ".covers" not in result
+
+
+# ---------------------------------------------------------------------------
+# _fetch_full_library stale-cache eviction
+# ---------------------------------------------------------------------------
+
+
+def test_fetch_full_library_stale_cache_eviction() -> None:
+    """Stale cache entry is evicted and re-fetched on next call."""
+    from sync import _LIBRARY_CACHE, _fetch_full_library
+
+    cache_key = ("http://jf:8096", "testkey")
+    # Insert an expired cache entry (timestamp far in the past)
+    _LIBRARY_CACHE[cache_key] = (0.0, [{"Id": "stale-item"}])
+
+    # The fetch will see the stale entry, evict it, then try to re-fetch.
+    # We mock fetch_all_jellyfin_items to return fresh data.
+    with patch("sync.fetch_all_jellyfin_items") as mock_fetch:
+        mock_fetch.return_value = [{"Id": "fresh-item"}]
+        items, error, code = _fetch_full_library(
+            "http://jf:8096", "testkey", "test-group",
+        )
+    assert code == 200
+    assert error is None
+    assert len(items) == 1
+    assert items[0]["Id"] == "fresh-item"
+    # Stale entry should have been evicted and replaced
+    assert cache_key in _LIBRARY_CACHE
+    assert _LIBRARY_CACHE[cache_key][1][0]["Id"] == "fresh-item"
+
+    # Clean up
+    _LIBRARY_CACHE.clear()

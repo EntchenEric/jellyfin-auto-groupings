@@ -1371,7 +1371,7 @@ def health_check() -> ResponseReturnValue:
                             if run_time is not None:
                                 entry["next_run"] = str(run_time.isoformat())
                             next_runs.append(entry)
-                        except (AttributeError, TypeError, ValueError):
+                        except (AttributeError, TypeError, ValueError, RuntimeError):
                             continue
                     scheduler_info["next_run_times"] = next_runs
         except Exception:
