@@ -247,7 +247,9 @@ def save_config(config: dict[str, Any]) -> None:
             json.dump(config, fh, indent=4)
         # Write succeeded — now rotate the existing config and atomically replace
         if cfg_file.exists():
-            backup_name = cfg_file.name + f".{datetime.now(tz=UTC).strftime('%Y%m%d_%H%M%S')}.bak"
+            backup_name = (
+                cfg_file.name + f".{datetime.now(tz=UTC).strftime('%Y%m%d_%H%M%S')}.bak"
+            )
             backup_path = cfg_dir / backup_name
             cfg_file.rename(backup_path)
             logger.debug("Backed up previous config to %s", backup_path)

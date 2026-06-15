@@ -489,7 +489,9 @@ def _validate_config_types(new_config: dict[str, Any]) -> list[str]:
             try:
                 parsed = urllib.parse.urlparse(jellyfin_url)
                 if not parsed.netloc:
-                    errors.append("'jellyfin_url' is not a well-formed URL (missing hostname)")
+                    errors.append(
+                        "'jellyfin_url' is not a well-formed URL (missing hostname)"
+                    )
             except Exception:
                 errors.append("'jellyfin_url' contains unparseable characters")
 
@@ -499,17 +501,11 @@ def _validate_config_types(new_config: dict[str, Any]) -> list[str]:
         try:
             tp = Path(target_path_val)
             if not tp.exists():
-                errors.append(
-                    f"'target_path' path does not exist: {target_path_val}"
-                )
+                errors.append(f"'target_path' path does not exist: {target_path_val}")
             elif not tp.is_dir():
-                errors.append(
-                    f"'target_path' is not a directory: {target_path_val}"
-                )
+                errors.append(f"'target_path' is not a directory: {target_path_val}")
             elif not os.access(str(tp), os.W_OK | os.X_OK):
-                errors.append(
-                    f"'target_path' is not writable: {target_path_val}"
-                )
+                errors.append(f"'target_path' is not writable: {target_path_val}")
         except (OSError, ValueError) as exc:
             errors.append(f"'target_path' validation error: {exc!s}")
 
@@ -527,13 +523,9 @@ def _validate_config_types(new_config: dict[str, Any]) -> list[str]:
                     f"'media_path_on_host' is not a directory: {media_path_val}"
                 )
             elif not os.access(str(mp), os.R_OK | os.X_OK):
-                errors.append(
-                    f"'media_path_on_host' is not readable: {media_path_val}"
-                )
+                errors.append(f"'media_path_on_host' is not readable: {media_path_val}")
         except (OSError, ValueError) as exc:
-            errors.append(
-                f"'media_path_on_host' validation error: {exc!s}"
-            )
+            errors.append(f"'media_path_on_host' validation error: {exc!s}")
 
     return errors
 
