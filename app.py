@@ -85,7 +85,11 @@ app = Flask(__name__, template_folder="templates", static_folder="static")
 app.register_blueprint(bp)
 
 # Start the background sync scheduler
-if not app.testing and (not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true"):
+if (
+    not app.testing
+    and os.environ.get("SCHEDULER_ENABLED", "1") != "0"
+    and (not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true")
+):
     start_scheduler()
 
 

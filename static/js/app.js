@@ -19,7 +19,9 @@ import { initExportImport, openExportModal, openImportModal, handleFileSelected 
 import { initCoverGenerator } from './features/cover-generator.js';
 import { initPathPicker, openPathPicker, closePicker, confirmPicker, pickerOutsideClick } from './features/path-picker.js';
 import { initSidebarResizer } from './features/sidebar-resizer.js';
-import { renderGroups, cancelEdit, toggleSortOrder, toggleSeasonal, toggleGroupScheduler, populateSeasonalDays, resetFormUI, initGroupSearch } from './features/groupings.js';
+import { renderGroups, cancelEdit, toggleSortOrder, toggleSeasonal, toggleGroupScheduler, populateSeasonalDays, resetFormUI, initGroupSearch, clearAllGroups } from './features/groupings.js';
+
+const CONFIRM_SYNC_SKIP_KEY = 'jfg-confirm-sync-skip';
 
 // ---------------------------------------------------------------------------
 // Global error boundary
@@ -111,10 +113,7 @@ function wireKeyboardShortcuts() {
                 if (!e.ctrlKey && !e.metaKey && !e.altKey) {
                     e.preventDefault();
                     const topbarSyncBtn = getEl('topbar-sync-btn');
-                    if (topbarSyncBtn) {
-                        setLoading(topbarSyncBtn, true);
-                        syncAll().finally(() => setLoading(topbarSyncBtn, false));
-                    }
+                    if (topbarSyncBtn) requestSyncWithLoading(topbarSyncBtn);
                 }
                 break;
             case 'd':
@@ -152,16 +151,23 @@ function wireKeyboardShortcuts() {
  * module function with loading state management.
  * @returns {void}
  */
+function requestSyncWithLoading(btn) {
+    if (localStorage.getItem(CONFIRM_SYNC_SKIP_KEY) === 'true') {
+        setLoading(btn, true);
+        syncAll().finally(() => setLoading(btn, false));
+    } else {
+        showConfirmSyncDialog();
+    }
+}
+
 function wireTopbarButtons() {
-    // Sync button → confirmation dialog first
     const topbarSyncBtn = getEl('topbar-sync-btn');
     if (topbarSyncBtn) {
-        topbarSyncBtn.onclick = async () => {
-            setLoading(topbarSyncBtn, true);
-            try { await syncAll(); }
-            finally { setLoading(topbarSyncBtn, false); }
-        };
+        topbarSyncBtn.onclick = () => requestSyncWithLoading(topbarSyncBtn);
     }
+
+    const clearAllBtn = getEl('clear-all-btn');
+    if (clearAllBtn) clearAllBtn.onclick = clearAllGroups;
 
     // Preview button
     const topbarPreviewBtn = getEl('topbar-preview-btn');
@@ -209,6 +215,10 @@ function wireConfirmSyncDialog() {
 
     if (confirmGoBtn) {
         confirmGoBtn.onclick = async () => {
+            const skipBox = getEl('confirm-sync-skip-next');
+            if (skipBox?.checked) {
+                localStorage.setItem(CONFIRM_SYNC_SKIP_KEY, 'true');
+            }
             hideModal('confirm-sync-modal');
             const topbarSyncBtn = getEl('topbar-sync-btn');
             setLoading(topbarSyncBtn, true);

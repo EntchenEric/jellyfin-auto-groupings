@@ -309,7 +309,11 @@ export async function previewGrouping() {
                 resultDiv.appendChild(ul);
             }
         } else {
-            resultDiv.innerHTML = `<span style="color:var(--error-color);">Error: ${res.message}</span>`;
+            resultDiv.textContent = '';
+            const errSpan = document.createElement('span');
+            errSpan.style.color = 'var(--error-color)';
+            errSpan.textContent = `Error: ${res.message || 'Preview failed'}`;
+            resultDiv.appendChild(errSpan);
         }
     } catch (err) {
         resultDiv.innerHTML = '<span style="color:var(--error-color);">Network error during preview.</span>';

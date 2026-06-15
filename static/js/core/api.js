@@ -3,6 +3,7 @@
 import { showToast, showErrorDialog } from './ui.js';
 
 const DEFAULT_TIMEOUT_MS = 60000;
+const AUTH_STORAGE_KEY = 'jfg_app_password';
 
 class ApiError extends Error {
     constructor(status, message) {
@@ -12,11 +13,38 @@ class ApiError extends Error {
     }
 }
 
+export function setAppPassword(password) {
+    if (password) sessionStorage.setItem(AUTH_STORAGE_KEY, password);
+    else sessionStorage.removeItem(AUTH_STORAGE_KEY);
+}
+
+function authHeaders(extra = {}) {
+    const headers = { ...extra };
+    const pw = sessionStorage.getItem(AUTH_STORAGE_KEY);
+    if (pw) {
+        headers.Authorization = `Basic ${btoa(`user:${pw}`)}`;
+    }
+    return headers;
+}
+
 async function apiRequest(url, options = {}, timeoutMs = DEFAULT_TIMEOUT_MS) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-        const res = await fetch(url, { ...options, signal: controller.signal });
+        const res = await fetch(url, {
+            ...options,
+            credentials: 'same-origin',
+            headers: authHeaders(options.headers),
+            signal: controller.signal
+        });
+        if (res.status === 401 && !options._authRetried) {
+            const pw = prompt('Enter app password:');
+            if (pw) {
+                setAppPassword(pw);
+                return apiRequest(url, { ...options, _authRetried: true }, timeoutMs);
+            }
+            throw new ApiError(401, 'Authentication required');
+        }
         if (!res.ok) {
             const body = await res.json().catch(() => ({}));
             throw new ApiError(res.status, body.message || 'Request failed');

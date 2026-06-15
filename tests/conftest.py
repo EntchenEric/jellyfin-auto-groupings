@@ -104,6 +104,15 @@ def temp_config(tmp_path):
     config.CONFIG_DIR = original_config_dir
 
 
+@pytest.fixture(autouse=True)
+def _reset_sync_rate_limit():
+    import routes
+
+    routes._last_sync_by_ip.clear()
+    yield
+    routes._last_sync_by_ip.clear()
+
+
 @pytest.fixture
 def mock_jellyfin_items():
     return [

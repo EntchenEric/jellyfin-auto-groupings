@@ -32,6 +32,37 @@ def test_get_config(client) -> None:
 
 
 @pytest.mark.usefixtures("temp_config")
+def test_get_config_masks_secrets(client) -> None:
+    from config import save_config
+
+    save_config(
+        {
+            "jellyfin_url": "http://jf",
+            "api_key": "secret-key",
+            "trakt_client_id": "trakt-id",
+            "tmdb_api_key": "tmdb-key",
+            "mal_client_id": "mal-id",
+            "groups": [],
+        },
+    )
+    response = client.get("/api/config")
+    data = response.get_json()
+    assert data["api_key"] == "****"
+    assert data["trakt_client_id"] == "****"
+    assert data["tmdb_api_key"] == "****"
+    assert data["mal_client_id"] == "****"
+
+
+@patch("routes.run_sync", return_value=[])
+def test_sync_rate_limit(mock_run_sync, client) -> None:
+    first = client.post("/api/sync", headers={"X-Requested-With": "XMLHttpRequest"})
+    assert first.status_code == 200
+    second = client.post("/api/sync", headers={"X-Requested-With": "XMLHttpRequest"})
+    assert second.status_code == 429
+    mock_run_sync.assert_called_once()
+
+
+@pytest.mark.usefixtures("temp_config")
 def test_update_config(client) -> None:
     new_cfg = {"jellyfin_url": "http://new-url", "api_key": "new-key"}
     response = client.post("/api/config", json=new_cfg)

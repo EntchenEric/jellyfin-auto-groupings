@@ -34,13 +34,11 @@ You should receive a response within 48 hours. If the vulnerability is confirmed
 ### App Password
 
 - Set the `APP_PASSWORD` environment variable to enable HTTP Basic Auth for the web UI.
-- When enabled, authentication is required for **all** requests, enforced via a
-  Flask ``before_request`` handler on every route.
-- The only exemptions are the main UI page (``GET /``) and any ``/static/``
-  assets, which remain accessible without credentials so the page can load
-  CSS/JS files for the login dialog.
-- All API endpoints (including ``/api/health``) require authentication when
-  ``APP_PASSWORD`` is set.
+- When enabled, authentication is required for **all** requests except the main UI page
+  (`GET /`) and `/static/` assets, enforced via a Flask `before_request` handler.
+- The SPA stores the password in `sessionStorage` and sends it on subsequent API calls.
+- When `APP_PASSWORD` is **not** set, the application has no built-in authentication.
+  Only run it on trusted networks or behind a reverse proxy that enforces access control.
 
 ### CSRF Protection
 
