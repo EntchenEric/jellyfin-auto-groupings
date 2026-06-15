@@ -2,7 +2,7 @@
 
 import { state, sourceOptions, sortLabels } from '../core/state.js';
 import { saveConfig, apiPost } from '../core/api.js';
-import { showToast, getEl, showErrorDialog } from '../core/ui.js';
+import { showToast, getEl, showErrorDialog, showConfirmDialog } from '../core/ui.js';
 import { updateSourceTypeOptions, updateSourceValueUI, getFilterValue } from './metadata.js';
 import { openCoverGenerator } from './cover-generator.js';
 
@@ -201,7 +201,7 @@ export async function deleteGroup(index) {
         showToast('Invalid group index', 'error');
         return;
     }
-    if (!confirm('Permanently remove this grouping?')) return;
+    if (!await showConfirmDialog('Delete Grouping', 'Permanently remove this grouping?', 'Delete', 'Cancel')) return;
     const groupName = state.currentConfig.groups[index]?.name;
     if (state.editingIndex === index) cancelEdit();
     const removedGroup = state.currentConfig.groups.splice(index, 1)[0];
@@ -230,7 +230,7 @@ export async function deleteGroup(index) {
 }
 
 export async function clearAllGroups() {
-    if (!confirm('Are you sure you want to remove ALL groupings? This cannot be undone.')) return;
+    if (!await showConfirmDialog('Clear All Groupings', 'Are you sure you want to remove ALL groupings? This cannot be undone.', 'Clear All', 'Cancel')) return;
     const groupNames = state.currentConfig.groups.map(g => g.name).filter(Boolean);
     const backup = state.currentConfig.groups;
     state.currentConfig.groups = [];
