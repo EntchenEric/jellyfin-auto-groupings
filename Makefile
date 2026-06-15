@@ -33,6 +33,15 @@ test-fast:
 test-to-file:
 	python3 run_tests_to_file.py
 
+test-frontend:
+	npm test
+
+test-frontend-cov:
+	npm run test:coverage
+
+install-frontend:
+	npm install
+
 # ── Linting & Type Checking ─────────────────────────────────────────────────
 
 lint:
@@ -63,6 +72,17 @@ run:
 
 virtual-jellyfin:
 	python3 start_virtual_jellyfin.py
+
+# ── E2E Tests ────────────────────────────────────────────────────────────────
+
+e2e-up:
+	docker compose -f e2e/docker-compose.e2e.yml up -d
+
+e2e-run:
+	python3 -m pytest tests/test_e2e/ -v
+
+e2e-down:
+	docker compose -f e2e/docker-compose.e2e.yml down -v
 
 # ── Docker ──────────────────────────────────────────────────────────────────
 
