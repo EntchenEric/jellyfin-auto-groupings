@@ -385,7 +385,7 @@ def test_save_config_backup_rotation_cleanup_on_failure(tmp_path) -> None:
         # Mock json.dump to fail
         with (
             patch("json.dump", side_effect=OSError("write error")),
-            pytest.raises(OSError),
+            pytest.raises(OSError, match="write error"),
         ):
             config.save_config({"version": 2})
 
