@@ -156,7 +156,7 @@ def test_is_in_season_same_year_window() -> None:
     # June 15 should be in season for Jun 1 - Sep 1
     with patch("sync.datetime") as mock_dt:
         mock_dt.now.return_value = datetime(2025, 6, 15, tzinfo=UTC)
-        mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+        mock_dt.side_effect = datetime
         assert _is_in_season("06-01", "09-01") is True
 
 
@@ -175,14 +175,14 @@ def test_is_in_season_single_day_season() -> None:
 
     with patch("sync.datetime") as mock_dt:
         mock_dt.now.return_value = datetime(2025, 6, 15, tzinfo=UTC)
-        mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+        mock_dt.side_effect = datetime
         # Same day — s <= e but window is [s, e), so 06-15 < 06-15 is False
         assert _is_in_season("06-15", "06-15") is False
 
     # A leap-year single day
     with patch("sync.datetime") as mock_dt:
         mock_dt.now.return_value = datetime(2024, 2, 29, tzinfo=UTC)
-        mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+        mock_dt.side_effect = datetime
         assert _is_in_season("02-29", "02-29") is False
 
 
@@ -198,14 +198,14 @@ def test_is_in_season_dec_31_to_jan_1_wrap() -> None:
     # but wrap-around means current >= s(12-31) OR current < e(01-01)
     with patch("sync.datetime") as mock_dt:
         mock_dt.now.return_value = datetime(2025, 1, 15, tzinfo=UTC)
-        mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+        mock_dt.side_effect = datetime
         # current >= 12-31? No. current < 01-01? No (15 > 1).
         assert _is_in_season("12-31", "01-01") is False
 
     # Dec 31 — should be in season
     with patch("sync.datetime") as mock_dt:
         mock_dt.now.return_value = datetime(2025, 12, 31, tzinfo=UTC)
-        mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+        mock_dt.side_effect = datetime
         assert _is_in_season("12-31", "01-01") is True
 
 
@@ -220,7 +220,7 @@ def test_is_in_season_mar_1_to_feb_29_cross_leap() -> None:
     # Feb 28 — should be in season (current >= 03-01? No. current < 02-29? In wrap: 28 < 29 = Yes)
     with patch("sync.datetime") as mock_dt:
         mock_dt.now.return_value = datetime(2024, 2, 28, tzinfo=UTC)
-        mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+        mock_dt.side_effect = datetime
         assert _is_in_season("03-01", "02-29") is True
 
 
@@ -234,7 +234,7 @@ def test_is_in_season_leap_feb_29_as_start() -> None:
 
     with patch("sync.datetime") as mock_dt:
         mock_dt.now.return_value = datetime(2024, 2, 29, tzinfo=UTC)
-        mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+        mock_dt.side_effect = datetime
         assert _is_in_season("02-29", "03-15") is True  # Inclusive start
 
 

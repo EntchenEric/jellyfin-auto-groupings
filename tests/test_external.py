@@ -530,7 +530,7 @@ def test_collect_tmdb_ids_dedup() -> None:
             {"id": 456},
             {"id": 123},  # duplicate
             {"id": 789},
-        ]
+        ],
     }
     ids: list[str] = []
     seen: set[str] = set()

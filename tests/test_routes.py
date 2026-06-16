@@ -8,6 +8,7 @@ CSRF protection, and error handling — all with mocked dependencies.
 import os
 from datetime import UTC
 from pathlib import Path
+from typing import Never
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -559,7 +560,7 @@ def test_upload_cover_mime_extension_mapping(client, tmp_path) -> None:
     assert response.status_code == 200
     # Verify the file was saved with .png extension
     cover_path = _get_cover_path(
-        "TestGroup", str(tmp_path), check_exists=False, ext="png"
+        "TestGroup", str(tmp_path), check_exists=False, ext="png",
     )
     assert cover_path is not None
     assert Path(cover_path).exists()
@@ -631,17 +632,17 @@ def test_health_check_scheduler_job_exception_skipped(client) -> None:
     # A job whose .next_run_time.isoformat() raises
     class BadJob:
         @property
-        def id(self):
+        def id(self) -> str:
             return "bad_job"
 
         @property
-        def name(self):
+        def name(self) -> str:
             return "bad"
 
         @property
         def next_run_time(self):
             class BadTime:
-                def isoformat(self):
+                def isoformat(self) -> Never:
                     msg = "isoformat error"
                     raise RuntimeError(msg)
 
@@ -1160,7 +1161,7 @@ def test_preview_grouping_trakt_list(mock_preview, client) -> None:
             "jellyfin_url": "http://t",
             "api_key": "k",
             "trakt_client_id": "test_client_id",
-        }
+        },
     )
     response = client.post(
         "/api/grouping/preview",
@@ -1187,7 +1188,7 @@ def test_preview_grouping_tmdb_list(mock_preview, client) -> None:
             "jellyfin_url": "http://t",
             "api_key": "k",
             "tmdb_api_key": "test_key",
-        }
+        },
     )
     response = client.post(
         "/api/grouping/preview",
@@ -1228,7 +1229,7 @@ def test_preview_grouping_mal_list(mock_preview, client) -> None:
             "jellyfin_url": "http://t",
             "api_key": "k",
             "mal_client_id": "test_client",
-        }
+        },
     )
     response = client.post(
         "/api/grouping/preview",
@@ -1273,7 +1274,7 @@ def test_preview_grouping_recommendations(mock_preview, client) -> None:
             "jellyfin_url": "http://t",
             "api_key": "k",
             "tmdb_api_key": "test_key",
-        }
+        },
     )
     response = client.post(
         "/api/grouping/preview",
@@ -1926,7 +1927,7 @@ def test_delete_folder_resolve_oserror(monkeypatch, tmp_path) -> None:
 
     perm_denied = "Permission denied"
 
-    def _broken_resolve(self):
+    def _broken_resolve(self) -> Never:
         raise OSError(perm_denied)
 
     monkeypatch.setattr(Path, "resolve", _broken_resolve)
@@ -2148,7 +2149,7 @@ def test_test_server_type_error(mock_get, client) -> None:
 @patch("jellyfin._get_json")
 @pytest.mark.usefixtures("temp_config")
 def test_fetch_jellyfin_endpoint_request_exception_partial(
-    mock_get_json, client
+    mock_get_json, client,
 ) -> None:
     """requests.RequestException after partial data returns partial results.
 
@@ -2172,7 +2173,7 @@ def test_fetch_jellyfin_endpoint_request_exception_partial(
 @patch("jellyfin._get_json")
 @pytest.mark.usefixtures("temp_config")
 def test_fetch_jellyfin_endpoint_request_exception_no_data(
-    mock_get_json, client
+    mock_get_json, client,
 ) -> None:
     """requests.RequestException with no data re-raises."""
     from routes import _fetch_jellyfin_endpoint
