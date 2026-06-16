@@ -349,7 +349,9 @@ def _fetch_full_library(
             # Double-check: another thread may have populated the cache while we fetched.
             # Only store if the key is missing OR the existing entry is stale (TTL expired)
             # to avoid replacing a fresh entry from another thread.
-            if cache_key not in _LIBRARY_CACHE or not _is_cache_fresh(_LIBRARY_CACHE[cache_key]):
+            if cache_key not in _LIBRARY_CACHE or not _is_cache_fresh(
+                _LIBRARY_CACHE[cache_key]
+            ):
                 _LIBRARY_CACHE[cache_key] = (time.monotonic(), all_items)
     except (RuntimeError, OSError, ValueError) as exc:
         logger.exception(

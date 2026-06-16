@@ -29,7 +29,7 @@
 - [🔌 REST API](#rest-api)
 - [🧹 Cover Images](#cover-images)
 - [💻 Development](#development)
-- [🐳 Docker Environment Variables](#docker-environment-variables)
+- [🐳 Environment Variables](#environment-variables)
 - [📜 License](#license)
 - [🐛 Troubleshooting](#troubleshooting)
 - [❓ FAQ](#faq)
@@ -136,7 +136,7 @@ environment:
 ```
 
 Environment variables take precedence over UI values and are **never** persisted
-back to `config.json`. See the [Environment Variables](#docker-environment-variables)
+back to `config.json`. See the [Environment Variables](#environment-variables)
 table for the full list.
 
 ---
