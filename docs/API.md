@@ -214,6 +214,9 @@ Save a base64-encoded cover image for a group.
 | `group_name` | string | yes |
 | `image` | string | yes — data URL, e.g. `data:image/png;base64,...` |
 
+**Allowed MIME types:** `image/jpeg`, `image/png`, `image/webp`, `image/gif`.
+Only these four types are accepted; unsupported types return a `400` error.
+
 **Response `200`:** `{ "status": "success", "message": "Cover saved successfully" }`
 
 **Errors:** `400` invalid format; `413` payload too large (~4 MB).
