@@ -358,7 +358,7 @@ def test_preview_group_tmdb_list(mock_tmdb) -> None:
     with patch("sync.fetch_jellyfin_items") as mock_jf:
         mock_jf.return_value = [{"Name": "M1", "ProviderIds": {"Tmdb": "12345"}}]
         items, err, code = preview_group(
-            "tmdb_list", "12345", "http://jf", "key", tmdb_api_key="test_key"
+            "tmdb_list", "12345", "http://jf", "key", tmdb_api_key="test_key",
         )
     assert code == 200
     assert err is None
@@ -384,7 +384,7 @@ def test_preview_group_mal_list(mock_mal) -> None:
     with patch("sync.fetch_jellyfin_items") as mock_jf:
         mock_jf.return_value = [{"Name": "A1", "ProviderIds": {"Mal": "12345"}}]
         items, err, code = preview_group(
-            "mal_list", "12345", "http://jf", "key", mal_client_id="test_client"
+            "mal_list", "12345", "http://jf", "key", mal_client_id="test_client",
         )
     assert code == 200
     assert err is None
@@ -397,7 +397,7 @@ def test_preview_group_letterboxd_list(mock_lb) -> None:
     mock_lb.return_value = ["tt1234567"]
     with patch("sync.fetch_jellyfin_items") as mock_jf:
         mock_jf.return_value = [
-            {"Name": "M1", "Id": "item1", "ProviderIds": {"Imdb": "tt1234567"}}
+            {"Name": "M1", "Id": "item1", "ProviderIds": {"Imdb": "tt1234567"}},
         ]
         items, err, code = preview_group(
             "letterboxd_list",
@@ -420,7 +420,7 @@ def test_preview_group_recommendations(mock_rec, mock_recent) -> None:
     with patch("sync.fetch_jellyfin_items") as mock_jf:
         mock_jf.return_value = [{"Name": "M1", "ProviderIds": {"Tmdb": "12345"}}]
         items, err, code = preview_group(
-            "recommendations", "user123", "http://jf", "key", tmdb_api_key="test_key"
+            "recommendations", "user123", "http://jf", "key", tmdb_api_key="test_key",
         )
     assert code == 200
     assert err is None
@@ -2515,7 +2515,7 @@ def test_parse_complex_query_impossible_year_and() -> None:
 def test_parse_complex_query_nested_and_or_with_not() -> None:
     """Complex chain with AND, OR, NOT in various positions."""
     rules = parse_complex_query(
-        "Action AND NOT Comedy OR Drama AND NOT Horror", "genre"
+        "Action AND NOT Comedy OR Drama AND NOT Horror", "genre",
     )
     assert len(rules) == 4
     assert rules[0] == {"operator": "AND", "type": "genre", "value": "Action"}
