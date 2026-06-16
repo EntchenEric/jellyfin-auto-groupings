@@ -8,14 +8,17 @@ server.
 from __future__ import annotations
 
 import uuid
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from flask import Flask, jsonify, request
+
+if TYPE_CHECKING:
+    import flask
 
 app = Flask(__name__)
 
 # In-memory storage
-data = {
+data: dict[str, Any] = {
     "libraries": [
         {"Name": "Movies", "ItemId": "movies_id", "CollectionType": "movies"},
         {"Name": "TV Shows", "ItemId": "tvshows_id", "CollectionType": "tvshows"},
@@ -721,7 +724,7 @@ data = {
 
 
 @app.route("/Items", methods=["GET"])
-def get_items():
+def get_items() -> flask.Response | tuple[str, int]:
     api_key = request.args.get("api_key") or request.headers.get("X-Emby-Token")
 
     # MAGIC: 401 Unauthorized
@@ -763,7 +766,7 @@ def get_items():
 
 
 @app.route("/System/Info", methods=["GET"])
-def get_system_info():
+def get_system_info() -> flask.Response:
     return jsonify(
         {
             "LocalAddress": "http://127.0.0.1:8096",
@@ -775,7 +778,7 @@ def get_system_info():
 
 
 @app.route("/Library/VirtualFolders", methods=["GET"])
-def get_virtual_folders():
+def get_virtual_folders() -> flask.Response | tuple[str, int]:
     api_key = request.args.get("api_key") or request.headers.get("X-Emby-Token")
 
     if api_key == "LIB_GET_500":
@@ -791,7 +794,7 @@ def get_virtual_folders():
 
 
 @app.route("/Library/VirtualFolders", methods=["POST"])
-def add_virtual_folder():
+def add_virtual_folder() -> tuple[str, int] | flask.Response:
     name = request.args.get("name")
     collection_type = request.args.get("collectionType", "movies")
 
@@ -813,7 +816,7 @@ def add_virtual_folder():
 
 
 @app.route("/Library/VirtualFolders", methods=["DELETE"])
-def delete_virtual_folder():
+def delete_virtual_folder() -> tuple[str, int]:
     name = request.args.get("name")
 
     # MAGIC: DELETE 404
@@ -828,7 +831,7 @@ def delete_virtual_folder():
 
 
 @app.route("/Library/VirtualFolders/Paths", methods=["POST"])
-def add_library_path():
+def add_library_path() -> tuple[str, int]:
     req_data = request.json
     name = req_data.get("Name")
     path = req_data.get("Path")
@@ -844,7 +847,7 @@ def add_library_path():
 
 
 @app.route("/Library/Refresh", methods=["POST"])
-def refresh_library():
+def refresh_library() -> tuple[str, int]:
     api_key = request.headers.get("X-Emby-Token")
 
     # We use a global trigger since Refresh doesn't receive the name.
@@ -856,7 +859,7 @@ def refresh_library():
 
 
 @app.route("/Users", methods=["GET"])
-def get_users():
+def get_users() -> flask.Response | tuple[str, int]:
     api_key = request.headers.get("X-Emby-Token")
     if api_key == "USER_GET_500":
         return "Internal Error", 500
@@ -866,7 +869,7 @@ def get_users():
 
 
 @app.route("/Users/<user_id>/Items", methods=["GET"])
-def get_user_items(user_id):
+def get_user_items(user_id: str) -> flask.Response:
     if user_id == "BAD_USER":
         return jsonify({"Items": []})
     if user_id == "MISSING_DATA_USER":
@@ -875,7 +878,7 @@ def get_user_items(user_id):
 
 
 @app.route("/Items/<item_id>/Images/Primary", methods=["POST"])
-def set_item_image(item_id):
+def set_item_image(item_id: str) -> tuple[str, int]:
     if item_id == "FAIL_IMAGE_ID":
         return "Bad Image Data", 400
     data["images"][item_id] = request.data

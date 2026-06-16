@@ -205,7 +205,7 @@ def _request_or_raise(
     if json is not None:
         kwargs["json"] = json
 
-    valid_methods: dict[str, Any] = {
+    valid_methods: dict[str, Callable[..., requests.Response]] = {
         "POST": network.post,
         "PUT": network.put,
         "PATCH": network.patch,
