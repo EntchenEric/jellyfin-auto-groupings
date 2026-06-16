@@ -34,6 +34,12 @@ def _parse_trakt_list_url(list_url: str) -> tuple[str, str]:
     Args:
         list_url: The Trakt list URL.
 
+    Returns:
+        A (username, list_slug) tuple.
+
+    Raises:
+        ValueError: If the URL cannot be parsed.
+
     """
     full_url_match = re.search(
         r"trakt\.tv/users/([^/]+)/lists/([^/?#]+)",
@@ -49,6 +55,85 @@ def _parse_trakt_list_url(list_url: str) -> tuple[str, str]:
         "Expected format: https://trakt.tv/users/username/lists/list-slug"
     )
     raise ValueError(msg)
+
+
+def _build_trakt_headers(client_id: str) -> dict[str, str]:
+    """Build standard Trakt API request headers.
+
+    Args:
+        client_id: The Trakt API Client ID.
+
+    Returns:
+        A dict of HTTP headers.
+
+    """
+    return {
+        "trakt-api-key": client_id,
+        "trakt-api-version": "2",
+        "Content-Type": "application/json",
+    }
+
+
+def _fetch_trakt_page(
+    username: str,
+    list_slug: str,
+    page: int,
+    headers: dict[str, str],
+) -> tuple[list[dict[str, Any]], int]:
+    """Fetch a single Trakt list page.
+
+    Args:
+        username: Trakt username.
+        list_slug: Trakt list slug.
+        page: Page number to fetch.
+        headers: HTTP headers for the request.
+
+    Returns:
+        A tuple of (items, total_pages).
+
+    Raises:
+        RuntimeError: If an HTTP error occurs.
+
+    """
+    url = (
+        f"{_TRAKT_API_BASE}/users/{username}/lists/{list_slug}/items"
+        f"?page={page}&limit={_PAGE_LIMIT}"
+    )
+    try:
+        resp = network.get(url, headers=headers, timeout=_REQUEST_TIMEOUT)
+        resp.raise_for_status()
+    except requests.exceptions.RequestException as exc:
+        msg = f"Failed to fetch Trakt list page {page}: {exc}"
+        raise RuntimeError(msg) from exc
+
+    items: list[dict[str, Any]] = resp.json()
+    try:
+        total_pages: int = int(resp.headers.get("X-Pagination-Page-Count", 1))
+    except ValueError:
+        total_pages = 1
+    return items, total_pages
+
+
+def _extract_imdb_ids_from_page(
+    resp_json: list[dict[str, Any]],
+    ids: list[str],
+    seen: set[str],
+) -> None:
+    """Extract IMDb IDs from a Trakt page response, deduplicating via *seen*.
+
+    Args:
+        resp_json: The parsed JSON response (list of items).
+        ids: List to collect IDs into.
+        seen: Set of already-seen IDs for deduplication.
+
+    """
+    for entry in resp_json:
+        item_type: str | None = entry.get("type")  # "movie" or "show"
+        media: dict[str, Any] = entry.get(item_type, {}) if item_type else {}
+        imdb_id: str | None = media.get("ids", {}).get("imdb")
+        if imdb_id and imdb_id not in seen:
+            seen.add(imdb_id)
+            ids.append(imdb_id)
 
 
 def fetch_trakt_list(list_url: str, client_id: str) -> list[str]:
@@ -79,45 +164,17 @@ def fetch_trakt_list(list_url: str, client_id: str) -> list[str]:
 
     list_url = list_url.strip()
     username, list_slug = _parse_trakt_list_url(list_url)
-
-    headers: dict[str, str] = {
-        "trakt-api-key": client_id,
-        "trakt-api-version": "2",
-        "Content-Type": "application/json",
-    }
+    headers = _build_trakt_headers(client_id)
 
     ids: list[str] = []
     seen: set[str] = set()
     page: int = 1
 
     while True:
-        url = (
-            f"{_TRAKT_API_BASE}/users/{username}/lists/{list_slug}/items"
-            f"?page={page}&limit={_PAGE_LIMIT}"
-        )
-        try:
-            resp = network.get(url, headers=headers, timeout=_REQUEST_TIMEOUT)
-            resp.raise_for_status()
-        except requests.exceptions.RequestException as exc:
-            msg = f"Failed to fetch Trakt list page {page}: {exc}"
-            raise RuntimeError(msg) from exc
-
-        items: list[dict[str, Any]] = resp.json()
+        items, total_pages = _fetch_trakt_page(username, list_slug, page, headers)
         if not items:
             break
-
-        for entry in items:
-            item_type: str | None = entry.get("type")  # "movie" or "show"
-            media: dict[str, Any] = entry.get(item_type, {}) if item_type else {}
-            imdb_id: str | None = media.get("ids", {}).get("imdb")
-            if imdb_id and imdb_id not in seen:
-                seen.add(imdb_id)
-                ids.append(imdb_id)
-
-        try:
-            total_pages: int = int(resp.headers.get("X-Pagination-Page-Count", 1))
-        except ValueError:
-            total_pages = 1
+        _extract_imdb_ids_from_page(items, ids, seen)
         if page >= total_pages or page >= _MAX_PAGES:
             break
         page += 1

@@ -27,6 +27,8 @@ if TYPE_CHECKING:
 
 import requests
 
+from _common import COMPLEX_QUERY_SOURCE_TYPES as _COMPLEX_QUERY_SOURCE_TYPES
+from _common import LIST_SOURCE_TYPES as _LIST_SOURCE_TYPES
 from anilist import fetch_anilist_list
 from imdb import fetch_imdb_list
 from jellyfin import (
@@ -111,24 +113,6 @@ _METADATA_FETCH_TIMEOUT: int = 30
 # this window, avoiding redundant paginated fetches when the scheduler
 # triggers multiple syncs in quick succession.
 _LIBRARY_CACHE_TTL: int = 300  # 5 minutes
-
-# Source types that use external list fetchers (not Jellyfin metadata filters)
-_LIST_SOURCE_TYPES: frozenset[str] = frozenset(
-    {
-        "imdb_list",
-        "trakt_list",
-        "tmdb_list",
-        "anilist_list",
-        "mal_list",
-        "letterboxd_list",
-        "recommendations",
-    },
-)
-
-# Metadata source types that can contain complex queries
-_COMPLEX_QUERY_SOURCE_TYPES: frozenset[str] = frozenset(
-    {"genre", "actor", "studio", "tag", "year"},
-)
 
 
 def _build_preview_item(

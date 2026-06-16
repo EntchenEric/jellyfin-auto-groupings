@@ -39,6 +39,8 @@ import network
 if TYPE_CHECKING:
     from flask.typing import ResponseReturnValue
 
+from _common import DEFAULT_SEARCH_ROOTS as _DEFAULT_SEARCH_ROOTS
+from _common import SOURCE_TYPES as _ALLOWED_PREVIEW_TYPES
 from config import (
     _active_env_overrides,
     load_config,
@@ -136,31 +138,10 @@ _TEST_RESULT_FILENAMES = (
 )
 
 # Allowed preview metadata types, including external list sources
-_ALLOWED_PREVIEW_TYPES: frozenset[str] = frozenset(
-    {
-        "genre",
-        "studio",
-        "tag",
-        "year",
-        "actor",
-        "general",
-        "complex",
-        "imdb_list",
-        "trakt_list",
-        "tmdb_list",
-        "anilist_list",
-        "mal_list",
-        "letterboxd_list",
-        "recommendations",
-    },
-)
+_ALLOWED_PREVIEW_TYPES: frozenset[str] = _ALLOWED_PREVIEW_TYPES
 
 # Default filesystem search roots for auto-detect
-_DEFAULT_SEARCH_ROOTS: tuple[str, ...] = (
-    str(Path.home()),
-    "/media",
-    "/mnt",
-)
+_DEFAULT_SEARCH_ROOTS: tuple[str, ...] = _DEFAULT_SEARCH_ROOTS
 
 # Sync rate limiting (per client IP)
 _SYNC_RATE_LIMIT_SECONDS = 5
