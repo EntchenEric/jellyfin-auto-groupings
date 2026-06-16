@@ -715,6 +715,8 @@ def test_server() -> ResponseReturnValue:
         if response.status_code == 200:
             return _success("Connected to Jellyfin successfully!")
         return _error(f"Server returned status {response.status_code}", 400)
+    except (ValueError, TypeError):
+        return _error("Invalid server URL or API key format", 400)
     except requests.exceptions.RequestException as exc:
         return _error(f"Connection error: {exc!s}", 400)
 
@@ -762,6 +764,21 @@ def _fetch_jellyfin_endpoint(
             items.extend(page)
     except RuntimeError:
         if items:
+            logger.debug(
+                "Partial fetch for %s — returning %s items after error",
+                endpoint,
+                len(items),
+            )
+            return items
+        logger.exception("Failed to fetch any items from %s", endpoint)
+        raise
+    except requests.RequestException:
+        if items:
+            logger.debug(
+                "Partial fetch for %s — returning %s items after request error",
+                endpoint,
+                len(items),
+            )
             return items
         raise
     return items

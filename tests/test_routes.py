@@ -2109,6 +2109,80 @@ def test_get_cleanup_permission_denied(mock_iterdir, client, tmp_path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# test_server: ValueError / TypeError handling (lines 720-721)
+# ---------------------------------------------------------------------------
+
+
+@patch("routes.network.get")
+def test_test_server_value_error(mock_get, client) -> None:
+    """ValueError from network.get is caught and returns 400."""
+    mock_get.side_effect = ValueError("malformed URL")
+    response = client.post(
+        "/api/test-server",
+        json={"jellyfin_url": "not-a-url", "api_key": "key"},
+    )
+    assert response.status_code == 400
+    data = response.get_json()
+    assert "Invalid server URL" in data["message"]
+
+
+@patch("routes.network.get")
+def test_test_server_type_error(mock_get, client) -> None:
+    """TypeError from network.get is caught and returns 400."""
+    mock_get.side_effect = TypeError("unsupported operand type")
+    response = client.post(
+        "/api/test-server",
+        json={"jellyfin_url": "http://test", "api_key": "valid-key"},
+    )
+    assert response.status_code == 400
+    data = response.get_json()
+    assert "Invalid server URL" in data["message"]
+
+
+# ---------------------------------------------------------------------------
+# _fetch_jellyfin_endpoint: requests.RequestException with partial data
+# (lines 775-783)
+# ---------------------------------------------------------------------------
+
+
+@patch("jellyfin._get_json")
+@pytest.mark.usefixtures("temp_config")
+def test_fetch_jellyfin_endpoint_request_exception_partial(
+    mock_get_json, client
+) -> None:
+    """requests.RequestException after partial data returns partial results.
+
+    Patches jellyfin._get_json so that the raw requests.RequestException
+    flows through _paginate_jellyfin into _fetch_jellyfin_endpoint's
+    except requests.RequestException handler (bypassing _get_json's
+    conversion to RuntimeError).
+    """
+    from routes import _fetch_jellyfin_endpoint
+
+    # First call returns a page of items
+    mock_get_json.side_effect = [
+        {"Items": [{"Name": f"G{i}"} for i in range(200)], "TotalRecordCount": 201},
+        # Second call raises a raw requests.RequestException
+        requests.exceptions.ConnectionError("fail"),
+    ]
+    result = _fetch_jellyfin_endpoint("http://jf", "key", "Genres")
+    assert len(result) == 200
+
+
+@patch("jellyfin._get_json")
+@pytest.mark.usefixtures("temp_config")
+def test_fetch_jellyfin_endpoint_request_exception_no_data(
+    mock_get_json, client
+) -> None:
+    """requests.RequestException with no data re-raises."""
+    from routes import _fetch_jellyfin_endpoint
+
+    mock_get_json.side_effect = requests.exceptions.ConnectionError("fail")
+    with pytest.raises(requests.exceptions.ConnectionError):
+        _fetch_jellyfin_endpoint("http://jf", "key", "Genres")
+
+
+# ---------------------------------------------------------------------------
 # Index: rendered wizard state present in HTML (Issue #797)
 # ---------------------------------------------------------------------------
 
