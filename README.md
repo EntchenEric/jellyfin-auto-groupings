@@ -640,6 +640,7 @@ If symlinks point to non-existent files, verify your path mapping:
 
 ### Nothing Happens When I Click Sync
 - Check the browser console (F12) for JavaScript errors.
+- Check the **Network** tab (F12) to verify API requests complete successfully.
 - Verify the Jellyfin server is reachable from the app container.
 - Check the app logs for detailed error messages. Logs are written to
   `/app/logs/jellyfin-groupings.log` inside the container. To persist them

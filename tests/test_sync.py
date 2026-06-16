@@ -1147,7 +1147,7 @@ def test_fetch_full_library_double_checked_locking(mock_fetch) -> None:
 
     mock_fetch.side_effect = _simulate_concurrent_store
 
-    items, error, code = _fetch_full_library("http://jf", "key", "Group")
+    _items, error, code = _fetch_full_library("http://jf", "key", "Group")
 
     assert code == 200
     assert error is None
@@ -1172,7 +1172,7 @@ def test_fetch_full_library_double_checked_overwrite_stale(mock_fetch) -> None:
 
     mock_fetch.side_effect = _simulate_concurrent_store
 
-    items, error, code = _fetch_full_library("http://jf", "key", "Group")
+    _items, error, code = _fetch_full_library("http://jf", "key", "Group")
 
     assert code == 200
     assert error is None
