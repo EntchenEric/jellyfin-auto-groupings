@@ -518,49 +518,6 @@ This will start a mock API at `http://localhost:8096`. You can then:
 ### Unraid Support
 An Unraid Community Applications template is available in the `unraid/` directory.
 
----
-
-## 🐳 Docker Environment Variables
-
-> **Multi-arch support:** Images are built for both `linux/amd64` and `linux/arm64`.
-> Raspberry Pi and other ARM-based homelab users can pull the same image tag.
-
-> **Offline/air-gapped deployments:** All fonts (Inter, Outfit) are self-hosted.
-> No external CDN requests are made at page load.
-
-When running via Docker, you can set environment variables to override sensitive config values:
-
-```yaml
-services:
-  jellyfin-groupings:
-    image: ghcr.io/entcheneric/jellyfin-groupings:latest
-    container_name: jellyfin-groupings
-    ports:
-      - "5000:5000"
-    volumes:
-      - ./config:/app/config
-      - /mnt/user/jellyfin-groupings-virtual:/groupings
-      - /mnt/user/media:/media:ro
-    environment:
-      - JELLYFIN_API_KEY=your-api-key
-      - TRAKT_CLIENT_ID=your-trakt-client-id
-      - TMDB_API_KEY=your-tmdb-api-key
-      - MAL_CLIENT_ID=your-myanimelist-client-id
-      - APP_PASSWORD=your-password  # Enables HTTP Basic Auth
-      - ANILIST_API_URL=            # optional: custom AniList API endpoint
-      - NETWORK_RETRY_TOTAL=3         # optional: HTTP retry count for external APIs
-      - NETWORK_RETRY_BACKOFF_FACTOR=1.0 # optional: retry backoff multiplier
-      - NETWORK_RETRY_STATUS_FORCELIST=429,500,502,503,504 # optional: retry status codes
-      - ALLOWED_NON_CSRF_ENDPOINTS= # optional: comma-separated Flask endpoint names (e.g. "main.webhook,main.callback") exempt from CSRF check
-      - LOG_LEVEL=INFO                   # optional: log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-      - GUNICORN_TIMEOUT=120            # optional: gunicorn worker timeout in seconds (default: 120)
-      - GUNICORN_WORKERS=2              # optional: gunicorn worker process count (default: 2)
-      - FLASK_PORT=5000                 # optional: server port (default: 5000)
-      - SCHEDULER_ENABLED=1              # optional: set to 0 to disable background scheduler (default: 1)
-      - FLASK_DEBUG=false               # optional: set to true for debug mode (default: false)
-    restart: unless-stopped
-```
-
 ## 📜 License
 
 Created and maintained by [entcheneric](https://github.com/entcheneric). 

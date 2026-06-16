@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 import math
 import os
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -199,10 +199,7 @@ def _request(method: str, url: str, **kwargs: Any) -> requests.Response:
 
     """
     try:
-        http_fn = cast(
-            "Callable[..., requests.Response]",
-            getattr(_SESSION, method.lower()),
-        )
+        http_fn: Callable[..., requests.Response] = getattr(_SESSION, method.lower())
         return http_fn(url, **kwargs)
     except requests.ConnectionError as exc:
         _reraise_timeout(exc)
