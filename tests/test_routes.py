@@ -560,7 +560,10 @@ def test_upload_cover_mime_extension_mapping(client, tmp_path) -> None:
     assert response.status_code == 200
     # Verify the file was saved with .png extension
     cover_path = _get_cover_path(
-        "TestGroup", str(tmp_path), check_exists=False, ext="png",
+        "TestGroup",
+        str(tmp_path),
+        check_exists=False,
+        ext="png",
     )
     assert cover_path is not None
     assert Path(cover_path).exists()
@@ -2149,7 +2152,8 @@ def test_test_server_type_error(mock_get, client) -> None:
 @patch("jellyfin._get_json")
 @pytest.mark.usefixtures("temp_config")
 def test_fetch_jellyfin_endpoint_request_exception_partial(
-    mock_get_json, client,
+    mock_get_json,
+    client,
 ) -> None:
     """requests.RequestException after partial data returns partial results.
 
@@ -2173,7 +2177,8 @@ def test_fetch_jellyfin_endpoint_request_exception_partial(
 @patch("jellyfin._get_json")
 @pytest.mark.usefixtures("temp_config")
 def test_fetch_jellyfin_endpoint_request_exception_no_data(
-    mock_get_json, client,
+    mock_get_json,
+    client,
 ) -> None:
     """requests.RequestException with no data re-raises."""
     from routes import _fetch_jellyfin_endpoint

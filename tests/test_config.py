@@ -189,6 +189,32 @@ def test_env_flag_case_insensitive(monkeypatch) -> None:
     assert _env_flag("TEST_ENV_FLAG_4") is True
 
 
+def test_env_flag_ambiguous_value_returns_default(monkeypatch) -> None:
+    """_env_flag returns default when value is not a recognized boolean."""
+    from config import _env_flag
+
+    monkeypatch.setenv("TEST_AMBIGUOUS", "maybe")
+    assert _env_flag("TEST_AMBIGUOUS") is False
+
+
+def test_env_flag_default_true_param(monkeypatch) -> None:
+    """_env_flag respects the default parameter."""
+    from config import _env_flag
+
+    # Unset var uses the provided default
+    monkeypatch.delenv("TEST_NOT_SET", raising=False)
+    assert _env_flag("TEST_NOT_SET", default=True) is True
+
+
+def test_env_flag_numeric_string_middle(monkeypatch) -> None:
+    """_env_flag returns default for non-boolean values like '2'."""
+    from config import _env_flag
+
+    monkeypatch.setenv("TEST_MID", "2")
+    assert _env_flag("TEST_MID") is False
+    assert _env_flag("TEST_MID", default=True) is True
+
+
 def test_env_flag_false_values(monkeypatch) -> None:
     """_env_flag returns False for falsy values."""
     from config import _env_flag
@@ -385,7 +411,7 @@ def test_save_config_backup_rotation_cleanup_on_failure(tmp_path) -> None:
         # Mock json.dump to fail
         with (
             patch("json.dump", side_effect=OSError("write error")),
-            pytest.raises(OSError),
+            pytest.raises(OSError, match="write error"),
         ):
             config.save_config({"version": 2})
 

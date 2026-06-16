@@ -84,6 +84,7 @@ window.cancelEdit = cancelEdit;
  * - D: Dry-run / preview sync
  * - C: Open cleanup modal
  * - R: Refresh groups list
+ * - N: Focus the new grouping form (scrolls to the group-edit section)
  *
  * Shortcuts are scoped so they don't fire when the user is typing in an
  * input, textarea, or select element, or when a modal is open.
@@ -139,6 +140,19 @@ function wireKeyboardShortcuts() {
                 if (!e.ctrlKey && !e.metaKey && !e.altKey) {
                     e.preventDefault();
                     renderGroups();
+                }
+                break;
+            case 'n':
+                // N = New grouping (focus form)
+                if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+                    e.preventDefault();
+                    const groupForm = getEl('group-form');
+                    if (groupForm) {
+                        cancelEdit();
+                        groupForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        const nameInput = getEl('group_name');
+                        if (nameInput) nameInput.focus();
+                    }
                 }
                 break;
         }

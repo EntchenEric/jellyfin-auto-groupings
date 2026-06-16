@@ -163,10 +163,9 @@ def test_fetch_anilist_all(mock_post) -> None:
 
 def test_anilist_status_invalid() -> None:
     """An unknown status raises ValueError with valid options in message."""
-    with pytest.raises(ValueError) as exc_info:
+    with pytest.raises(ValueError, match="bogus_status") as exc_info:
         fetch_anilist_list("user", "bogus_status")
     msg = str(exc_info.value)
-    assert "bogus_status" in msg
     assert "COMPLETED" in msg
     assert "CURRENT" in msg
 
