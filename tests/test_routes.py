@@ -2147,7 +2147,9 @@ def test_test_server_type_error(mock_get, client) -> None:
 
 @patch("jellyfin._get_json")
 @pytest.mark.usefixtures("temp_config")
-def test_fetch_jellyfin_endpoint_request_exception_partial(mock_get_json, client) -> None:
+def test_fetch_jellyfin_endpoint_request_exception_partial(
+    mock_get_json, client
+) -> None:
     """requests.RequestException after partial data returns partial results.
 
     Patches jellyfin._get_json so that the raw requests.RequestException
@@ -2169,7 +2171,9 @@ def test_fetch_jellyfin_endpoint_request_exception_partial(mock_get_json, client
 
 @patch("jellyfin._get_json")
 @pytest.mark.usefixtures("temp_config")
-def test_fetch_jellyfin_endpoint_request_exception_no_data(mock_get_json, client) -> None:
+def test_fetch_jellyfin_endpoint_request_exception_no_data(
+    mock_get_json, client
+) -> None:
     """requests.RequestException with no data re-raises."""
     from routes import _fetch_jellyfin_endpoint
 
