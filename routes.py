@@ -171,6 +171,7 @@ _SENSITIVE_CONFIG_KEYS: tuple[str, ...] = (
     "trakt_client_id",
     "tmdb_api_key",
     "mal_client_id",
+    "anilist_api_url",
 )
 _CONFIG_MASK = "****"
 
@@ -195,8 +196,10 @@ def _check_auth() -> ResponseReturnValue | None:
     """Require HTTP Basic Auth when APP_PASSWORD is set."""
     if not _APP_PASSWORD:
         return None
-    # Allow unauthenticated access to the main UI and static assets
+    # Allow unauthenticated access to the main UI, static assets, and health check
     if request.endpoint == "main.index":
+        return None
+    if request.endpoint == "main.health_check":
         return None
     if request.path.startswith("/static/"):
         return None  # pragma: no cover (defensive — Flask serves static at app level)
@@ -265,9 +268,8 @@ def _add_security_headers(response: Response) -> Response:
     * ``X-Content-Type-Options: nosniff`` — prevents MIME-type sniffing.
     * ``X-Frame-Options: DENY`` — prevents clickjacking in frames.
 
-
     Args:
-            response: The HTTP response object.
+        response: The HTTP response object.
 
     """
     response.headers.set("X-Content-Type-Options", "nosniff")
@@ -332,10 +334,8 @@ def _get_jellyfin_config(
     Returns:
         ``(url, api_key)`` on success.
 
-
-
     Args:
-            missing_msg: Message to include if config is missing.
+        missing_msg: Message to include if config is missing.
 
     """
     config = load_config()
@@ -355,9 +355,8 @@ def _mask_config(config: dict[str, Any]) -> dict[str, Any]:
     :data:`_CONFIG_MASK` (``"****"``) so they are never exposed to the
     frontend.
 
-
     Args:
-            config: The configuration dict.
+        config: The configuration dict.
 
     """
     masked = copy.deepcopy(config)
@@ -1226,10 +1225,9 @@ def _search_local_filesystem(
 
     Returns the absolute path of the first match found, or ``None``.
 
-
     Args:
-            filename: The filename to search for.
-            search_roots: List of root directories to search in.
+        filename: The filename to search for.
+        search_roots: List of root directories to search in.
 
     """
     walk_start = time.monotonic()
@@ -1283,10 +1281,9 @@ def _compute_common_root(
     Counts matching trailing path components and returns the inferred
     ``(jellyfin_root, host_root)`` pair.
 
-
     Args:
-            jellyfin_path: Jellyfin-side media path.
-            host_path: Host-side media path.
+        jellyfin_path: Jellyfin-side media path.
+        host_path: Host-side media path.
 
     """
     j_parts = Path(jellyfin_path).parts

@@ -122,8 +122,8 @@ def _fill_defaults(cfg: dict[str, Any], defaults: dict[str, Any]) -> None:
             # Deep-copy to prevent runtime mutations of cfg from aliasing
             # the DEFAULT_CONFIG object (via setdefault).
             cfg[key] = copy.deepcopy(default_value)
-        if isinstance(default_value, dict):
-            current = cfg.get(key)
+        elif isinstance(default_value, dict):
+            current = cfg[key]
             if isinstance(current, dict):
                 _fill_defaults(current, default_value)
             else:
@@ -166,7 +166,7 @@ def load_config() -> dict[str, Any]:
       names and the updated config is persisted automatically.
     * Environment variable overrides take precedence for sensitive values:
       ``JELLYFIN_API_KEY``, ``TRAKT_CLIENT_ID``, ``TMDB_API_KEY``,
-      ``MAL_CLIENT_ID``.
+      ``MAL_CLIENT_ID``, ``ANILIST_API_URL``.
 
     Returns:
         The (possibly migrated) configuration dictionary.

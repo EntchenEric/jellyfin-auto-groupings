@@ -2022,7 +2022,7 @@ def _parse_mmdd(value: str | None) -> tuple[int, int]:
     try:
         month = int(parts[0])
         day = int(parts[1])
-    except (ValueError, IndexError):
+    except ValueError:
         logger.debug("Invalid MM-DD format: %r — non-numeric parts", value)
         return (0, 0)
     if not (1 <= month <= 12):
