@@ -617,6 +617,15 @@ def test_health_check_configured(client) -> None:
     assert data["healthcheck"]["groups"] == 2
 
 
+def test_health_check_bypasses_auth(app, monkeypatch) -> None:
+    """When APP_PASSWORD is set, /api/health is accessible without auth."""
+    import routes as routes_mod
+
+    monkeypatch.setattr(routes_mod, "_APP_PASSWORD", "secret")
+    response = app.test_client().get("/api/health")
+    assert response.status_code == 200
+
+
 @pytest.mark.usefixtures("temp_config")
 
 # ---------------------------------------------------------------------------
