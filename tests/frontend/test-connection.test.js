@@ -19,10 +19,10 @@ function setupDOM() {
     <div id="maintenance-card"></div>
     <div id="groupings-section"></div>
     <div id="scheduler-card"></div>
-    <div id="target_path"></div>
-    <div id="media_path_in_jellyfin"></div>
-    <div id="media_path_on_host"></div>
-    <div id="target_path_in_jellyfin"></div>
+    <input id="target_path" />
+    <input id="media_path_in_jellyfin" />
+    <input id="media_path_on_host" />
+    <input id="target_path_in_jellyfin" />
     <div id="target_path_group">
       <button>Browse</button>
     </div>
@@ -35,9 +35,9 @@ function setupDOM() {
     <div id="target_path_in_jellyfin_group">
       <button>Browse</button>
     </div>
-    <div id="jellyfin_url"></div>
-    <div id="api_key"></div>
-    <div id="test-btn"></div>
+    <input id="jellyfin_url" />
+    <input id="api_key" />
+    <button id="test-btn"></button>
     <div id="status-msg"></div>
     <div id="error-dialog-modal" class="modal">
       <div id="error-dialog-message"></div>
@@ -145,5 +145,16 @@ describe('test-connection module', () => {
     const result = await mod.testConnection('http://test', 'key');
     expect(result.success).toBe(false);
     expect(result.message).toBe('API unreachable');
+  });
+
+  it('testConnection should use fallback message when API error has no message', async () => {
+    vi.doMock('../../static/js/core/api.js', () => ({
+      testServer: vi.fn().mockResolvedValue({ status: 'error' }),
+    }));
+
+    const mod = await import('../../static/js/features/test-connection.js');
+    const result = await mod.testConnection('http://test', 'bad-key');
+    expect(result.success).toBe(false);
+    expect(result.message).toBe('Connection failed');
   });
 });

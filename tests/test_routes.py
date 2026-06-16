@@ -2145,34 +2145,36 @@ def test_test_server_type_error(mock_get, client) -> None:
 # ---------------------------------------------------------------------------
 
 
-@patch("jellyfin.network.get")
+@patch("jellyfin._get_json")
 @pytest.mark.usefixtures("temp_config")
-def test_fetch_jellyfin_endpoint_request_exception_partial(mock_get, client) -> None:
-    """requests.RequestException after partial data returns partial results."""
-    resp1 = MagicMock()
-    resp1.status_code = 200
-    resp1.json.return_value = {
-        "Items": [{"Name": f"G{i}"} for i in range(200)],
-        "TotalRecordCount": 201,
-    }
-    resp1.raise_for_status = MagicMock()
+def test_fetch_jellyfin_endpoint_request_exception_partial(mock_get_json, client) -> None:
+    """requests.RequestException after partial data returns partial results.
 
-    # Second call raises a raw requests.RequestException (bypasses _get_json's
-    # conversion to RuntimeError, hitting the safety net in _fetch_jellyfin_endpoint)
-    resp2 = MagicMock()
-    resp2.raise_for_status.side_effect = requests.exceptions.ConnectionError("fail")
+    Patches jellyfin._get_json so that the raw requests.RequestException
+    flows through _paginate_jellyfin into _fetch_jellyfin_endpoint's
+    except requests.RequestException handler (bypassing _get_json's
+    conversion to RuntimeError).
+    """
+    from routes import _fetch_jellyfin_endpoint
 
-    mock_get.side_effect = [resp1, resp2]
+    # First call returns a page of items
+    mock_get_json.side_effect = [
+        {"Items": [{"Name": f"G{i}"} for i in range(200)], "TotalRecordCount": 201},
+        # Second call raises a raw requests.RequestException
+        requests.exceptions.ConnectionError("fail"),
+    ]
     result = _fetch_jellyfin_endpoint("http://jf", "key", "Genres")
     assert len(result) == 200
 
 
-@patch("jellyfin.network.get")
+@patch("jellyfin._get_json")
 @pytest.mark.usefixtures("temp_config")
-def test_fetch_jellyfin_endpoint_request_exception_no_data(mock_get, client) -> None:
+def test_fetch_jellyfin_endpoint_request_exception_no_data(mock_get_json, client) -> None:
     """requests.RequestException with no data re-raises."""
-    mock_get.side_effect = requests.exceptions.ConnectionError("fail")
-    with pytest.raises(RuntimeError):
+    from routes import _fetch_jellyfin_endpoint
+
+    mock_get_json.side_effect = requests.exceptions.ConnectionError("fail")
+    with pytest.raises(requests.exceptions.ConnectionError):
         _fetch_jellyfin_endpoint("http://jf", "key", "Genres")
 
 

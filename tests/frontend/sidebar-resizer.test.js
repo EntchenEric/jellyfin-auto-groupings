@@ -111,17 +111,14 @@ describe('sidebar-resizer module', () => {
     mod.initSidebarResizer();
 
     const resizer = document.getElementById('sidebar-resizer');
-    // jsdom does not support Touch constructor, so we use a custom event
-    const touchStart = new TouchEvent('touchstart', {
-      touches: [{ clientX: 300, target: resizer }],
-      cancelable: true,
-    });
+    // jsdom does not support TouchEvent constructor reliably, so we use
+    // standard Event + Object.assign to attach the touches property
+    const touchStart = new Event('touchstart', { bubbles: true, cancelable: true });
+    Object.assign(touchStart, { touches: [{ clientX: 300, target: resizer }] });
     resizer.dispatchEvent(touchStart);
 
-    const touchMove = new TouchEvent('touchmove', {
-      touches: [{ clientX: 600, target: document.body }],
-      cancelable: true,
-    });
+    const touchMove = new Event('touchmove', { bubbles: true, cancelable: true });
+    Object.assign(touchMove, { touches: [{ clientX: 600, target: document.body }] });
     document.dispatchEvent(touchMove);
 
     const width = getComputedStyle(document.documentElement)
@@ -129,7 +126,8 @@ describe('sidebar-resizer module', () => {
       .trim();
     expect(width).toBe('600px');
 
-    document.dispatchEvent(new TouchEvent('touchend'));
+    const touchEnd = new Event('touchend', { bubbles: true, cancelable: true });
+    document.dispatchEvent(touchEnd);
   });
 
   it('should add active class to resizer on mousedown', async () => {
