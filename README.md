@@ -53,7 +53,7 @@ Instead of messing with Jellyfin's internal collections or duplicating multi-gig
 - 🔢 **Smart Sorting**: Prefix filenames with a numeric index based on Rating, Year, Name, or List Order.
 - 🐳 **Docker-First**: Designed to run alongside your Jellyfin container with easy path mapping.
 - 🛠️ **Auto-Detect**: Scans your filesystem to help you configure path translations automatically.
-- ⌨️ **Keyboard Shortcuts**: Press <kbd>S</kbd> to sync, <kbd>D</kbd> for a dry-run preview, <kbd>C</kbd> to clean up broken symlinks, or <kbd>R</kbd> to reload the groups list — no mouse needed.
+- ⌨️ **Keyboard Shortcuts**: Press <kbd>S</kbd> to sync, <kbd>D</kbd> for a dry-run preview, <kbd>C</kbd> to clean up broken symlinks, <kbd>R</kbd> to reload the groups list, or <kbd>N</kbd> to focus the new-grouping form — no mouse needed.
 
 ---
 
@@ -96,6 +96,11 @@ docker compose up -d
 > **Podman users:** Run ``podman compose up -d`` instead. For SELinux-enabled hosts, append ``:Z``
 > to volume mounts (e.g., ``/mnt/user/media:/media:ro,Z``) so the container can access the files.
 
+> [!TIP]
+> If Jellyfin runs on the **host network** (not inside a Docker container), add
+> `network_mode: "host"` to your compose service so the app can reach Jellyfin at
+> `http://localhost:8096`. Otherwise, use the host machine's LAN IP.
+
 Access the UI at `http://your-server-ip:5000`.
 
 ---
@@ -116,6 +121,23 @@ When running in Docker, you need to tell the app how to translate paths between 
 
 > [!TIP]
 > Use the **"Auto-Detect Settings"** button in the UI! It will scan your media folders and try to match them with what Jellyfin reports to find the correct path translations for you.
+
+### API Key Configuration
+
+Sensitive keys can be set either via the UI **Server Settings** panel or via
+environment variables (useful for Docker deployments where you want secrets
+out of `config.json`):
+
+```yaml
+environment:
+  - JELLYFIN_API_KEY=abc123
+  - TMDB_API_KEY=xyz789
+  - TRAKT_CLIENT_ID=my-trakt-id
+```
+
+Environment variables take precedence over UI values and are **never** persisted
+back to `config.json`. See the [Environment Variables](#docker-environment-variables)
+table for the full list.
 
 ---
 
@@ -164,6 +186,12 @@ You can generate a group from **TMDb content-based recommendations**.
    aggregates the results, weighted by position (top recommendations score higher).
 
 Requires a valid `TMDB_API_KEY` in the server settings.
+
+> [!NOTE]
+> TMDb recommendations are fetched from the **TMDb API** (not your Jellyfin library),
+> so only items that exist in both TMDb and your Jellyfin library will produce matches.
+> The TMDb API has rate limits (~50 requests/second); groups with many seed items
+> may experience slightly slower preview/sync times.
 
 ## ⏰ Scheduler Configuration
 
@@ -326,6 +354,18 @@ The application reads the following environment variables (which take precedence
 | `NETWORK_RETRY_BACKOFF_FACTOR` | Sleep multiplier between retries (default: `1.0`) |
 | `NETWORK_RETRY_STATUS_FORCELIST` | Status codes that trigger retry (default: `429,500,502,503,504`) |
 | `ALLOWED_NON_CSRF_ENDPOINTS` | Comma-separated list of [Flask endpoint names](https://flask.palletsprojects.com/quickstart/#about-responses) exempt from the CSRF header check. These are `blueprint.view` names (e.g., `"main.webhook,main.callback"`), **not** URL paths like `/api/...`. Default: none |
+
+### Keyboard Shortcuts
+
+| Shortcut | Action |
+|---|---|
+| <kbd>S</kbd> | Sync all groups |
+| <kbd>D</kbd> | Dry-run / preview sync |
+| <kbd>C</kbd> | Open cleanup modal |
+| <kbd>R</kbd> | Refresh groups list |
+| <kbd>N</kbd> | Focus new grouping form |
+
+Shortcuts only work when no input element is focused and no modal is open.
 
 > **Note**: Environment variable overrides are *never* persisted back to `config.json`. They only affect the current process.
 
