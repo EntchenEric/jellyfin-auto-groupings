@@ -1128,6 +1128,59 @@ def test_fetch_full_library_unexpected_error(mock_fetch) -> None:
     assert "Jellyfin connection error" in error
 
 
+@patch("sync.fetch_jellyfin_items")
+def test_fetch_full_library_double_checked_locking(mock_fetch) -> None:
+    """Double-checked locking preserves a fresh entry set by another thread."""
+    import time
+
+    _LIBRARY_CACHE.clear()
+    cache_key = ("http://jf", "key")
+
+    # Pre-populate a stale entry (TTL expired — 10 minutes old vs 300s TTL)
+    stale_time = time.monotonic() - 600
+    _LIBRARY_CACHE[cache_key] = (stale_time, [{"Id": "old"}])
+
+    def _simulate_concurrent_store(*args, **kwargs):
+        # Simulate: another thread finished first and stored a fresh entry
+        _LIBRARY_CACHE[cache_key] = (time.monotonic(), [{"Id": "from_other_thread"}])
+        return [{"Id": "from_this_thread"}]
+
+    mock_fetch.side_effect = _simulate_concurrent_store
+
+    items, error, code = _fetch_full_library("http://jf", "key", "Group")
+
+    assert code == 200
+    assert error is None
+    # The cache entry should be the fresh one from the other thread
+    # (the double-check detects it's still fresh and doesn't overwrite)
+    assert _LIBRARY_CACHE[cache_key][1] == [{"Id": "from_other_thread"}]
+
+
+@patch("sync.fetch_jellyfin_items")
+def test_fetch_full_library_double_checked_overwrite_stale(mock_fetch) -> None:
+    """Double-checked locking overwrites stale entry set by another thread."""
+    import time
+
+    _LIBRARY_CACHE.clear()
+    cache_key = ("http://jf", "key")
+
+    def _simulate_concurrent_store(*args, **kwargs):
+        # Simulate: another thread stored an ALSO-stale entry (TTL expired)
+        stale_time = time.monotonic() - 600
+        _LIBRARY_CACHE[cache_key] = (stale_time, [{"Id": "stale_from_other_thread"}])
+        return [{"Id": "from_this_thread"}]
+
+    mock_fetch.side_effect = _simulate_concurrent_store
+
+    items, error, code = _fetch_full_library("http://jf", "key", "Group")
+
+    assert code == 200
+    assert error is None
+    # The cache entry should have been overwritten because the other thread's
+    # entry was also stale
+    assert _LIBRARY_CACHE[cache_key][1] == [{"Id": "from_this_thread"}]
+
+
 @patch("sync._fetch_full_library")
 def test_match_jellyfin_items_by_provider_library_error(mock_lib) -> None:
     _LIBRARY_CACHE.clear()
