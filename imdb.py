@@ -12,24 +12,15 @@ import re
 import requests
 
 import network
+from _common import DEFAULT_LIST_FETCH_TIMEOUT as _REQUEST_TIMEOUT
+from _common import DEFAULT_SCRAPING_HEADERS as _REQUEST_HEADERS
 
 __all__ = ["fetch_imdb_list"]
 
 logger = logging.getLogger(__name__)
 
-# Request timeout (seconds)
-_REQUEST_TIMEOUT: int = 15
-
 # Maximum number of pages to scrape (safety guard, ~2 000 items at 100/page)
 _MAX_PAGES: int = 20
-
-_REQUEST_HEADERS: dict[str, str] = {
-    "User-Agent": (
-        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-    ),
-    "Accept-Language": "en-US,en;q=0.9",
-}
 
 
 def fetch_imdb_list(list_id: str) -> list[str]:
