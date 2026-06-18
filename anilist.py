@@ -51,10 +51,8 @@ def _resolve_anilist_status(status: str | None) -> str | None:
         ValueError: If *status* is not ``None``, ``"ALL"``, or a recognised
                     status key from :data:`_ANILIST_STATUS_MAP`.
 
-
-
     Args:
-            status: The status string to normalize.
+        status: The status string to normalize.
 
     """
     if not status or status.upper() == "ALL":
@@ -73,6 +71,8 @@ def _extract_media_ids(data: dict[str, Any]) -> list[int]:
     Args:
         data: The API response data dict.
 
+    Returns:
+        A list of integer media IDs.
     """
     root = data.get("data")
     if not isinstance(root, dict):
