@@ -88,8 +88,8 @@ DEFAULT_SEARCH_ROOTS: tuple[str, ...] = (
 #: Default timeout for external list-fetcher HTTP requests (seconds).
 DEFAULT_LIST_FETCH_TIMEOUT: int = 15
 
-#: Maximum number of pages to fetch from paginated list endpoints.
+#: Default maximum number of pages to fetch from external list APIs.
 DEFAULT_LIST_MAX_PAGES: int = 50
 
-#: Default page size for paginated API calls.
-DEFAULT_LIST_PAGE_LIMIT: int = 1_000
+#: Default page size (items per request) for external list API pagination.
+DEFAULT_LIST_PAGE_LIMIT: int = 200
