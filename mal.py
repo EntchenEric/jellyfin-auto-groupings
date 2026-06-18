@@ -36,9 +36,8 @@ def _normalize_mal_status(status: str | None) -> str | None:
     Returns ``None`` when *status* is empty or ``"all"`` (meaning fetch all lists).
     Raises :exc:`ValueError` for unrecognised status values.
 
-
     Args:
-            status: The status string to normalize.
+        status: The status string to normalize.
 
     """
     if not status:

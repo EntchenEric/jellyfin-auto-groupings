@@ -55,9 +55,8 @@ def _extract_ids_from_list_page(html: str) -> dict[str, str]:
     Returns a mapping of ``slug -> id`` for films where an ID was found
     directly on the list page, avoiding a per-film page fetch.
 
-
     Args:
-            html: The HTML content of the Letterboxd list page.
+        html: The HTML content of the Letterboxd list page.
 
     """
     found: dict[str, str] = {}
@@ -77,6 +76,8 @@ def _deduplicate_slugs(slugs: list[str]) -> list[str]:
     Args:
         slugs: List of Letterboxd film slugs.
 
+    Returns:
+        A deduplicated list of slugs in original order.
     """
     seen: set[str] = set()
     result: list[str] = []
@@ -93,6 +94,8 @@ def _fetch_ids_for_slugs(slugs: list[str]) -> dict[str, str | None]:
     Args:
         slugs: List of Letterboxd film slugs.
 
+    Returns:
+        A dict mapping slug to its IMDb/TMDb ID (or None if not found).
     """
     results: dict[str, str | None] = {}
     if not slugs:

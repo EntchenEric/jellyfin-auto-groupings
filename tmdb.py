@@ -33,12 +33,10 @@ def _fetch_tmdb_page(
     Raises:
         RuntimeError: If an HTTP error occurs.
 
-
-
     Args:
-            list_id: The TMDb list ID.
-            api_key: Jellyfin API key.
-            page: Page number to fetch.
+        list_id: The TMDb list ID.
+        api_key: Jellyfin API key.
+        page: Page number to fetch.
 
     """
     url = f"{_TMDB_API_BASE}/list/{list_id}"
@@ -84,6 +82,8 @@ def _normalize_tmdb_list_id(list_id: str) -> str:
     Args:
         list_id: The TMDb list ID.
 
+    Returns:
+        The normalized list ID.
     """
     list_id = list_id.strip()
     if "themoviedb.org/list/" in list_id:

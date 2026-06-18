@@ -72,6 +72,8 @@ def _handle_http_error(exc: HTTPException) -> ResponseReturnValue:
     Args:
         exc: The exception that was raised.
 
+    Returns:
+        A JSON response with the error message and status code.
     """
     if exc.code is None:
         raise exc
@@ -88,6 +90,8 @@ def _error(message: str, status_code: int = 400, **extra: Any) -> ResponseReturn
         message: The message for the response.
         status_code: HTTP status code for the response.
 
+    Returns:
+        A JSON response with the error message and status code.
     """
     payload: dict[str, Any] = {"status": "error", "message": message}
     if extra:
@@ -102,6 +106,8 @@ def _success(message: str, status_code: int = 200, **extra: Any) -> ResponseRetu
         message: The message for the response.
         status_code: HTTP status code for the response.
 
+    Returns:
+        A JSON response with the success message and status code.
     """
     payload: dict[str, Any] = {"status": "success", "message": message}
     if extra:

@@ -34,10 +34,11 @@ def _resolve_log_level(name: str) -> int:
     CRITICAL) and returns the corresponding :mod:`logging` constant.
     Falls back to ``logging.INFO`` for unset, empty, or unrecognised values.
 
-
     Args:
-            name: The name of the logging level constant.
+        name: The name of the logging level constant.
 
+    Returns:
+        The resolved logging level constant.
     """
     raw = os.environ.get(name, "").strip().upper()
     level = getattr(logging, raw, None)

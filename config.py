@@ -90,7 +90,6 @@ def _env_flag(name: str, *, default: bool = False) -> bool:
     If the variable is unset or empty, return *default*.
     All other values return *default*.
 
-
     Args:
         name: The environment variable name.
         default: Default value if the var is unset or empty.
@@ -111,10 +110,9 @@ def _fill_defaults(cfg: dict[str, Any], defaults: dict[str, Any]) -> None:
     scheduler config with arbitrary sub-keys) are properly populated without
     requiring the caller to specify every intermediate level.
 
-
     Args:
-            cfg: The configuration dict.
-            defaults: Default values dict.
+        cfg: The configuration dict.
+        defaults: Default values dict.
 
     """
     for key, default_value in defaults.items():
@@ -137,9 +135,8 @@ def _migrate_legacy_keys(cfg: dict[str, Any]) -> bool:
 
     The caller is responsible for persisting changes when this returns True.
 
-
     Args:
-            cfg: The configuration dict.
+        cfg: The configuration dict.
 
     """
     migrated = False
