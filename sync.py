@@ -330,9 +330,9 @@ def _fetch_full_library(
         )
         logger.info("Jellyfin library: %s items fetched for matching", len(all_items))
         with _LIBRARY_CACHE_LOCK:
-            # Double-check: another thread may have populated the cache while we fetched.
-            # Only store if the key is missing OR the existing entry is stale (TTL expired)
-            # to avoid replacing a fresh entry from another thread.
+            # Double-check: another thread may have populated
+            # the cache while we fetched. Only store if the key
+            # is missing OR the existing entry is stale (TTL expired).
             if cache_key not in _LIBRARY_CACHE or not _is_cache_fresh(
                 _LIBRARY_CACHE[cache_key]
             ):

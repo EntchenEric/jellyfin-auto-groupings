@@ -115,6 +115,20 @@ def test_parse_mmdd_invalid_day() -> None:
     assert _parse_mmdd("04-31") == (0, 0)
 
 
+def test_parse_mmdd_feb_29_leap_year() -> None:
+    """Feb 29 is valid because _parse_mmdd uses 2024 (a leap year)."""
+    from sync import _parse_mmdd
+
+    assert _parse_mmdd("02-29") == (2, 29)
+
+
+def test_parse_mmdd_feb_29_with_whitespace() -> None:
+    """Feb 29 with leading/trailing whitespace is valid after strip."""
+    from sync import _parse_mmdd
+
+    assert _parse_mmdd("  02-29  ") == (2, 29)
+
+
 def test_parse_mmdd_non_numeric() -> None:
     """Non-numeric month/day returns (0, 0)."""
     from sync import _parse_mmdd
