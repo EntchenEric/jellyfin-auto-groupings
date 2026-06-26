@@ -8,7 +8,7 @@ TEST_URL = "http://localhost:8096"
 TEST_API_KEY = "test_key"
 
 
-@patch("sync._get_cover_path")
+@patch("sync.get_cover_path")
 @patch("pathlib.Path.mkdir")
 @patch("pathlib.Path.exists")
 @patch("sync.shutil.rmtree")

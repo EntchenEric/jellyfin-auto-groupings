@@ -632,23 +632,23 @@ def test_sort_items_in_memory_all_missing() -> None:
 
 
 # ---------------------------------------------------------------------------
-# _get_cover_path edge cases
+# get_cover_path edge cases
 # ---------------------------------------------------------------------------
 
 
-def test_get_cover_path_no_covers_dir(tmp_path) -> None:
+def testget_cover_path_no_covers_dir(tmp_path) -> None:
     """Returns None when no cover file exists and check_exists is True."""
-    from sync import _get_cover_path
+    from sync import get_cover_path
 
-    result = _get_cover_path("Test Group", str(tmp_path), check_exists=True)
+    result = get_cover_path("Test Group", str(tmp_path), check_exists=True)
     assert result is None
 
 
-def test_get_cover_path_check_exists_false_without_target(tmp_path) -> None:
+def testget_cover_path_check_exists_false_without_target(tmp_path) -> None:
     """check_exists=False falls back to legacy path when target_base is not a dir."""
-    from sync import _get_cover_path
+    from sync import get_cover_path
 
-    result = _get_cover_path(
+    result = get_cover_path(
         "Test Group",
         "/nonexistent",
         check_exists=False,

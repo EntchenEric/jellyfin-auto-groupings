@@ -27,7 +27,7 @@ from sync import (
     _fetch_items_for_tmdb_group,
     _fetch_items_for_trakt_group,
     _filter_by_watch_state,
-    _get_cover_path,
+    get_cover_path,
     _is_in_season,
     _match_condition,
     _match_jellyfin_items_by_provider,
@@ -150,17 +150,17 @@ def test_library_cache() -> None:
     assert _LIBRARY_CACHE[key][0]["Id"] == "1"
 
 
-def test_get_cover_path(tmp_path) -> None:
+def testget_cover_path(tmp_path) -> None:
     # Setup dummy paths
     target_base = str(tmp_path / "target")
     (Path(target_base) / ".covers").mkdir(parents=True, exist_ok=True)
     # Mock __file__ to control legacy path? A bit hard.
     # Let's just test the logic for check_exists=False
-    path = _get_cover_path("My Group", target_base, check_exists=False)
+    path = get_cover_path("My Group", target_base, check_exists=False)
     assert ".covers" in path
     assert path.endswith(".jpg")
     # Test non-existent with check_exists=True
-    assert _get_cover_path("Missing Group", target_base, check_exists=True) is None
+    assert get_cover_path("Missing Group", target_base, check_exists=True) is None
     # Test existent in lib
     lib_path = str(
         Path(target_base)
@@ -169,7 +169,7 @@ def test_get_cover_path(tmp_path) -> None:
     )
     with Path(lib_path).open("w") as f:
         f.write("test")
-    assert _get_cover_path("Existent", target_base, check_exists=True) == lib_path
+    assert get_cover_path("Existent", target_base, check_exists=True) == lib_path
 
 
 @patch("sync.fetch_jellyfin_items")
@@ -1086,16 +1086,16 @@ def test_filter_by_watch_state() -> None:
     ]
 
 
-def test_get_cover_path_no_target_base() -> None:
-    path = _get_cover_path("Group", "", check_exists=False)
+def testget_cover_path_no_target_base() -> None:
+    path = get_cover_path("Group", "", check_exists=False)
     assert "config/covers" in path
 
 
 @patch("pathlib.Path.exists")
-def test_get_cover_path_legacy_exists(mock_exists) -> None:
-    # _get_cover_path checks lib path first, then legacy path
+def testget_cover_path_legacy_exists(mock_exists) -> None:
+    # get_cover_path checks lib path first, then legacy path
     mock_exists.side_effect = [False, True]
-    path = _get_cover_path("LegacyGroup", "/some/target", check_exists=True)
+    path = get_cover_path("LegacyGroup", "/some/target", check_exists=True)
     assert "config/covers" in path
 
 
@@ -1380,7 +1380,7 @@ def test_fetch_items_metadata_unexpected_error(mock_fetch) -> None:
 
 @patch("pathlib.Path.exists")
 @patch("sync.set_collection_image")
-@patch("sync._get_cover_path")
+@patch("sync.get_cover_path")
 @patch("sync.add_to_collection")
 @patch("sync.create_collection")
 @patch("sync.find_collection_by_name")
@@ -1413,7 +1413,7 @@ def test_process_collection_group_create_and_cover(
 
 @patch("pathlib.Path.exists")
 @patch("sync.set_collection_image")
-@patch("sync._get_cover_path")
+@patch("sync.get_cover_path")
 @patch("sync.add_to_collection")
 @patch("sync.find_collection_by_name")
 def test_process_collection_group_cover_error(
@@ -1721,7 +1721,7 @@ def test_process_group_library_already_exists(mock_meta, mock_add, tmp_path) -> 
 
 
 @patch("sync.set_virtual_folder_image")
-@patch("sync._get_cover_path")
+@patch("sync.get_cover_path")
 @patch("sync._fetch_items_for_metadata_group")
 def test_process_group_auto_set_library_covers(
     mock_meta,
@@ -2120,7 +2120,7 @@ def test_process_group_missing_host_path(mock_meta, tmp_path) -> None:
     assert result["links"] == 0
 
 
-@patch("sync._get_cover_path")
+@patch("sync.get_cover_path")
 @patch("sync._fetch_items_for_metadata_group")
 def test_process_group_auto_cover_missing(mock_meta, mock_cover, tmp_path) -> None:
     host = tmp_path / "movie.mkv"

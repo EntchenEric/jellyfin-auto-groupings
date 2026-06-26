@@ -175,7 +175,7 @@ def test_upload_cover_security_check(client) -> None:
     assert response.status_code == 413
 
 
-@patch("routes._get_cover_path")
+@patch("routes.get_cover_path")
 def test_upload_cover_success(mock_get_path, client, tmp_path) -> None:
     mock_get_path.return_value = str(tmp_path / "test.jpg")
     # Base64 for a tiny transparent pixel
@@ -498,7 +498,7 @@ def test_upload_cover_invalid_base64(client) -> None:
     assert "Malformed image data" in response.get_json()["message"]
 
 
-@patch("routes._get_cover_path")
+@patch("routes.get_cover_path")
 def test_upload_cover_server_error(mock_get_cover, client) -> None:
     mock_get_cover.side_effect = OSError("Disk full")
     img_data = (
@@ -513,7 +513,7 @@ def test_upload_cover_server_error(mock_get_cover, client) -> None:
     assert response.get_json()["status"] == "error"
 
 
-@patch("routes._get_cover_path")
+@patch("routes.get_cover_path")
 def test_upload_cover_unresolvable_path(mock_get_cover, client) -> None:
     mock_get_cover.return_value = None
     img_data = (
@@ -546,7 +546,7 @@ def test_upload_cover_unsupported_mime(client) -> None:
 def test_upload_cover_mime_extension_mapping(client, tmp_path) -> None:
     """Upload with a non-JPEG MIME type uses the correct file extension."""
     from config import save_config
-    from routes import _get_cover_path
+    from routes import get_cover_path
 
     save_config({"target_path": str(tmp_path)})
     img_data = (
@@ -559,7 +559,7 @@ def test_upload_cover_mime_extension_mapping(client, tmp_path) -> None:
     )
     assert response.status_code == 200
     # Verify the file was saved with .png extension
-    cover_path = _get_cover_path(
+    cover_path = get_cover_path(
         "TestGroup",
         str(tmp_path),
         check_exists=False,
