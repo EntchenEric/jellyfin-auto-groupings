@@ -7,6 +7,7 @@ TMDb v3 list.
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any, cast
 from urllib.parse import urlparse
 
@@ -177,6 +178,14 @@ def get_tmdb_recommendations(
                     recommendation_counts[rec_id] = (
                         recommendation_counts.get(rec_id, 0.0) + score
                     )
+            elif resp.status_code == 429:
+                # Rate limited — back off to avoid further 429s
+                retry_after = resp.headers.get("Retry-After")
+                wait = int(retry_after) if retry_after and retry_after.isdigit() else 1
+                logger.debug(
+                    "TMDb rate limited (429) — sleeping %ds", wait,
+                )
+                time.sleep(wait)
         except (requests.exceptions.RequestException, ValueError):
             logger.debug("Skipping failed recommendation item", exc_info=True)
 

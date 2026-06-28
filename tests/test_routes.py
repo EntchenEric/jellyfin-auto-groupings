@@ -2201,3 +2201,29 @@ def test_index_contains_wizard_element(client) -> None:
     # The wizard button should be in the rendered HTML
     assert "wizard" in html.lower()
     assert "data-wizard" in html or 'id="wizard' in html or 'class="wizard' in html
+
+
+# ---------------------------------------------------------------------------
+# Version endpoint
+# ---------------------------------------------------------------------------
+
+
+def test_version_endpoint(client) -> None:
+    """Version endpoint returns a version string."""
+    response = client.get("/api/version")
+    assert response.status_code == 200
+    data = response.get_json()
+    assert "version" in data
+    assert isinstance(data["version"], str)
+    assert len(data["version"]) > 0
+
+
+def test_health_check_includes_version(client) -> None:
+    """Health check response includes a version field."""
+    from routes import __version__
+
+    response = client.get("/api/health")
+    assert response.status_code == 200
+    data = response.get_json()
+    assert "version" in data
+    assert data["version"] == __version__
