@@ -55,6 +55,7 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "clear_library_cache",
+    "get_cover_path",
     "parse_complex_query",
     "preview_group",
     "run_cleanup_broken_symlinks",
@@ -177,7 +178,7 @@ def _translate_path(
     return jellyfin_path
 
 
-def _get_cover_path(
+def get_cover_path(
     group_name: str,
     target_base: str,
     check_exists: bool = True,
@@ -1371,7 +1372,7 @@ def _process_collection_group(
     result: dict[str, Any] = {"group": group_name, "links": len(item_ids)}
 
     if auto_set_library_covers:
-        source_cover = _get_cover_path(group_name, target_base)
+        source_cover = get_cover_path(group_name, target_base)
         if source_cover and Path(source_cover).exists():
             try:
                 set_collection_image(url, api_key, collection_id, source_cover)
@@ -1607,7 +1608,7 @@ def _prepare_group_directory(
             non-dry-run mode).
 
     """
-    source_cover: str | None = _get_cover_path(group_name, target_base)
+    source_cover: str | None = get_cover_path(group_name, target_base)
 
     if not dry_run:
         if Path(group_dir).exists():
