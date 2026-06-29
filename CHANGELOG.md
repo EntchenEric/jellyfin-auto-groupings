@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `routes.py`: add `/api/version` endpoint returning the current application
+  version string.
+- `routes.py`: include `version` field in `/api/health` response.
+- `tmdb.py`: handle HTTP 429 (rate limit) in `get_tmdb_recommendations` by
+  respecting the `Retry-After` header and backing off.
+
+### Changed
+
+- `_common.py`: update `DEFAULT_SCRAPING_HEADERS` User-Agent from Chrome/122 to
+  Chrome/131 to reduce the chance of being blocked by scraping targets.
+
+### Fixed
+
+- `sync.py`: renamed `_get_cover_path` to public `get_cover_path` for
+  consistency — the function was already imported and used cross-module.
+  (PR #1062)
+
+### Dependencies
+
+- `.github/workflows/*.yml`: bump `actions/cache` pinned SHA to latest v5
+  release. (PR #1060)
+- `.github/workflows/*.yml`: bump `actions/checkout` pinned SHA to latest v6
+  release. (PR #1059)
 - `routes.py`: add health check endpoint at `/api/health` for Docker/Kubernetes
   probes, returning service status, config sanity, and uptime. (PR #561)
 - `routes.py`: add global error boundary (`unhandledrejection` + `error` events)

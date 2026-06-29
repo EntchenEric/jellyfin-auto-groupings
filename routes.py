@@ -36,6 +36,17 @@ from werkzeug.exceptions import HTTPException
 
 import network
 
+# Resolve the application version from package metadata.
+# Falls back to a dev placeholder when running from source
+# (i.e. the package is not installed via pip).
+from importlib.metadata import PackageNotFoundError, version as _pkg_version
+
+try:
+    __version__: str = _pkg_version("jellyfin-groupings")
+except PackageNotFoundError:
+    __version__ = "1.0.0+dev"
+del _pkg_version
+
 if TYPE_CHECKING:
     from flask.typing import ResponseReturnValue
 
@@ -1408,6 +1419,22 @@ def browse_directory() -> ResponseReturnValue:
 
 
 # ---------------------------------------------------------------------------
+# Version
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/api/version", methods=["GET"])
+def version() -> ResponseReturnValue:
+    """Return the current application version.
+
+    Returns:
+        JSON with ``version`` string.
+
+    """
+    return jsonify({"version": __version__})
+
+
+# ---------------------------------------------------------------------------
 # Health check
 # ---------------------------------------------------------------------------
 
@@ -1482,6 +1509,7 @@ def health_check() -> ResponseReturnValue:
         return jsonify(
             {
                 "status": "ok",
+                "version": __version__,
                 "healthcheck": {
                     "ok": True,
                     "configured": configured,

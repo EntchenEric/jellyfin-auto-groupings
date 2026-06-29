@@ -91,7 +91,7 @@ class TestScrapingHeaders:
 
     def test_user_agent_is_chrome(self) -> None:
         ua = DEFAULT_SCRAPING_HEADERS["User-Agent"]
-        assert "Chrome/122" in ua
+        assert "Chrome/131" in ua
 
     def test_headers_are_dict(self) -> None:
         assert isinstance(DEFAULT_SCRAPING_HEADERS, dict)
