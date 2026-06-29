@@ -382,6 +382,9 @@ def _check_sync_rate_limit() -> ResponseReturnValue | None:
     Returns a 429 error response if the client has called sync within
     :data:`_SYNC_RATE_LIMIT_SECONDS`, otherwise records the current
     timestamp and returns ``None``.
+
+    Stale entries (older than twice the rate-limit window) are pruned
+    on each call to prevent unbounded growth.
     """
     ip = request.remote_addr or "unknown"
     now = time.monotonic()
@@ -389,6 +392,12 @@ def _check_sync_rate_limit() -> ResponseReturnValue | None:
     if now - last < _SYNC_RATE_LIMIT_SECONDS:
         return _error("Please wait before syncing again", 429)
     _last_sync_by_ip[ip] = now
+    # Prune entries older than twice the rate-limit window to prevent
+    # unbounded growth from rotating/changing client IPs.
+    cutoff = now - (2 * _SYNC_RATE_LIMIT_SECONDS)
+    stale = [k for k, v in _last_sync_by_ip.items() if v < cutoff]
+    for k in stale:
+        del _last_sync_by_ip[k]
     return None
 
 
