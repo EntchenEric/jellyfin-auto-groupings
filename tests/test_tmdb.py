@@ -112,3 +112,81 @@ def test_get_tmdb_recommendations_failure_skipped(mock_get) -> None:
         "test_key",
     )
     assert recs == ["201"]
+
+
+@patch("tmdb.time.sleep")
+@patch("network.get")
+def test_get_tmdb_recommendations_rate_limit_retry_after(
+    mock_get, mock_sleep,
+) -> None:
+    """429 response with Retry-After header sleeps the specified duration."""
+    mock_resp_429 = MagicMock()
+    mock_resp_429.status_code = 429
+    mock_resp_429.headers = {"Retry-After": "3"}
+
+    mock_resp_ok = MagicMock()
+    mock_resp_ok.status_code = 200
+    mock_resp_ok.json.return_value = {
+        "results": [{"id": 301}],
+    }
+
+    mock_get.side_effect = [mock_resp_429, mock_resp_ok]
+
+    recs = get_tmdb_recommendations(
+        [("101", "movie"), ("102", "movie")],
+        "test_key",
+    )
+    mock_sleep.assert_called_once_with(3)
+    assert recs == ["301"]
+
+
+@patch("tmdb.time.sleep")
+@patch("network.get")
+def test_get_tmdb_recommendations_rate_limit_no_header(
+    mock_get, mock_sleep,
+) -> None:
+    """429 without Retry-After header falls back to 1s sleep."""
+    mock_resp_429 = MagicMock()
+    mock_resp_429.status_code = 429
+    mock_resp_429.headers = {}
+
+    mock_resp_ok = MagicMock()
+    mock_resp_ok.status_code = 200
+    mock_resp_ok.json.return_value = {
+        "results": [{"id": 302}],
+    }
+
+    mock_get.side_effect = [mock_resp_429, mock_resp_ok]
+
+    recs = get_tmdb_recommendations(
+        [("101", "movie"), ("102", "movie")],
+        "test_key",
+    )
+    mock_sleep.assert_called_once_with(1)
+    assert recs == ["302"]
+
+
+@patch("tmdb.time.sleep")
+@patch("network.get")
+def test_get_tmdb_recommendations_rate_limit_non_numeric_header(
+    mock_get, mock_sleep,
+) -> None:
+    """429 with non-numeric Retry-After falls back to 1s sleep."""
+    mock_resp_429 = MagicMock()
+    mock_resp_429.status_code = 429
+    mock_resp_429.headers = {"Retry-After": "not-a-number"}
+
+    mock_resp_ok = MagicMock()
+    mock_resp_ok.status_code = 200
+    mock_resp_ok.json.return_value = {
+        "results": [{"id": 303}],
+    }
+
+    mock_get.side_effect = [mock_resp_429, mock_resp_ok]
+
+    recs = get_tmdb_recommendations(
+        [("101", "movie"), ("102", "movie")],
+        "test_key",
+    )
+    mock_sleep.assert_called_once_with(1)
+    assert recs == ["303"]
