@@ -43,6 +43,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `sync.py`: groups with source type `complex` matched the **entire library**
+  instead of evaluating their rules. `_resolve_group_source()` only routed a
+  group into the rule evaluator when its type was one of the metadata types
+  (`genre`, `actor`, …) — `complex` itself was missing from that set, so such
+  groups fell through to the metadata fetch, which has no filter for them and
+  returned everything. Every `complex` group therefore linked the whole
+  library. The preview endpoint was unaffected, which made the two disagree.
+  Both paths now share the same condition.
+- `sync.py`: `year:` rules now support `<`, `<=`, `>` and `>=` (e.g.
+  `year:>2000`), so a group can select a period without listing every year.
+  Previously only exact matches worked, and a comparison silently matched
+  nothing.
 - `sync.py`: syncing a group whose directory also parents nested groups wiped
   those children. With both `Action` and `Action/Filme` configured, preparing
   `<target>/Action` called `rmtree()` on the whole subtree, deleting the child

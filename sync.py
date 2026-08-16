@@ -984,6 +984,42 @@ def _fetch_items_for_recommendations_group(
     )
 
 
+def _match_year(value: Any, rule_value: str) -> bool:
+    """Match a production year, supporting range comparisons.
+
+    Accepts a plain year (``2001``) as well as ``<``, ``<=``, ``>`` and
+    ``>=`` prefixes (``>2000``), so a group can select a period without
+    listing every year in it.
+
+    Args:
+        value: The item's ``ProductionYear`` (may be ``None``).
+        rule_value: The year expression from the rule.
+
+    Returns:
+        ``True`` if the year satisfies the expression.
+
+    """
+    if value is None:
+        return False
+
+    expr = rule_value.strip()
+    for prefix in (">=", "<=", ">", "<"):
+        if expr.startswith(prefix):
+            try:
+                year, limit = int(value), int(expr[len(prefix):].strip())
+            except (TypeError, ValueError):
+                return False
+            if prefix == ">=":
+                return year >= limit
+            if prefix == "<=":
+                return year <= limit
+            if prefix == ">":
+                return year > limit
+            return year < limit
+
+    return str(value).strip() == expr
+
+
 def _match_condition(item: dict[str, Any], r_type: str, r_val: str) -> bool:
     """Check if a Jellyfin item matches a single rule condition.
 
@@ -1021,9 +1057,7 @@ def _match_condition(item: dict[str, Any], r_type: str, r_val: str) -> bool:
                 r_val == str(t).strip().lower() for t in (item.get("Tags") or [])
             )
         if r_type == "year":
-            val = item.get("ProductionYear")
-            if val is not None:
-                return str(val).strip() == r_val
+            return _match_year(item.get("ProductionYear"), r_val)
     except (AttributeError, TypeError, ValueError):
         pass
 
@@ -1355,9 +1389,12 @@ def preview_group(
         )
         return _filter_by_item_type(items, item_type), error, code
 
-    # Complex query (metadata-based)
-    if _COMPLEX_QUERY_RE.search(val):
-        rules = parse_complex_query(val, type_name)
+    # Complex query (metadata-based). Mirrors _resolve_group_source so the
+    # preview count matches what the sync will actually link.
+    if type_name == "complex" or _COMPLEX_QUERY_RE.search(val):
+        rules = parse_complex_query(
+            val, "genre" if type_name == "complex" else type_name,
+        )
         return _fetch_items_for_complex_group(
             "preview",
             rules,
@@ -1934,8 +1971,22 @@ def _resolve_group_source(
         )
 
     val_str = str(source_value or "")
-    if source_type in _COMPLEX_QUERY_SOURCE_TYPES and _COMPLEX_QUERY_RE.search(val_str):
-        rules = parse_complex_query(val_str, str(source_type))
+    # "complex" is a source type in its own right; the metadata types are
+    # included because their *value* may carry operators ("Action OR Drama").
+    # Without the explicit "complex" case the group fell through to the
+    # metadata fetch, which has no filter for it and returned the entire
+    # library.
+    # A "complex" group always takes this path — even a single condition
+    # ("genre:Action") is a rule expression, not a metadata filter value.
+    is_complex_type = source_type == "complex"
+    if is_complex_type or (
+        source_type in _COMPLEX_QUERY_SOURCE_TYPES
+        and _COMPLEX_QUERY_RE.search(val_str)
+    ):
+        # A bare "complex" group has no implicit field, so rules must name
+        # their own ("genre:Action"); default to genre for the rest.
+        default_type = "genre" if is_complex_type else str(source_type)
+        rules = parse_complex_query(val_str, default_type)
         return _fetch_items_for_complex_group(
             group_name,
             rules,

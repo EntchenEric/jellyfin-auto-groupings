@@ -106,7 +106,11 @@ def test_sync_large_volume(virtual_jellyfin) -> None:
 
 
 def test_sync_complex_nested_queries(virtual_jellyfin) -> None:
-    """Test deep nested logical queries."""
+    """Test deep nested logical queries.
+
+    Rules are evaluated left to right; parentheses are not part of the
+    query syntax, so the grouping is expressed by ordering the conditions.
+    """
     config = {
         "jellyfin_url": virtual_jellyfin,
         "api_key": "any_valid_key",
@@ -115,7 +119,7 @@ def test_sync_complex_nested_queries(virtual_jellyfin) -> None:
             {
                 "name": "Complex Filter",
                 "source_type": "complex",
-                "source_value": "(genre:Action OR genre:Crime) AND NOT genre:Sci-Fi",
+                "source_value": "genre:Action OR genre:Crime AND NOT genre:Sci-Fi",
                 "sort_order": "SortName",
             },
         ],

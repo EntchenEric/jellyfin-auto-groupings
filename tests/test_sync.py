@@ -32,6 +32,7 @@ from sync import (
     _is_in_season,
     _match_condition,
     _match_jellyfin_items_by_provider,
+    _resolve_group_source,
     _process_collection_group,
     _process_group,
     _sort_items_in_memory,
@@ -1193,6 +1194,68 @@ def test_complex_group_requests_people_only_for_actor_rules(mock_fetch) -> None:
         "", "http://jf", "key",
     )
     assert "People" in mock_fetch.call_args[0][2]["Fields"]
+
+
+def test_match_year_ranges() -> None:
+    """Year rules accept plain years and <, <=, >, >= comparisons."""
+    from sync import _match_year
+
+    assert _match_year(1999, "1999")
+    assert not _match_year(1999, "2000")
+
+    assert _match_year(1999, "<2000")
+    assert not _match_year(2000, "<2000")
+    assert _match_year(2001, ">2000")
+    assert not _match_year(2000, ">2000")
+    assert _match_year(2000, ">=2000")
+    assert _match_year(2000, "<=2000")
+
+    # Whitespace around the limit is tolerated.
+    assert _match_year(2010, "> 2000")
+
+    # Missing or unparseable values never match.
+    assert not _match_year(None, "2000")
+    assert not _match_year(1999, "<nonsense")
+
+
+@patch("sync.fetch_jellyfin_items")
+def test_complex_source_type_evaluates_rules(mock_fetch) -> None:
+    """A group of type 'complex' filters instead of returning everything."""
+    _LIBRARY_CACHE.clear()
+    mock_fetch.return_value = [
+        {"Id": "1", "Type": "Movie", "Genres": ["Action"]},
+        {"Id": "2", "Type": "Movie", "Genres": ["Drama"]},
+        {"Id": "3", "Type": "Movie", "Genres": ["Horror"]},
+    ]
+
+    items, error, _ = _resolve_group_source(
+        {"name": "G", "source_type": "complex",
+         "source_value": "genre:Action OR genre:Drama"},
+        "G", "complex", "genre:Action OR genre:Drama", "",
+        "http://jf", "key", "", "", "", "",
+    )
+
+    assert error is None
+    assert [i["Id"] for i in items] == ["1", "2"]
+
+
+@patch("sync.fetch_jellyfin_items")
+def test_complex_source_type_without_operator(mock_fetch) -> None:
+    """A single condition is still a rule, not a metadata filter value."""
+    _LIBRARY_CACHE.clear()
+    mock_fetch.return_value = [
+        {"Id": "1", "Type": "Movie", "Genres": ["Action"]},
+        {"Id": "2", "Type": "Movie", "Genres": ["Drama"]},
+    ]
+
+    items, error, _ = _resolve_group_source(
+        {"name": "G", "source_type": "complex", "source_value": "genre:Action"},
+        "G", "complex", "genre:Action", "",
+        "http://jf", "key", "", "", "", "",
+    )
+
+    assert error is None
+    assert [i["Id"] for i in items] == ["1"]
 
 
 @patch("sync.fetch_jellyfin_items")
