@@ -52,6 +52,7 @@ if TYPE_CHECKING:
 
 from _common import DEFAULT_SEARCH_ROOTS as _DEFAULT_SEARCH_ROOTS
 from _common import SOURCE_TYPES as _ALLOWED_PREVIEW_TYPES
+from _common import normalize_group_relpath
 from config import (
     _active_env_overrides,
     load_config,
@@ -1078,16 +1079,36 @@ def get_cleanup_items() -> ResponseReturnValue:
     if not target_base or not Path(target_base).exists():
         return _success("", items=[])
 
-    configured_groups: set[str] = {
-        str(g.get("name")) for g in config.get("groups", []) if g.get("name")
-    }
+    configured_groups: set[str] = set()
+    # Parents of nested groups ("Anime" for "Anime/Action") are structural, not
+    # leftovers — listing them as deletable would offer to wipe every child.
+    parent_dirs: set[str] = set()
+    for g in config.get("groups", []):
+        rel = normalize_group_relpath(str(g.get("name") or ""))
+        if not rel:
+            continue
+        configured_groups.add(rel)
+        parts = rel.split("/")
+        for depth in range(1, len(parts)):
+            parent_dirs.add("/".join(parts[:depth]))
+
+    max_depth = max((len(g.split("/")) for g in configured_groups), default=1)
+
+    def _walk(directory: Path, prefix: str, depth: int) -> list[dict[str, Any]]:
+        found: list[dict[str, Any]] = []
+        for entry in directory.iterdir():
+            if not entry.is_dir() or entry.name.startswith("."):
+                continue
+            rel = f"{prefix}/{entry.name}" if prefix else entry.name
+            if rel in parent_dirs and depth < max_depth:
+                # Structural parent: descend instead of offering it for deletion.
+                found.extend(_walk(entry, rel, depth + 1))
+            else:
+                found.append({"name": rel, "is_configured": rel in configured_groups})
+        return found
 
     try:
-        entries = [
-            {"name": entry.name, "is_configured": entry.name in configured_groups}
-            for entry in Path(target_base).iterdir()
-            if entry.is_dir() and not entry.name.startswith(".")
-        ]
+        entries = _walk(Path(target_base), "", 1)
         return _success("", items=sorted(entries, key=lambda x: str(x["name"])))
     except OSError as exc:
         return _error(str(exc), 500)
@@ -1114,10 +1135,14 @@ def _delete_folder(
         was removed successfully.
 
     """
-    # Prevent path-traversal attacks: reject names with separators
-    if not _is_valid_folder_name(name):
+    # Group names may be nested ("Anime/Action"); normalisation rejects
+    # absolute paths and ``.``/``..`` segments, so the result always stays
+    # below target_base. The resolve() check below is the second line of
+    # defence against symlinked sub-directories.
+    relpath = normalize_group_relpath(name)
+    if relpath is None:
         return False, f"Invalid folder name: {name}"
-    path = Path(target_base) / name
+    path = Path(target_base).joinpath(*relpath.split("/"))
     # Resolve the path to ensure it is still within target_base (symlink-safe)
     try:
         resolved = path.resolve()
@@ -1135,6 +1160,7 @@ def _delete_folder(
         return False, None
     try:
         shutil.rmtree(path)
+        _prune_empty_parents(path.parent, Path(target_base))
         if auto_create_libraries and url and api_key:
             try:
                 delete_virtual_folder(url, api_key, name)
@@ -1144,6 +1170,45 @@ def _delete_folder(
         return False, f"Failed to delete {name}: {exc}"
     else:
         return True, None
+
+
+def _prune_empty_parents(directory: Path, base: Path) -> None:
+    """Remove now-empty parent directories left behind by a nested group.
+
+    Walks upwards from *directory* and removes each directory that became
+    empty, stopping at *base* (which is never removed).
+
+    Args:
+        directory: The first parent to consider.
+        base: The target root; the walk never goes at or above it.
+
+    """
+    try:
+        base_resolved = base.resolve()
+    except (OSError, RuntimeError):
+        return
+
+    current = directory
+    while True:
+        try:
+            resolved = current.resolve()
+        except (OSError, RuntimeError):
+            return
+        if resolved == base_resolved or base_resolved not in resolved.parents:
+            return
+        try:
+            next(current.iterdir())
+        except StopIteration:
+            pass  # empty -> remove it
+        except OSError:
+            return
+        else:
+            return  # still holds entries
+        try:
+            current.rmdir()
+        except OSError:
+            return
+        current = current.parent
 
 
 @bp.route("/api/cleanup", methods=["POST"])

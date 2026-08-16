@@ -29,7 +29,13 @@
         <div class="form-group mb-1_25">
             <label for="group_name">Group Name</label>
             <input type="text" id="group_name" placeholder="Action Movies" required>
-            <small>Becomes the folder name and Jellyfin library name.</small>
+            <small>
+                Becomes the folder name and Jellyfin library name.
+                Use <code>/</code> to nest, e.g. <code>Anime/Action</code> &rarr;
+                <code>&lt;target&gt;/Anime/Action</code>. Point one library at the
+                tree root to browse it as folders; nested groups are skipped by
+                auto-created libraries.
+            </small>
         </div>
 
         <h4 class="section-accent-heading section-dashed-top">

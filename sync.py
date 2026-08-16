@@ -29,6 +29,7 @@ import requests
 
 from _common import COMPLEX_QUERY_SOURCE_TYPES as _COMPLEX_QUERY_SOURCE_TYPES
 from _common import LIST_SOURCE_TYPES as _LIST_SOURCE_TYPES
+from _common import normalize_group_relpath
 from anilist import fetch_anilist_list
 from imdb import fetch_imdb_list
 from jellyfin import (
@@ -1414,9 +1415,22 @@ def _auto_create_library(
         The updated result dict.
 
     """
+    # Nested groups ("Anime/Action") are meant to be browsed as folders inside
+    # a single library the user points at the tree root, so auto-creating one
+    # Jellyfin library per sub-folder would defeat the purpose.
+    relpath = normalize_group_relpath(group_name)
+    is_nested = relpath is not None and "/" in relpath
+    if is_nested:
+        logger.info(
+            "Skipping library auto-creation for nested grouping %r "
+            "(point one library at the tree root instead)",
+            group_name,
+        )
+
     if (
         not dry_run
         and auto_create_libraries
+        and not is_nested
         and links_created > 0
         and existing_libraries is not None
         and group_name not in existing_libraries
@@ -1874,7 +1888,14 @@ def _process_group(
     if not group_name:
         return {"group": "(unnamed)", "links": 0, "error": "Empty group name"}
 
-    group_dir: str = str(Path(target_base) / group_name)
+    # A name may describe a nested folder ("Anime/Action"). Normalising here
+    # keeps the resulting directory inside target_base — important because
+    # _prepare_group_directory rmtree()s it.
+    relpath: str | None = normalize_group_relpath(group_name)
+    if relpath is None:
+        return {"group": group_name, "links": 0, "error": "Invalid group name"}
+
+    group_dir: str = str(Path(target_base).joinpath(*relpath.split("/")))
     sort_order: str = group.get("sort_order", "") or ""
     source_type: str | None = group.get("source_type")
     source_value: str | None = group.get("source_value")
