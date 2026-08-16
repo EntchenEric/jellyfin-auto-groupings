@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Nested groups: a group name may now contain `/` to create a folder tree
+  (`Anime/Action` → `<target>/Anime/Action`). Point one Jellyfin library at the
+  tree root and browse it as folders — useful on TV clients, where navigating
+  folders is far easier than using filters.
+- `_common.py`: `normalize_group_relpath()` normalises a group name into a safe
+  relative path (trims segments, collapses empty ones, accepts `\` as a
+  separator) and rejects `.`/`..` segments and NUL bytes.
+
 - `routes.py`: add `/api/version` endpoint returning the current application
   version string.
 - `routes.py`: include `version` field in `/api/health` response.

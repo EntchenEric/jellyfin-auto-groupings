@@ -162,6 +162,31 @@ table for the full list.
    - *Example:* If your Target Path is mapped to `/mnt/user/jellyfin-groupings-virtual` on the host, and you created a group named `Action`, add `/mnt/user/jellyfin-groupings-virtual/Action` to Jellyfin.
    - **Note:** Ensure your Jellyfin container also has this virtual root mounted!
 
+### Nested groups (folders inside folders)
+
+A group name may contain `/` to place it inside a sub-folder:
+
+| Group name | Resulting directory |
+|---|---|
+| `Action` | `<target>/Action` |
+| `Anime/Action` | `<target>/Anime/Action` |
+| `Anime/By Studio/Ghibli` | `<target>/Anime/By Studio/Ghibli` |
+
+This is useful when you would rather **browse a folder tree on a TV** than use
+Jellyfin's filters, which are cumbersome with a remote control. Add a single
+library of type `Mixed Movies and Shows` pointing at the tree root (e.g.
+`/groupings/Anime`) and Jellyfin renders every level below it as navigable
+folders.
+
+Because such a tree is meant to be *one* library, **nested groups are skipped by
+"Auto-create libraries"** — otherwise you would get a separate Jellyfin library
+per sub-folder. Top-level groups are still created automatically.
+
+Names are normalised before use: surrounding whitespace per segment is trimmed,
+empty segments collapse (`Anime//Action` → `Anime/Action`), and names containing
+`.`/`..` segments or NUL bytes are rejected so a group directory can never be
+created — or deleted — outside your target path.
+
 ---
 
 ## 🛠️ Advanced: Complex Queries
