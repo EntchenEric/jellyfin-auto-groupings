@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `jellyfin.py`: new `ProductionYearAsc` sort order (oldest first). The existing
+  `ProductionYear` order is newest-first, which is the wrong way round for
+  watching a franchise from the start — a "Marvel Studios" group now sorts into
+  release order and gets numbered symlink prefixes accordingly.
+
 - Nested groups: a group name may now contain `/` to create a folder tree
   (`Anime/Action` → `<target>/Anime/Action`). Point one Jellyfin library at the
   tree root and browse it as folders — useful on TV clients, where navigating
@@ -30,6 +35,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `sync.py`: complex queries (`genre:Action OR genre:Adventure`, any rule using
+  `AND`/`OR`/`NOT`) failed with a read timeout on non-trivial libraries. The
+  full-library fetch always requested Jellyfin's `People` field, which expands
+  the entire cast for every item — on a ~4400-title library one 500-item page
+  took ~75 s versus ~5 s without it, so the very first page blew past the 30 s
+  timeout and *every* complex group errored out. `People` is now requested only
+  when a rule actually needs it (i.e. an `actor` rule); the two field variants
+  are cached separately so a lean result is never served to an actor query.
 - `unraid/jellyfin-groupings.xml`: the config volume mapped the host path onto
   `/app/config.json`, but the app reads `/app/config/config.json`. When the host
   file did not exist yet, Docker created a *directory* at `/app/config.json` and

@@ -69,6 +69,9 @@ _DEFAULT_TIMEOUT: int = 30
 SORT_MAP: dict[str, tuple[str, str]] = {
     "CommunityRating": ("CommunityRating", "Descending"),
     "ProductionYear": ("ProductionYear,SortName", "Descending,Ascending"),
+    # Oldest first — the natural order for watching a franchise from the
+    # start (e.g. a "Marvel Studios" group in release order).
+    "ProductionYearAsc": ("ProductionYear,SortName", "Ascending,Ascending"),
     "SortName": ("SortName", "Ascending"),
     "DateCreated": ("DateCreated", "Descending"),
     "Random": ("Random", "Ascending"),

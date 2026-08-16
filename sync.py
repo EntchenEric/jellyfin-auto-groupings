@@ -98,11 +98,19 @@ _METADATA_FILTER_MAP: dict[str, str] = {
     "year": "years",
 }
 
-# Jellyfin Fields parameter for full-library fetches
+# Jellyfin Fields parameter for full-library fetches.
+#
+# ``People`` is deliberately absent: Jellyfin expands the full cast for every
+# item, which on a mid-sized library turns a 5-second page into a 75-second one
+# and blows past _FULL_LIBRARY_TIMEOUT, so *every* complex query fails. Only
+# actor rules need it, so it is requested on demand via _FULL_LIBRARY_FIELDS_
+# WITH_PEOPLE.
 _FULL_LIBRARY_FIELDS: str = (
-    "Path,ProviderIds,Genres,Studios,Tags,People,"
-    "ProductionYear,CommunityRating,UserData"
+    "Path,ProviderIds,Genres,Studios,Tags,ProductionYear,CommunityRating,UserData"
 )
+
+# Field list for the rare fetches that must evaluate actor rules.
+_FULL_LIBRARY_FIELDS_WITH_PEOPLE: str = _FULL_LIBRARY_FIELDS + ",People"
 
 # Jellyfin API timeout for full-library fetches (seconds)
 _FULL_LIBRARY_TIMEOUT: int = 30
@@ -232,7 +240,9 @@ def get_cover_path(
     return None
 
 
-_LIBRARY_CACHE: dict[tuple[str, str], tuple[float, list[dict[str, Any]]]] = {}
+#: Keyed by ``(url, api_key, include_people)`` — the People-bearing fetch is a
+#: superset of the lean one and must not be served from the same entry.
+_LIBRARY_CACHE: dict[tuple[str, str, bool], tuple[float, list[dict[str, Any]]]] = {}
 _LIBRARY_CACHE_LOCK = threading.RLock()
 
 
@@ -286,6 +296,8 @@ def _fetch_full_library(
     url: str,
     api_key: str,
     group_name: str,
+    *,
+    include_people: bool = False,
 ) -> tuple[list[dict[str, Any]], str | None, int]:
     """Fetch the full Jellyfin library, cached with a TTL.
 
@@ -303,12 +315,16 @@ def _fetch_full_library(
         url: Jellyfin base URL.
         api_key: Jellyfin API key.
         group_name: Human-readable group name (used for logging).
+        include_people: Also request the ``People`` field.  Only actor
+            rules need it, and it is expensive enough to time the request
+            out on a mid-sized library, so it is off by default.  Cached
+            separately from the lean variant.
 
     Returns:
         A (raw_items, error, status_code) tuple.
 
     """
-    cache_key = (url, api_key)
+    cache_key = (url, api_key, include_people)
     with _LIBRARY_CACHE_LOCK:
         if cache_key in _LIBRARY_CACHE:
             entry = _LIBRARY_CACHE[cache_key]
@@ -317,13 +333,14 @@ def _fetch_full_library(
             # TTL expired — remove stale entry so it gets re-fetched
             del _LIBRARY_CACHE[cache_key]
 
+    fields = _FULL_LIBRARY_FIELDS_WITH_PEOPLE if include_people else _FULL_LIBRARY_FIELDS
     try:
         all_items = fetch_all_jellyfin_items(
             url,
             api_key,
             {
                 "Recursive": RECURSIVE_TRUE,
-                "Fields": _FULL_LIBRARY_FIELDS,
+                "Fields": fields,
                 "IncludeItemTypes": DEFAULT_ITEM_TYPES,
             },
             limit=_FULL_LIBRARY_PAGE_SIZE,
@@ -1037,10 +1054,6 @@ def _fetch_items_for_complex_group(
         A ``(items, error, status_code)`` tuple.
 
     """
-    raw_items, error, status_code = _fetch_full_library(url, api_key, group_name)
-    if error is not None:
-        return [], error, status_code
-
     if not rules:
         return [], None, 200
 
@@ -1060,6 +1073,19 @@ def _fetch_items_for_complex_group(
 
     if not valid_rules:
         return [], None, 200
+
+    # Only actor rules read item["People"], and requesting that field is slow
+    # enough to time the fetch out, so pay for it only when it is used.
+    needs_people = any(r["type"] == "actor" for r in valid_rules)
+
+    raw_items, error, status_code = _fetch_full_library(
+        url,
+        api_key,
+        group_name,
+        include_people=needs_people,
+    )
+    if error is not None:
+        return [], error, status_code
 
     filtered = [item for item in raw_items if _eval_item(item, valid_rules)]
 

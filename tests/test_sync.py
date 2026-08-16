@@ -143,7 +143,7 @@ def test_eval_item() -> None:
 
 def test_library_cache() -> None:
     _LIBRARY_CACHE.clear()
-    key = ("http://test", "key")
+    key = ("http://test", "key", False)
     _LIBRARY_CACHE[key] = [{"Id": "1"}]
     # This is just verifying the global variable is used
     assert key in _LIBRARY_CACHE
@@ -1111,6 +1111,69 @@ def test_fetch_full_library_pagination(mock_fetch) -> None:
 
 
 @patch("sync.fetch_jellyfin_items")
+def test_fetch_full_library_omits_people_by_default(mock_fetch) -> None:
+    """The default fetch leaves out the expensive People field."""
+    _LIBRARY_CACHE.clear()
+    mock_fetch.return_value = []
+
+    _fetch_full_library("http://jf", "key", "Group")
+
+    fields = mock_fetch.call_args[0][2]["Fields"]
+    assert "People" not in fields
+    assert "Genres" in fields
+
+
+@patch("sync.fetch_jellyfin_items")
+def test_fetch_full_library_includes_people_on_request(mock_fetch) -> None:
+    """Actor rules can opt into the People field explicitly."""
+    _LIBRARY_CACHE.clear()
+    mock_fetch.return_value = []
+
+    _fetch_full_library("http://jf", "key", "Group", include_people=True)
+
+    assert "People" in mock_fetch.call_args[0][2]["Fields"]
+
+
+@patch("sync.fetch_jellyfin_items")
+def test_fetch_full_library_caches_people_variants_separately(mock_fetch) -> None:
+    """A cached People-less result is never served to a People request."""
+    _LIBRARY_CACHE.clear()
+    mock_fetch.side_effect = [
+        [{"Id": "lean"}],
+        [{"Id": "with-people", "People": [{"Name": "A", "Type": "Actor"}]}],
+    ]
+
+    lean, _, _ = _fetch_full_library("http://jf", "key", "Group")
+    people, _, _ = _fetch_full_library(
+        "http://jf", "key", "Group", include_people=True
+    )
+
+    assert lean[0]["Id"] == "lean"
+    assert people[0]["Id"] == "with-people"
+    assert mock_fetch.call_count == 2
+
+
+@patch("sync.fetch_jellyfin_items")
+def test_complex_group_requests_people_only_for_actor_rules(mock_fetch) -> None:
+    """A genre-only query stays on the lean fetch; an actor query opts in."""
+    _LIBRARY_CACHE.clear()
+    mock_fetch.return_value = []
+
+    _fetch_items_for_complex_group(
+        "G", [{"operator": "AND", "type": "genre", "value": "action"}],
+        "", "http://jf", "key",
+    )
+    assert "People" not in mock_fetch.call_args[0][2]["Fields"]
+
+    _LIBRARY_CACHE.clear()
+    _fetch_items_for_complex_group(
+        "G", [{"operator": "AND", "type": "actor", "value": "nicolas cage"}],
+        "", "http://jf", "key",
+    )
+    assert "People" in mock_fetch.call_args[0][2]["Fields"]
+
+
+@patch("sync.fetch_jellyfin_items")
 def test_fetch_full_library_request_error(mock_fetch) -> None:
     _LIBRARY_CACHE.clear()
     mock_fetch.side_effect = RuntimeError("fail")
@@ -1134,7 +1197,7 @@ def test_fetch_full_library_double_checked_locking(mock_fetch) -> None:
     import time
 
     _LIBRARY_CACHE.clear()
-    cache_key = ("http://jf", "key")
+    cache_key = ("http://jf", "key", False)
 
     # Pre-populate a stale entry (TTL expired — 10 minutes old vs 300s TTL)
     stale_time = time.monotonic() - 600
@@ -1162,7 +1225,7 @@ def test_fetch_full_library_double_checked_overwrite_stale(mock_fetch) -> None:
     import time
 
     _LIBRARY_CACHE.clear()
-    cache_key = ("http://jf", "key")
+    cache_key = ("http://jf", "key", False)
 
     def _simulate_concurrent_store(*args, **kwargs):
         # Simulate: another thread stored an ALSO-stale entry (TTL expired)
