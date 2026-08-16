@@ -53,9 +53,18 @@ services:
       - /path/to/your/groupings-virtual:/groupings
 
       # 3. Media root
-      # Mount your real media folder here so the container can verify symlink targets.
-      # In the Web UI, set "Same path on this machine" to: /media
-      # - /path/to/your/media:/media:ro
+      # Mount your real media here using the SAME container path Jellyfin uses,
+      # and set "Same path on this machine" to that identical path.
+      # The generated symlinks store this path verbatim, so Jellyfin must be
+      # able to resolve it. Mounting at /media here while Jellyfin sees /data
+      # produces symlinks that are broken for Jellyfin.
+      # If a folder has a different name in Jellyfin (host "tv" exposed as
+      # /data/tvshows), add a second mount with that exact target instead of a
+      # symlink — path translation calls resolve() and would rewrite the target
+      # back to the real folder name.
+      # - /path/to/your/media/anime:/data/anime:ro
+      # - /path/to/your/media/movies:/data/movies:ro
+      # - /path/to/your/media/tv:/data/tvshows:ro
 
       # 4. Local covers directory (optional — library-local .covers/ takes
       #    precedence; this is the legacy fallback location)

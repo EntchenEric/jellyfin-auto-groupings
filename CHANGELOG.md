@@ -22,6 +22,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `unraid/jellyfin-groupings.xml`: the config volume mapped the host path onto
+  `/app/config.json`, but the app reads `/app/config/config.json`. When the host
+  file did not exist yet, Docker created a *directory* at `/app/config.json` and
+  the app silently ran unconfigured forever — settings saved in the UI vanished
+  without any error. The mapping is now a directory (`/app/config`).
+- `unraid/jellyfin-groupings.xml`, `docker-compose.yml`, `README.md`: the media
+  root was documented as `/mnt/user:/media` with "Host Root" set to `/media`.
+  Since the host-side path is written verbatim into every generated symlink,
+  that produces links Jellyfin cannot resolve, and the resulting library appears
+  empty. Docs now mount media under the same container path Jellyfin uses.
+- `README.md`: document that a folder exposed under a different name in Jellyfin
+  (host `tv` served as `/data/tvshows`) needs a second bind mount with that
+  exact target — a host symlink does not work, because `_translate_path` calls
+  `Path.resolve()` and rewrites the target back to the real folder name.
 - `sync.py`: renamed `_get_cover_path` to public `get_cover_path` for
   consistency — the function was already imported and used cross-module.
   (PR #1062)
