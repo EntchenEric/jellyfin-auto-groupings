@@ -26,6 +26,7 @@ from sync import (
     _fetch_items_for_recommendations_group,
     _fetch_items_for_tmdb_group,
     _fetch_items_for_trakt_group,
+    _filter_by_item_type,
     _filter_by_watch_state,
     get_cover_path,
     _is_in_season,
@@ -143,7 +144,7 @@ def test_eval_item() -> None:
 
 def test_library_cache() -> None:
     _LIBRARY_CACHE.clear()
-    key = ("http://test", "key")
+    key = ("http://test", "key", False)
     _LIBRARY_CACHE[key] = [{"Id": "1"}]
     # This is just verifying the global variable is used
     assert key in _LIBRARY_CACHE
@@ -1069,6 +1070,27 @@ def test_translate_path_is_relative_to_runtimeerror() -> None:
     assert result == "/media/movie.mkv"
 
 
+def test_filter_by_item_type() -> None:
+    """Movies and series can be selected independently; anything else passes."""
+    movie = {"Type": "Movie"}
+    series = {"Type": "Series"}
+    untyped = {}
+
+    assert _filter_by_item_type([movie, series, untyped], "movies") == [movie]
+    assert _filter_by_item_type([movie, series, untyped], "series") == [series]
+    # Empty / unknown means "no restriction" — the historical behaviour.
+    assert _filter_by_item_type([movie, series, untyped], "") == [
+        movie,
+        series,
+        untyped,
+    ]
+    assert _filter_by_item_type([movie, series, untyped], "nonsense") == [
+        movie,
+        series,
+        untyped,
+    ]
+
+
 def test_filter_by_watch_state() -> None:
     unwatched = {"UserData": {"Played": False}}
     watched = {"UserData": {"Played": True}}
@@ -1111,6 +1133,108 @@ def test_fetch_full_library_pagination(mock_fetch) -> None:
 
 
 @patch("sync.fetch_jellyfin_items")
+def test_fetch_full_library_omits_people_by_default(mock_fetch) -> None:
+    """The default fetch leaves out the expensive People field."""
+    _LIBRARY_CACHE.clear()
+    mock_fetch.return_value = []
+
+    _fetch_full_library("http://jf", "key", "Group")
+
+    fields = mock_fetch.call_args[0][2]["Fields"]
+    assert "People" not in fields
+    assert "Genres" in fields
+
+
+@patch("sync.fetch_jellyfin_items")
+def test_fetch_full_library_includes_people_on_request(mock_fetch) -> None:
+    """Actor rules can opt into the People field explicitly."""
+    _LIBRARY_CACHE.clear()
+    mock_fetch.return_value = []
+
+    _fetch_full_library("http://jf", "key", "Group", include_people=True)
+
+    assert "People" in mock_fetch.call_args[0][2]["Fields"]
+
+
+@patch("sync.fetch_jellyfin_items")
+def test_fetch_full_library_caches_people_variants_separately(mock_fetch) -> None:
+    """A cached People-less result is never served to a People request."""
+    _LIBRARY_CACHE.clear()
+    mock_fetch.side_effect = [
+        [{"Id": "lean"}],
+        [{"Id": "with-people", "People": [{"Name": "A", "Type": "Actor"}]}],
+    ]
+
+    lean, _, _ = _fetch_full_library("http://jf", "key", "Group")
+    people, _, _ = _fetch_full_library(
+        "http://jf", "key", "Group", include_people=True
+    )
+
+    assert lean[0]["Id"] == "lean"
+    assert people[0]["Id"] == "with-people"
+    assert mock_fetch.call_count == 2
+
+
+@patch("sync.fetch_jellyfin_items")
+def test_complex_group_requests_people_only_for_actor_rules(mock_fetch) -> None:
+    """A genre-only query stays on the lean fetch; an actor query opts in."""
+    _LIBRARY_CACHE.clear()
+    mock_fetch.return_value = []
+
+    _fetch_items_for_complex_group(
+        "G", [{"operator": "AND", "type": "genre", "value": "action"}],
+        "", "http://jf", "key",
+    )
+    assert "People" not in mock_fetch.call_args[0][2]["Fields"]
+
+    _LIBRARY_CACHE.clear()
+    _fetch_items_for_complex_group(
+        "G", [{"operator": "AND", "type": "actor", "value": "nicolas cage"}],
+        "", "http://jf", "key",
+    )
+    assert "People" in mock_fetch.call_args[0][2]["Fields"]
+
+
+@patch("sync.fetch_jellyfin_items")
+def test_metadata_group_item_type_filters_server_side(mock_fetch) -> None:
+    """A movies-only group asks Jellyfin for movies, not both types."""
+    mock_fetch.return_value = []
+
+    _fetch_items_for_metadata_group(
+        "G", "genre", "Action", "", "http://jf", "key", "", "movies",
+    )
+    assert mock_fetch.call_args[0][2]["IncludeItemTypes"] == "Movie"
+
+    _fetch_items_for_metadata_group(
+        "G", "genre", "Action", "", "http://jf", "key", "", "series",
+    )
+    assert mock_fetch.call_args[0][2]["IncludeItemTypes"] == "Series"
+
+    # No restriction keeps the historical both-types query.
+    _fetch_items_for_metadata_group(
+        "G", "genre", "Action", "", "http://jf", "key", "", "",
+    )
+    assert mock_fetch.call_args[0][2]["IncludeItemTypes"] == "Movie,Series"
+
+
+@patch("sync.fetch_jellyfin_items")
+def test_complex_group_item_type_filters_locally(mock_fetch) -> None:
+    """Complex rules filter by type after evaluating the rule set."""
+    _LIBRARY_CACHE.clear()
+    mock_fetch.return_value = [
+        {"Id": "1", "Type": "Movie", "Genres": ["Action"]},
+        {"Id": "2", "Type": "Series", "Genres": ["Action"]},
+    ]
+    rules = [{"operator": "AND", "type": "genre", "value": "action"}]
+
+    items, _, _ = _fetch_items_for_complex_group(
+        "G", rules, "", "http://jf", "key", "", "series",
+    )
+
+    assert [i["Id"] for i in items] == ["2"]
+
+
+@patch("sync.fetch_jellyfin_items")
 def test_fetch_full_library_request_error(mock_fetch) -> None:
     _LIBRARY_CACHE.clear()
     mock_fetch.side_effect = RuntimeError("fail")
@@ -1134,7 +1258,7 @@ def test_fetch_full_library_double_checked_locking(mock_fetch) -> None:
     import time
 
     _LIBRARY_CACHE.clear()
-    cache_key = ("http://jf", "key")
+    cache_key = ("http://jf", "key", False)
 
     # Pre-populate a stale entry (TTL expired — 10 minutes old vs 300s TTL)
     stale_time = time.monotonic() - 600
@@ -1162,7 +1286,7 @@ def test_fetch_full_library_double_checked_overwrite_stale(mock_fetch) -> None:
     import time
 
     _LIBRARY_CACHE.clear()
-    cache_key = ("http://jf", "key")
+    cache_key = ("http://jf", "key", False)
 
     def _simulate_concurrent_store(*args, **kwargs):
         # Simulate: another thread stored an ALSO-stale entry (TTL expired)
@@ -2392,11 +2516,11 @@ def test_fetch_items_complex_group_malformed_rule(mock_lib) -> None:
 
 
 @patch("sync._fetch_items_for_metadata_group")
-@patch("sync.shutil.rmtree")
-def test_process_group_oserror(mock_rmtree, mock_meta, tmp_path) -> None:
+@patch("sync._clear_group_directory")
+def test_process_group_oserror(mock_clear, mock_meta, tmp_path) -> None:
     """Cover lines 1027-1029: OSError when cleaning group directory."""
     mock_meta.return_value = ([], None, 200)
-    mock_rmtree.side_effect = OSError("Permission denied")
+    mock_clear.side_effect = OSError("Permission denied")
     target = tmp_path / "target"
     target.mkdir()
     group_dir = target / "Test"

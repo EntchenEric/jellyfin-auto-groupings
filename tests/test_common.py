@@ -206,3 +206,43 @@ class TestNetworkDefaults:
     def test_list_page_limit_is_reasonable(self) -> None:
         """Page limit should be large enough for efficient pagination."""
         assert DEFAULT_LIST_PAGE_LIMIT >= 100
+
+
+class TestProductionYearAscending:
+    """The ascending year sort added for franchise watch order."""
+
+    def test_sort_map_contains_ascending_year(self) -> None:
+        """SORT_MAP exposes an oldest-first production year order."""
+        from jellyfin import SORT_MAP
+
+        assert "ProductionYearAsc" in SORT_MAP
+        key, direction = SORT_MAP["ProductionYearAsc"]
+        assert key.split(",")[0] == "ProductionYear"
+        assert direction.split(",")[0] == "Ascending"
+
+    def test_sorts_oldest_first(self) -> None:
+        """_sort_items puts the earliest release first."""
+        from sync import _sort_items_in_memory
+
+        items = [
+            {"Name": "Endgame", "ProductionYear": 2019},
+            {"Name": "Iron Man", "ProductionYear": 2008},
+            {"Name": "Avengers", "ProductionYear": 2012},
+        ]
+
+        result = _sort_items_in_memory(items, "ProductionYearAsc")
+
+        assert [i["Name"] for i in result] == ["Iron Man", "Avengers", "Endgame"]
+
+    def test_items_without_year_sort_last(self) -> None:
+        """Items missing ProductionYear still end up at the end."""
+        from sync import _sort_items_in_memory
+
+        items = [
+            {"Name": "Unknown"},
+            {"Name": "Iron Man", "ProductionYear": 2008},
+        ]
+
+        result = _sort_items_in_memory(items, "ProductionYearAsc")
+
+        assert [i["Name"] for i in result] == ["Iron Man", "Unknown"]

@@ -297,7 +297,8 @@ export async function previewGrouping() {
 
     try {
         const res = await apiPost('/api/grouping/preview', {
-            type, value: val, watch_state: getEl('watch_state').value
+            type, value: val, watch_state: getEl('watch_state').value,
+            item_type: getEl('item_type').value
         });
         resultDiv.innerHTML = '';
         if (res.status === 'success') {

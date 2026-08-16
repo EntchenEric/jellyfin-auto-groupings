@@ -503,6 +503,7 @@ def _validate_group_types(
     _check_type(group.get("source_value"), str, f"{prefix}.source_value", errors)
     _check_type(group.get("sort_order"), str, f"{prefix}.sort_order", errors)
     _check_type(group.get("watch_state"), str, f"{prefix}.watch_state", errors)
+    _check_type(group.get("item_type"), str, f"{prefix}.item_type", errors)
     _check_type(group.get("schedule"), str, f"{prefix}.schedule", errors)
     for bool_field in ("schedule_enabled", "seasonal_enabled", "create_as_collection"):
         _check_type(group.get(bool_field), bool, f"{prefix}.{bool_field}", errors)
@@ -1028,6 +1029,7 @@ def preview_grouping() -> ResponseReturnValue:
         return _error("Value cannot be empty", 400)
 
     watch_state = (data.get("watch_state") or "").strip().lower()
+    item_type = (data.get("item_type") or "").strip().lower()
 
     # Load config for external list API keys
     config = load_config()
@@ -1049,6 +1051,7 @@ def preview_grouping() -> ResponseReturnValue:
             tmdb_api_key=tmdb_api_key,
             mal_client_id=mal_client_id,
             anilist_api_url=anilist_api_url,
+            item_type=item_type,
         )
 
         if error is not None:

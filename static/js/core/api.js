@@ -94,8 +94,8 @@ export const fetchMetadata = () => apiGet('/api/jellyfin/metadata');
 export const fetchUsers = () => apiGet('/api/jellyfin/users');
 export const runSync = () => apiPost('/api/sync');
 export const previewSync = () => apiPost('/api/sync/preview_all');
-export const previewGroup = (type, value, watch_state) =>
-    apiPost('/api/grouping/preview', { type, value, watch_state });
+export const previewGroup = (type, value, watch_state, item_type) =>
+    apiPost('/api/grouping/preview', { type, value, watch_state, item_type });
 export const uploadCover = (groupName, image) =>
     apiPost('/api/upload_cover', { group_name: groupName, image });
 export const getCleanupItems = () => apiGet('/api/cleanup');

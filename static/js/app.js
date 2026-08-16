@@ -462,6 +462,7 @@ async function bootstrap() {
             seasonal_start: `${getEl('seasonal_start_month').value}-${getEl('seasonal_start_day').value}`,
             seasonal_end: `${getEl('seasonal_end_month').value}-${getEl('seasonal_end_day').value}`,
             watch_state: getEl('watch_state').value,
+            item_type: getEl('item_type').value,
             create_as_collection: getEl('create_as_collection').checked
         };
 

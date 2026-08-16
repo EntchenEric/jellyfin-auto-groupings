@@ -49,6 +49,14 @@ _PAGE_LIMIT: int = 200
 # Default Jellyfin item types used across the application.
 DEFAULT_ITEM_TYPES = "Movie,Series"
 
+#: A group's ``item_type`` setting mapped to the Jellyfin ``IncludeItemTypes``
+#: value. Anything not listed here (including the empty string) means "both",
+#: which is the historical behaviour.
+ITEM_TYPE_FILTERS: dict[str, str] = {
+    "movies": "Movie",
+    "series": "Series",
+}
+
 # String boolean values expected by the Jellyfin query API.
 RECURSIVE_TRUE = "true"
 
@@ -69,6 +77,9 @@ _DEFAULT_TIMEOUT: int = 30
 SORT_MAP: dict[str, tuple[str, str]] = {
     "CommunityRating": ("CommunityRating", "Descending"),
     "ProductionYear": ("ProductionYear,SortName", "Descending,Ascending"),
+    # Oldest first — the natural order for watching a franchise from the
+    # start (e.g. a "Marvel Studios" group in release order).
+    "ProductionYearAsc": ("ProductionYear,SortName", "Ascending,Ascending"),
     "SortName": ("SortName", "Ascending"),
     "DateCreated": ("DateCreated", "Descending"),
     "Random": ("Random", "Ascending"),
