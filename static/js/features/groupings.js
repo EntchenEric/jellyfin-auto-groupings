@@ -164,6 +164,7 @@ export function editGroup(index) {
         getEl('seasonal_end_day').value = ed;
     }
     getEl('watch_state').value = group.watch_state || '';
+    getEl('item_type').value = group.item_type || '';
     getEl('create_as_collection').checked = !!group.create_as_collection;
 
     updateSourceValueUI(group.source_value);
@@ -192,6 +193,7 @@ export function resetFormUI() {
     getEl('seasonal_enabled').checked = false;
     getEl('seasonal_panel').style.display = 'none';
     getEl('watch_state').value = '';
+    getEl('item_type').value = '';
     getEl('create_as_collection').checked = false;
     updateSourceTypeOptions();
 }
