@@ -15,6 +15,7 @@ import pytest
 
 from sync import (
     _LIBRARY_CACHE,
+    _auto_create_library,
     _eval_item,
     _fetch_full_library,
     _fetch_items_for_anilist_group,
@@ -28,15 +29,15 @@ from sync import (
     _fetch_items_for_trakt_group,
     _filter_by_item_type,
     _filter_by_watch_state,
-    get_cover_path,
     _is_in_season,
     _match_condition,
     _match_jellyfin_items_by_provider,
-    _resolve_group_source,
     _process_collection_group,
     _process_group,
+    _resolve_group_source,
     _sort_items_in_memory,
     _translate_path,
+    get_cover_path,
     parse_complex_query,
     preview_group,
     run_cleanup_broken_symlinks,
@@ -1167,9 +1168,7 @@ def test_fetch_full_library_caches_people_variants_separately(mock_fetch) -> Non
     ]
 
     lean, _, _ = _fetch_full_library("http://jf", "key", "Group")
-    people, _, _ = _fetch_full_library(
-        "http://jf", "key", "Group", include_people=True
-    )
+    people, _, _ = _fetch_full_library("http://jf", "key", "Group", include_people=True)
 
     assert lean[0]["Id"] == "lean"
     assert people[0]["Id"] == "with-people"
@@ -1183,15 +1182,21 @@ def test_complex_group_requests_people_only_for_actor_rules(mock_fetch) -> None:
     mock_fetch.return_value = []
 
     _fetch_items_for_complex_group(
-        "G", [{"operator": "AND", "type": "genre", "value": "action"}],
-        "", "http://jf", "key",
+        "G",
+        [{"operator": "AND", "type": "genre", "value": "action"}],
+        "",
+        "http://jf",
+        "key",
     )
     assert "People" not in mock_fetch.call_args[0][2]["Fields"]
 
     _LIBRARY_CACHE.clear()
     _fetch_items_for_complex_group(
-        "G", [{"operator": "AND", "type": "actor", "value": "nicolas cage"}],
-        "", "http://jf", "key",
+        "G",
+        [{"operator": "AND", "type": "actor", "value": "nicolas cage"}],
+        "",
+        "http://jf",
+        "key",
     )
     assert "People" in mock_fetch.call_args[0][2]["Fields"]
 
@@ -1229,10 +1234,21 @@ def test_complex_source_type_evaluates_rules(mock_fetch) -> None:
     ]
 
     items, error, _ = _resolve_group_source(
-        {"name": "G", "source_type": "complex",
-         "source_value": "genre:Action OR genre:Drama"},
-        "G", "complex", "genre:Action OR genre:Drama", "",
-        "http://jf", "key", "", "", "", "",
+        {
+            "name": "G",
+            "source_type": "complex",
+            "source_value": "genre:Action OR genre:Drama",
+        },
+        "G",
+        "complex",
+        "genre:Action OR genre:Drama",
+        "",
+        "http://jf",
+        "key",
+        "",
+        "",
+        "",
+        "",
     )
 
     assert error is None
@@ -1250,8 +1266,16 @@ def test_complex_source_type_without_operator(mock_fetch) -> None:
 
     items, error, _ = _resolve_group_source(
         {"name": "G", "source_type": "complex", "source_value": "genre:Action"},
-        "G", "complex", "genre:Action", "",
-        "http://jf", "key", "", "", "", "",
+        "G",
+        "complex",
+        "genre:Action",
+        "",
+        "http://jf",
+        "key",
+        "",
+        "",
+        "",
+        "",
     )
 
     assert error is None
@@ -1264,18 +1288,39 @@ def test_metadata_group_item_type_filters_server_side(mock_fetch) -> None:
     mock_fetch.return_value = []
 
     _fetch_items_for_metadata_group(
-        "G", "genre", "Action", "", "http://jf", "key", "", "movies",
+        "G",
+        "genre",
+        "Action",
+        "",
+        "http://jf",
+        "key",
+        "",
+        "movies",
     )
     assert mock_fetch.call_args[0][2]["IncludeItemTypes"] == "Movie"
 
     _fetch_items_for_metadata_group(
-        "G", "genre", "Action", "", "http://jf", "key", "", "series",
+        "G",
+        "genre",
+        "Action",
+        "",
+        "http://jf",
+        "key",
+        "",
+        "series",
     )
     assert mock_fetch.call_args[0][2]["IncludeItemTypes"] == "Series"
 
     # No restriction keeps the historical both-types query.
     _fetch_items_for_metadata_group(
-        "G", "genre", "Action", "", "http://jf", "key", "", "",
+        "G",
+        "genre",
+        "Action",
+        "",
+        "http://jf",
+        "key",
+        "",
+        "",
     )
     assert mock_fetch.call_args[0][2]["IncludeItemTypes"] == "Movie,Series"
 
@@ -1291,7 +1336,13 @@ def test_complex_group_item_type_filters_locally(mock_fetch) -> None:
     rules = [{"operator": "AND", "type": "genre", "value": "action"}]
 
     items, _, _ = _fetch_items_for_complex_group(
-        "G", rules, "", "http://jf", "key", "", "series",
+        "G",
+        rules,
+        "",
+        "http://jf",
+        "key",
+        "",
+        "series",
     )
 
     assert [i["Id"] for i in items] == ["2"]
@@ -1650,6 +1701,37 @@ def test_process_group_empty_name(tmp_path) -> None:
     assert result["group"] == "(unnamed)"
     assert result["links"] == 0
     assert result["error"] == "Empty group name"
+
+
+@patch("sync.add_virtual_folder")
+def test_auto_create_library_skips_nested_group(
+    mock_add_virtual_folder,
+    tmp_path,
+) -> None:
+    """Library auto-creation is skipped for nested group names.
+
+    Nested groups (e.g. "Anime/Action") are meant to be browsed as folders
+    inside a single library, so auto-creating one library per sub-folder is
+    deliberately skipped.
+    """
+    result: dict[str, object] = {}
+    existing: list[str] = []
+    out = _auto_create_library(
+        result,
+        "Anime/Action",
+        str(tmp_path),
+        "http://jf",
+        "key",
+        dry_run=False,
+        auto_create_libraries=True,
+        links_created=1,
+        existing_libraries=existing,
+        target_path_in_jellyfin="",
+    )
+
+    mock_add_virtual_folder.assert_not_called()
+    assert existing == []
+    assert out == {}
 
 
 @patch("sync._fetch_items_for_complex_group")

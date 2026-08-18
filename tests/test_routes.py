@@ -870,6 +870,122 @@ def test_get_cleanup_items_lists_nested_groups(client, tmp_path) -> None:
     assert "Anime" not in items
 
 
+@pytest.mark.usefixtures("temp_config")
+def test_get_cleanup_items_skips_invalid_group_names(client, tmp_path) -> None:
+    """Groups whose names do not normalise to a valid relative path are skipped.
+
+    Covers the ``if not rel: continue`` branch in ``get_cleanup_items``.
+    """
+    target = tmp_path / "target"
+    (target / "Action").mkdir(parents=True)
+    save_config(
+        {
+            "target_path": str(target),
+            "groups": [
+                {"name": "Action"},
+                {"name": ""},
+                {"name": ".."},
+                {"name": "...."},
+            ],
+        },
+    )
+
+    response = client.get("/api/cleanup")
+
+    assert response.status_code == 200
+    items = response.get_json()["items"]
+    assert len(items) == 1
+    assert items[0]["name"] == "Action"
+
+
+def test_prune_empty_parents_removes_empty_dirs(tmp_path) -> None:
+    """_prune_empty_parents removes now-empty parents up to (not incl.) base."""
+    from routes import _prune_empty_parents
+
+    base = tmp_path / "base"
+    nested = base / "Anime" / "Action"
+    nested.mkdir(parents=True)
+
+    # Anime is empty, so the walk removes it but stops at base.
+    _prune_empty_parents(nested, base)
+
+    assert not (base / "Anime").exists()
+    assert base.exists()
+
+
+def test_prune_empty_parents_keeps_non_empty(tmp_path) -> None:
+    """_prune_empty_parents stops when a parent still holds entries."""
+    from routes import _prune_empty_parents
+
+    base = tmp_path / "base"
+    nested = base / "Anime" / "Action"
+    nested.mkdir(parents=True)
+    (base / "Anime" / "Other").mkdir()
+
+    _prune_empty_parents(nested, base)
+
+    # Anime still contains Other, so it is preserved.
+    assert (base / "Anime").exists()
+    assert (base / "Anime" / "Other").exists()
+
+
+@patch("routes.Path.resolve")
+def test_prune_empty_parents_resolve_error(mock_resolve, tmp_path) -> None:
+    """_prune_empty_parents returns early when resolving the base fails."""
+    from routes import _prune_empty_parents
+
+    mock_resolve.side_effect = OSError("bad path")
+    _prune_empty_parents(tmp_path / "dir", tmp_path)
+
+
+def test_prune_empty_parents_current_resolve_error(tmp_path) -> None:
+    """_prune_empty_parents returns when the current dir cannot be resolved.
+
+    A self-referential symlink makes ``Path.resolve()`` genuinely raise
+    ``RuntimeError`` (a ``OSError``/``RuntimeError`` subclass path), hitting the
+    loop's ``except (OSError, RuntimeError)`` branch without mocking.
+    """
+    from routes import _prune_empty_parents
+
+    base = tmp_path / "base"
+    base.mkdir()
+    current = base / "current"
+    current.mkdir()
+    loop = current / "loop"
+    loop.symlink_to(loop)
+
+    _prune_empty_parents(loop, base)
+
+
+@patch("routes.Path.iterdir", side_effect=OSError("Permission denied"))
+def test_prune_empty_parents_iterdir_oserror(mock_iterdir, tmp_path) -> None:
+    """_prune_empty_parents returns when iterdir on a parent raises OSError."""
+    from routes import _prune_empty_parents
+
+    base = tmp_path / "base"
+    nested = base / "Anime" / "Action"
+    nested.mkdir(parents=True)
+
+    _prune_empty_parents(nested, base)
+
+    mock_iterdir.assert_called()
+
+
+@patch("routes.Path.rmdir", side_effect=OSError("Permission denied"))
+def test_prune_empty_parents_rmdir_oserror(mock_rmdir, tmp_path) -> None:
+    """_prune_empty_parents swallows OSError raised while removing a directory."""
+    from routes import _prune_empty_parents
+
+    base = tmp_path / "base"
+    nested = base / "Anime" / "Action"
+    nested.mkdir(parents=True)
+    (base / "Anime" / "Empty").mkdir()
+
+    _prune_empty_parents(nested, base)
+
+    mock_rmdir.assert_called()
+
+
 @patch("routes.Path.iterdir")
 @pytest.mark.usefixtures("temp_config")
 def test_get_cleanup_items_oserror(mock_iterdir, client, tmp_path) -> None:
