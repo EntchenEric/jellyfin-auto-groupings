@@ -19,6 +19,8 @@ import shutil
 import time
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -35,21 +37,6 @@ from flask import (
 from werkzeug.exceptions import HTTPException
 
 import network
-
-# Resolve the application version from package metadata.
-# Falls back to a dev placeholder when running from source
-# (i.e. the package is not installed via pip).
-from importlib.metadata import PackageNotFoundError, version as _pkg_version
-
-try:
-    __version__: str = _pkg_version("jellyfin-groupings")
-except PackageNotFoundError:
-    __version__ = "1.0.0+dev"
-del _pkg_version
-
-if TYPE_CHECKING:
-    from flask.typing import ResponseReturnValue
-
 from _common import DEFAULT_SEARCH_ROOTS as _DEFAULT_SEARCH_ROOTS
 from _common import SOURCE_TYPES as _ALLOWED_PREVIEW_TYPES
 from _common import normalize_group_relpath
@@ -67,7 +54,19 @@ from jellyfin import (
     get_users,
 )
 from scheduler import _scheduler, update_scheduler_jobs, validate_cron
-from sync import get_cover_path, clear_library_cache, preview_group, run_sync
+from sync import clear_library_cache, get_cover_path, preview_group, run_sync
+
+# Resolve the application version from package metadata.
+# Falls back to a dev placeholder when running from source
+# (i.e. the package is not installed via pip).
+try:
+    __version__: str = _pkg_version("jellyfin-groupings")
+except PackageNotFoundError:
+    __version__ = "1.0.0+dev"
+del _pkg_version
+
+if TYPE_CHECKING:
+    from flask.typing import ResponseReturnValue
 
 _APP_START_TIME: float = time.time()
 
@@ -383,6 +382,9 @@ def _check_sync_rate_limit() -> ResponseReturnValue | None:
     Returns a 429 error response if the client has called sync within
     :data:`_SYNC_RATE_LIMIT_SECONDS`, otherwise records the current
     timestamp and returns ``None``.
+
+    Stale entries (older than twice the rate-limit window) are pruned
+    on each call to prevent unbounded growth.
     """
     ip = request.remote_addr or "unknown"
     now = time.monotonic()
@@ -390,6 +392,12 @@ def _check_sync_rate_limit() -> ResponseReturnValue | None:
     if now - last < _SYNC_RATE_LIMIT_SECONDS:
         return _error("Please wait before syncing again", 429)
     _last_sync_by_ip[ip] = now
+    # Prune entries older than twice the rate-limit window to prevent
+    # unbounded growth from rotating/changing client IPs.
+    cutoff = now - (2 * _SYNC_RATE_LIMIT_SECONDS)
+    stale = [k for k, v in _last_sync_by_ip.items() if v < cutoff]
+    for k in stale:
+        del _last_sync_by_ip[k]
     return None
 
 

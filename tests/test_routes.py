@@ -6,6 +6,7 @@ CSRF protection, and error handling — all with mocked dependencies.
 """
 
 import os
+import time
 from datetime import UTC
 from pathlib import Path
 from typing import Never
@@ -62,6 +63,32 @@ def test_sync_rate_limit(mock_run_sync, client) -> None:
     second = client.post("/api/sync", headers={"X-Requested-With": "XMLHttpRequest"})
     assert second.status_code == 429
     mock_run_sync.assert_called_once()
+
+
+@patch("routes.run_sync", return_value=[])
+def test_sync_rate_limit_prunes_stale_entries(mock_run_sync, client) -> None:
+    """Stale per-IP entries older than twice the rate-limit window are pruned.
+
+    Covers the pruning loop in ``_check_sync_rate_limit`` that removes
+    outdated entries so the tracker does not grow unboundedly.
+    """
+    import routes
+
+    now = time.monotonic()
+    stale_cutoff = now - (2 * routes._SYNC_RATE_LIMIT_SECONDS) - 10
+    routes._last_sync_by_ip["stale-ip-1"] = stale_cutoff
+    routes._last_sync_by_ip["stale-ip-2"] = stale_cutoff
+    # A fresh entry within the window must be kept.
+    routes._last_sync_by_ip["fresh-ip"] = now - 1
+
+    response = client.post("/api/sync", headers={"X-Requested-With": "XMLHttpRequest"})
+    assert response.status_code == 200
+
+    # The two stale entries are pruned; the fresh one remains alongside the
+    # current client's entry.
+    assert "stale-ip-1" not in routes._last_sync_by_ip
+    assert "stale-ip-2" not in routes._last_sync_by_ip
+    assert "fresh-ip" in routes._last_sync_by_ip
 
 
 @pytest.mark.usefixtures("temp_config")
@@ -841,6 +868,122 @@ def test_get_cleanup_items_lists_nested_groups(client, tmp_path) -> None:
         "Toplevel": True,
     }
     assert "Anime" not in items
+
+
+@pytest.mark.usefixtures("temp_config")
+def test_get_cleanup_items_skips_invalid_group_names(client, tmp_path) -> None:
+    """Groups whose names do not normalise to a valid relative path are skipped.
+
+    Covers the ``if not rel: continue`` branch in ``get_cleanup_items``.
+    """
+    target = tmp_path / "target"
+    (target / "Action").mkdir(parents=True)
+    save_config(
+        {
+            "target_path": str(target),
+            "groups": [
+                {"name": "Action"},
+                {"name": ""},
+                {"name": ".."},
+                {"name": "...."},
+            ],
+        },
+    )
+
+    response = client.get("/api/cleanup")
+
+    assert response.status_code == 200
+    items = response.get_json()["items"]
+    assert len(items) == 1
+    assert items[0]["name"] == "Action"
+
+
+def test_prune_empty_parents_removes_empty_dirs(tmp_path) -> None:
+    """_prune_empty_parents removes now-empty parents up to (not incl.) base."""
+    from routes import _prune_empty_parents
+
+    base = tmp_path / "base"
+    nested = base / "Anime" / "Action"
+    nested.mkdir(parents=True)
+
+    # Anime is empty, so the walk removes it but stops at base.
+    _prune_empty_parents(nested, base)
+
+    assert not (base / "Anime").exists()
+    assert base.exists()
+
+
+def test_prune_empty_parents_keeps_non_empty(tmp_path) -> None:
+    """_prune_empty_parents stops when a parent still holds entries."""
+    from routes import _prune_empty_parents
+
+    base = tmp_path / "base"
+    nested = base / "Anime" / "Action"
+    nested.mkdir(parents=True)
+    (base / "Anime" / "Other").mkdir()
+
+    _prune_empty_parents(nested, base)
+
+    # Anime still contains Other, so it is preserved.
+    assert (base / "Anime").exists()
+    assert (base / "Anime" / "Other").exists()
+
+
+@patch("routes.Path.resolve")
+def test_prune_empty_parents_resolve_error(mock_resolve, tmp_path) -> None:
+    """_prune_empty_parents returns early when resolving the base fails."""
+    from routes import _prune_empty_parents
+
+    mock_resolve.side_effect = OSError("bad path")
+    _prune_empty_parents(tmp_path / "dir", tmp_path)
+
+
+def test_prune_empty_parents_current_resolve_error(tmp_path) -> None:
+    """_prune_empty_parents returns when the current dir cannot be resolved.
+
+    A self-referential symlink makes ``Path.resolve()`` genuinely raise
+    ``RuntimeError`` (a ``OSError``/``RuntimeError`` subclass path), hitting the
+    loop's ``except (OSError, RuntimeError)`` branch without mocking.
+    """
+    from routes import _prune_empty_parents
+
+    base = tmp_path / "base"
+    base.mkdir()
+    current = base / "current"
+    current.mkdir()
+    loop = current / "loop"
+    loop.symlink_to(loop)
+
+    _prune_empty_parents(loop, base)
+
+
+@patch("routes.Path.iterdir", side_effect=OSError("Permission denied"))
+def test_prune_empty_parents_iterdir_oserror(mock_iterdir, tmp_path) -> None:
+    """_prune_empty_parents returns when iterdir on a parent raises OSError."""
+    from routes import _prune_empty_parents
+
+    base = tmp_path / "base"
+    nested = base / "Anime" / "Action"
+    nested.mkdir(parents=True)
+
+    _prune_empty_parents(nested, base)
+
+    mock_iterdir.assert_called()
+
+
+@patch("routes.Path.rmdir", side_effect=OSError("Permission denied"))
+def test_prune_empty_parents_rmdir_oserror(mock_rmdir, tmp_path) -> None:
+    """_prune_empty_parents swallows OSError raised while removing a directory."""
+    from routes import _prune_empty_parents
+
+    base = tmp_path / "base"
+    nested = base / "Anime" / "Action"
+    nested.mkdir(parents=True)
+    (base / "Anime" / "Empty").mkdir()
+
+    _prune_empty_parents(nested, base)
+
+    mock_rmdir.assert_called()
 
 
 @patch("routes.Path.iterdir")
@@ -2277,6 +2420,30 @@ def test_version_endpoint(client) -> None:
     assert "version" in data
     assert isinstance(data["version"], str)
     assert len(data["version"]) > 0
+
+
+def test_version_fallback_when_package_not_installed(monkeypatch) -> None:
+    """__version__ falls back to a dev placeholder when the package is missing.
+
+    Covers the ``except PackageNotFoundError`` branch in routes.py's
+    version-detection block.
+    """
+    import importlib
+
+    import routes as routes_module
+
+    def _raise_not_found(_name: str) -> str:
+        from importlib.metadata import PackageNotFoundError
+
+        raise PackageNotFoundError
+
+    monkeypatch.setattr("importlib.metadata.version", _raise_not_found)
+    importlib.reload(routes_module)
+
+    assert routes_module.__version__ == "1.0.0+dev"
+
+    # Restore the real metadata lookup so later tests see the true version.
+    importlib.reload(routes_module)
 
 
 def test_health_check_includes_version(client) -> None:
