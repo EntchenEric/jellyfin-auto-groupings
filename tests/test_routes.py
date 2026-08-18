@@ -841,6 +841,35 @@ def test_get_cleanup_items_with_groups(client, tmp_path) -> None:
     assert data["items"][0]["is_configured"] is True
 
 
+def test_get_cleanup_items_lists_nested_groups(client, tmp_path) -> None:
+    """Nested groups are listed by their full relative path.
+
+    The structural parent ("Anime") must not appear as its own deletable
+    entry — offering it would let a single click wipe every child group.
+    """
+    target = tmp_path / "target"
+    (target / "Anime" / "Action").mkdir(parents=True)
+    (target / "Anime" / "Leftover").mkdir(parents=True)
+    (target / "Toplevel").mkdir()
+    save_config(
+        {
+            "target_path": str(target),
+            "groups": [{"name": "Anime/Action"}, {"name": "Toplevel"}],
+        },
+    )
+
+    response = client.get("/api/cleanup")
+
+    assert response.status_code == 200
+    items = {i["name"]: i["is_configured"] for i in response.get_json()["items"]}
+    assert items == {
+        "Anime/Action": True,
+        "Anime/Leftover": False,
+        "Toplevel": True,
+    }
+    assert "Anime" not in items
+
+
 @patch("routes.Path.iterdir")
 @pytest.mark.usefixtures("temp_config")
 def test_get_cleanup_items_oserror(mock_iterdir, client, tmp_path) -> None:
@@ -1909,16 +1938,48 @@ def test_check_auth_with_no_password(app, monkeypatch) -> None:
 
 
 def test_delete_folder_invalid_name() -> None:
-    """_delete_folder rejects folder names with path separators (line 741)."""
+    """_delete_folder rejects names that would escape the target base."""
     from routes import _delete_folder
 
-    deleted, err = _delete_folder("../etc", "/tmp/base", False, "", "")
-    assert deleted is False
-    assert err == "Invalid folder name: ../etc"
+    for bad in ("../etc", "a/../b", ".", "", "   ", "with\x00null"):
+        deleted, err = _delete_folder(bad, "/tmp/base", False, "", "")
+        assert deleted is False
+        assert err == f"Invalid folder name: {bad}"
 
-    deleted, err = _delete_folder("sub/dir", "/tmp/base", False, "", "")
-    assert deleted is False
-    assert err == "Invalid folder name: sub/dir"
+
+def test_delete_folder_accepts_nested_name(tmp_path) -> None:
+    """Nested group names ("Anime/Action") are valid and delete that folder."""
+    from routes import _delete_folder
+
+    base = tmp_path / "groupings"
+    nested = base / "Anime" / "Action"
+    nested.mkdir(parents=True)
+    (nested / "link").touch()
+
+    deleted, err = _delete_folder("Anime/Action", str(base), False, "", "")
+
+    assert deleted is True
+    assert err is None
+    assert not nested.exists()
+    # The now-empty parent is pruned, but the base itself is kept.
+    assert not (base / "Anime").exists()
+    assert base.exists()
+
+
+def test_delete_folder_keeps_parent_with_siblings(tmp_path) -> None:
+    """A parent that still holds other groups is not pruned."""
+    from routes import _delete_folder
+
+    base = tmp_path / "groupings"
+    (base / "Anime" / "Action").mkdir(parents=True)
+    (base / "Anime" / "Romance").mkdir(parents=True)
+
+    deleted, err = _delete_folder("Anime/Action", str(base), False, "", "")
+
+    assert deleted is True
+    assert err is None
+    assert (base / "Anime").exists()
+    assert (base / "Anime" / "Romance").exists()
 
 
 def test_delete_folder_path_traversal_via_symlink(tmp_path) -> None:

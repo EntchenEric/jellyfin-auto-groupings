@@ -1,5 +1,7 @@
 """Tests for the _common module (shared constants and utilities)."""
 
+import pytest
+
 from _common import (
     COMPLEX_QUERY_SOURCE_TYPES,
     DEFAULT_LIST_FETCH_TIMEOUT,
@@ -9,7 +11,65 @@ from _common import (
     DEFAULT_SEARCH_ROOTS,
     LIST_SOURCE_TYPES,
     SOURCE_TYPES,
+    normalize_group_relpath,
 )
+
+
+class TestNormalizeGroupRelpath:
+    """Tests for nested group-name normalisation."""
+
+    @pytest.mark.parametrize(
+        ("raw", "expected"),
+        [
+            ("Simple", "Simple"),
+            ("Anime/Action", "Anime/Action"),
+            ("A/B/C", "A/B/C"),
+            ("Anime//Action", "Anime/Action"),
+            ("Anime/ Action ", "Anime/Action"),
+            ("  Spaced  ", "Spaced"),
+            ("Anime\\Action", "Anime/Action"),
+            ("/leading/slash", "leading/slash"),
+            ("trailing/slash/", "trailing/slash"),
+        ],
+    )
+    def test_accepts_and_normalises(self, raw: str, expected: str) -> None:
+        """Valid names normalise to a relative, slash-separated path."""
+        assert normalize_group_relpath(raw) == expected
+
+    @pytest.mark.parametrize(
+        "raw",
+        [
+            "",
+            "   ",
+            ".",
+            "..",
+            "../etc",
+            "../../etc/passwd",
+            "a/../b",
+            "a/./b",
+            "with\x00null",
+            "/",
+            "///",
+        ],
+    )
+    def test_rejects_unsafe_names(self, raw: str) -> None:
+        """Empty, relative-traversal and NUL-containing names are rejected."""
+        assert normalize_group_relpath(raw) is None
+
+    def test_rejects_non_string(self) -> None:
+        """Non-string input is rejected rather than raising."""
+        assert normalize_group_relpath(None) is None  # type: ignore[arg-type]
+        assert normalize_group_relpath(123) is None  # type: ignore[arg-type]
+
+    def test_result_never_escapes_base(self, tmp_path) -> None:
+        """Joining the result onto a base never leaves that base."""
+        base = tmp_path / "groupings"
+        base.mkdir()
+        for raw in ("Anime/Action", "/abs/path", "a/b/c", "Anime\\Action"):
+            rel = normalize_group_relpath(raw)
+            assert rel is not None
+            joined = base.joinpath(*rel.split("/")).resolve()
+            assert base.resolve() in joined.parents or joined.parent == base.resolve()
 
 
 class TestSourceTypes:
@@ -146,3 +206,43 @@ class TestNetworkDefaults:
     def test_list_page_limit_is_reasonable(self) -> None:
         """Page limit should be large enough for efficient pagination."""
         assert DEFAULT_LIST_PAGE_LIMIT >= 100
+
+
+class TestProductionYearAscending:
+    """The ascending year sort added for franchise watch order."""
+
+    def test_sort_map_contains_ascending_year(self) -> None:
+        """SORT_MAP exposes an oldest-first production year order."""
+        from jellyfin import SORT_MAP
+
+        assert "ProductionYearAsc" in SORT_MAP
+        key, direction = SORT_MAP["ProductionYearAsc"]
+        assert key.split(",")[0] == "ProductionYear"
+        assert direction.split(",")[0] == "Ascending"
+
+    def test_sorts_oldest_first(self) -> None:
+        """_sort_items puts the earliest release first."""
+        from sync import _sort_items_in_memory
+
+        items = [
+            {"Name": "Endgame", "ProductionYear": 2019},
+            {"Name": "Iron Man", "ProductionYear": 2008},
+            {"Name": "Avengers", "ProductionYear": 2012},
+        ]
+
+        result = _sort_items_in_memory(items, "ProductionYearAsc")
+
+        assert [i["Name"] for i in result] == ["Iron Man", "Avengers", "Endgame"]
+
+    def test_items_without_year_sort_last(self) -> None:
+        """Items missing ProductionYear still end up at the end."""
+        from sync import _sort_items_in_memory
+
+        items = [
+            {"Name": "Unknown"},
+            {"Name": "Iron Man", "ProductionYear": 2008},
+        ]
+
+        result = _sort_items_in_memory(items, "ProductionYearAsc")
+
+        assert [i["Name"] for i in result] == ["Iron Man", "Unknown"]

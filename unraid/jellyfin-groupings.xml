@@ -41,17 +41,17 @@
     Required="true"
     Mask="false">5000</Config>
 
-  <!-- ── Config file ─────────────────────────────────────────── -->
+  <!-- ── Config directory ────────────────────────────────────── -->
   <Config
-    Name="Config File"
-    Target="/app/config.json"
-    Default="/mnt/user/appdata/jellyfin-groupings/config.json"
+    Name="Config Directory"
+    Target="/app/config"
+    Default="/mnt/user/appdata/jellyfin-groupings/config"
     Mode="rw"
-    Description="Path to the config.json file on the host. This persists your settings (Jellyfin URL, API key, groups) across container restarts."
+    Description="Directory where the app stores config.json (Jellyfin URL, API key, groups). Must be a DIRECTORY, not a file: the app reads /app/config/config.json and creates it on first start. Mapping a not-yet-existing file here makes Docker create a directory at /app/config.json instead, and the app silently keeps running unconfigured."
     Type="Path"
     Display="always"
     Required="true"
-    Mask="false">/mnt/user/appdata/jellyfin-groupings/config.json</Config>
+    Mask="false">/mnt/user/appdata/jellyfin-groupings/config</Config>
 
   <!-- ── Groupings output directory ──────────────────────────── -->
   <Config
@@ -68,10 +68,10 @@
   <!-- ── Media root (optional, for path mapping) ─────────────── -->
   <Config
     Name="Media Root (optional)"
-    Target="/media"
-    Default="/mnt/user"
+    Target="/data"
+    Default="/mnt/user/data"
     Mode="ro"
-    Description="Mount your media root here so the container can verify and create symlinks that point to real files. Set 'Host Root' in the app's settings to /media (or the sub-path that matches your Jellyfin 'Jellyfin Root' setting). Read-only is sufficient."
+    Description="Mount your media here using the SAME container path that Jellyfin uses (e.g. /data), and set 'Host Root' to that same path. The symlinks written into the groupings folder store this path verbatim, so Jellyfin has to be able to resolve it — if you mount your media at /media here while Jellyfin sees it at /data, every generated symlink will be broken from Jellyfin's side. If a folder is named differently in Jellyfin (e.g. host 'tv' exposed as /data/tvshows), add a second mapping with that exact target rather than a symlink: path translation resolves symlinks and would rewrite the target back to the real name. Read-only is sufficient."
     Type="Path"
     Display="always"
     Required="false"

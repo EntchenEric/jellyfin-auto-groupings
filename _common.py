@@ -93,3 +93,47 @@ DEFAULT_LIST_MAX_PAGES: int = 50
 
 #: Default page size for paginated API calls.
 DEFAULT_LIST_PAGE_LIMIT: int = 1_000
+
+
+# ---------------------------------------------------------------------------
+# Group names / nested folder paths
+# ---------------------------------------------------------------------------
+
+
+def normalize_group_relpath(name: str) -> str | None:
+    """Normalise a group name into a safe *relative* folder path.
+
+    A group name may describe a nested location by separating levels with
+    ``/`` (or ``\\`` on Windows-style input), e.g. ``"Anime/Action"`` creates
+    ``<target>/Anime/Action``. This lets users build a browsable folder tree
+    in Jellyfin instead of a flat list of libraries.
+
+    Every segment is stripped of surrounding whitespace, and empty segments
+    are dropped so ``"Anime//Action"`` and ``"Anime/ Action "`` normalise to
+    ``"Anime/Action"``.
+
+    The result is always relative and always stays inside the target
+    directory: absolute paths, ``.``/``..`` segments and NUL bytes are
+    rejected outright rather than sanitised, so a malformed name can never
+    be silently turned into a path that escapes the base directory.
+
+    Args:
+        name: The raw group name.
+
+    Returns:
+        The normalised relative path using ``/`` separators, or ``None`` if
+        *name* is not a valid, safe group name.
+
+    """
+    if not isinstance(name, str) or "\x00" in name:
+        return None
+
+    segments = [seg.strip() for seg in name.replace("\\", "/").split("/")]
+    cleaned = [seg for seg in segments if seg]
+
+    if not cleaned:
+        return None
+    if any(seg in (".", "..") for seg in cleaned):
+        return None
+
+    return "/".join(cleaned)

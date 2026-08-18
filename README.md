@@ -79,8 +79,12 @@ services:
       - /mnt/user/jellyfin-groupings-virtual:/groupings
       
       # Your media root. Needed so the app can verify files and follow symlinks.
-      # Use the same path Jellyfin uses if possible to simplify mapping.
-      - /mnt/user/media:/media:ro
+      # Mount it under the SAME container path Jellyfin uses — the symlinks
+      # store this path verbatim and Jellyfin has to resolve them.
+      - /mnt/user/data/movies:/data/movies:ro
+      - /mnt/user/data/anime:/data/anime:ro
+      # Folder named differently in Jellyfin? Map it to Jellyfin's name directly:
+      - /mnt/user/data/tv:/data/tvshows:ro
       
       # Optional: persist application logs for troubleshooting
       # - ./logs:/app/logs
@@ -116,8 +120,15 @@ When running in Docker, you need to tell the app how to translate paths between 
 | **Jellyfin Server URL** | The address of your Jellyfin server (e.g., `http://192.168.1.50:8096`). |
 | **API Key** | Generate one in Jellyfin: `Dashboard -> API Keys`. |
 | **Base Target Path** | Set this to `/groupings` (the internal path we mapped in Docker). |
-| **Media path as Jellyfin sees it** | The path where Jellyfin sees your media (e.g., `/data/movies`). |
-| **Same path on this machine** | The path where *this* container sees the same media (e.g., `/media`). |
+| **Media path as Jellyfin sees it** | The path where Jellyfin sees your media (e.g., `/data`). |
+| **Same path on this machine** | The path where *this* container sees the same media. Use the **same value** as above (e.g., `/data`) and mount your media there — see the warning below. |
+
+> [!WARNING]
+> **The two paths should normally be identical.** The generated symlinks store *"Same path on this machine"* verbatim as their target, and Jellyfin is the process that has to follow them. If this container sees your media at `/media` while Jellyfin sees it at `/data`, every symlink points at `/media/...` — a path Jellyfin cannot resolve, and the whole library shows up empty.
+>
+> They may only differ if Jellyfin can resolve the target path too.
+>
+> If a folder is exposed under a different name in Jellyfin (host `tv`, but Jellyfin serves it as `/data/tvshows`), add a second mount with that exact target — e.g. `- /mnt/user/data/tv:/data/tvshows:ro`. Do **not** solve it with a symlink on the host: path translation calls `Path.resolve()`, which follows the symlink and rewrites the target back to the real folder name, breaking those links again.
 
 > [!TIP]
 > Use the **"Auto-Detect Settings"** button in the UI! It will scan your media folders and try to match them with what Jellyfin reports to find the correct path translations for you.
@@ -150,6 +161,31 @@ table for the full list.
 3. Point the library to a **subdirectory** of your virtual root.
    - *Example:* If your Target Path is mapped to `/mnt/user/jellyfin-groupings-virtual` on the host, and you created a group named `Action`, add `/mnt/user/jellyfin-groupings-virtual/Action` to Jellyfin.
    - **Note:** Ensure your Jellyfin container also has this virtual root mounted!
+
+### Nested groups (folders inside folders)
+
+A group name may contain `/` to place it inside a sub-folder:
+
+| Group name | Resulting directory |
+|---|---|
+| `Action` | `<target>/Action` |
+| `Anime/Action` | `<target>/Anime/Action` |
+| `Anime/By Studio/Ghibli` | `<target>/Anime/By Studio/Ghibli` |
+
+This is useful when you would rather **browse a folder tree on a TV** than use
+Jellyfin's filters, which are cumbersome with a remote control. Add a single
+library of type `Mixed Movies and Shows` pointing at the tree root (e.g.
+`/groupings/Anime`) and Jellyfin renders every level below it as navigable
+folders.
+
+Because such a tree is meant to be *one* library, **nested groups are skipped by
+"Auto-create libraries"** — otherwise you would get a separate Jellyfin library
+per sub-folder. Top-level groups are still created automatically.
+
+Names are normalised before use: surrounding whitespace per segment is trimmed,
+empty segments collapse (`Anime//Action` → `Anime/Action`), and names containing
+`.`/`..` segments or NUL bytes are rejected so a group directory can never be
+created — or deleted — outside your target path.
 
 ---
 
@@ -655,11 +691,16 @@ When preview or sync fails, the error is shown in a modal dialog within the UI.
 
 ### Why does the app need both a Jellyfin-side path and a host-side path?
 
-Because Jellyfin often runs in a Docker container and sees your media at a different
-path than this app does. For example, Jellyfin might see files under `/data/movies`
-while this app sees them under `/mnt/user/media/movies`. The two path settings
-tell the app how to translate between the two views so symlinks point to the right
-files.
+Because Jellyfin often runs in a Docker container and may see your media at a
+different path than this app does. The two settings tell the app how to translate
+between the views when it reads item paths from the Jellyfin API.
+
+**In practice you usually want both values to be the same.** The host-side path is
+written verbatim into every symlink, and Jellyfin is what has to follow them. So if
+Jellyfin sees `/data/movies`, mount your media into this container at `/data/movies`
+too and set both fields to `/data`. Pointing the host side at something Jellyfin
+cannot reach (e.g. `/mnt/user/media/movies`) produces symlinks that look fine on the
+host but resolve to nothing inside Jellyfin — the library then appears empty.
 
 ### Can I use this alongside my existing Jellyfin libraries?
 

@@ -19,6 +19,8 @@ import shutil
 import time
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -35,23 +37,9 @@ from flask import (
 from werkzeug.exceptions import HTTPException
 
 import network
-
-# Resolve the application version from package metadata.
-# Falls back to a dev placeholder when running from source
-# (i.e. the package is not installed via pip).
-from importlib.metadata import PackageNotFoundError, version as _pkg_version
-
-try:
-    __version__: str = _pkg_version("jellyfin-groupings")
-except PackageNotFoundError:
-    __version__ = "1.0.0+dev"
-del _pkg_version
-
-if TYPE_CHECKING:
-    from flask.typing import ResponseReturnValue
-
 from _common import DEFAULT_SEARCH_ROOTS as _DEFAULT_SEARCH_ROOTS
 from _common import SOURCE_TYPES as _ALLOWED_PREVIEW_TYPES
+from _common import normalize_group_relpath
 from config import (
     _active_env_overrides,
     load_config,
@@ -66,7 +54,19 @@ from jellyfin import (
     get_users,
 )
 from scheduler import _scheduler, update_scheduler_jobs, validate_cron
-from sync import get_cover_path, clear_library_cache, preview_group, run_sync
+from sync import clear_library_cache, get_cover_path, preview_group, run_sync
+
+# Resolve the application version from package metadata.
+# Falls back to a dev placeholder when running from source
+# (i.e. the package is not installed via pip).
+try:
+    __version__: str = _pkg_version("jellyfin-groupings")
+except PackageNotFoundError:
+    __version__ = "1.0.0+dev"
+del _pkg_version
+
+if TYPE_CHECKING:
+    from flask.typing import ResponseReturnValue
 
 _APP_START_TIME: float = time.time()
 
@@ -511,6 +511,7 @@ def _validate_group_types(
     _check_type(group.get("source_value"), str, f"{prefix}.source_value", errors)
     _check_type(group.get("sort_order"), str, f"{prefix}.sort_order", errors)
     _check_type(group.get("watch_state"), str, f"{prefix}.watch_state", errors)
+    _check_type(group.get("item_type"), str, f"{prefix}.item_type", errors)
     _check_type(group.get("schedule"), str, f"{prefix}.schedule", errors)
     for bool_field in ("schedule_enabled", "seasonal_enabled", "create_as_collection"):
         _check_type(group.get(bool_field), bool, f"{prefix}.{bool_field}", errors)
@@ -1036,6 +1037,7 @@ def preview_grouping() -> ResponseReturnValue:
         return _error("Value cannot be empty", 400)
 
     watch_state = (data.get("watch_state") or "").strip().lower()
+    item_type = (data.get("item_type") or "").strip().lower()
 
     # Load config for external list API keys
     config = load_config()
@@ -1057,6 +1059,7 @@ def preview_grouping() -> ResponseReturnValue:
             tmdb_api_key=tmdb_api_key,
             mal_client_id=mal_client_id,
             anilist_api_url=anilist_api_url,
+            item_type=item_type,
         )
 
         if error is not None:
@@ -1087,16 +1090,36 @@ def get_cleanup_items() -> ResponseReturnValue:
     if not target_base or not Path(target_base).exists():
         return _success("", items=[])
 
-    configured_groups: set[str] = {
-        str(g.get("name")) for g in config.get("groups", []) if g.get("name")
-    }
+    configured_groups: set[str] = set()
+    # Parents of nested groups ("Anime" for "Anime/Action") are structural, not
+    # leftovers — listing them as deletable would offer to wipe every child.
+    parent_dirs: set[str] = set()
+    for g in config.get("groups", []):
+        rel = normalize_group_relpath(str(g.get("name") or ""))
+        if not rel:
+            continue
+        configured_groups.add(rel)
+        parts = rel.split("/")
+        for depth in range(1, len(parts)):
+            parent_dirs.add("/".join(parts[:depth]))
+
+    max_depth = max((len(g.split("/")) for g in configured_groups), default=1)
+
+    def _walk(directory: Path, prefix: str, depth: int) -> list[dict[str, Any]]:
+        found: list[dict[str, Any]] = []
+        for entry in directory.iterdir():
+            if not entry.is_dir() or entry.name.startswith("."):
+                continue
+            rel = f"{prefix}/{entry.name}" if prefix else entry.name
+            if rel in parent_dirs and depth < max_depth:
+                # Structural parent: descend instead of offering it for deletion.
+                found.extend(_walk(entry, rel, depth + 1))
+            else:
+                found.append({"name": rel, "is_configured": rel in configured_groups})
+        return found
 
     try:
-        entries = [
-            {"name": entry.name, "is_configured": entry.name in configured_groups}
-            for entry in Path(target_base).iterdir()
-            if entry.is_dir() and not entry.name.startswith(".")
-        ]
+        entries = _walk(Path(target_base), "", 1)
         return _success("", items=sorted(entries, key=lambda x: str(x["name"])))
     except OSError as exc:
         return _error(str(exc), 500)
@@ -1123,10 +1146,14 @@ def _delete_folder(
         was removed successfully.
 
     """
-    # Prevent path-traversal attacks: reject names with separators
-    if not _is_valid_folder_name(name):
+    # Group names may be nested ("Anime/Action"); normalisation rejects
+    # absolute paths and ``.``/``..`` segments, so the result always stays
+    # below target_base. The resolve() check below is the second line of
+    # defence against symlinked sub-directories.
+    relpath = normalize_group_relpath(name)
+    if relpath is None:
         return False, f"Invalid folder name: {name}"
-    path = Path(target_base) / name
+    path = Path(target_base).joinpath(*relpath.split("/"))
     # Resolve the path to ensure it is still within target_base (symlink-safe)
     try:
         resolved = path.resolve()
@@ -1144,6 +1171,7 @@ def _delete_folder(
         return False, None
     try:
         shutil.rmtree(path)
+        _prune_empty_parents(path.parent, Path(target_base))
         if auto_create_libraries and url and api_key:
             try:
                 delete_virtual_folder(url, api_key, name)
@@ -1153,6 +1181,45 @@ def _delete_folder(
         return False, f"Failed to delete {name}: {exc}"
     else:
         return True, None
+
+
+def _prune_empty_parents(directory: Path, base: Path) -> None:
+    """Remove now-empty parent directories left behind by a nested group.
+
+    Walks upwards from *directory* and removes each directory that became
+    empty, stopping at *base* (which is never removed).
+
+    Args:
+        directory: The first parent to consider.
+        base: The target root; the walk never goes at or above it.
+
+    """
+    try:
+        base_resolved = base.resolve()
+    except (OSError, RuntimeError):
+        return
+
+    current = directory
+    while True:
+        try:
+            resolved = current.resolve()
+        except (OSError, RuntimeError):
+            return
+        if resolved == base_resolved or base_resolved not in resolved.parents:
+            return
+        try:
+            next(current.iterdir())
+        except StopIteration:
+            pass  # empty -> remove it
+        except OSError:
+            return
+        else:
+            return  # still holds entries
+        try:
+            current.rmdir()
+        except OSError:
+            return
+        current = current.parent
 
 
 @bp.route("/api/cleanup", methods=["POST"])

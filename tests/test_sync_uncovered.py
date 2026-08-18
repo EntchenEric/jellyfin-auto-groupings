@@ -666,7 +666,7 @@ def test_fetch_full_library_stale_cache_eviction() -> None:
     """Stale cache entry is evicted and re-fetched on next call."""
     from sync import _LIBRARY_CACHE, _fetch_full_library
 
-    cache_key = ("http://jf:8096", "testkey")
+    cache_key = ("http://jf:8096", "testkey", False)
     # Insert an expired cache entry (timestamp well in the past)
     _LIBRARY_CACHE[cache_key] = (time.monotonic() - 3600, [{"Id": "stale-item"}])
 

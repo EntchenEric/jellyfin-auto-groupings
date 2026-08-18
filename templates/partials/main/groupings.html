@@ -29,7 +29,13 @@
         <div class="form-group mb-1_25">
             <label for="group_name">Group Name</label>
             <input type="text" id="group_name" placeholder="Action Movies" required>
-            <small>Becomes the folder name and Jellyfin library name.</small>
+            <small>
+                Becomes the folder name and Jellyfin library name.
+                Use <code>/</code> to nest, e.g. <code>Anime/Action</code> &rarr;
+                <code>&lt;target&gt;/Anime/Action</code>. Point one library at the
+                tree root to browse it as folders; nested groups are skipped by
+                auto-created libraries.
+            </small>
         </div>
 
         <h4 class="section-accent-heading section-dashed-top">
@@ -81,6 +87,15 @@
                 </select>
                 <small>Filter by played status in Jellyfin.</small>
             </div>
+            <div class="form-group mb-0">
+                <label for="item_type">Media Type Filter</label>
+                <select id="item_type">
+                    <option value="">Movies &amp; Series (Default)</option>
+                    <option value="movies">Movies Only</option>
+                    <option value="series">Series Only</option>
+                </select>
+                <small>Split a genre into separate movie and series groups.</small>
+            </div>
         </div>
 
         <h4 class="section-accent-heading section-dashed-top">
@@ -104,6 +119,7 @@
                     <option value="recommendations_list_order">Recommendations Order</option>
                     <option value="CommunityRating">Community Rating (highest first)</option>
                     <option value="ProductionYear">Production Year (newest first)</option>
+                    <option value="ProductionYearAsc">Production Year (oldest first)</option>
                     <option value="SortName">Name (A &rarr; Z)</option>
                     <option value="DateCreated">Date Added (newest first)</option>
                     <option value="Random">Random</option>

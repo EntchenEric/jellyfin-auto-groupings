@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Groups can be restricted to movies or series via a new `item_type` setting
+  ("Media Type Filter" in the UI). Jellyfin often files the same genre under
+  different names per media type (`Action` for movies, `Action & Adventure`
+  for series) while sharing others (`Drama`), so filtering by genre alone
+  could neither reliably separate nor combine them. Metadata groups filter
+  server-side via `IncludeItemTypes`; complex and list-backed groups filter
+  the resolved items.
+
+- `jellyfin.py`: new `ProductionYearAsc` sort order (oldest first). The existing
+  `ProductionYear` order is newest-first, which is the wrong way round for
+  watching a franchise from the start — a "Marvel Studios" group now sorts into
+  release order and gets numbered symlink prefixes accordingly.
+
+- Nested groups: a group name may now contain `/` to create a folder tree
+  (`Anime/Action` → `<target>/Anime/Action`). Point one Jellyfin library at the
+  tree root and browse it as folders — useful on TV clients, where navigating
+  folders is far easier than using filters.
+- `_common.py`: `normalize_group_relpath()` normalises a group name into a safe
+  relative path (trims segments, collapses empty ones, accepts `\` as a
+  separator) and rejects `.`/`..` segments and NUL bytes.
+
 - `routes.py`: add `/api/version` endpoint returning the current application
   version string.
 - `routes.py`: include `version` field in `/api/health` response.
@@ -22,6 +43,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `sync.py`: groups with source type `complex` matched the **entire library**
+  instead of evaluating their rules. `_resolve_group_source()` only routed a
+  group into the rule evaluator when its type was one of the metadata types
+  (`genre`, `actor`, …) — `complex` itself was missing from that set, so such
+  groups fell through to the metadata fetch, which has no filter for them and
+  returned everything. Every `complex` group therefore linked the whole
+  library. The preview endpoint was unaffected, which made the two disagree.
+  Both paths now share the same condition.
+- `sync.py`: `year:` rules now support `<`, `<=`, `>` and `>=` (e.g.
+  `year:>2000`), so a group can select a period without listing every year.
+  Previously only exact matches worked, and a comparison silently matched
+  nothing.
+- `sync.py`: syncing a group whose directory also parents nested groups wiped
+  those children. With both `Action` and `Action/Filme` configured, preparing
+  `<target>/Action` called `rmtree()` on the whole subtree, deleting the child
+  group's symlinks — whether they reappeared depended on the order groups
+  happened to sync in. The group directory is now cleared entry by entry,
+  removing only the group's own symlinks and cover while leaving
+  subdirectories to the nested groups that own them.
+- `sync.py`: complex queries (`genre:Action OR genre:Adventure`, any rule using
+  `AND`/`OR`/`NOT`) failed with a read timeout on non-trivial libraries. The
+  full-library fetch always requested Jellyfin's `People` field, which expands
+  the entire cast for every item — on a ~4400-title library one 500-item page
+  took ~75 s versus ~5 s without it, so the very first page blew past the 30 s
+  timeout and *every* complex group errored out. `People` is now requested only
+  when a rule actually needs it (i.e. an `actor` rule); the two field variants
+  are cached separately so a lean result is never served to an actor query.
+- `unraid/jellyfin-groupings.xml`: the config volume mapped the host path onto
+  `/app/config.json`, but the app reads `/app/config/config.json`. When the host
+  file did not exist yet, Docker created a *directory* at `/app/config.json` and
+  the app silently ran unconfigured forever — settings saved in the UI vanished
+  without any error. The mapping is now a directory (`/app/config`).
+- `unraid/jellyfin-groupings.xml`, `docker-compose.yml`, `README.md`: the media
+  root was documented as `/mnt/user:/media` with "Host Root" set to `/media`.
+  Since the host-side path is written verbatim into every generated symlink,
+  that produces links Jellyfin cannot resolve, and the resulting library appears
+  empty. Docs now mount media under the same container path Jellyfin uses.
+- `README.md`: document that a folder exposed under a different name in Jellyfin
+  (host `tv` served as `/data/tvshows`) needs a second bind mount with that
+  exact target — a host symlink does not work, because `_translate_path` calls
+  `Path.resolve()` and rewrites the target back to the real folder name.
 - `sync.py`: renamed `_get_cover_path` to public `get_cover_path` for
   consistency — the function was already imported and used cross-module.
   (PR #1062)

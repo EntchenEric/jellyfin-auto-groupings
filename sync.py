@@ -29,10 +29,12 @@ import requests
 
 from _common import COMPLEX_QUERY_SOURCE_TYPES as _COMPLEX_QUERY_SOURCE_TYPES
 from _common import LIST_SOURCE_TYPES as _LIST_SOURCE_TYPES
+from _common import normalize_group_relpath
 from anilist import fetch_anilist_list
 from imdb import fetch_imdb_list
 from jellyfin import (
     DEFAULT_ITEM_TYPES,
+    ITEM_TYPE_FILTERS,
     RECURSIVE_TRUE,
     SORT_MAP,
     add_to_collection,
@@ -97,14 +99,31 @@ _METADATA_FILTER_MAP: dict[str, str] = {
     "year": "years",
 }
 
-# Jellyfin Fields parameter for full-library fetches
+# Jellyfin Fields parameter for full-library fetches.
+#
+# ``People`` is deliberately absent: Jellyfin expands the full cast for every
+# item, which on a mid-sized library turns a 5-second page into a 75-second one
+# and blows past _FULL_LIBRARY_TIMEOUT, so *every* complex query fails. Only
+# actor rules need it, so it is requested on demand via _FULL_LIBRARY_FIELDS_
+# WITH_PEOPLE.
 _FULL_LIBRARY_FIELDS: str = (
-    "Path,ProviderIds,Genres,Studios,Tags,People,"
-    "ProductionYear,CommunityRating,UserData"
+    "Path,ProviderIds,Genres,Studios,Tags,ProductionYear,CommunityRating,UserData"
 )
+
+# Field list for the rare fetches that must evaluate actor rules.
+_FULL_LIBRARY_FIELDS_WITH_PEOPLE: str = _FULL_LIBRARY_FIELDS + ",People"
 
 # Jellyfin API timeout for full-library fetches (seconds)
 _FULL_LIBRARY_TIMEOUT: int = 30
+
+# Timeout for the People-bearing variant. Jellyfin expands every item's cast
+# for these, which is inherently slow (measured ~75 s per 500-item page on a
+# ~4400-title library), so actor rules get a longer budget instead of failing.
+_FULL_LIBRARY_PEOPLE_TIMEOUT: int = 180
+
+# Smaller pages for the People-bearing fetch: the per-page cost scales with the
+# page size, so fewer items per request keeps each one inside the timeout.
+_FULL_LIBRARY_PEOPLE_PAGE_SIZE: int = 100
 
 # Jellyfin API timeout for metadata group fetches (seconds)
 _METADATA_FETCH_TIMEOUT: int = 30
@@ -231,7 +250,9 @@ def get_cover_path(
     return None
 
 
-_LIBRARY_CACHE: dict[tuple[str, str], tuple[float, list[dict[str, Any]]]] = {}
+#: Keyed by ``(url, api_key, include_people)`` — the People-bearing fetch is a
+#: superset of the lean one and must not be served from the same entry.
+_LIBRARY_CACHE: dict[tuple[str, str, bool], tuple[float, list[dict[str, Any]]]] = {}
 _LIBRARY_CACHE_LOCK = threading.RLock()
 
 
@@ -281,10 +302,37 @@ def _filter_by_watch_state(
     return items
 
 
+def _filter_by_item_type(
+    items: list[dict[str, Any]],
+    item_type: str,
+) -> list[dict[str, Any]]:
+    """Restrict *items* to movies or series.
+
+    Used on the locally-evaluated paths (complex rules, external lists),
+    where the Jellyfin-side ``IncludeItemTypes`` parameter is not available
+    because the full library was fetched in one go.
+
+    Args:
+        items: Jellyfin item dicts (must contain ``Type``).
+        item_type: ``"movies"``, ``"series"``, or any other value (which
+            returns the list unchanged).
+
+    Returns:
+        The filtered list.
+
+    """
+    wanted = ITEM_TYPE_FILTERS.get(item_type)
+    if not wanted:
+        return items
+    return [i for i in items if i.get("Type") == wanted]
+
+
 def _fetch_full_library(
     url: str,
     api_key: str,
     group_name: str,
+    *,
+    include_people: bool = False,
 ) -> tuple[list[dict[str, Any]], str | None, int]:
     """Fetch the full Jellyfin library, cached with a TTL.
 
@@ -302,12 +350,16 @@ def _fetch_full_library(
         url: Jellyfin base URL.
         api_key: Jellyfin API key.
         group_name: Human-readable group name (used for logging).
+        include_people: Also request the ``People`` field.  Only actor
+            rules need it, and it is expensive enough to time the request
+            out on a mid-sized library, so it is off by default.  Cached
+            separately from the lean variant.
 
     Returns:
         A (raw_items, error, status_code) tuple.
 
     """
-    cache_key = (url, api_key)
+    cache_key = (url, api_key, include_people)
     with _LIBRARY_CACHE_LOCK:
         if cache_key in _LIBRARY_CACHE:
             entry = _LIBRARY_CACHE[cache_key]
@@ -316,17 +368,26 @@ def _fetch_full_library(
             # TTL expired — remove stale entry so it gets re-fetched
             del _LIBRARY_CACHE[cache_key]
 
+    fields = _FULL_LIBRARY_FIELDS_WITH_PEOPLE if include_people else _FULL_LIBRARY_FIELDS
     try:
         all_items = fetch_all_jellyfin_items(
             url,
             api_key,
             {
                 "Recursive": RECURSIVE_TRUE,
-                "Fields": _FULL_LIBRARY_FIELDS,
+                "Fields": fields,
                 "IncludeItemTypes": DEFAULT_ITEM_TYPES,
             },
-            limit=_FULL_LIBRARY_PAGE_SIZE,
-            timeout=_FULL_LIBRARY_TIMEOUT,
+            limit=(
+                _FULL_LIBRARY_PEOPLE_PAGE_SIZE
+                if include_people
+                else _FULL_LIBRARY_PAGE_SIZE
+            ),
+            timeout=(
+                _FULL_LIBRARY_PEOPLE_TIMEOUT
+                if include_people
+                else _FULL_LIBRARY_TIMEOUT
+            ),
             _fetch_page=fetch_jellyfin_items,
         )
         logger.info("Jellyfin library: %s items fetched for matching", len(all_items))
@@ -923,6 +984,42 @@ def _fetch_items_for_recommendations_group(
     )
 
 
+def _match_year(value: Any, rule_value: str) -> bool:
+    """Match a production year, supporting range comparisons.
+
+    Accepts a plain year (``2001``) as well as ``<``, ``<=``, ``>`` and
+    ``>=`` prefixes (``>2000``), so a group can select a period without
+    listing every year in it.
+
+    Args:
+        value: The item's ``ProductionYear`` (may be ``None``).
+        rule_value: The year expression from the rule.
+
+    Returns:
+        ``True`` if the year satisfies the expression.
+
+    """
+    if value is None:
+        return False
+
+    expr = rule_value.strip()
+    for prefix in (">=", "<=", ">", "<"):
+        if expr.startswith(prefix):
+            try:
+                year, limit = int(value), int(expr[len(prefix):].strip())
+            except (TypeError, ValueError):
+                return False
+            if prefix == ">=":
+                return year >= limit
+            if prefix == "<=":
+                return year <= limit
+            if prefix == ">":
+                return year > limit
+            return year < limit
+
+    return str(value).strip() == expr
+
+
 def _match_condition(item: dict[str, Any], r_type: str, r_val: str) -> bool:
     """Check if a Jellyfin item matches a single rule condition.
 
@@ -960,9 +1057,7 @@ def _match_condition(item: dict[str, Any], r_type: str, r_val: str) -> bool:
                 r_val == str(t).strip().lower() for t in (item.get("Tags") or [])
             )
         if r_type == "year":
-            val = item.get("ProductionYear")
-            if val is not None:
-                return str(val).strip() == r_val
+            return _match_year(item.get("ProductionYear"), r_val)
     except (AttributeError, TypeError, ValueError):
         pass
 
@@ -1021,6 +1116,7 @@ def _fetch_items_for_complex_group(
     url: str,
     api_key: str,
     watch_state: str = "",
+    item_type: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
     """Resolve Jellyfin items by evaluating a stacked list of rules.
 
@@ -1031,15 +1127,12 @@ def _fetch_items_for_complex_group(
         url: Jellyfin base URL.
         api_key: Jellyfin API key.
         watch_state: Optional filter for watch state ("unwatched", "watched").
+        item_type: Optional restriction to ``"movies"`` or ``"series"``.
 
     Returns:
         A ``(items, error, status_code)`` tuple.
 
     """
-    raw_items, error, status_code = _fetch_full_library(url, api_key, group_name)
-    if error is not None:
-        return [], error, status_code
-
     if not rules:
         return [], None, 200
 
@@ -1060,8 +1153,22 @@ def _fetch_items_for_complex_group(
     if not valid_rules:
         return [], None, 200
 
+    # Only actor rules read item["People"], and requesting that field is slow
+    # enough to time the fetch out, so pay for it only when it is used.
+    needs_people = any(r["type"] == "actor" for r in valid_rules)
+
+    raw_items, error, status_code = _fetch_full_library(
+        url,
+        api_key,
+        group_name,
+        include_people=needs_people,
+    )
+    if error is not None:
+        return [], error, status_code
+
     filtered = [item for item in raw_items if _eval_item(item, valid_rules)]
 
+    filtered = _filter_by_item_type(filtered, item_type)
     filtered = _filter_by_watch_state(filtered, watch_state)
 
     # In-memory sorting because this is local filtering
@@ -1078,6 +1185,7 @@ def _fetch_items_for_metadata_group(
     url: str,
     api_key: str,
     watch_state: str = "",
+    item_type: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
     """Resolve Jellyfin items for a metadata-filter-backed group.
 
@@ -1094,6 +1202,7 @@ def _fetch_items_for_metadata_group(
         url: Jellyfin base URL.
         api_key: Jellyfin API key.
         watch_state: Optional filter for watch state ("unwatched", "watched").
+        item_type: Optional restriction to ``"movies"`` or ``"series"``.
 
     Returns:
         A ``(items, error, status_code)`` tuple.
@@ -1102,7 +1211,7 @@ def _fetch_items_for_metadata_group(
     params: dict[str, str] = {
         "Recursive": RECURSIVE_TRUE,
         "Fields": "Path",
-        "IncludeItemTypes": DEFAULT_ITEM_TYPES,
+        "IncludeItemTypes": ITEM_TYPE_FILTERS.get(item_type, DEFAULT_ITEM_TYPES),
     }
 
     if source_type in _METADATA_FILTER_MAP and source_value:
@@ -1236,6 +1345,7 @@ def preview_group(
     tmdb_api_key: str = "",
     mal_client_id: str = "",
     anilist_api_url: str | None = None,
+    item_type: str = "",
 ) -> tuple[list[dict[str, Any]], str | None, int]:
     """Resolve items for a grouping preview.
 
@@ -1256,6 +1366,7 @@ def preview_group(
         tmdb_api_key: TMDb API key (required for tmdb_list).
         mal_client_id: MyAnimeList client ID (required for mal_list).
         anilist_api_url: Optional custom AniList API URL.
+        item_type: Optional restriction to ``"movies"`` or ``"series"``.
 
     Returns:
         A ``(items, error, status_code)`` tuple.
@@ -1263,7 +1374,7 @@ def preview_group(
     """
     # External list sources dispatch
     if type_name in _LIST_SOURCE_TYPES:
-        return _dispatch_list_source(
+        items, error, code = _dispatch_list_source(
             type_name,
             "Preview",
             val,
@@ -1276,10 +1387,14 @@ def preview_group(
             mal_client_id=mal_client_id,
             anilist_api_url=anilist_api_url,
         )
+        return _filter_by_item_type(items, item_type), error, code
 
-    # Complex query (metadata-based)
-    if _COMPLEX_QUERY_RE.search(val):
-        rules = parse_complex_query(val, type_name)
+    # Complex query (metadata-based). Mirrors _resolve_group_source so the
+    # preview count matches what the sync will actually link.
+    if type_name == "complex" or _COMPLEX_QUERY_RE.search(val):
+        rules = parse_complex_query(
+            val, "genre" if type_name == "complex" else type_name,
+        )
         return _fetch_items_for_complex_group(
             "preview",
             rules,
@@ -1287,6 +1402,7 @@ def preview_group(
             url,
             api_key,
             watch_state,
+            item_type,
         )
     return _fetch_items_for_metadata_group(
         "preview",
@@ -1296,6 +1412,7 @@ def preview_group(
         url,
         api_key,
         watch_state,
+        item_type,
     )
 
 
@@ -1414,9 +1531,22 @@ def _auto_create_library(
         The updated result dict.
 
     """
+    # Nested groups ("Anime/Action") are meant to be browsed as folders inside
+    # a single library the user points at the tree root, so auto-creating one
+    # Jellyfin library per sub-folder would defeat the purpose.
+    relpath = normalize_group_relpath(group_name)
+    is_nested = relpath is not None and "/" in relpath
+    if is_nested:
+        logger.info(
+            "Skipping library auto-creation for nested grouping %r "
+            "(point one library at the tree root instead)",
+            group_name,
+        )
+
     if (
         not dry_run
         and auto_create_libraries
+        and not is_nested
         and links_created > 0
         and existing_libraries is not None
         and group_name not in existing_libraries
@@ -1583,6 +1713,38 @@ def _create_group_symlinks(
     return links_created, preview_items
 
 
+def _clear_group_directory(group_dir: Path) -> None:
+    """Remove a group's own contents, leaving nested child groups intact.
+
+    A group's directory can double as the parent of nested groups: with
+    both ``Action`` and ``Action/Filme`` configured, ``<target>/Action``
+    holds this group's symlinks *and* the ``Filme`` subdirectory. Wiping
+    the whole tree would delete the child group's links, and whether they
+    came back depended on the order the groups happened to sync in.
+
+    Only the entries this group owns are removed — its symlinks and cover
+    image. Subdirectories are left alone; a child group cleans up its own
+    directory when it syncs.
+
+    Args:
+        group_dir: The group's directory.
+
+    """
+    try:
+        entries = list(group_dir.iterdir())
+    except FileNotFoundError:
+        # Raced with something else removing it, or it never existed —
+        # either way there is nothing to clean.
+        return
+
+    for entry in entries:
+        # is_dir() follows symlinks, so check for a link first — a symlink
+        # pointing at a season folder is ours to remove, a real directory
+        # belongs to a nested group.
+        if entry.is_symlink() or not entry.is_dir():
+            entry.unlink()
+
+
 def _prepare_group_directory(
     group_dir: str,
     group_name: str,
@@ -1613,7 +1775,7 @@ def _prepare_group_directory(
     if not dry_run:
         if Path(group_dir).exists():
             logger.info("Cleaning existing directory: %s", group_dir)
-            shutil.rmtree(group_dir)
+            _clear_group_directory(Path(group_dir))
         Path(group_dir).mkdir(parents=True, exist_ok=True)
 
         if source_cover:
@@ -1779,8 +1941,10 @@ def _resolve_group_source(
         A ``(items, error, status_code)`` tuple.
 
     """
+    item_type = str(group.get("item_type") or "").strip().lower()
+
     if source_type in _LIST_SOURCE_TYPES:
-        return _dispatch_list_source(
+        items, error, code = _dispatch_list_source(
             source_type,
             group_name,
             source_value or "",
@@ -1793,6 +1957,7 @@ def _resolve_group_source(
             mal_client_id=mal_client_id,
             anilist_api_url=anilist_api_url,
         )
+        return _filter_by_item_type(items, item_type), error, code
     if isinstance(group.get("rules"), list) and group["rules"]:
         rules_list = group["rules"]
         return _fetch_items_for_complex_group(
@@ -1802,11 +1967,26 @@ def _resolve_group_source(
             url,
             api_key,
             watch_state,
+            item_type,
         )
 
     val_str = str(source_value or "")
-    if source_type in _COMPLEX_QUERY_SOURCE_TYPES and _COMPLEX_QUERY_RE.search(val_str):
-        rules = parse_complex_query(val_str, str(source_type))
+    # "complex" is a source type in its own right; the metadata types are
+    # included because their *value* may carry operators ("Action OR Drama").
+    # Without the explicit "complex" case the group fell through to the
+    # metadata fetch, which has no filter for it and returned the entire
+    # library.
+    # A "complex" group always takes this path — even a single condition
+    # ("genre:Action") is a rule expression, not a metadata filter value.
+    is_complex_type = source_type == "complex"
+    if is_complex_type or (
+        source_type in _COMPLEX_QUERY_SOURCE_TYPES
+        and _COMPLEX_QUERY_RE.search(val_str)
+    ):
+        # A bare "complex" group has no implicit field, so rules must name
+        # their own ("genre:Action"); default to genre for the rest.
+        default_type = "genre" if is_complex_type else str(source_type)
+        rules = parse_complex_query(val_str, default_type)
         return _fetch_items_for_complex_group(
             group_name,
             rules,
@@ -1814,6 +1994,7 @@ def _resolve_group_source(
             url,
             api_key,
             watch_state,
+            item_type,
         )
     return _fetch_items_for_metadata_group(
         group_name,
@@ -1823,6 +2004,7 @@ def _resolve_group_source(
         url,
         api_key,
         watch_state,
+        item_type,
     )
 
 
@@ -1874,7 +2056,14 @@ def _process_group(
     if not group_name:
         return {"group": "(unnamed)", "links": 0, "error": "Empty group name"}
 
-    group_dir: str = str(Path(target_base) / group_name)
+    # A name may describe a nested folder ("Anime/Action"). Normalising here
+    # keeps the resulting directory inside target_base — important because
+    # _prepare_group_directory rmtree()s it.
+    relpath: str | None = normalize_group_relpath(group_name)
+    if relpath is None:
+        return {"group": group_name, "links": 0, "error": "Invalid group name"}
+
+    group_dir: str = str(Path(target_base).joinpath(*relpath.split("/")))
     sort_order: str = group.get("sort_order", "") or ""
     source_type: str | None = group.get("source_type")
     source_value: str | None = group.get("source_value")

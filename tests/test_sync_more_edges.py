@@ -173,7 +173,7 @@ def test_clear_library_cache() -> None:
     from sync import _LIBRARY_CACHE, clear_library_cache
 
     _LIBRARY_CACHE.clear()
-    _LIBRARY_CACHE[("http://jf:8096", "key")] = [{"Id": "1"}]
+    _LIBRARY_CACHE[("http://jf:8096", "key", False)] = [{"Id": "1"}]
     assert len(_LIBRARY_CACHE) == 1
     clear_library_cache()
     assert len(_LIBRARY_CACHE) == 0
