@@ -117,7 +117,8 @@ def test_get_tmdb_recommendations_failure_skipped(mock_get) -> None:
 @patch("tmdb.time.sleep")
 @patch("network.get")
 def test_get_tmdb_recommendations_rate_limit_retry_after(
-    mock_get, mock_sleep,
+    mock_get,
+    mock_sleep,
 ) -> None:
     """429 response with Retry-After header sleeps the specified duration."""
     mock_resp_429 = MagicMock()
@@ -143,7 +144,8 @@ def test_get_tmdb_recommendations_rate_limit_retry_after(
 @patch("tmdb.time.sleep")
 @patch("network.get")
 def test_get_tmdb_recommendations_rate_limit_no_header(
-    mock_get, mock_sleep,
+    mock_get,
+    mock_sleep,
 ) -> None:
     """429 without Retry-After header falls back to 1s sleep."""
     mock_resp_429 = MagicMock()
@@ -169,7 +171,8 @@ def test_get_tmdb_recommendations_rate_limit_no_header(
 @patch("tmdb.time.sleep")
 @patch("network.get")
 def test_get_tmdb_recommendations_rate_limit_non_numeric_header(
-    mock_get, mock_sleep,
+    mock_get,
+    mock_sleep,
 ) -> None:
     """429 with non-numeric Retry-After falls back to 1s sleep."""
     mock_resp_429 = MagicMock()

@@ -6,6 +6,7 @@ CSRF protection, and error handling — all with mocked dependencies.
 """
 
 import os
+import time
 from datetime import UTC
 from pathlib import Path
 from typing import Never
@@ -62,6 +63,32 @@ def test_sync_rate_limit(mock_run_sync, client) -> None:
     second = client.post("/api/sync", headers={"X-Requested-With": "XMLHttpRequest"})
     assert second.status_code == 429
     mock_run_sync.assert_called_once()
+
+
+@patch("routes.run_sync", return_value=[])
+def test_sync_rate_limit_prunes_stale_entries(mock_run_sync, client) -> None:
+    """Stale per-IP entries older than twice the rate-limit window are pruned.
+
+    Covers the pruning loop in ``_check_sync_rate_limit`` that removes
+    outdated entries so the tracker does not grow unboundedly.
+    """
+    import routes
+
+    now = time.monotonic()
+    stale_cutoff = now - (2 * routes._SYNC_RATE_LIMIT_SECONDS) - 10
+    routes._last_sync_by_ip["stale-ip-1"] = stale_cutoff
+    routes._last_sync_by_ip["stale-ip-2"] = stale_cutoff
+    # A fresh entry within the window must be kept.
+    routes._last_sync_by_ip["fresh-ip"] = now - 1
+
+    response = client.post("/api/sync", headers={"X-Requested-With": "XMLHttpRequest"})
+    assert response.status_code == 200
+
+    # The two stale entries are pruned; the fresh one remains alongside the
+    # current client's entry.
+    assert "stale-ip-1" not in routes._last_sync_by_ip
+    assert "stale-ip-2" not in routes._last_sync_by_ip
+    assert "fresh-ip" in routes._last_sync_by_ip
 
 
 @pytest.mark.usefixtures("temp_config")
@@ -2216,6 +2243,30 @@ def test_version_endpoint(client) -> None:
     assert "version" in data
     assert isinstance(data["version"], str)
     assert len(data["version"]) > 0
+
+
+def test_version_fallback_when_package_not_installed(monkeypatch) -> None:
+    """__version__ falls back to a dev placeholder when the package is missing.
+
+    Covers the ``except PackageNotFoundError`` branch in routes.py's
+    version-detection block.
+    """
+    import importlib
+
+    import routes as routes_module
+
+    def _raise_not_found(_name: str) -> str:
+        from importlib.metadata import PackageNotFoundError
+
+        raise PackageNotFoundError
+
+    monkeypatch.setattr("importlib.metadata.version", _raise_not_found)
+    importlib.reload(routes_module)
+
+    assert routes_module.__version__ == "1.0.0+dev"
+
+    # Restore the real metadata lookup so later tests see the true version.
+    importlib.reload(routes_module)
 
 
 def test_health_check_includes_version(client) -> None:
