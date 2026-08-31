@@ -47,14 +47,12 @@ query ($userName: String, $status: MediaListStatus) {
 def _resolve_anilist_status(status: str | None) -> str | None:
     """Normalize a user-provided AniList status to the API's expected value.
 
+    Args:
+        status: The status string to normalize.
+
     Raises:
         ValueError: If *status* is not ``None``, ``"ALL"``, or a recognised
                     status key from :data:`_ANILIST_STATUS_MAP`.
-
-
-
-    Args:
-            status: The status string to normalize.
 
     """
     if not status or status.upper() == "ALL":

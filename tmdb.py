@@ -31,15 +31,13 @@ def _fetch_tmdb_page(
 ) -> dict[str, Any]:
     """Fetch a single TMDb list page and return the parsed JSON response.
 
+    Args:
+        list_id: The TMDb list ID.
+        api_key: Jellyfin API key.
+        page: Page number to fetch.
+
     Raises:
         RuntimeError: If an HTTP error occurs.
-
-
-
-    Args:
-            list_id: The TMDb list ID.
-            api_key: Jellyfin API key.
-            page: Page number to fetch.
 
     """
     url = f"{_TMDB_API_BASE}/list/{list_id}"

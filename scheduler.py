@@ -88,9 +88,8 @@ def _validate_group_entry(group: Any) -> str | None:
 
     Returns the stripped name on success, ``None`` on failure (with a warning logged).
 
-
     Args:
-            group: The group configuration dict.
+        group: The group configuration dict.
 
     """
     if not isinstance(group, dict):

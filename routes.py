@@ -319,15 +319,15 @@ def _get_jellyfin_config(
 ) -> tuple[str, str]:
     """Load and validate Jellyfin URL + API key from the active config.
 
-    Raises:
-        werkzeug.exceptions.HTTPException: 400 or 500 if the config
-        is missing or invalid.
+    Args:
+        missing_msg: Message to include if config is missing.
 
     Returns:
         ``(url, api_key)`` on success.
 
-    Args:
-        missing_msg: Message to include if config is missing.
+    Raises:
+        werkzeug.exceptions.HTTPException: 400 or 500 if the config
+        is missing or invalid.
 
     """
     config = load_config()
