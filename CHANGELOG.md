@@ -38,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `README.md`: update test count from 855 to 856 (a cleanup test was added in
+  the symlink-exclusion fix).
 - `README.md`: update test count from 749 to 855 and document the `/api/version`
   endpoint in the Diagnostics table.
 - `docs/API.md`: document the `/api/version` endpoint (returns the current
