@@ -61,6 +61,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `initCoverGenerator`), raising the full frontend suite to 223 tests across
   15 files.
 
+- `tests/frontend/cover-generator.test.js`: extend the cover-generator suite
+  to cover the canvas rendering internals — every theme background and text
+  branch, all eight border styles (incl. the dashed `industrial-dash` and
+  corner-ornament `ornate` paths), the `wrapText` line-wrapping and
+  character-splitting edge cases, and the post-render canvas-state reset.
+  This raises `cover-generator.js` statement coverage from ~42% to 100%
+  and overall frontend coverage from ~81% to ~92% (240 tests across 15
+  files).
+
 - Groups can be restricted to movies or series via a new `item_type` setting
   ("Media Type Filter" in the UI). Jellyfin often files the same genre under
   different names per media type (`Action` for movies, `Action & Adventure`
