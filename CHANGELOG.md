@@ -31,6 +31,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   corresponding entry in the frontend `sortLabels` map, so a missing label
   (like the `ProductionYearAsc` one fixed below) is caught by the test suite.
 
+- `tests/frontend/path-picker.test.js`: add unit tests for the `path-picker.js`
+  feature module (opening the picker per target field, browsing directories
+  including empty/error/loading states, confirming and closing, backdrop
+  dismissal, host-path auto-detection and `autoDetectIfEmpty`), raising its
+  statement coverage from 0% to ~97% and the full frontend suite to 168 tests
+  across 12 files.
+
+- `tests/frontend/config.test.js`: add unit tests for the `config.js` feature
+  module (`loadConfig` incl. legacy data migration, `saveAllConfig` incl.
+  client-side cron validation, `performSilentTest`, `syncDomToState`, the
+  scheduler toggles and `initConfig`), raising its statement coverage from
+  ~10% to ~74% and the full frontend suite to 186 tests across 13 files.
+
 - Groups can be restricted to movies or series via a new `item_type` setting
   ("Media Type Filter" in the UI). Jellyfin often files the same genre under
   different names per media type (`Action` for movies, `Action & Adventure`
