@@ -9,6 +9,16 @@ vi.mock('../../static/js/features/metadata.js', () => ({
   refreshMetadata: vi.fn(),
 }));
 
+// Mock config and path-picker so testConnectionFromSidebar can be exercised
+// without pulling in the full config save / auto-detect machinery.
+vi.mock('../../static/js/features/config.js', () => ({
+  saveAllConfig: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../../static/js/features/path-picker.js', () => ({
+  autoDetectIfEmpty: vi.fn().mockResolvedValue(undefined),
+}));
+
 /**
  * Set up the DOM elements that test-connection.js references.
  */
@@ -156,5 +166,81 @@ describe('test-connection module', () => {
     const result = await mod.testConnection('http://test', 'bad-key');
     expect(result.success).toBe(false);
     expect(result.message).toBe('Connection failed');
+  });
+
+  it('testConnectionFromSidebar should save config and refresh on success', async () => {
+    const showToast = vi.fn();
+    const showErrorDialog = vi.fn();
+    const setLoading = vi.fn();
+    vi.doMock('../../static/js/core/ui.js', () => ({
+      showToast,
+      showErrorDialog,
+      setLoading,
+      getEl: (id) => document.getElementById(id),
+    }));
+    vi.doMock('../../static/js/core/api.js', () => ({
+      testServer: vi.fn().mockResolvedValue({ status: 'success', message: 'Connected!' }),
+    }));
+
+    document.getElementById('jellyfin_url').value = 'http://jf:8096';
+    document.getElementById('api_key').value = 'secret';
+    document.getElementById('target_path').value = '/media';
+
+    const mod = await import('../../static/js/features/test-connection.js');
+    await mod.testConnectionFromSidebar();
+
+    expect(showToast).toHaveBeenCalledWith('Connected!', 'success');
+    expect(showErrorDialog).not.toHaveBeenCalled();
+    expect(document.getElementById('status-dot').className).toBe('connection-dot online');
+    expect(setLoading).toHaveBeenCalledTimes(2); // loading on, then off
+  });
+
+  it('testConnectionFromSidebar should show error dialog and mark disconnected on failure', async () => {
+    const showToast = vi.fn();
+    const showErrorDialog = vi.fn();
+    const setLoading = vi.fn();
+    vi.doMock('../../static/js/core/ui.js', () => ({
+      showToast,
+      showErrorDialog,
+      setLoading,
+      getEl: (id) => document.getElementById(id),
+    }));
+    vi.doMock('../../static/js/core/api.js', () => ({
+      testServer: vi.fn().mockResolvedValue({ status: 'error', message: 'Bad key' }),
+    }));
+
+    document.getElementById('jellyfin_url').value = 'http://jf:8096';
+    document.getElementById('api_key').value = 'wrong';
+
+    const mod = await import('../../static/js/features/test-connection.js');
+    await mod.testConnectionFromSidebar();
+
+    expect(showErrorDialog).toHaveBeenCalledWith('Bad key');
+    expect(showToast).not.toHaveBeenCalled();
+    expect(document.getElementById('status-dot').className).toBe('connection-dot offline');
+  });
+
+  it('testConnectionFromSidebar should handle network failure gracefully', async () => {
+    const showToast = vi.fn();
+    const showErrorDialog = vi.fn();
+    const setLoading = vi.fn();
+    vi.doMock('../../static/js/core/ui.js', () => ({
+      showToast,
+      showErrorDialog,
+      setLoading,
+      getEl: (id) => document.getElementById(id),
+    }));
+    vi.doMock('../../static/js/core/api.js', () => ({
+      testServer: vi.fn().mockRejectedValue(new Error('Network down')),
+    }));
+
+    document.getElementById('jellyfin_url').value = 'http://jf:8096';
+    document.getElementById('api_key').value = 'key';
+
+    const mod = await import('../../static/js/features/test-connection.js');
+    await mod.testConnectionFromSidebar();
+
+    expect(showErrorDialog).toHaveBeenCalledWith('API unreachable');
+    expect(document.getElementById('status-dot').className).toBe('connection-dot offline');
   });
 });
