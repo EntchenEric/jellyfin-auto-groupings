@@ -48,6 +48,7 @@ export const sortLabels = {
     'recommendations_list_order': 'Recommendations Order',
     'CommunityRating': 'Community Rating',
     'ProductionYear': 'Production Year',
+    'ProductionYearAsc': 'Production Year (oldest first)',
     'SortName': 'Name (A→Z)',
     'DateCreated': 'Date Added',
     'Random': 'Random',
