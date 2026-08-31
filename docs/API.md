@@ -38,6 +38,20 @@ Health check for load balancers and orchestrators.
 
 ---
 
+## `GET /api/version`
+
+Return the current application version string.
+
+**Auth:** Required when `APP_PASSWORD` is set (same as other `/api/*` routes).
+
+**Response `200`:**
+
+```json
+{ "version": "1.0.0" }
+```
+
+---
+
 ## `GET /api/config`
 
 Return the current application configuration.

@@ -38,6 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `README.md`: update test count from 749 to 855 and document the `/api/version`
+  endpoint in the Diagnostics table.
+- `docs/API.md`: document the `/api/version` endpoint (returns the current
+  application version string).
 - `_common.py`: update `DEFAULT_SCRAPING_HEADERS` User-Agent from Chrome/122 to
   Chrome/131 to reduce the chance of being blocked by scraping targets.
 
