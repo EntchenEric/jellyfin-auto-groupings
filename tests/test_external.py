@@ -503,14 +503,14 @@ def test_fetch_trakt_invalid_json(mock_get) -> None:
 
 @patch("network.get")
 def test_fetch_trakt_non_list_response(mock_get) -> None:
-    """A non-list JSON response (e.g. an error object) raises RuntimeError."""
+    """A non-list JSON response (e.g. an error object) raises TypeError."""
     mock_resp = MagicMock()
     mock_resp.status_code = 200
     mock_resp.json.return_value = {"error": "not a list"}
     mock_resp.headers = {"X-Pagination-Page-Count": "1"}
     mock_get.return_value = mock_resp
 
-    with pytest.raises(RuntimeError, match="Unexpected Trakt API response shape"):
+    with pytest.raises(TypeError, match="Unexpected Trakt API response shape"):
         fetch_trakt_list("user/list", "client_id")
 
 

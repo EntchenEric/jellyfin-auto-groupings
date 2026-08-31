@@ -57,8 +57,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `trakt.py`: `_fetch_trakt_page()` now raises a clear `RuntimeError` when the
-  Trakt API returns invalid JSON or a non-list response body, instead of
-  letting a raw `ValueError`/`AttributeError` propagate. `_extract_imdb_ids_from_page()`
+  Trakt API returns invalid JSON, and a `TypeError` when it returns a non-list
+  response body, instead of letting a raw `ValueError`/`AttributeError`
+  propagate. `_extract_imdb_ids_from_page()`
   also tolerates malformed entries (non-dict items, non-dict `media`/`ids`
   objects) by skipping them, so a single bad record can no longer abort the
   whole list fetch. This matches the robustness already present in `mal.py`

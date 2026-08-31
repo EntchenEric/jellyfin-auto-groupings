@@ -93,6 +93,7 @@ def _fetch_trakt_page(
 
     Raises:
         RuntimeError: If an HTTP error occurs.
+        TypeError: If the response body is not a JSON list.
 
     """
     url = (
@@ -113,7 +114,7 @@ def _fetch_trakt_page(
         raise RuntimeError(msg) from exc
     if not isinstance(items, list):
         msg = f"Unexpected Trakt API response shape on page {page}: expected a list"
-        raise RuntimeError(msg)
+        raise TypeError(msg)
     try:
         total_pages: int = int(resp.headers.get("X-Pagination-Page-Count", 1))
     except ValueError:
