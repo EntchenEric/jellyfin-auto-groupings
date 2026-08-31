@@ -106,7 +106,14 @@ def _fetch_trakt_page(
         msg = f"Failed to fetch Trakt list page {page}: {exc}"
         raise RuntimeError(msg) from exc
 
-    items: list[dict[str, Any]] = resp.json()
+    try:
+        items = resp.json()
+    except ValueError as exc:
+        msg = f"Invalid JSON response from Trakt API on page {page}: {exc}"
+        raise RuntimeError(msg) from exc
+    if not isinstance(items, list):
+        msg = f"Unexpected Trakt API response shape on page {page}: expected a list"
+        raise RuntimeError(msg)
     try:
         total_pages: int = int(resp.headers.get("X-Pagination-Page-Count", 1))
     except ValueError:
@@ -128,9 +135,17 @@ def _extract_imdb_ids_from_page(
 
     """
     for entry in resp_json:
+        if not isinstance(entry, dict):
+            # Tolerate malformed entries (e.g. a bare string) instead of crashing
+            continue
         item_type: str | None = entry.get("type")  # "movie" or "show"
-        media: dict[str, Any] = entry.get(item_type, {}) if item_type else {}
-        imdb_id: str | None = media.get("ids", {}).get("imdb")
+        media: Any = entry.get(item_type, {}) if item_type else {}
+        if not isinstance(media, dict):
+            continue
+        ids_obj: Any = media.get("ids", {})
+        if not isinstance(ids_obj, dict):
+            continue
+        imdb_id: str | None = ids_obj.get("imdb")
         if imdb_id and imdb_id not in seen:
             seen.add(imdb_id)
             ids.append(imdb_id)

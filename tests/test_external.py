@@ -488,6 +488,50 @@ def test_fetch_trakt_bad_pagination_header(mock_get) -> None:
     assert ids == ["tt222"]
 
 
+@patch("network.get")
+def test_fetch_trakt_invalid_json(mock_get) -> None:
+    """Invalid JSON from the Trakt API raises RuntimeError, not ValueError."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.side_effect = ValueError("No JSON object could be decoded")
+    mock_resp.headers = {"X-Pagination-Page-Count": "1"}
+    mock_get.return_value = mock_resp
+
+    with pytest.raises(RuntimeError, match="Invalid JSON response from Trakt"):
+        fetch_trakt_list("user/list", "client_id")
+
+
+@patch("network.get")
+def test_fetch_trakt_non_list_response(mock_get) -> None:
+    """A non-list JSON response (e.g. an error object) raises RuntimeError."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"error": "not a list"}
+    mock_resp.headers = {"X-Pagination-Page-Count": "1"}
+    mock_get.return_value = mock_resp
+
+    with pytest.raises(RuntimeError, match="Unexpected Trakt API response shape"):
+        fetch_trakt_list("user/list", "client_id")
+
+
+@patch("network.get")
+def test_fetch_trakt_malformed_entries_skipped(mock_get) -> None:
+    """Malformed entries (non-dict, non-dict media/ids) are skipped safely."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = [
+        "not-a-dict",
+        {"type": "movie", "movie": "not-a-dict"},
+        {"type": "movie", "movie": {"ids": "not-a-dict"}},
+        {"type": "movie", "movie": {"ids": {"imdb": "tt333"}}},
+    ]
+    mock_resp.headers = {"X-Pagination-Page-Count": "1"}
+    mock_get.return_value = mock_resp
+
+    ids = fetch_trakt_list("user/list", "client_id")
+    assert ids == ["tt333"]
+
+
 # ---------------------------------------------------------------------------
 # imdb.py: duplicate ID skip branch
 # ---------------------------------------------------------------------------
