@@ -1221,6 +1221,10 @@ def test_match_year_ranges() -> None:
     # Missing or unparseable values never match.
     assert not _match_year(None, "2000")
     assert not _match_year(1999, "<nonsense")
+    # A non-coercible value in a range comparison never matches (exercises
+    # the ``year is None`` branch of the range path).
+    assert not _match_year("abc", ">2000")
+    assert not _match_year("abc", "<=2000")
 
     # Float years (e.g. from some API responses) match the plain integer form.
     assert _match_year(2001.0, "2001")
@@ -1248,6 +1252,21 @@ def test_match_year_ranges() -> None:
     # (exercises the unparseable-expression branch of _parse_year_int).
     assert not _match_year(2001, "abc")
     assert not _match_year(2001.0, "abc")
+
+
+def test_coerce_year_int() -> None:
+    """_coerce_year_int normalises int/float/string years to an int."""
+    from sync import _coerce_year_int
+
+    assert _coerce_year_int(2001) == 2001
+    assert _coerce_year_int(2001.0) == 2001
+    assert _coerce_year_int("2001") == 2001
+    assert _coerce_year_int("2001.0") == 2001
+    assert _coerce_year_int(" 2001 ") == 2001
+    # Booleans and non-coercible values are rejected.
+    assert _coerce_year_int(True) is None
+    assert _coerce_year_int("abc") is None
+    assert _coerce_year_int(None) is None
 
 
 @patch("sync.fetch_jellyfin_items")
