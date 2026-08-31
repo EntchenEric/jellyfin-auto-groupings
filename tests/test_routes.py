@@ -987,13 +987,14 @@ def test_prune_empty_parents_current_resolve_error(tmp_path) -> None:
 
     real_resolve = Path.resolve
     calls = {"n": 0}
+    loop_error = "symlink loop"
 
     def _flaky_resolve() -> Path:
         # First call resolves ``base``; the loop's ``current.resolve()`` is the
         # second call and raises RuntimeError (as a symlink loop would).
         calls["n"] += 1
         if calls["n"] == 2:
-            raise RuntimeError("symlink loop")
+            raise RuntimeError(loop_error)
         return real_resolve(base)
 
     with patch("routes.Path.resolve", side_effect=_flaky_resolve):
