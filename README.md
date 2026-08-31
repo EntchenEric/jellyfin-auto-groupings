@@ -345,6 +345,7 @@ are prefixed with `/api/`.
 | Endpoint | Method | Description |
 |---|---|---|
 | `/api/health` | `GET` | Health check endpoint for Docker/Kubernetes probes |
+| `/api/version` | `GET` | Return the current application version |
 | `/api/test/results` | `GET` | Return the latest test output logs |
 
 ---
@@ -486,7 +487,7 @@ make run
 ### 🧪 Testing
 
 ```bash
-# Run the full test suite (749 tests, 100% coverage)
+# Run the full test suite (855 tests, 100% coverage)
 python3 -m pytest
 
 # Run tests with coverage report
