@@ -969,20 +969,35 @@ def test_prune_empty_parents_resolve_error(mock_resolve, tmp_path) -> None:
 def test_prune_empty_parents_current_resolve_error(tmp_path) -> None:
     """_prune_empty_parents returns when the current dir cannot be resolved.
 
-    A self-referential symlink makes ``Path.resolve()`` genuinely raise
-    ``RuntimeError`` (a ``OSError``/``RuntimeError`` subclass path), hitting the
-    loop's ``except (OSError, RuntimeError)`` branch without mocking.
+    ``Path.resolve()`` raises ``RuntimeError`` on a symlink loop. Python 3.13
+    changed symlink-loop handling so a self-referential symlink no longer
+    reliably raises, so we mock ``Path.resolve`` to raise ``RuntimeError`` for
+    the loop's ``current.resolve()`` call instead. This hits the loop's
+    ``except (OSError, RuntimeError)`` branch deterministically on every
+    Python version.
     """
+    from unittest.mock import patch
+
     from routes import _prune_empty_parents
 
     base = tmp_path / "base"
     base.mkdir()
     current = base / "current"
     current.mkdir()
-    loop = current / "loop"
-    loop.symlink_to(loop)
 
-    _prune_empty_parents(loop, base)
+    real_resolve = Path.resolve
+    calls = {"n": 0}
+
+    def _flaky_resolve() -> Path:
+        # First call resolves ``base``; the loop's ``current.resolve()`` is the
+        # second call and raises RuntimeError (as a symlink loop would).
+        calls["n"] += 1
+        if calls["n"] == 2:
+            raise RuntimeError("symlink loop")
+        return real_resolve(base)
+
+    with patch("routes.Path.resolve", side_effect=_flaky_resolve):
+        _prune_empty_parents(current, base)
 
 
 @patch("routes.Path.iterdir", side_effect=OSError("Permission denied"))
