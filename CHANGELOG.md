@@ -44,6 +44,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   endpoint in the Diagnostics table.
 - `docs/API.md`: document the `/api/version` endpoint (returns the current
   application version string).
+- `docs/API.md`: document the `version` field returned by the `/api/health`
+  endpoint (it was present in the response but missing from the docs table).
 - `_common.py`: update `DEFAULT_SCRAPING_HEADERS` User-Agent from Chrome/122 to
   Chrome/131 to reduce the chance of being blocked by scraping targets.
 
