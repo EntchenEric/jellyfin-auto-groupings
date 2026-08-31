@@ -73,6 +73,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `sync.py`: `_match_year()` now matches float production years (e.g.
+  `2001.0` from some API responses) against plain integer expressions like
+  `"2001"`, instead of comparing `"2001.0" == "2001"` and returning `False`.
+  Non-numeric values still fall back to string comparison and never match a
+  plain numeric expression.
+
 - `trakt.py`: `_fetch_trakt_page()` now raises a clear `RuntimeError` when the
   Trakt API returns invalid JSON, and a `TypeError` when it returns a non-list
   response body, instead of letting a raw `ValueError`/`AttributeError`
