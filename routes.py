@@ -149,10 +149,10 @@ _TEST_RESULT_FILENAMES = (
 )
 
 # Allowed preview metadata types, including external list sources
-_ALLOWED_PREVIEW_TYPES: frozenset[str] = _ALLOWED_PREVIEW_TYPES
+# (imported from _common as _ALLOWED_PREVIEW_TYPES)
 
 # Default filesystem search roots for auto-detect
-_DEFAULT_SEARCH_ROOTS: tuple[str, ...] = _DEFAULT_SEARCH_ROOTS
+# (imported from _common as _DEFAULT_SEARCH_ROOTS)
 
 # Sync rate limiting (per client IP)
 _SYNC_RATE_LIMIT_SECONDS = 5
