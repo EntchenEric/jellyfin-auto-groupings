@@ -1022,17 +1022,12 @@ def _match_year(value: Any, rule_value: str) -> bool:
                 return year > limit
             return year < limit
 
-    # Plain (exact) comparison.  Normalise numeric values so a float year
-    # (e.g. ``2001.0`` from some API responses) still matches ``"2001"``
-    # instead of comparing ``"2001.0" == "2001"`` and returning False.
-    if isinstance(value, (int, float)) and not isinstance(value, bool):
-        return int(value) == _parse_year_int(expr)
-    # Some API responses serialise the year as a string (e.g. ``"2001.0"``);
-    # coerce those to an int too so they match the plain integer expression.
-    if isinstance(value, str):
-        coerced = _coerce_year_int(value)
-        if coerced is not None:
-            return coerced == _parse_year_int(expr)
+    # Plain (exact) comparison.  Normalise numeric/string year values (e.g.
+    # ``2001.0`` or ``"2001.0"`` from some API responses) so they still match
+    # ``"2001"`` instead of comparing raw strings and returning False.
+    coerced = _coerce_year_int(value)
+    if coerced is not None:
+        return coerced == _parse_year_int(expr)
     return str(value).strip() == expr
 
 
