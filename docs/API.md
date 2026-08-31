@@ -25,6 +25,7 @@ Health check for load balancers and orchestrators.
 | Field | Type | Description |
 |-------|------|-------------|
 | `status` | string | `"ok"` or `"error"` |
+| `version` | string | Current application version string |
 | `healthcheck.ok` | boolean | Service health |
 | `healthcheck.configured` | boolean | Jellyfin URL, API key, and target path present |
 | `healthcheck.groups` | number | Count of configured groupings |
