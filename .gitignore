@@ -40,6 +40,7 @@ pytest.log
 .coverage
 htmlcov/
 coverage.xml
+coverage/
 e2e/test_media/
 e2e/test_output/
 

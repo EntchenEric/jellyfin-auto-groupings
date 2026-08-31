@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `tests/frontend/sync.test.js`, `tests/frontend/cleanup.test.js`,
+  `tests/frontend/export-import.test.js` and `tests/frontend/wizard.test.js`:
+  add unit tests for the previously-untested frontend feature modules. This
+  raises overall frontend statement coverage from ~23% to ~42% (cleanup,
+  sync and export-import each go from 0% to 80%+).
+
 - `tests/frontend/state-advanced.test.js`: add a regression-guard test that
   verifies every sort option in the `sort_order` dropdown template has a
   corresponding entry in the frontend `sortLabels` map, so a missing label
