@@ -62,12 +62,14 @@ USER appuser
 # Gunicorn configuration — timeout is configurable via GUNICORN_TIMEOUT
 # (default 120s) for deployments with slow API responses or large libraries.
 # Worker count is configurable via GUNICORN_WORKERS (default 2) for
-# multi-core hosts.
+# multi-core hosts. The bind port honors FLASK_PORT (default 5000) so the
+# container can be mapped to a custom host port without rebuilding.
 # ------------------------------------------------------------------
 ENV GUNICORN_TIMEOUT=120
 ENV GUNICORN_WORKERS=2
+ENV FLASK_PORT=5000
 
-# shell entrypoint expands $GUNICORN_TIMEOUT and $GUNICORN_WORKERS at
-# container start so environment variables can be overridden without
-# rebuilding the image.
-ENTRYPOINT ["/bin/sh", "-c", "exec gunicorn --bind 0.0.0.0:5000 --workers ${GUNICORN_WORKERS} --timeout ${GUNICORN_TIMEOUT} --preload --access-logfile - --error-logfile - app:app"]
+# shell entrypoint expands $GUNICORN_TIMEOUT, $GUNICORN_WORKERS and
+# $FLASK_PORT at container start so environment variables can be overridden
+# without rebuilding the image.
+ENTRYPOINT ["/bin/sh", "-c", "exec gunicorn --bind 0.0.0.0:${FLASK_PORT} --workers ${GUNICORN_WORKERS} --timeout ${GUNICORN_TIMEOUT} --preload --access-logfile - --error-logfile - app:app"]
