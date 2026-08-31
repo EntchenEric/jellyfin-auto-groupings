@@ -55,9 +55,8 @@ def _extract_ids_from_list_page(html: str) -> dict[str, str]:
     Returns a mapping of ``slug -> id`` for films where an ID was found
     directly on the list page, avoiding a per-film page fetch.
 
-
     Args:
-            html: The HTML content of the Letterboxd list page.
+        html: The HTML content of the Letterboxd list page.
 
     """
     found: dict[str, str] = {}
