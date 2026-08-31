@@ -79,6 +79,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Non-numeric values still fall back to string comparison and never match a
   plain numeric expression.
 
+- `sync.py`: `_match_year()` now also handles *string* production years (e.g.
+  `"2001.0"` from APIs that serialise the year as a string) in both plain and
+  range (`>`, `>=`, `<`, `<=`) comparisons. Previously a string float year
+  failed to match a plain integer expression and made every range comparison
+  return `False` (e.g. `_match_year("2001.0", ">2000")` was `False`).
+
 - `trakt.py`: `_fetch_trakt_page()` now raises a clear `RuntimeError` when the
   Trakt API returns invalid JSON, and a `TypeError` when it returns a non-list
   response body, instead of letting a raw `ValueError`/`AttributeError`
