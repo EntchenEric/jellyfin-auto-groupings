@@ -1111,11 +1111,7 @@ def get_cleanup_items() -> ResponseReturnValue:
             # is_dir() follows symlinks, so exclude links explicitly — a
             # symlink pointing outside the target must never be offered as a
             # deletable cleanup item (mirrors the browse endpoint).
-            if (
-                entry.is_symlink()
-                or not entry.is_dir()
-                or entry.name.startswith(".")
-            ):
+            if entry.is_symlink() or not entry.is_dir() or entry.name.startswith("."):
                 continue
             rel = f"{prefix}/{entry.name}" if prefix else entry.name
             if rel in parent_dirs and depth < max_depth:
