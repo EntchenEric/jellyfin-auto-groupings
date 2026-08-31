@@ -49,6 +49,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `static/js/core/state.js`: the `sortLabels` map was missing the
+  `ProductionYearAsc` entry, so a group sorted oldest-first showed the raw
+  value `ProductionYearAsc` in its card badge instead of a friendly label.
+  The backend (`jellyfin.py`) and the sort dropdown already supported this
+  order; the label map now matches them.
 - `routes.py`: the cleanup endpoint (`GET /api/cleanup`) no longer lists
   symlinked directories as deletable items. A symlink may point outside the
   target directory, so offering it as a cleanup candidate could let a user

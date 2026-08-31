@@ -16,6 +16,7 @@ describe('state module — constants', () => {
     const { sortLabels } = await import('../../static/js/core/state.js');
     expect(sortLabels['CommunityRating']).toBe('Community Rating');
     expect(sortLabels['ProductionYear']).toBe('Production Year');
+    expect(sortLabels['ProductionYearAsc']).toBe('Production Year (oldest first)');
     expect(sortLabels['SortName']).toBe('Name (A→Z)');
     expect(sortLabels['Random']).toBe('Random');
   });
