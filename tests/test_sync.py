@@ -1222,6 +1222,22 @@ def test_match_year_ranges() -> None:
     assert not _match_year(None, "2000")
     assert not _match_year(1999, "<nonsense")
 
+    # Float years (e.g. from some API responses) match the plain integer form.
+    assert _match_year(2001.0, "2001")
+    assert not _match_year(2001.0, "2002")
+    assert _match_year(2001.0, ">2000")
+    assert _match_year(2001.0, "<=2001")
+
+    # Non-numeric values fall back to string comparison and never match a
+    # plain numeric expression.
+    assert not _match_year("unknown", "2001")
+    assert not _match_year(True, "1")
+
+    # A numeric value against a non-numeric plain expression never matches
+    # (exercises the unparseable-expression branch of _parse_year_int).
+    assert not _match_year(2001, "abc")
+    assert not _match_year(2001.0, "abc")
+
 
 @patch("sync.fetch_jellyfin_items")
 def test_complex_source_type_evaluates_rules(mock_fetch) -> None:

@@ -1019,7 +1019,28 @@ def _match_year(value: Any, rule_value: str) -> bool:
                 return year > limit
             return year < limit
 
+    # Plain (exact) comparison.  Normalise numeric values so a float year
+    # (e.g. ``2001.0`` from some API responses) still matches ``"2001"``
+    # instead of comparing ``"2001.0" == "2001"`` and returning False.
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return int(value) == _parse_year_int(expr)
     return str(value).strip() == expr
+
+
+def _parse_year_int(expr: str) -> int | None:
+    """Parse a plain year expression into an int, or ``None`` if invalid.
+
+    Args:
+        expr: The stripped year expression (e.g. ``"2001"``).
+
+    Returns:
+        The integer year, or ``None`` if *expr* is not a valid integer.
+
+    """
+    try:
+        return int(expr)
+    except (TypeError, ValueError):
+        return None
 
 
 def _match_condition(item: dict[str, Any], r_type: str, r_val: str) -> bool:
