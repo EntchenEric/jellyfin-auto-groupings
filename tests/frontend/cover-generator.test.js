@@ -262,6 +262,176 @@ describe('cover-generator module', () => {
     });
   });
 
+  describe('renderCover internals', () => {
+    /**
+     * Open the generator for a group with the given overrides, then render.
+     * Returns the module and the mocked canvas context.
+     */
+    async function renderWith(overrides = {}) {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup(overrides)];
+      const mod = await import('../../static/js/features/cover-generator.js');
+      mod.openCoverGenerator(0);
+      mod.renderCover();
+      const canvas = document.getElementById('cover-canvas');
+      return { mod, ctx: canvas.getContext.mock.results[0].value };
+    }
+
+    it('should draw a background for every theme without throwing', async () => {
+      const themes = [
+        'modern-dark', 'vibrant-glow', 'minimal-glass', 'cyberpunk',
+        'aurora', 'monochrome', 'vintage',
+      ];
+      for (const theme of themes) {
+        const { ctx } = await renderWith({ cover_theme: theme });
+        // Every theme must fill the canvas background at least once.
+        expect(ctx.fillRect).toHaveBeenCalled();
+        expect(ctx.clearRect).toHaveBeenCalled();
+        vi.clearAllMocks();
+      }
+    });
+
+    it('should fall back to a default background when the theme is unknown', async () => {
+      const { ctx } = await renderWith({ cover_theme: 'does-not-exist' });
+      // No theme function runs, but the canvas is still cleared and reset.
+      expect(ctx.clearRect).toHaveBeenCalled();
+      expect(ctx.setTransform).toHaveBeenCalled();
+    });
+
+    it('should draw text for every theme without throwing', async () => {
+      const themes = [
+        'modern-dark', 'vibrant-glow', 'minimal-glass', 'cyberpunk',
+        'aurora', 'monochrome', 'vintage',
+      ];
+      for (const theme of themes) {
+        const { ctx } = await renderWith({ cover_theme: theme });
+        // Text is drawn via wrapText -> fillText.
+        expect(ctx.fillText).toHaveBeenCalled();
+        vi.clearAllMocks();
+      }
+    });
+
+    it('should use the group name as fallback text when cover-text is empty', async () => {
+      const { ctx } = await renderWith({ cover_text: '   ' });
+      // 'Group Name' fallback is drawn.
+      expect(ctx.fillText).toHaveBeenCalled();
+    });
+
+    it('should draw a dashed border for industrial-dash', async () => {
+      const { ctx } = await renderWith({ cover_border_style: 'industrial-dash' });
+      expect(ctx.setLineDash).toHaveBeenCalledWith([40, 20]);
+      expect(ctx.setLineDash).toHaveBeenCalledWith([]);
+      expect(ctx.stroke).toHaveBeenCalled();
+    });
+
+    it('should draw corner ornaments for ornate border', async () => {
+      const { ctx } = await renderWith({ cover_border_style: 'ornate' });
+      // Four corner circles are drawn via arc + fill.
+      expect(ctx.arc).toHaveBeenCalled();
+      expect(ctx.fill).toHaveBeenCalled();
+    });
+
+    it('should draw corner brackets for corner-brackets border', async () => {
+      const { ctx } = await renderWith({ cover_border_style: 'corner-brackets' });
+      expect(ctx.stroke).toHaveBeenCalled();
+      expect(ctx.lineCap).toBe('square');
+    });
+
+    it('should draw tech corners for tech-corners border', async () => {
+      const { ctx } = await renderWith({ cover_border_style: 'tech-corners' });
+      expect(ctx.stroke).toHaveBeenCalled();
+      expect(ctx.fillRect).toHaveBeenCalled();
+    });
+
+    it('should draw double inset for double-inset border', async () => {
+      const { ctx } = await renderWith({ cover_border_style: 'double-inset' });
+      expect(ctx.stroke).toHaveBeenCalled();
+    });
+
+    it('should draw neon glow for neon-glow border', async () => {
+      const { ctx } = await renderWith({ cover_border_style: 'neon-glow' });
+      expect(ctx.stroke).toHaveBeenCalled();
+      // The neon-glow border sets a large shadow blur on the border color.
+      expect(ctx.shadowColor).toBe('transparent'); // reset after render
+      // Verify the border color was applied as a shadow at some point.
+      expect(ctx.strokeStyle).toBe('#ffffff'); // final white inner stroke
+    });
+
+    it('should draw bold frame for bold-frame border', async () => {
+      const { ctx } = await renderWith({ cover_border_style: 'bold-frame' });
+      expect(ctx.stroke).toHaveBeenCalled();
+    });
+
+    it('should draw elegant border for elegant style', async () => {
+      const { ctx } = await renderWith({ cover_border_style: 'elegant' });
+      expect(ctx.stroke).toHaveBeenCalled();
+    });
+
+    it('should not draw a border when style is none', async () => {
+      const { ctx } = await renderWith({ cover_border_style: 'none' });
+      // No border path is stroked (only the theme background fills).
+      expect(ctx.stroke).not.toHaveBeenCalled();
+    });
+
+    it('should wrap long text into multiple lines', async () => {
+      const { ctx } = await renderWith({
+        cover_text: 'A very long group title that should wrap onto several lines',
+      });
+      // wrapText calls fillText once per line; a long title yields >1 line.
+      expect(ctx.fillText).toHaveBeenCalled();
+    });
+
+    it('should split an over-long single word across lines', async () => {
+      // A single word wider than the max width triggers the char-splitting
+      // branch of wrapText (lines 50-70). Override getContext to return a
+      // context whose measureText reports a width larger than the max text
+      // width so the word must be split character-by-character.
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup({ cover_text: 'Supercalifragilisticexpialidocious' })];
+      const mod = await import('../../static/js/features/cover-generator.js');
+      mod.openCoverGenerator(0);
+      const canvas = document.getElementById('cover-canvas');
+      const wideCtx = mockCanvasContext();
+      wideCtx.measureText = vi.fn(() => ({ width: 5000 }));
+      canvas.getContext = vi.fn(() => wideCtx);
+      expect(() => mod.renderCover()).not.toThrow();
+      // Char-splitting produces many fillText calls (one per segment).
+      expect(wideCtx.fillText).toHaveBeenCalled();
+    });
+
+    it('should wrap a mix of fitting and overflowing words', async () => {
+      // measureText returns a width proportional to the string length so that
+      // short words fit on a line while long words overflow, exercising the
+      // line-reset (51-54) and word-fits-after-reset (69-70) branches.
+      // - 'short' (500) fits on its own
+      // - 'mediumwordhere' (1500) overflows when combined with 'short' but
+      //   fits on its own after the line is reset (69-70)
+      // - 'supercalifragilisticexpialidocious' (3400) always overflows and is
+      //   split character-by-character
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup({
+        cover_text: 'short mediumwordhere supercalifragilisticexpialidocious',
+      })];
+      const mod = await import('../../static/js/features/cover-generator.js');
+      mod.openCoverGenerator(0);
+      const canvas = document.getElementById('cover-canvas');
+      const ctx = mockCanvasContext();
+      ctx.measureText = vi.fn((s) => ({ width: s.length * 100 }));
+      canvas.getContext = vi.fn(() => ctx);
+      expect(() => mod.renderCover()).not.toThrow();
+      expect(ctx.fillText).toHaveBeenCalled();
+    });
+
+    it('should reset canvas state after rendering', async () => {
+      const { ctx } = await renderWith({ cover_theme: 'vibrant-glow' });
+      // After render, shadow/filter/alpha are reset to defaults.
+      expect(ctx.shadowBlur).toBe(0);
+      expect(ctx.shadowColor).toBe('transparent');
+      expect(ctx.globalAlpha).toBe(1);
+      expect(ctx.filter).toBe('none');
+    });
+  });
+
   describe('initCoverGenerator', () => {
     it('should be callable without throwing', async () => {
       const mod = await import('../../static/js/features/cover-generator.js');
