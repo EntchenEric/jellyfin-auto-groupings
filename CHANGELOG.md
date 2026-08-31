@@ -53,6 +53,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   statement coverage from 0% to ~97% and the full frontend suite to 211 tests
   across 14 files.
 
+- `tests/frontend/cover-generator.test.js`: add unit tests for the
+  `cover-generator.js` feature module (`openCoverGenerator` incl. field
+  population, defaults and modal display, `renderCover` canvas drawing,
+  `downloadCover` incl. inactive guard and download trigger, `applyCover`
+  incl. upload/save flow, group update and error handling, and
+  `initCoverGenerator`), raising the full frontend suite to 223 tests across
+  15 files.
+
 - Groups can be restricted to movies or series via a new `item_type` setting
   ("Media Type Filter" in the UI). Jellyfin often files the same genre under
   different names per media type (`Action` for movies, `Action & Adventure`
