@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `tests/frontend/test-connection.test.js`: add coverage for
+  `testConnectionFromSidebar` (success, API error and network-failure paths),
+  bringing the `test-connection.js` feature module to 100% statement coverage.
+
 - `tests/frontend/sync.test.js`, `tests/frontend/cleanup.test.js`,
   `tests/frontend/export-import.test.js` and `tests/frontend/wizard.test.js`:
   add unit tests for the previously-untested frontend feature modules. This
