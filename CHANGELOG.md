@@ -65,6 +65,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   whole list fetch. This matches the robustness already present in `mal.py`
   and `tmdb.py`.
 
+- `Dockerfile`: the gunicorn entrypoint now binds to `$FLASK_PORT` (default
+  `5000`) instead of a hardcoded port, so the container honors the `FLASK_PORT`
+  environment variable (e.g. the E2E compose maps the app to host port `5005`).
+
 - `static/js/core/state.js`: the `sortLabels` map was missing the
   `ProductionYearAsc` entry, so a group sorted oldest-first showed the raw
   value `ProductionYearAsc` in its card badge instead of a friendly label.
