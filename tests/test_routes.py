@@ -898,6 +898,34 @@ def test_get_cleanup_items_skips_invalid_group_names(client, tmp_path) -> None:
     assert items[0]["name"] == "Action"
 
 
+@pytest.mark.usefixtures("temp_config")
+def test_get_cleanup_items_skips_symlinks(client, tmp_path) -> None:
+    """Symlinked directories are not offered as deletable cleanup items.
+
+    A symlink may point outside the target directory; listing it as a
+    cleanup candidate would let a user delete an unrelated location. This
+    mirrors the browse endpoint, which also excludes symlinks.
+    """
+    target = tmp_path / "target"
+    target.mkdir()
+    (target / "Action").mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (target / "linked").symlink_to(outside, target_is_directory=True)
+    save_config(
+        {
+            "target_path": str(target),
+            "groups": [{"name": "Action"}],
+        },
+    )
+
+    response = client.get("/api/cleanup")
+
+    assert response.status_code == 200
+    items = response.get_json()["items"]
+    assert [i["name"] for i in items] == ["Action"]
+
+
 def test_prune_empty_parents_removes_empty_dirs(tmp_path) -> None:
     """_prune_empty_parents removes now-empty parents up to (not incl.) base."""
     from routes import _prune_empty_parents

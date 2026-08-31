@@ -47,6 +47,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `routes.py`: the cleanup endpoint (`GET /api/cleanup`) no longer lists
+  symlinked directories as deletable items. A symlink may point outside the
+  target directory, so offering it as a cleanup candidate could let a user
+  delete an unrelated location. This mirrors the browse endpoint, which already
+  excluded symlinks.
 - `sync.py`: groups with source type `complex` matched the **entire library**
   instead of evaluating their rules. `_resolve_group_source()` only routed a
   group into the rule evaluator when its type was one of the metadata types
