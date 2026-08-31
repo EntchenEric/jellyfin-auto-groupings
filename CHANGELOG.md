@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `tests/frontend/state-advanced.test.js`: add a regression-guard test that
+  verifies every sort option in the `sort_order` dropdown template has a
+  corresponding entry in the frontend `sortLabels` map, so a missing label
+  (like the `ProductionYearAsc` one fixed below) is caught by the test suite.
+
 - Groups can be restricted to movies or series via a new `item_type` setting
   ("Media Type Filter" in the UI). Jellyfin often files the same genre under
   different names per media type (`Action` for movies, `Action & Adventure`

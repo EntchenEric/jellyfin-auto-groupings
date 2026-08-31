@@ -2,6 +2,12 @@
  * @file Additional tests for the frontend state module.
  */
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const templatePath = join(__dirname, '../../templates/partials/main/groupings.html');
 
 describe('state module — constants', () => {
   it('should have sourceOptions with jellyfin and external categories', async () => {
@@ -19,6 +25,21 @@ describe('state module — constants', () => {
     expect(sortLabels['ProductionYearAsc']).toBe('Production Year (oldest first)');
     expect(sortLabels['SortName']).toBe('Name (A→Z)');
     expect(sortLabels['Random']).toBe('Random');
+  });
+
+  it('should have a label for every sort option in the groupings template', async () => {
+    const { sortLabels } = await import('../../static/js/core/state.js');
+    const html = readFileSync(templatePath, 'utf8');
+    // Extract the value attributes of the <option> elements inside the sort_order select.
+    const selectMatch = html.match(/<select id="sort_order">([\s\S]*?)<\/select>/);
+    expect(selectMatch).not.toBeNull();
+    const values = [...selectMatch[1].matchAll(/<option value="([^"]*)"/g)].map(m => m[1]);
+    // The empty option ("None") is a valid placeholder and needs no label.
+    const sortValues = values.filter(v => v !== '');
+    expect(sortValues.length).toBeGreaterThan(0);
+    for (const value of sortValues) {
+      expect(sortLabels[value], `missing sortLabels entry for '${value}'`).toBeTruthy();
+    }
   });
 
   it('should have all external list sort order labels', async () => {
