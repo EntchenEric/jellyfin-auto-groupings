@@ -44,6 +44,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   scheduler toggles and `initConfig`), raising its statement coverage from
   ~10% to ~74% and the full frontend suite to 186 tests across 13 files.
 
+- `tests/frontend/groupings.test.js`: add unit tests for the `groupings.js`
+  feature module (`renderGroups` incl. empty state, badges, search filter and
+  cover-button wiring, `editGroup`, `cancelEdit`/`resetFormUI`, `deleteGroup`
+  incl. invalid-index and save-failure rollback, `clearAllGroups`, the
+  scheduler/seasonal/sort toggles, `populateSeasonalDays` and
+  `updateGlobalSyncExclusionsUI` incl. stale-exclusion pruning), raising its
+  statement coverage from 0% to ~97% and the full frontend suite to 211 tests
+  across 14 files.
+
 - Groups can be restricted to movies or series via a new `item_type` setting
   ("Media Type Filter" in the UI). Jellyfin often files the same genre under
   different names per media type (`Action` for movies, `Action & Adventure`
