@@ -1008,8 +1008,11 @@ def _match_year(value: Any, rule_value: str) -> bool:
     for prefix in (">=", "<=", ">", "<"):
         if expr.startswith(prefix):
             try:
-                year, limit = int(value), int(expr[len(prefix) :].strip())
+                year = _coerce_year_int(value)
+                limit = int(expr[len(prefix) :].strip())
             except (TypeError, ValueError):
+                return False
+            if year is None:
                 return False
             if prefix == ">=":
                 return year >= limit
@@ -1024,7 +1027,48 @@ def _match_year(value: Any, rule_value: str) -> bool:
     # instead of comparing ``"2001.0" == "2001"`` and returning False.
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         return int(value) == _parse_year_int(expr)
+    # Some API responses serialise the year as a string (e.g. ``"2001.0"``);
+    # coerce those to an int too so they match the plain integer expression.
+    if isinstance(value, str):
+        coerced = _coerce_year_int(value)
+        if coerced is not None:
+            return coerced == _parse_year_int(expr)
     return str(value).strip() == expr
+
+
+def _coerce_year_int(value: Any) -> int | None:
+    """Coerce a year value to an int, tolerating float/string forms.
+
+    Some API responses report ``ProductionYear`` as a float (``2001.0``)
+    or as a string (``"2001.0"``).  This helper normalises all of those to
+    a plain ``int`` so range and exact comparisons behave consistently.
+
+    Args:
+        value: The raw year value (int, float, or str).
+
+    Returns:
+        The year as an ``int``, or ``None`` if *value* cannot be coerced.
+
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str):
+        stripped = value.strip()
+        try:
+            return int(stripped)
+        except ValueError:
+            pass
+        # Tolerate a trailing ``.0`` (e.g. ``"2001.0"``) from float
+        # serialisation.
+        try:
+            return int(float(stripped))
+        except ValueError:
+            return None
+    return None
 
 
 def _parse_year_int(expr: str) -> int | None:

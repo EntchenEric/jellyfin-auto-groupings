@@ -1228,6 +1228,17 @@ def test_match_year_ranges() -> None:
     assert _match_year(2001.0, ">2000")
     assert _match_year(2001.0, "<=2001")
 
+    # String years (e.g. ``"2001.0"`` from float serialisation) also match
+    # both the plain integer form and range comparisons.
+    assert _match_year("2001.0", "2001")
+    assert not _match_year("2001.0", "2002")
+    assert _match_year("2001.0", ">2000")
+    assert _match_year("2001.0", "<=2001")
+    assert _match_year("2001.0", "<2002")
+    assert _match_year("2001.0", ">=2001")
+    assert _match_year("2001", ">2000")
+    assert not _match_year("2001.0", "abc")
+
     # Non-numeric values fall back to string comparison and never match a
     # plain numeric expression.
     assert not _match_year("unknown", "2001")
