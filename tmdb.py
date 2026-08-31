@@ -183,7 +183,8 @@ def get_tmdb_recommendations(
                 retry_after = resp.headers.get("Retry-After")
                 wait = int(retry_after) if retry_after and retry_after.isdigit() else 1
                 logger.debug(
-                    "TMDb rate limited (429) — sleeping %ds", wait,
+                    "TMDb rate limited (429) — sleeping %ds",
+                    wait,
                 )
                 time.sleep(wait)
         except (requests.exceptions.RequestException, ValueError):
