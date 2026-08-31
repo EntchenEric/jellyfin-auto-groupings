@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `tests/frontend/metadata.test.js`: add unit tests for the `metadata.js`
+  feature module (`parseMetadataValue`, `getFilterValue`,
+  `updateSourceTypeOptions`, `renderMetadataRules`, `addMetadataRule`,
+  `updateSourceValueUI`, `refreshMetadata` and `previewGrouping`), raising
+  its statement coverage from ~4% to ~95% and overall frontend coverage from
+  ~43% to ~54%.
+
 - `tests/frontend/test-connection.test.js`: add coverage for
   `testConnectionFromSidebar` (success, API error and network-failure paths),
   bringing the `test-connection.js` feature module to 100% statement coverage.
