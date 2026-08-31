@@ -368,7 +368,9 @@ def _fetch_full_library(
             # TTL expired — remove stale entry so it gets re-fetched
             del _LIBRARY_CACHE[cache_key]
 
-    fields = _FULL_LIBRARY_FIELDS_WITH_PEOPLE if include_people else _FULL_LIBRARY_FIELDS
+    fields = (
+        _FULL_LIBRARY_FIELDS_WITH_PEOPLE if include_people else _FULL_LIBRARY_FIELDS
+    )
     try:
         all_items = fetch_all_jellyfin_items(
             url,
@@ -1006,7 +1008,7 @@ def _match_year(value: Any, rule_value: str) -> bool:
     for prefix in (">=", "<=", ">", "<"):
         if expr.startswith(prefix):
             try:
-                year, limit = int(value), int(expr[len(prefix):].strip())
+                year, limit = int(value), int(expr[len(prefix) :].strip())
             except (TypeError, ValueError):
                 return False
             if prefix == ">=":
@@ -1393,7 +1395,8 @@ def preview_group(
     # preview count matches what the sync will actually link.
     if type_name == "complex" or _COMPLEX_QUERY_RE.search(val):
         rules = parse_complex_query(
-            val, "genre" if type_name == "complex" else type_name,
+            val,
+            "genre" if type_name == "complex" else type_name,
         )
         return _fetch_items_for_complex_group(
             "preview",
@@ -1980,8 +1983,7 @@ def _resolve_group_source(
     # ("genre:Action") is a rule expression, not a metadata filter value.
     is_complex_type = source_type == "complex"
     if is_complex_type or (
-        source_type in _COMPLEX_QUERY_SOURCE_TYPES
-        and _COMPLEX_QUERY_RE.search(val_str)
+        source_type in _COMPLEX_QUERY_SOURCE_TYPES and _COMPLEX_QUERY_RE.search(val_str)
     ):
         # A bare "complex" group has no implicit field, so rules must name
         # their own ("genre:Action"); default to genre for the rest.
