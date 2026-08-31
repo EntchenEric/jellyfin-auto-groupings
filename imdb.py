@@ -53,6 +53,7 @@ def fetch_imdb_list(list_id: str) -> list[str]:
         raise ValueError(msg)
 
     ids: list[str] = []
+    seen: set[str] = set()
     page: int = 1
 
     while True:
@@ -77,7 +78,6 @@ def fetch_imdb_list(list_id: str) -> list[str]:
         # Extract title IDs from canonical anchor hrefs: href="/title/tt1234567/"
         found: list[str] = re.findall(r'href="/title/(tt\d+)/', html)
 
-        seen: set[str] = set(ids)
         for tt in found:
             if tt not in seen:
                 ids.append(tt)
