@@ -27,6 +27,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Added `tests/test_routes.py` coverage asserting both the HTML index and API
   responses carry all four security hardening headers.
 
+- `routes.py`: the `_add_security_headers` after-request hook now also sets a
+  `Permissions-Policy` header that disables browser features this app does not
+  use (`camera`, `microphone`, `geolocation`, `payment`, `usb`, `midi`, etc.)
+  while allowing fullscreen for the cover-image viewer. This reduces the
+  browser attack surface and prevents silent feature abuse. Extended the
+  `tests/test_routes.py` security-header assertions to cover the new header.
+
 - `tests/frontend/cleanup.test.js` and `tests/frontend/sync.test.js`: add edge-case
   coverage for the `cleanup.js` and `sync.js` modules — the fallback error message
   when an API error response has no `message` field, the `partial_success` warning

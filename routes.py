@@ -273,6 +273,9 @@ def _add_security_headers(response: Response) -> Response:
       outbound requests.
     * ``X-XSS-Protection: 1; mode=block`` — legacy XSS filter for older
       browsers that do not support a Content-Security-Policy.
+    * ``Permissions-Policy`` — disables browser features this app does not
+      use (camera, microphone, geolocation, etc.) to reduce the attack
+      surface and prevent silent feature abuse.
 
     Args:
         response: The HTTP response object.
@@ -282,6 +285,13 @@ def _add_security_headers(response: Response) -> Response:
     response.headers.set("X-Frame-Options", "DENY")
     response.headers.set("Referrer-Policy", "no-referrer")
     response.headers.set("X-XSS-Protection", "1; mode=block")
+    response.headers.set(
+        "Permissions-Policy",
+        "camera=(), microphone=(), geolocation=(), "
+        "payment=(), usb=(), magnetometer=(), gyroscope=(), "
+        "accelerometer=(), midi=(), sync-xhr=(), "
+        "fullscreen=(self)",
+    )
     return response
 
 
