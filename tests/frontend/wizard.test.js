@@ -145,6 +145,37 @@ describe('wizard feature module', () => {
     expect(statusDiv.className).toContain('error');
   });
 
+  it('updateWizardUI enables the Continue button on step 2 when the server is connected', async () => {
+    vi.doMock('../../static/js/features/test-connection.js', () => ({
+      testConnection: vi.fn().mockResolvedValue({ success: true, message: 'Connected!' }),
+    }));
+    vi.doMock('../../static/js/core/ui.js', () => ({
+      showToast: vi.fn(),
+      showErrorDialog: vi.fn(),
+      setLoading: vi.fn(),
+      showModal: vi.fn(),
+      hideModal: vi.fn(),
+      getEl: (id) => document.getElementById(id),
+    }));
+    vi.doMock('../../static/js/core/api.js', () => ({
+      apiPost: vi.fn(),
+      autoDetectPaths: vi.fn(),
+    }));
+
+    const mod = await import('../../static/js/features/wizard.js');
+    mod.openWizardManual();
+    // Connect the server, which flips the internal isWizardServerConnected flag.
+    await mod.testWizardConnection();
+    // Advance to step 2 so the Continue button reflects the connected state.
+    mod.wizardNext();
+
+    const nextBtn = document.getElementById('wizard-next');
+    expect(nextBtn.textContent).toBe('Continue');
+    expect(nextBtn.disabled).toBe(false);
+    expect(nextBtn.style.opacity).toBe('1');
+    expect(nextBtn.title).toBe('');
+  });
+
   it('runWizardAutoDetect should populate detected paths', async () => {
     vi.doMock('../../static/js/core/api.js', () => ({
       apiPost: vi.fn().mockResolvedValue({}),

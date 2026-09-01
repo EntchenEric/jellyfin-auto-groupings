@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `tests/frontend/wizard.test.js`, `tests/frontend/metadata.test.js` and
+  `tests/frontend/export-import.test.js`: added tests covering previously
+  uncovered branches — the wizard's Continue button enabled state on step 2
+  when the server is connected, pre-filling the manual input for a metadata
+  type when the server is not validated and a `preValue` is supplied, and
+  treating a partial config (e.g. `jellyfin_url` without `api_key`) as a
+  groups-only import. This raises overall frontend branch coverage to 97.65%.
+
 - `tests/frontend/ui.test.js`: added tests covering the remaining uncovered
   branches in `static/js/core/ui.js` — Tab/Shift+Tab focus-trap wrap-around
   (from the last element, and when focus is outside the modal), the
