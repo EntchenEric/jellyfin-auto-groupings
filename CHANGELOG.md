@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `static/js/features/path-picker.js`: `browseDir` now handles explicit
+  non-2xx HTTP responses (e.g. a 500 with an HTML error body) by showing a
+  readable "Could not load directory (HTTP <status>)" message in the picker
+  instead of letting `resp.json()` throw a confusing JSON parse error. Added
+  a frontend test covering the non-OK response edge case.
+
 - `static/js/features/cover-generator.js`: `renderCover` now reads the cover
   form fields via optional chaining with sensible defaults, so it no longer
   throws if any of the form elements are missing from the DOM. This makes

@@ -162,6 +162,19 @@ describe('path-picker module', () => {
     expect(body.querySelector('.picker-empty').textContent).toContain('Could not load directory');
   });
 
+  it('browseDir should show a readable message on a non-OK HTTP response', async () => {
+    // A 500 response with a non-JSON body must not trigger a JSON parse error.
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.reject(new SyntaxError('Unexpected token < in JSON')),
+    });
+    const mod = await import('../../static/js/features/path-picker.js');
+    await mod.browseDir('/media');
+    const body = document.getElementById('picker-body');
+    expect(body.querySelector('.picker-empty').textContent).toContain('HTTP 500');
+  });
+
   it('confirmPicker should write the current path into the target input and close', async () => {
     const mod = await import('../../static/js/features/path-picker.js');
     const ui = await import('../../static/js/core/ui.js');
