@@ -1,5 +1,6 @@
 // cleanup.js – Cleanup modal logic
 
+import { getCleanupItems, performCleanup } from '../core/api.js';
 import { showToast, showErrorDialog, getEl } from '../core/ui.js';
 
 export async function openCleanupModal() {
@@ -9,8 +10,7 @@ export async function openCleanupModal() {
     getEl('cleanup-error').style.display = 'none';
 
     try {
-        const response = await fetch('/api/cleanup');
-        const result = await response.json();
+        const result = await getCleanupItems();
 
         if (result.status === 'success') {
             const listContainer = getEl('cleanup-list');
@@ -91,12 +91,7 @@ export async function execCleanup() {
     btn.disabled = true;
 
     try {
-        const response = await fetch('/api/cleanup', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ folders })
-        });
-        const result = await response.json();
+        const result = await performCleanup(folders);
 
         btn.innerHTML = 'Delete Selected <span id="cleanup-count"></span>';
         btn.disabled = false;
