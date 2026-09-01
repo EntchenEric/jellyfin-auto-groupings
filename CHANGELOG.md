@@ -147,6 +147,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `routes.py`: validate that a group's `source_type` is one of the recognised
+  source types and that `sort_order` is a recognised Jellyfin sort key or
+  external-list order at config-save time. Previously an invalid value passed
+  config validation and only surfaced later as an "Unknown source type" error
+  during a sync (or was silently ignored for sorting).
 - `static/js/core/ui.js`: add a keyboard focus trap for modals. When a modal
   is open, Tab/Shift+Tab now cycle focus within the topmost visible modal
   instead of letting keyboard users tab out into the background page

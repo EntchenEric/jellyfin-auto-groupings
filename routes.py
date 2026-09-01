@@ -48,13 +48,22 @@ from config import (
 from jellyfin import (
     _PAGE_LIMIT,
     RECURSIVE_TRUE,
+    SORT_MAP,
     _paginate_jellyfin,
     delete_virtual_folder,
     fetch_jellyfin_items,
     get_users,
 )
 from scheduler import _scheduler, update_scheduler_jobs, validate_cron
-from sync import clear_library_cache, get_cover_path, preview_group, run_sync
+from sync import (
+    _LIST_ORDER_VALUES as _VALID_LIST_ORDER_VALUES,
+)
+from sync import (
+    clear_library_cache,
+    get_cover_path,
+    preview_group,
+    run_sync,
+)
 
 # Resolve the application version from package metadata.
 # Falls back to a dev placeholder when running from source
@@ -515,6 +524,35 @@ def _validate_group_types(
     _check_type(group.get("schedule"), str, f"{prefix}.schedule", errors)
     for bool_field in ("schedule_enabled", "seasonal_enabled", "create_as_collection"):
         _check_type(group.get(bool_field), bool, f"{prefix}.{bool_field}", errors)
+
+    # Validate source_type is a recognised value so an invalid type fails fast
+    # at config-save time instead of surfacing later as "Unknown source type"
+    # during a sync.
+    source_type = group.get("source_type")
+    if (
+        isinstance(source_type, str)
+        and source_type
+        and source_type not in _ALLOWED_PREVIEW_TYPES
+    ):
+        errors.append(
+            f"{prefix}.source_type must be one of: "
+            f"{', '.join(sorted(_ALLOWED_PREVIEW_TYPES))}",
+        )
+
+    # Validate sort_order is a recognised value (Jellyfin sort key or an
+    # external-list order) so a typo is caught immediately rather than being
+    # silently ignored during sorting.
+    sort_order = group.get("sort_order")
+    if (
+        isinstance(sort_order, str)
+        and sort_order
+        and sort_order not in SORT_MAP
+        and sort_order not in _VALID_LIST_ORDER_VALUES
+    ):
+        valid_sorts = sorted(set(SORT_MAP) | set(_VALID_LIST_ORDER_VALUES))
+        errors.append(
+            f"{prefix}.sort_order must be one of: {', '.join(valid_sorts)}",
+        )
 
     # Validate seasonal date format (MM-DD) when provided
     for date_field in ("seasonal_start", "seasonal_end"):

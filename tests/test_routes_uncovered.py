@@ -773,3 +773,86 @@ def test_validate_cron_expressions_group_no_name() -> None:
         },
     )
     assert any("unnamed" in e for e in errors)
+
+
+# ---------------------------------------------------------------------------
+# _validate_config_types: source_type / sort_order value validation
+# ---------------------------------------------------------------------------
+
+
+def test_validate_config_types_group_source_type_invalid_value() -> None:
+    """An unrecognised source_type value is flagged at config-save time."""
+    from routes import _validate_config_types
+
+    errors = _validate_config_types(
+        {"groups": [{"name": "G", "source_type": "bogus_type"}]},
+    )
+    assert any("groups[0].source_type" in e for e in errors)
+    assert any("must be one of" in e for e in errors)
+
+
+def test_validate_config_types_group_source_type_valid_value() -> None:
+    """A recognised source_type value passes validation."""
+    from routes import _validate_config_types
+
+    for source_type in ("genre", "actor", "imdb_list", "complex", "recommendations"):
+        errors = _validate_config_types(
+            {"groups": [{"name": "G", "source_type": source_type}]},
+        )
+        assert not any("source_type" in e for e in errors), (
+            f"No error expected for source_type={source_type!r}"
+        )
+
+
+def test_validate_config_types_group_source_type_empty_ok() -> None:
+    """An empty source_type is not flagged (may be filled in later)."""
+    from routes import _validate_config_types
+
+    errors = _validate_config_types({"groups": [{"name": "G", "source_type": ""}]})
+    assert not any("source_type" in e for e in errors)
+
+
+def test_validate_config_types_group_sort_order_invalid_value() -> None:
+    """An unrecognised sort_order value is flagged at config-save time."""
+    from routes import _validate_config_types
+
+    errors = _validate_config_types(
+        {"groups": [{"name": "G", "sort_order": "bogus_sort"}]},
+    )
+    assert any("groups[0].sort_order" in e for e in errors)
+    assert any("must be one of" in e for e in errors)
+
+
+def test_validate_config_types_group_sort_order_valid_values() -> None:
+    """Recognised sort_order values (Jellyfin keys and list orders) pass."""
+    from routes import _validate_config_types
+
+    for sort_order in (
+        "CommunityRating",
+        "ProductionYear",
+        "ProductionYearAsc",
+        "SortName",
+        "DateCreated",
+        "Random",
+        "imdb_list_order",
+        "trakt_list_order",
+        "tmdb_list_order",
+        "anilist_list_order",
+        "mal_list_order",
+        "letterboxd_list_order",
+        "recommendations_list_order",
+    ):
+        errors = _validate_config_types(
+            {"groups": [{"name": "G", "sort_order": sort_order}]},
+        )
+        assert not any("sort_order" in e for e in errors), (
+            f"No error expected for sort_order={sort_order!r}"
+        )
+
+
+def test_validate_config_types_group_sort_order_empty_ok() -> None:
+    """An empty sort_order is not flagged (defaults apply)."""
+    from routes import _validate_config_types
+
+    errors = _validate_config_types({"groups": [{"name": "G", "sort_order": ""}]})
+    assert not any("sort_order" in e for e in errors)
