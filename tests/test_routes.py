@@ -279,6 +279,8 @@ def test_security_headers_present(client) -> None:
     assert response.headers.get("X-Frame-Options") == "DENY"
     assert response.headers.get("Referrer-Policy") == "no-referrer"
     assert response.headers.get("X-XSS-Protection") == "1; mode=block"
+    assert "camera=()" in response.headers.get("Permissions-Policy", "")
+    assert "geolocation=()" in response.headers.get("Permissions-Policy", "")
 
 
 def test_security_headers_present_on_api(client) -> None:
@@ -289,6 +291,8 @@ def test_security_headers_present_on_api(client) -> None:
     assert response.headers.get("X-Frame-Options") == "DENY"
     assert response.headers.get("Referrer-Policy") == "no-referrer"
     assert response.headers.get("X-XSS-Protection") == "1; mode=block"
+    assert "camera=()" in response.headers.get("Permissions-Policy", "")
+    assert "geolocation=()" in response.headers.get("Permissions-Policy", "")
 
 
 def test_browse_security(client) -> None:
