@@ -20,6 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `routes.py`: the `_add_security_headers` after-request hook now also sets
+  `Referrer-Policy: no-referrer` (prevents leaking the current URL, which may
+  contain query parameters, in the `Referer` header of outbound requests) and
+  `X-XSS-Protection: 1; mode=block` (legacy XSS filter for older browsers).
+  Added `tests/test_routes.py` coverage asserting both the HTML index and API
+  responses carry all four security hardening headers.
+
 - `tests/frontend/cleanup.test.js` and `tests/frontend/sync.test.js`: add edge-case
   coverage for the `cleanup.js` and `sync.js` modules — the fallback error message
   when an API error response has no `message` field, the `partial_success` warning
