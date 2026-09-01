@@ -282,27 +282,6 @@ def _add_security_headers(response: Response) -> Response:
 # ---------------------------------------------------------------------------
 
 
-def _is_valid_folder_name(name: str) -> bool:
-    """Return True if *name* is a safe, non-empty folder name\
- without path separators.
-
-    Args:
-        name: The folder name to validate.
-
-    Returns:
-        ``True`` if the name is valid, ``False`` otherwise.
-
-    """
-    return (
-        isinstance(name, str)
-        and bool(name)
-        and name not in (".", "..")
-        and "/" not in name
-        and "\\" not in name
-        and "\x00" not in name
-    )
-
-
 # Roots that the folder browser is allowed to expose.
 _BROWSE_ROOTS: tuple[str, ...] = tuple(
     os.path.realpath(r) for r in _DEFAULT_SEARCH_ROOTS
@@ -1293,9 +1272,10 @@ def perform_cleanup() -> ResponseReturnValue:
         if name in seen:
             continue
         seen.add(name)
-        if not _is_valid_folder_name(name):
-            errors.append(f"Invalid folder name: {name}")
-            continue
+        # Validation (including nested-path support and path-traversal
+        # rejection) happens inside _delete_folder via normalize_group_relpath.
+        # A separate _is_valid_folder_name check here would wrongly reject
+        # nested group names like "Anime/Action" that the cleanup UI offers.
         removed, err = _delete_folder(
             name,
             target_base,

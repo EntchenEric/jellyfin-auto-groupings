@@ -1101,6 +1101,28 @@ def test_perform_cleanup_success(client, tmp_path) -> None:
     assert response.get_json()["deleted"] == 1
 
 
+@pytest.mark.usefixtures("temp_config")
+def test_perform_cleanup_nested_group(client, tmp_path) -> None:
+    """Nested group names ("Anime/Action") can be cleaned up.
+
+    Regression test: the cleanup UI lists nested groups by their full
+    relative path, but perform_cleanup previously rejected any name
+    containing a ``/`` via _is_valid_folder_name, so nested groups could
+    never be deleted through the API.
+    """
+    target = tmp_path / "target"
+    (target / "Anime" / "Action").mkdir(parents=True)
+    save_config({"target_path": str(target)})
+    response = client.post(
+        "/api/cleanup",
+        json={"folders": ["Anime/Action"]},
+        headers={"X-Requested-With": "XMLHttpRequest"},
+    )
+    assert response.status_code == 200
+    assert response.get_json()["deleted"] == 1
+    assert not (target / "Anime" / "Action").exists()
+
+
 # perform_cleanup rmtree OSError (lines 608-609)
 @patch("shutil.rmtree")
 @pytest.mark.usefixtures("temp_config")
