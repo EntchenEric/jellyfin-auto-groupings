@@ -111,6 +111,18 @@ describe('path-picker module', () => {
     expect(document.getElementById('picker-footer-path').textContent).toBe('/media');
   });
 
+  it('browseDir should join child paths correctly when browsing the root directory', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      json: () => Promise.resolve({ status: 'success', current: '/', parent: null, dirs: ['Movies'] }),
+    });
+    const mod = await import('../../static/js/features/path-picker.js');
+    await mod.browseDir('/');
+    const body = document.getElementById('picker-body');
+    const btn = body.querySelector('.picker-item');
+    // Root join must not produce a double slash: '/' + 'Movies' -> '/Movies'
+    expect(btn.title).toBe('/Movies');
+  });
+
   it('browseDir should show an empty message when there are no subdirectories', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       json: () => Promise.resolve({ status: 'success', current: '/empty', parent: null, dirs: [] }),
@@ -204,6 +216,18 @@ describe('path-picker module', () => {
     expect(ui.showToast).toHaveBeenCalled();
   });
 
+  it('autoDetectPaths should warn when detection succeeds but no host path is found', async () => {
+    const api = await import('../../static/js/core/api.js');
+    api.autoDetectPaths.mockResolvedValue({ status: 'success', detected: {} });
+    const mod = await import('../../static/js/features/path-picker.js');
+    const ui = await import('../../static/js/core/ui.js');
+    await mod.autoDetectPaths();
+    expect(ui.showErrorDialog).toHaveBeenCalledWith(
+      'Auto-detection finished but could not find matching host paths.'
+    );
+    expect(ui.showToast).not.toHaveBeenCalled();
+  });
+
   it('autoDetectPaths should show an error dialog when detection fails', async () => {
     const api = await import('../../static/js/core/api.js');
     api.autoDetectPaths.mockResolvedValue({ status: 'error', message: 'boom' });
@@ -241,6 +265,38 @@ describe('path-picker module', () => {
     expect(document.getElementById('media_path_in_jellyfin').value).toBe('/jf/media');
     expect(document.getElementById('media_path_on_host').value).toBe('/host/media');
     expect(document.getElementById('target_path_in_jellyfin').value).toBe('/jf/target');
+  });
+
+  it('autoDetectIfEmpty should fill empty fields from the detected result', async () => {
+    const api = await import('../../static/js/core/api.js');
+    api.autoDetectPaths.mockResolvedValue({
+      status: 'success',
+      detected: {
+        target_path: '/new-target',
+        media_path_in_jellyfin: '/jf/media',
+        media_path_on_host: '/host/media',
+        target_path_in_jellyfin: '/jf/target',
+      },
+    });
+    const mod = await import('../../static/js/features/path-picker.js');
+    const ui = await import('../../static/js/core/ui.js');
+    await mod.autoDetectIfEmpty();
+    // All fields were empty, so every one should be filled from the result.
+    expect(document.getElementById('target_path').value).toBe('/new-target');
+    expect(document.getElementById('media_path_in_jellyfin').value).toBe('/jf/media');
+    expect(document.getElementById('media_path_on_host').value).toBe('/host/media');
+    expect(document.getElementById('target_path_in_jellyfin').value).toBe('/jf/target');
+    expect(ui.showToast).toHaveBeenCalledWith('Paths auto-filled - review and save.', 'success');
+  });
+
+  it('autoDetectIfEmpty should do nothing when detection returns a non-success status', async () => {
+    const api = await import('../../static/js/core/api.js');
+    api.autoDetectPaths.mockResolvedValue({ status: 'error', message: 'boom' });
+    const mod = await import('../../static/js/features/path-picker.js');
+    const ui = await import('../../static/js/core/ui.js');
+    await mod.autoDetectIfEmpty();
+    expect(document.getElementById('target_path').value).toBe('');
+    expect(ui.showToast).not.toHaveBeenCalled();
   });
 
   it('autoDetectIfEmpty should skip the API call when all fields are filled', async () => {

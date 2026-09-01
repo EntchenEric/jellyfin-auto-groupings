@@ -187,6 +187,31 @@ describe('export-import feature module', () => {
     vi.unstubAllGlobals();
   });
 
+  it('handleFileSelected should show a processing error for non-SyntaxError failures', async () => {
+    const showErrorDialog = vi.fn();
+    vi.doMock('../../static/js/core/ui.js', () => ({
+      showToast: vi.fn(),
+      showErrorDialog,
+      getEl: (id) => document.getElementById(id),
+    }));
+
+    const mockReader = { readAsText: vi.fn() };
+    vi.stubGlobal('FileReader', vi.fn(() => mockReader));
+
+    const mod = await import('../../static/js/features/export-import.js');
+    const file = new File(['null'], 'test.json', { type: 'application/json' });
+    const event = { target: { files: [file], value: 'x' } };
+
+    mod.handleFileSelected(event);
+    // JSON.parse('null') succeeds, but setupImportStep2(null) throws a TypeError.
+    mockReader.onload({ target: { result: 'null' } });
+
+    expect(showErrorDialog).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to process import file:')
+    );
+    vi.unstubAllGlobals();
+  });
+
   it('handleFileSelected should show error for empty file', async () => {
     const showErrorDialog = vi.fn();
     vi.doMock('../../static/js/core/ui.js', () => ({
@@ -395,5 +420,10 @@ describe('export-import feature module', () => {
     expect(showToast).toHaveBeenCalledWith('Import successful!', 'success');
     expect(renderGroups).toHaveBeenCalled();
     vi.unstubAllGlobals();
+  });
+
+  it('initExportImport should not throw', async () => {
+    const mod = await import('../../static/js/features/export-import.js');
+    expect(() => mod.initExportImport()).not.toThrow();
   });
 });
