@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `perform_cleanup` no longer rejects nested group names (e.g. `"Anime/Action"`)
+  via the now-removed `_is_valid_folder_name` check. The cleanup UI lists nested
+  groups by their full relative path, but the API previously rejected any name
+  containing a `/`, so nested groups could never be deleted through the API.
+  Validation now relies solely on `normalize_group_relpath` inside
+  `_delete_folder`, which supports nested paths while still rejecting path
+  traversal. Removed the resulting dead `_is_valid_folder_name` helper and added
+  a regression test.
+
 ### Added
 
 - `tests/frontend/cleanup.test.js` and `tests/frontend/sync.test.js`: add edge-case
