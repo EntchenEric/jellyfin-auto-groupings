@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `scheduler.py`: broadened the exception handling in the background sync job
+  handlers (`_run_global_sync_job` and `_run_group_sync_job`) from
+  `(ValueError, OSError, RuntimeError)` to `Exception`, so an unexpected error
+  (e.g. a `KeyError` from a malformed config, or a `requests` exception from a
+  fetcher) is always caught and logged instead of silently killing the
+  background job.
+
+- `tests/test_scheduler.py`: added tests verifying that unexpected exceptions
+  (e.g. `KeyError`) are caught and logged by both background sync job handlers.
+
 - `tests/frontend/groupings.test.js`, `tests/frontend/metadata.test.js`,
   `tests/frontend/export-import.test.js`, `tests/frontend/wizard.test.js`,
   `tests/frontend/cover-generator.test.js`, `tests/frontend/path-picker.test.js`
