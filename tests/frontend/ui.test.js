@@ -394,6 +394,22 @@ describe('loading overlay', () => {
     expect(() => showLoadingOverlay('Test')).not.toThrow();
     expect(() => hideLoadingOverlay()).not.toThrow();
   });
+
+  it('should not throw when the overlay exists but progress elements are missing', async () => {
+    // Overlay present, but the progress-bar-fill / percentage / eta children
+    // are absent — _updateProgressBar must guard against the missing nodes.
+    document.body.innerHTML = `
+      <div id="loading-overlay">
+        <div id="loading-overlay-title"></div>
+        <div id="loading-overlay-status"></div>
+      </div>
+    `;
+    const { showLoadingOverlay, updateLoadingStatus, hideLoadingOverlay } =
+      await import('../../static/js/core/ui.js');
+    expect(() => showLoadingOverlay('Test', 'Start', 5)).not.toThrow();
+    expect(() => updateLoadingStatus('Step', true)).not.toThrow();
+    expect(() => hideLoadingOverlay()).not.toThrow();
+  });
 });
 
 describe('renderEmptyState', () => {
@@ -506,6 +522,31 @@ describe('modal keyboard and backdrop handlers', () => {
 
     inner.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(modal.style.display).toBe('flex');
+  });
+
+  it('should close a modal via Escape without a trigger element without throwing', async () => {
+    const { showModal } = await import('../../static/js/core/ui.js');
+    showModal('some-modal');
+    const modal = document.getElementById('some-modal');
+    // No element has data-modal/onclick pointing at some-modal, so the
+    // trigger lookup returns null and the focus-restore branch is skipped.
+    expect(() => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    }).not.toThrow();
+    expect(modal.style.display).toBe('none');
+  });
+
+  it('should close a modal via its close button without a trigger element without throwing', async () => {
+    const { showModal } = await import('../../static/js/core/ui.js');
+    showModal('some-modal');
+    const modal = document.getElementById('some-modal');
+    const closeBtn = modal.querySelector('.close-modal-btn');
+    // No data-modal/onclick trigger exists for some-modal, so the
+    // focus-restore branch is skipped.
+    expect(() => {
+      closeBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    }).not.toThrow();
+    expect(modal.style.display).toBe('none');
   });
 });
 
@@ -651,5 +692,47 @@ describe('modal focus trap', () => {
     expect(document.activeElement).toBe(btn2);
     hideModal('cover-generator-modal');
     hideModal('some-modal');
+  });
+
+  it('should exclude focusables inside a hidden ancestor from the trap', async () => {
+    const { showModal, hideModal } = await import('../../static/js/core/ui.js');
+    const modal = document.getElementById('cover-generator-modal');
+
+    // A visible button and a button nested inside a display:none container.
+    const visibleBtn = document.createElement('button');
+    visibleBtn.id = 'trap-visible';
+    const hiddenWrapper = document.createElement('div');
+    hiddenWrapper.style.display = 'none';
+    const hiddenBtn = document.createElement('button');
+    hiddenBtn.id = 'trap-hidden';
+    hiddenWrapper.appendChild(hiddenBtn);
+    modal.appendChild(visibleBtn);
+    modal.appendChild(hiddenWrapper);
+
+    showModal('cover-generator-modal');
+    vi.runAllTimers();
+    visibleBtn.focus();
+
+    // Tab from the only visible focusable should wrap back to itself, never
+    // landing on the hidden button (which must be excluded by _isVisible).
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+    expect(document.activeElement).toBe(visibleBtn);
+    hideModal('cover-generator-modal');
+  });
+
+  it('should prevent Tab and keep focus on the modal when it has no focusable elements', async () => {
+    const { showModal, hideModal } = await import('../../static/js/core/ui.js');
+    const modal = document.getElementById('cover-generator-modal');
+    // cover-generator-modal is empty in setupDOM — no focusable children.
+
+    showModal('cover-generator-modal');
+    vi.runAllTimers();
+
+    const evt = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    document.dispatchEvent(evt);
+    // With no focusable elements, the trap must prevent the default Tab
+    // behaviour (which would otherwise move focus to the browser chrome).
+    expect(evt.defaultPrevented).toBe(true);
+    hideModal('cover-generator-modal');
   });
 });

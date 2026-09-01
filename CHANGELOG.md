@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `tests/frontend/ui.test.js`: add coverage for the remaining uncovered
+  `ui.js` modal focus-trap and progress-bar edge cases — excluding focusables
+  nested inside a hidden ancestor from the trap, preventing Tab (and keeping
+  focus on the modal) when a modal has no focusable elements, closing a modal
+  via Escape or its close button when no trigger element exists, and guarding
+  `_updateProgressBar` when the overlay exists but its progress children are
+  missing. This raises `ui.js` branch coverage from ~92% to ~95% (statement
+  coverage stays at 100%) and the full frontend suite to 306 tests across 15
+  files.
+
 - `tests/frontend/metadata.test.js`: add coverage for the remaining uncovered
   `metadata.js` statements — the `updateSourceValueUI` preValue parsing path
   (parsing a filter string into rules for a validated metadata type) and the
