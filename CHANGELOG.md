@@ -33,6 +33,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `SECURITY.md`: document the security hardening headers applied to every
+  HTTP response (`X-Content-Type-Options`, `X-Frame-Options`,
+  `Referrer-Policy`, `X-XSS-Protection`, and `Permissions-Policy`), including
+  their purpose and where they are set in `routes.py`.
+
 - `tests/test_network.py`: add coverage for the `NETWORK_RETRY_STATUS_FORCELIST`
   edge cases in `_parse_retry_config` — an empty or whitespace-only value yields
   an empty status list (no status-code retries), and empty entries between
