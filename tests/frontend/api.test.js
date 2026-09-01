@@ -80,6 +80,18 @@ describe('api module', () => {
     expect(result).toEqual({ status: 'success' });
   });
 
+  it('should clear the timeout timer after a successful request', async () => {
+    global.fetch = mockFetchResponse({ body: { status: 'success' } });
+    const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
+    try {
+      await api.apiGet('/api/config');
+      // The finally block must clear the abort timer on the success path.
+      expect(clearTimeoutSpy).toHaveBeenCalled();
+    } finally {
+      clearTimeoutSpy.mockRestore();
+    }
+  });
+
   it('apiPost should make a POST request with JSON body', async () => {
     global.fetch = mockFetchResponse({ body: { status: 'success', count: 5 } });
     const result = await api.apiPost('/api/grouping/preview', { type: 'genre', value: 'Action' });

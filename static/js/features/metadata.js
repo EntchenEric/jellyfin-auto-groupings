@@ -120,7 +120,7 @@ export function renderMetadataRules() {
             row.appendChild(rowTypeSelect);
         }
 
-        const rowType = type === 'complex' ? (rule.type || 'genre') : type;
+        const rowType = type === 'complex' ? rule.type : type;
         const options = state.cachedMetadata[rowType] || [];
         const valSelect = document.createElement('select');
         valSelect.className = 'rule-value-select';

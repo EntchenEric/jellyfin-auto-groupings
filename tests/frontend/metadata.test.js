@@ -139,6 +139,16 @@ describe('getFilterValue', () => {
     expect(metadata.getFilterValue()).toBe('genre:Horror OR actor:Tom Hanks');
   });
 
+  it('defaults a missing rule type to genre for complex queries', () => {
+    document.getElementById('source_type').value = 'complex';
+    state.isServerValidated = true;
+    window._currentMetadataRules = [
+      { operator: '', value: 'Horror' },
+      { operator: 'AND', value: 'Action' },
+    ];
+    expect(metadata.getFilterValue()).toBe('genre:Horror AND genre:Action');
+  });
+
   it('falls back to source_value when server is not validated', () => {
     document.getElementById('source_type').value = 'genre';
     state.isServerValidated = false;
@@ -164,6 +174,16 @@ describe('updateSourceTypeOptions', () => {
   it('disables options whose required key is missing', () => {
     document.getElementById('source_category').value = 'external';
     state.currentConfig = { trakt_client_id: '' };
+    metadata.updateSourceTypeOptions();
+    const typeSelect = document.getElementById('source_type');
+    const trakt = Array.from(typeSelect.options).find((o) => o.value === 'trakt_list');
+    expect(trakt.disabled).toBe(true);
+    expect(trakt.textContent).toContain('Trakt Client ID missing');
+  });
+
+  it('disables options whose required key is whitespace-only', () => {
+    document.getElementById('source_category').value = 'external';
+    state.currentConfig = { trakt_client_id: '   ' };
     metadata.updateSourceTypeOptions();
     const typeSelect = document.getElementById('source_type');
     const trakt = Array.from(typeSelect.options).find((o) => o.value === 'trakt_list');
@@ -225,6 +245,19 @@ describe('renderMetadataRules', () => {
     expect(container.querySelectorAll('.rule-type-select').length).toBe(1);
   });
 
+  it('uses the rule type when present for complex rules', () => {
+    document.getElementById('source_type').value = 'complex';
+    state.cachedMetadata = { actor: ['Tom Hanks'] };
+    window._currentMetadataRules = [{ operator: '', type: 'actor', value: 'Tom Hanks' }];
+    metadata.renderMetadataRules();
+    const container = document.getElementById('metadata_rules_container');
+    const typeSelect = container.querySelector('.rule-type-select');
+    expect(typeSelect.value).toBe('actor');
+    // The value select should be populated from the actor metadata.
+    const valSelect = container.querySelector('.rule-value-select');
+    expect(Array.from(valSelect.options).some((o) => o.value === 'Tom Hanks')).toBe(true);
+  });
+
   it('adds a custom option when the value is not in the cached metadata', () => {
     window._currentMetadataRules = [{ operator: '', value: 'Sci-Fi' }];
     metadata.renderMetadataRules();
@@ -283,6 +316,15 @@ describe('updateSourceValueUI', () => {
     expect(document.getElementById('metadata_rules_container').style.display).toBe('none');
   });
 
+  it('hides an existing user select when present', () => {
+    const userSelect = document.createElement('select');
+    userSelect.id = 'source_value_user_select';
+    document.getElementById('source_value_container').appendChild(userSelect);
+    document.getElementById('source_type').value = 'imdb_list';
+    metadata.updateSourceValueUI();
+    expect(userSelect.style.display).toBe('none');
+  });
+
   it('shows the rules container for metadata types when server is validated', () => {
     document.getElementById('source_type').value = 'genre';
     state.isServerValidated = true;
@@ -302,6 +344,18 @@ describe('updateSourceValueUI', () => {
       { operator: 'AND', value: 'Action' },
     ]);
     expect(state.lastRenderedType).toBe('genre');
+  });
+
+  it('re-parses a preValue when the type is unchanged but a preValue is given', () => {
+    document.getElementById('source_type').value = 'genre';
+    state.isServerValidated = true;
+    state.lastRenderedType = 'genre';
+    metadata.updateSourceValueUI('Horror AND Action');
+    // The preValue branch is taken even though the type is unchanged.
+    expect(window._currentMetadataRules).toEqual([
+      { operator: '', value: 'Horror' },
+      { operator: 'AND', value: 'Action' },
+    ]);
   });
 
   it('shows manual help text for metadata types when server is not validated', () => {
@@ -493,6 +547,15 @@ describe('previewGrouping', () => {
     document.getElementById('source_type').value = 'genre';
     document.getElementById('source_value').value = 'Horror';
     apiPost.mockResolvedValue({ status: 'error', message: 'Preview failed' });
+    await metadata.previewGrouping();
+    const result = document.getElementById('preview_result');
+    expect(result.innerHTML).toContain('Error: Preview failed');
+  });
+
+  it('falls back to a default message when the API error has no message', async () => {
+    document.getElementById('source_type').value = 'genre';
+    document.getElementById('source_value').value = 'Horror';
+    apiPost.mockResolvedValue({ status: 'error' });
     await metadata.previewGrouping();
     const result = document.getElementById('preview_result');
     expect(result.innerHTML).toContain('Error: Preview failed');

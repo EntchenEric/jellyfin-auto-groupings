@@ -235,6 +235,20 @@ describe('cover-generator module', () => {
       const canvas = document.getElementById('cover-canvas');
       expect(canvas.getContext).toHaveBeenCalledWith('2d');
     });
+
+    it('should fall back to a DPR of 1 when devicePixelRatio is falsy', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup()];
+      const mod = await import('../../static/js/features/cover-generator.js');
+      mod.openCoverGenerator(0);
+      const originalDpr = window.devicePixelRatio;
+      window.devicePixelRatio = 0;
+      try {
+        expect(() => mod.renderCover()).not.toThrow();
+      } finally {
+        window.devicePixelRatio = originalDpr;
+      }
+    });
   });
 
   describe('downloadCover', () => {

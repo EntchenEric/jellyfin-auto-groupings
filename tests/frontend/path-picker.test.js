@@ -250,6 +250,15 @@ describe('path-picker module', () => {
     expect(ui.showErrorDialog).toHaveBeenCalledWith('boom');
   });
 
+  it('autoDetectPaths should fall back to a default message when detection fails without a message', async () => {
+    const api = await import('../../static/js/core/api.js');
+    api.autoDetectPaths.mockResolvedValue({ status: 'error' });
+    const mod = await import('../../static/js/features/path-picker.js');
+    const ui = await import('../../static/js/core/ui.js');
+    await mod.autoDetectPaths();
+    expect(ui.showErrorDialog).toHaveBeenCalledWith('Auto-detection failed');
+  });
+
   it('autoDetectPaths should show an error dialog when the API is unreachable', async () => {
     const api = await import('../../static/js/core/api.js');
     api.autoDetectPaths.mockRejectedValue(new Error('network'));

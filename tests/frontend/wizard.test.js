@@ -230,6 +230,27 @@ describe('wizard feature module', () => {
     expect(showErrorDialog).toHaveBeenCalledWith('No paths');
   });
 
+  it('runWizardAutoDetect should fall back to a default message when detection fails without a message', async () => {
+    vi.doMock('../../static/js/core/api.js', () => ({
+      apiPost: vi.fn().mockResolvedValue({}),
+      autoDetectPaths: vi.fn().mockResolvedValue({ status: 'error' }),
+    }));
+    const showToast = vi.fn();
+    const showErrorDialog = vi.fn();
+    vi.doMock('../../static/js/core/ui.js', () => ({
+      showToast,
+      showErrorDialog,
+      setLoading: vi.fn(),
+      showModal: vi.fn(),
+      hideModal: vi.fn(),
+      getEl: (id) => document.getElementById(id),
+    }));
+
+    const mod = await import('../../static/js/features/wizard.js');
+    await mod.runWizardAutoDetect();
+    expect(showErrorDialog).toHaveBeenCalledWith('Detection failed');
+  });
+
   it('runWizardAutoDetect should handle network errors', async () => {
     vi.doMock('../../static/js/core/api.js', () => ({
       apiPost: vi.fn().mockResolvedValue({}),
@@ -440,6 +461,36 @@ describe('wizard feature module', () => {
 
     expect(showErrorDialog).toHaveBeenCalledWith('All fields are required to complete the setup.');
     expect(document.activeElement.id).toBe('wizard_target_path');
+  });
+
+  it('finishWizard should focus the host path field when only it is missing', async () => {
+    const showErrorDialog = vi.fn();
+    vi.doMock('../../static/js/core/ui.js', () => ({
+      showToast: vi.fn(),
+      showErrorDialog,
+      setLoading: vi.fn(),
+      showModal: vi.fn(),
+      hideModal: vi.fn(),
+      getEl: (id) => document.getElementById(id),
+    }));
+    vi.doMock('../../static/js/core/api.js', () => ({
+      apiPost: vi.fn().mockResolvedValue({}),
+      autoDetectPaths: vi.fn(),
+    }));
+
+    const mod = await import('../../static/js/features/wizard.js');
+    mod.openWizardManual();
+    document.getElementById('wizard_jellyfin_url').value = 'http://jf';
+    document.getElementById('wizard_api_key').value = 'key';
+    document.getElementById('wizard_media_path_in_jellyfin').value = '/media';
+    document.getElementById('wizard_target_path').value = '/target';
+    mod.wizardNext();
+    mod.wizardNext();
+    mod.wizardNext();
+    document.getElementById('wizard-next').click();
+
+    expect(showErrorDialog).toHaveBeenCalledWith('All fields are required to complete the setup.');
+    expect(document.activeElement.id).toBe('wizard_media_path_on_host');
   });
 
   it('initWizard should wire up buttons and open wizard when setup not done', async () => {
