@@ -214,6 +214,14 @@ describe('groupings module', () => {
       expect(document.querySelector('.group-category-label').textContent).toBe('External');
     });
 
+    it('should label a jellyfin source category as Jellyfin', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup({ source_category: 'jellyfin', source_type: 'genre' })];
+      const mod = await import('../../static/js/features/groupings.js');
+      mod.renderGroups();
+      expect(document.querySelector('.group-category-label').textContent).toBe('Jellyfin');
+    });
+
     it('should fall back to the raw source_type when the category is unknown', async () => {
       const { state } = await import('../../static/js/core/state.js');
       state.currentConfig.groups = [makeGroup({ source_category: 'unknown_cat', source_type: 'mystery_type' })];
@@ -359,6 +367,21 @@ describe('groupings module', () => {
       expect(state.currentConfig.groups.length).toBe(0);
       expect(saveConfig).toHaveBeenCalled();
       expect(apiPost).toHaveBeenCalledWith('/api/cleanup', { folders: ['Action'] });
+    });
+
+    it('should cancel the edit when deleting the group being edited', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup({ name: 'Action' })];
+      state.editingIndex = 0;
+      showConfirmDialog.mockResolvedValue(true);
+      saveConfig.mockResolvedValue({});
+      apiPost.mockResolvedValue({});
+      const mod = await import('../../static/js/features/groupings.js');
+      await mod.deleteGroup(0);
+      // Deleting the group being edited resets the editing state
+      expect(state.editingIndex).toBe(-1);
+      expect(state.currentConfig.groups.length).toBe(0);
+      expect(saveConfig).toHaveBeenCalled();
     });
 
     it('should not delete when confirmation is declined', async () => {
@@ -573,6 +596,18 @@ describe('groupings module', () => {
       state.currentConfig.scheduler = { global_enabled: false, global_schedule: '' };
       const mod = await import('../../static/js/features/groupings.js');
       mod.updateGlobalSyncExclusionsUI();
+      expect(state.currentConfig.scheduler.global_exclude_ids).toEqual([]);
+    });
+
+    it('should no-op when the exclusions container is missing', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup({ name: 'Action' })];
+      state.currentConfig.scheduler = { global_enabled: false, global_schedule: '', global_exclude_ids: [] };
+      // Remove the container so getEl returns null and the guard returns early.
+      document.getElementById('global_sync_exclusions').remove();
+      const mod = await import('../../static/js/features/groupings.js');
+      expect(() => mod.updateGlobalSyncExclusionsUI()).not.toThrow();
+      // The scheduler config is left untouched.
       expect(state.currentConfig.scheduler.global_exclude_ids).toEqual([]);
     });
 
