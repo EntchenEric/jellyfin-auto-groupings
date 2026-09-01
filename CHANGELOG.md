@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `tests/frontend/cleanup.test.js` and `tests/frontend/sync.test.js`: add edge-case
+  coverage for the `cleanup.js` and `sync.js` modules — the fallback error message
+  when an API error response has no `message` field, the `partial_success` warning
+  toast that lists per-folder errors, and the `initCleanup` / `initSync` no-op
+  initialisers being callable without throwing. This raises the full frontend
+  suite to 333 tests across 15 files.
+
 - `tests/frontend/path-picker.test.js`: add coverage for the previously-uncovered
   `path-picker.js` branches — the auto-detect success-without-host-path warning,
   the auto-fill of empty path fields from a detected result, the no-op when
