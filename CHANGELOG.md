@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `tests/frontend/ui.test.js`: added tests covering the remaining uncovered
+  branches in `static/js/core/ui.js` — Tab/Shift+Tab focus-trap wrap-around
+  (from the last element, and when focus is outside the modal), the
+  `previousActive` fallback in `showModal` when the active element has no id
+  or is the body, and focus restoration when the trigger element is missing
+  or present on Escape/close-button dismissal. This raises `ui.js` branch
+  coverage to 100%.
+
 - `static/js/features/cleanup.js`: the cleanup modal now routes its HTTP
   requests through the centralized `api.js` helpers (`getCleanupItems` /
   `performCleanup`) instead of calling `fetch` directly. This gives cleanup
