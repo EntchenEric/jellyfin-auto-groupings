@@ -130,6 +130,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `static/js/core/ui.js`: add a keyboard focus trap for modals. When a modal
+  is open, Tab/Shift+Tab now cycle focus within the topmost visible modal
+  instead of letting keyboard users tab out into the background page
+  (WCAG 2.1.2 / 2.4.3). The topmost modal is derived from the DOM, so the
+  trap stays correct even when modals are hidden through other means.
+- `tests/frontend/ui.test.js`: add unit tests covering the modal focus trap
+  (Tab wrap, Shift+Tab wrap, no-trap-when-closed, and topmost-modal
+  selection when several modals are open).
 - `README.md`: update test count from 855 to 856 (a cleanup test was added in
   the symlink-exclusion fix).
 - `README.md`: update test count from 749 to 855 and document the `/api/version`

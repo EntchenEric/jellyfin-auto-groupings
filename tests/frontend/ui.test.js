@@ -553,3 +553,103 @@ describe('progress bar ETA display', () => {
     expect(etaEl.style.display).toBe('none');
   });
 });
+
+describe('modal focus trap', () => {
+  beforeEach(() => {
+    setupDOM();
+    // Use fake timers so the async focus scheduled by showModal() does not
+    // leak across tests and interfere with the synchronous Tab assertions.
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('should wrap Tab from the last focusable element back to the first', async () => {
+    const { showModal, hideModal } = await import('../../static/js/core/ui.js');
+    // cover-generator-modal is empty in setupDOM, so we control its focusables.
+    const modal = document.getElementById('cover-generator-modal');
+    const btn1 = document.createElement('button');
+    btn1.id = 'trap-btn-1';
+    const btn2 = document.createElement('button');
+    btn2.id = 'trap-btn-2';
+    modal.appendChild(btn1);
+    modal.appendChild(btn2);
+
+    showModal('cover-generator-modal');
+    // Flush the async focus scheduled by showModal() so it cannot race with
+    // the explicit focus below.
+    vi.runAllTimers();
+    btn2.focus();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+    expect(document.activeElement).toBe(btn1);
+    hideModal('cover-generator-modal');
+  });
+
+  it('should wrap Shift+Tab from the first focusable element back to the last', async () => {
+    const { showModal, hideModal } = await import('../../static/js/core/ui.js');
+    const modal = document.getElementById('cover-generator-modal');
+    const btn1 = document.createElement('button');
+    btn1.id = 'trap-btn-1';
+    const btn2 = document.createElement('button');
+    btn2.id = 'trap-btn-2';
+    modal.appendChild(btn1);
+    modal.appendChild(btn2);
+
+    showModal('cover-generator-modal');
+    vi.runAllTimers();
+    btn1.focus();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true }));
+    expect(document.activeElement).toBe(btn2);
+    hideModal('cover-generator-modal');
+  });
+
+  it('should not trap Tab when no modal is open', async () => {
+    const { showModal, hideModal } = await import('../../static/js/core/ui.js');
+    const modal = document.getElementById('cover-generator-modal');
+    const btn1 = document.createElement('button');
+    btn1.id = 'trap-btn-1';
+    const btn2 = document.createElement('button');
+    btn2.id = 'trap-btn-2';
+    modal.appendChild(btn1);
+    modal.appendChild(btn2);
+
+    showModal('cover-generator-modal');
+    hideModal('cover-generator-modal');
+    // setupDOM() does not include the CSS that hides .modal by default, so
+    // explicitly hide every modal to simulate the real closed state.
+    document.querySelectorAll('.modal').forEach((m) => { m.style.display = 'none'; });
+    btn1.focus();
+
+    // With no visible modal, Tab should not be intercepted (default action allowed).
+    const evt = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    document.dispatchEvent(evt);
+    expect(evt.defaultPrevented).toBe(false);
+  });
+
+  it('should trap focus in the topmost modal when several are open', async () => {
+    const { showModal, hideModal } = await import('../../static/js/core/ui.js');
+    const modal = document.getElementById('some-modal');
+    const btn1 = document.createElement('button');
+    btn1.id = 'trap-btn-1';
+    modal.appendChild(btn1);
+
+    const cover = document.getElementById('cover-generator-modal');
+    const btn2 = document.createElement('button');
+    btn2.id = 'trap-btn-2';
+    cover.appendChild(btn2);
+
+    showModal('some-modal');
+    showModal('cover-generator-modal');
+    btn2.focus();
+
+    // Topmost modal is cover-generator-modal; Tab wraps within it.
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+    expect(document.activeElement).toBe(btn2);
+    hideModal('cover-generator-modal');
+    hideModal('some-modal');
+  });
+});

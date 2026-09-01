@@ -41,19 +41,77 @@ export function setLoading(btn, loading) {
     btn.classList.toggle('btn-loading', loading);
 }
 
+// Selector for elements that can receive keyboard focus inside a modal.
+const _FOCUSABLE =
+    'button:not([disabled]), input:not([disabled]), select:not([disabled]), ' +
+    'textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
+
+function _isVisible(el) {
+    // Walk up the tree; an element is focusable only if neither it nor any
+    // ancestor is hidden via display:none or visibility:hidden. Uses computed
+    // style so it works both in real browsers and in jsdom-based tests.
+    for (let node = el; node && node.nodeType === 1; node = node.parentElement) {
+        const style = window.getComputedStyle(node);
+        if (style.display === 'none' || style.visibility === 'hidden') {
+            return false;
+        }
+    }
+    return true;
+}
+
+function _getFocusable(el) {
+    return Array.from(el.querySelectorAll(_FOCUSABLE)).filter(_isVisible);
+}
+
+// Trap Tab/Shift+Tab inside the topmost visible modal so keyboard users
+// cannot tab out into the background page (WCAG 2.1.2 / 2.4.3). The topmost
+// modal is derived from the DOM (last visible .modal), so the trap stays
+// correct even if a modal is hidden through other means.
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab') return;
+    const modals = document.querySelectorAll('.modal');
+    let topmost = null;
+    for (const m of modals) {
+        const style = window.getComputedStyle(m);
+        if (style.display !== 'none') {
+            topmost = m;
+        }
+    }
+    if (!topmost) return;
+    const focusable = _getFocusable(topmost);
+    if (focusable.length === 0) {
+        e.preventDefault();
+        topmost.focus && topmost.focus();
+        return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+    if (e.shiftKey) {
+        if (active === first || !topmost.contains(active)) {
+            e.preventDefault();
+            last.focus();
+        }
+    } else if (active === last || !topmost.contains(active)) {
+        e.preventDefault();
+        first.focus();
+    }
+});
+
 export function showModal(id) {
     const el = document.getElementById(id);
     if (el) {
         el.style.display = 'flex';
         // Mark the modal as visible for assistive technology
         el.removeAttribute('aria-hidden');
-        // Trap focus inside the modal
+        // Remember the element that triggered the modal so focus can be
+        // restored when it closes.
         const previousActive = document.activeElement;
         el.dataset.previousActive = previousActive && previousActive !== document.body
             ? previousActive.id || ''
             : '';
         // Focus first focusable element
-        const focusable = el.querySelector('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])');
+        const focusable = el.querySelector(_FOCUSABLE);
         if (focusable) {
             setTimeout(() => focusable.focus(), 100);
         }
