@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `app.py`: `_resolve_log_level` now validates the `LOG_LEVEL` value against the
+  explicit set of logging level constants (`DEBUG`, `INFO`, `WARNING`, `ERROR`,
+  `CRITICAL`) instead of accepting any integer attribute on the `logging`
+  module. An unrecognised value can no longer silently resolve to an unrelated
+  integer constant; it now falls back to `INFO` as documented.
+
 - `perform_cleanup` no longer rejects nested group names (e.g. `"Anime/Action"`)
   via the now-removed `_is_valid_folder_name` check. The cleanup UI lists nested
   groups by their full relative path, but the API previously rejected any name
