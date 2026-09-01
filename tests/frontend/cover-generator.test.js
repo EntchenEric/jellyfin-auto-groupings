@@ -19,7 +19,7 @@ vi.mock('../../static/js/core/ui.js', () => ({
 }));
 
 import { saveConfig, uploadCover } from '../../static/js/core/api.js';
-import { showToast, showErrorDialog, hideModal } from '../../static/js/core/ui.js';
+import { showToast, showErrorDialog, hideModal, getEl } from '../../static/js/core/ui.js';
 
 /**
  * Build a minimal mock 2D canvas context so renderCover() can run in jsdom
@@ -97,6 +97,10 @@ function setupDOM() {
     <div id="cover-generator-modal"></div>
     <canvas id="cover-canvas"></canvas>
   `;
+  // Ensure document.fonts is always present so openCoverGenerator uses the
+  // promise path (resolves within the test) instead of a setTimeout that could
+  // fire after the test environment is torn down.
+  document.fonts = { ready: Promise.resolve() };
   const canvas = document.getElementById('cover-canvas');
   canvas.getContext = vi.fn(() => mockCanvasContext());
   // jsdom does not implement toDataURL; provide a stub.
@@ -123,6 +127,9 @@ describe('cover-generator module', () => {
   beforeEach(() => {
     setupDOM();
     vi.clearAllMocks();
+    // Reset getEl to its default DOM lookup so any mockImplementation set by a
+    // test (e.g. the missing-form-fields test) does not leak into later tests.
+    getEl.mockImplementation((id) => document.getElementById(id));
   });
 
   afterEach(() => {
@@ -162,6 +169,14 @@ describe('cover-generator module', () => {
       expect(document.getElementById('cover-text').value).toBe('Action');
     });
 
+    it('should fall back to the literal default when both cover_text and name are missing', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup({ cover_text: undefined, name: undefined })];
+      const mod = await import('../../static/js/features/cover-generator.js');
+      mod.openCoverGenerator(0);
+      expect(document.getElementById('cover-text').value).toBe('Custom Group');
+    });
+
     it('should fall back to defaults when cover fields are missing', async () => {
       const { state } = await import('../../static/js/core/state.js');
       state.currentConfig.groups = [makeGroup({
@@ -189,6 +204,24 @@ describe('cover-generator module', () => {
       const canvas = document.getElementById('cover-canvas');
       expect(canvas.getContext).toHaveBeenCalledWith('2d');
     });
+
+    it('should render the cover via setTimeout when fonts are unavailable', async () => {
+      vi.useFakeTimers();
+      try {
+        const { state } = await import('../../static/js/core/state.js');
+        state.currentConfig.groups = [makeGroup()];
+        const mod = await import('../../static/js/features/cover-generator.js');
+        // No document.fonts -> the else branch schedules a setTimeout render.
+        document.fonts = undefined;
+        mod.openCoverGenerator(0);
+        const canvas = document.getElementById('cover-canvas');
+        expect(canvas.getContext).not.toHaveBeenCalled();
+        vi.advanceTimersByTime(100);
+        expect(canvas.getContext).toHaveBeenCalledWith('2d');
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 
   describe('renderCover', () => {
@@ -211,9 +244,45 @@ describe('cover-generator module', () => {
       expect(showToast).not.toHaveBeenCalled();
     });
 
+    it('should do nothing when the active group is missing', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup()];
+      const mod = await import('../../static/js/features/cover-generator.js');
+      // Open with a valid group to set the active index, then remove the group
+      // so the guard clause `if (!group) return;` is exercised.
+      mod.openCoverGenerator(0);
+      state.currentConfig.groups = [];
+      mod.downloadCover();
+      expect(showToast).not.toHaveBeenCalled();
+    });
+
+    it('should do nothing when the canvas has no data URL', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup()];
+      const mod = await import('../../static/js/features/cover-generator.js');
+      mod.openCoverGenerator(0);
+      const canvas = document.getElementById('cover-canvas');
+      canvas.toDataURL = vi.fn(() => '');
+      mod.downloadCover();
+      expect(showToast).not.toHaveBeenCalled();
+    });
+
     it('should trigger a download and show a toast when a cover is active', async () => {
       const { state } = await import('../../static/js/core/state.js');
       state.currentConfig.groups = [makeGroup()];
+      const mod = await import('../../static/js/features/cover-generator.js');
+      mod.openCoverGenerator(0);
+
+      const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+      mod.downloadCover();
+      expect(clickSpy).toHaveBeenCalled();
+      expect(showToast).toHaveBeenCalledWith('Downloaded cover!', 'success');
+      clickSpy.mockRestore();
+    });
+
+    it('should fall back to a generic filename when the group has no name', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup({ name: undefined })];
       const mod = await import('../../static/js/features/cover-generator.js');
       mod.openCoverGenerator(0);
 
@@ -230,6 +299,57 @@ describe('cover-generator module', () => {
       const mod = await import('../../static/js/features/cover-generator.js');
       await mod.applyCover();
       expect(uploadCover).not.toHaveBeenCalled();
+    });
+
+    it('should do nothing when the active group is missing', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup()];
+      const mod = await import('../../static/js/features/cover-generator.js');
+      mod.openCoverGenerator(0);
+      state.currentConfig.groups = [];
+      await mod.applyCover();
+      expect(uploadCover).not.toHaveBeenCalled();
+    });
+
+    it('should do nothing when the canvas has no data URL', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup()];
+      const mod = await import('../../static/js/features/cover-generator.js');
+      mod.openCoverGenerator(0);
+      const canvas = document.getElementById('cover-canvas');
+      canvas.toDataURL = vi.fn(() => '');
+      await mod.applyCover();
+      expect(uploadCover).not.toHaveBeenCalled();
+    });
+
+    it('should keep existing group cover fields when form elements are missing', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup()];
+      uploadCover.mockResolvedValue({});
+      saveConfig.mockResolvedValue({});
+      const mod = await import('../../static/js/features/cover-generator.js');
+      // Prevent the async render scheduled by openCoverGenerator from firing
+      // after we swap the getEl mock (which would throw on a null element).
+      document.fonts = { ready: new Promise(() => {}) };
+      mod.openCoverGenerator(0);
+
+      // Simulate the form inputs being absent so getEl returns null for them;
+      // the ?? fallbacks must preserve the group's existing cover values.
+      // (The canvas must still resolve so applyCover can produce a data URL.)
+      getEl.mockImplementation((id) => {
+        if (id.startsWith('cover-') && id !== 'cover-canvas') return null;
+        return document.getElementById(id);
+      });
+
+      await mod.applyCover();
+      expect(uploadCover).toHaveBeenCalled();
+      expect(saveConfig).toHaveBeenCalledWith(state.currentConfig);
+      expect(state.currentConfig.groups[0].cover_text).toBe('Action Movies');
+      expect(state.currentConfig.groups[0].cover_theme).toBe('modern-dark');
+      expect(state.currentConfig.groups[0].cover_border_style).toBe('none');
+      expect(state.currentConfig.groups[0].cover_border_color).toBe('#ffffff');
+      expect(state.currentConfig.groups[0].cover_color1).toBe('#4f46e5');
+      expect(state.currentConfig.groups[0].cover_color2).toBe('#9333ea');
     });
 
     it('should upload, save config, update the group and close the modal on success', async () => {
@@ -296,6 +416,29 @@ describe('cover-generator module', () => {
       // No theme function runs, but the canvas is still cleared and reset.
       expect(ctx.clearRect).toHaveBeenCalled();
       expect(ctx.setTransform).toHaveBeenCalled();
+    });
+
+    it('should fall back to black when a color is not a valid hex', async () => {
+      // An invalid hex color exercises the hexToRgb fallback branch.
+      const { ctx } = await renderWith({ cover_color1: 'not-a-color', cover_color2: 'also-bad' });
+      expect(ctx.clearRect).toHaveBeenCalled();
+      expect(ctx.fillRect).toHaveBeenCalled();
+    });
+
+    it('should not throw when the form elements are missing', async () => {
+      // renderCover reads the form fields via optional chaining; when the
+      // elements are absent it must fall back to defaults instead of throwing.
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup()];
+      const mod = await import('../../static/js/features/cover-generator.js');
+      mod.openCoverGenerator(0);
+      getEl.mockImplementation((id) => {
+        if (id.startsWith('cover-') && id !== 'cover-canvas') return null;
+        return document.getElementById(id);
+      });
+      expect(() => mod.renderCover()).not.toThrow();
+      const canvas = document.getElementById('cover-canvas');
+      expect(canvas.getContext).toHaveBeenCalledWith('2d');
     });
 
     it('should draw text for every theme without throwing', async () => {

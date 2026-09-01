@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `static/js/features/cover-generator.js`: `renderCover` now reads the cover
+  form fields via optional chaining with sensible defaults, so it no longer
+  throws if any of the form elements are missing from the DOM. This makes
+  `renderCover` consistent with the null-safe reads already used in
+  `applyCover`. Added frontend tests covering the missing-form-element,
+  missing-group, missing-data-URL, invalid-hex-color, and fonts-unavailable
+  (setTimeout) edge cases, raising the module's branch coverage to ~99%.
+
 - `sync.py`: `_parse_year_int` now tolerates float-formatted year expressions
   (e.g. `"2001.0"`), mirroring how `_coerce_year_int` already normalises
   float-formatted *values*. A plain year rule such as `"2001.0"` now matches
