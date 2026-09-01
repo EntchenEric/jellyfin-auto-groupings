@@ -417,3 +417,139 @@ describe('renderEmptyState', () => {
     expect(container.textContent).toBe('Empty');
   });
 });
+
+describe('hideModal focus restoration and body class', () => {
+  beforeEach(() => {
+    setupDOM();
+  });
+
+  it('should restore focus to the element that triggered the modal', async () => {
+    const { showModal, hideModal } = await import('../../static/js/core/ui.js');
+    const trigger = document.createElement('button');
+    trigger.id = 'open-modal-trigger';
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    showModal('some-modal');
+    expect(document.body.classList.contains('modal-open')).toBe(true);
+
+    hideModal('some-modal');
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it('should remove modal-open body class when no modals remain visible', async () => {
+    const { showModal, hideModal } = await import('../../static/js/core/ui.js');
+    // Simulate the real CSS state: hidden modals have display:none
+    document.querySelectorAll('.modal').forEach((m) => { m.style.display = 'none'; });
+    showModal('some-modal');
+    expect(document.body.classList.contains('modal-open')).toBe(true);
+
+    hideModal('some-modal');
+    expect(document.body.classList.contains('modal-open')).toBe(false);
+  });
+
+  it('should keep modal-open body class when another modal is still visible', async () => {
+    const { showModal, hideModal } = await import('../../static/js/core/ui.js');
+    showModal('some-modal');
+    showModal('cover-generator-modal');
+
+    hideModal('some-modal');
+    // cover-generator-modal is still visible, so body class stays
+    expect(document.body.classList.contains('modal-open')).toBe(true);
+  });
+
+  it('should not throw when hiding a non-existent modal', async () => {
+    const { hideModal } = await import('../../static/js/core/ui.js');
+    expect(() => hideModal('does-not-exist')).not.toThrow();
+  });
+});
+
+describe('modal keyboard and backdrop handlers', () => {
+  beforeEach(() => {
+    setupDOM();
+  });
+
+  it('should close the topmost visible modal on Escape key', async () => {
+    const { showModal } = await import('../../static/js/core/ui.js');
+    showModal('some-modal');
+    const modal = document.getElementById('some-modal');
+    expect(modal.style.display).toBe('flex');
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(modal.style.display).toBe('none');
+  });
+
+  it('should not close anything when Escape pressed with no visible modal', async () => {
+    const modal = document.getElementById('some-modal');
+    modal.style.display = 'none';
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(modal.style.display).toBe('none');
+  });
+
+  it('should close a modal when its backdrop is clicked', async () => {
+    const { showModal } = await import('../../static/js/core/ui.js');
+    showModal('some-modal');
+    const modal = document.getElementById('some-modal');
+    expect(modal.style.display).toBe('flex');
+
+    // Simulate a click directly on the modal element (the backdrop)
+    modal.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(modal.style.display).toBe('none');
+  });
+
+  it('should not close a modal when clicking inside its content area', async () => {
+    const { showModal } = await import('../../static/js/core/ui.js');
+    showModal('some-modal');
+    const modal = document.getElementById('some-modal');
+    const inner = document.createElement('div');
+    modal.appendChild(inner);
+
+    inner.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(modal.style.display).toBe('flex');
+  });
+});
+
+describe('progress bar ETA display', () => {
+  beforeEach(() => {
+    setupDOM();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('should show ETA when remaining time exceeds 2 seconds', async () => {
+    const { showLoadingOverlay, updateLoadingStatus } = await import('../../static/js/core/ui.js');
+    const etaEl = document.getElementById('progress-eta');
+
+    showLoadingOverlay('Test', 'Start', 10);
+    // Simulate elapsed time so the per-step estimate yields > 2s remaining
+    vi.setSystemTime(Date.now() + 10000);
+    updateLoadingStatus('Step 1', true);
+
+    expect(etaEl.style.display).toBe('inline');
+    expect(etaEl.textContent).toMatch(/s remaining/);
+  });
+
+  it('should hide ETA when remaining time is small', async () => {
+    const { showLoadingOverlay, updateLoadingStatus } = await import('../../static/js/core/ui.js');
+    const etaEl = document.getElementById('progress-eta');
+
+    showLoadingOverlay('Test', 'Start', 10);
+    // No meaningful elapsed time -> remaining estimate stays <= 2s
+    updateLoadingStatus('Step 1', true);
+
+    expect(etaEl.style.display).toBe('none');
+  });
+
+  it('should hide ETA on the final step', async () => {
+    const { showLoadingOverlay, updateLoadingStatus } = await import('../../static/js/core/ui.js');
+    const etaEl = document.getElementById('progress-eta');
+
+    showLoadingOverlay('Test', 'Start', 1);
+    updateLoadingStatus('Done', true);
+
+    expect(etaEl.style.display).toBe('none');
+  });
+});
