@@ -97,6 +97,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `tmdb.py`: handle HTTP 429 (rate limit) in `get_tmdb_recommendations` by
   respecting the `Retry-After` header and backing off.
 
+- `tests/frontend/api.test.js`: expand coverage of the centralised API client
+  (`api.js`) to 100% statement / 100% function coverage. Adds tests for the
+  401 auth-retry flow (with and without a stored password), request timeout
+  (`AbortError`), network errors (`TypeError`), unexpected errors, non-JSON
+  error bodies, `browsePath` query-string building, and all convenience
+  wrappers.
+
+- `tests/frontend/wizard.test.js`: add coverage for `finishWizard` (field
+  validation and focus behaviour, successful save + reload, and save-failure
+  handling) and `initWizard` (button wiring and setup-done gating), raising
+  `wizard.js` statement coverage from ~72% to 100%.
+
+- `tests/frontend/config.test.js`: add coverage for the environment-override
+  warning banner rendered by `loadConfig` (known label mapping, unknown-key
+  fallback, and the no-overrides case) and the API config form submit handler,
+  raising `config.js` statement coverage from ~74% to ~90%.
+
+- `tests/frontend/export-import.test.js`: add coverage for selective export,
+  full-config import (Overwrite All), group import (append selected), the
+  file-reader error path, and the incompatible-file-structure path, raising
+  `export-import.js` statement coverage from ~83% to ~98%.
+
 ### Changed
 
 - `README.md`: update test count from 855 to 856 (a cleanup test was added in

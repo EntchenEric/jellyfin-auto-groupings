@@ -219,4 +219,245 @@ describe('wizard feature module', () => {
     await mod.runWizardAutoDetect();
     expect(showErrorDialog).toHaveBeenCalledWith('Auto-detect failed - network error');
   });
+
+  it('finishWizard should show error and focus first missing field', async () => {
+    const showErrorDialog = vi.fn();
+    vi.doMock('../../static/js/core/ui.js', () => ({
+      showToast: vi.fn(),
+      showErrorDialog,
+      setLoading: vi.fn(),
+      showModal: vi.fn(),
+      hideModal: vi.fn(),
+      getEl: (id) => document.getElementById(id),
+    }));
+    vi.doMock('../../static/js/core/api.js', () => ({
+      apiPost: vi.fn().mockResolvedValue({}),
+      autoDetectPaths: vi.fn(),
+    }));
+
+    const mod = await import('../../static/js/features/wizard.js');
+    mod.openWizardManual();
+    // Leave all fields empty, then jump to the last step so the button is "Finish & Restart".
+    mod.wizardNext();
+    mod.wizardNext();
+    mod.wizardNext();
+    document.getElementById('wizard-next').click();
+
+    expect(showErrorDialog).toHaveBeenCalledWith('All fields are required to complete the setup.');
+    expect(document.activeElement.id).toBe('wizard_jellyfin_url');
+  });
+
+  it('finishWizard should focus the api key field when only url is filled', async () => {
+    const showErrorDialog = vi.fn();
+    vi.doMock('../../static/js/core/ui.js', () => ({
+      showToast: vi.fn(),
+      showErrorDialog,
+      setLoading: vi.fn(),
+      showModal: vi.fn(),
+      hideModal: vi.fn(),
+      getEl: (id) => document.getElementById(id),
+    }));
+    vi.doMock('../../static/js/core/api.js', () => ({
+      apiPost: vi.fn().mockResolvedValue({}),
+      autoDetectPaths: vi.fn(),
+    }));
+
+    const mod = await import('../../static/js/features/wizard.js');
+    mod.openWizardManual();
+    document.getElementById('wizard_jellyfin_url').value = 'http://jf';
+    mod.wizardNext();
+    mod.wizardNext();
+    mod.wizardNext();
+    document.getElementById('wizard-next').click();
+
+    expect(showErrorDialog).toHaveBeenCalledWith('All fields are required to complete the setup.');
+    expect(document.activeElement.id).toBe('wizard_api_key');
+  });
+
+  it('finishWizard should save config and reload on success', async () => {
+    const apiPost = vi.fn().mockResolvedValue({});
+    const hideModal = vi.fn();
+    const setLoading = vi.fn();
+    vi.doMock('../../static/js/core/ui.js', () => ({
+      showToast: vi.fn(),
+      showErrorDialog: vi.fn(),
+      setLoading,
+      showModal: vi.fn(),
+      hideModal,
+      getEl: (id) => document.getElementById(id),
+    }));
+    vi.doMock('../../static/js/core/api.js', () => ({
+      apiPost,
+      autoDetectPaths: vi.fn(),
+    }));
+
+    const reloadSpy = vi.fn();
+    Object.defineProperty(window, 'location', {
+      value: { reload: reloadSpy },
+      writable: true,
+    });
+
+    const mod = await import('../../static/js/features/wizard.js');
+    mod.openWizardManual();
+    document.getElementById('wizard_jellyfin_url').value = 'http://jf';
+    document.getElementById('wizard_api_key').value = 'key';
+    document.getElementById('wizard_media_path_in_jellyfin').value = '/media';
+    document.getElementById('wizard_media_path_on_host').value = '/host';
+    document.getElementById('wizard_target_path').value = '/target';
+    mod.wizardNext();
+    mod.wizardNext();
+    mod.wizardNext();
+    document.getElementById('wizard-next').click();
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(apiPost).toHaveBeenCalledWith(
+      '/api/config',
+      expect.objectContaining({ setup_done: true }),
+    );
+    expect(hideModal).toHaveBeenCalledWith('setup-wizard-modal');
+    expect(reloadSpy).toHaveBeenCalled();
+  });
+
+  it('finishWizard should show error dialog when save fails', async () => {
+    const showErrorDialog = vi.fn();
+    vi.doMock('../../static/js/core/ui.js', () => ({
+      showToast: vi.fn(),
+      showErrorDialog,
+      setLoading: vi.fn(),
+      showModal: vi.fn(),
+      hideModal: vi.fn(),
+      getEl: (id) => document.getElementById(id),
+    }));
+    vi.doMock('../../static/js/core/api.js', () => ({
+      apiPost: vi.fn().mockRejectedValue(new Error('save failed')),
+      autoDetectPaths: vi.fn(),
+    }));
+
+    const mod = await import('../../static/js/features/wizard.js');
+    mod.openWizardManual();
+    document.getElementById('wizard_jellyfin_url').value = 'http://jf';
+    document.getElementById('wizard_api_key').value = 'key';
+    document.getElementById('wizard_media_path_in_jellyfin').value = '/media';
+    document.getElementById('wizard_media_path_on_host').value = '/host';
+    document.getElementById('wizard_target_path').value = '/target';
+    mod.wizardNext();
+    mod.wizardNext();
+    mod.wizardNext();
+    document.getElementById('wizard-next').click();
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(showErrorDialog).toHaveBeenCalledWith('Failed to finalise setup');
+  });
+
+  it('finishWizard should focus the media path field when only url and key are filled', async () => {
+    const showErrorDialog = vi.fn();
+    vi.doMock('../../static/js/core/ui.js', () => ({
+      showToast: vi.fn(),
+      showErrorDialog,
+      setLoading: vi.fn(),
+      showModal: vi.fn(),
+      hideModal: vi.fn(),
+      getEl: (id) => document.getElementById(id),
+    }));
+    vi.doMock('../../static/js/core/api.js', () => ({
+      apiPost: vi.fn().mockResolvedValue({}),
+      autoDetectPaths: vi.fn(),
+    }));
+
+    const mod = await import('../../static/js/features/wizard.js');
+    mod.openWizardManual();
+    document.getElementById('wizard_jellyfin_url').value = 'http://jf';
+    document.getElementById('wizard_api_key').value = 'key';
+    mod.wizardNext();
+    mod.wizardNext();
+    mod.wizardNext();
+    document.getElementById('wizard-next').click();
+
+    expect(showErrorDialog).toHaveBeenCalledWith('All fields are required to complete the setup.');
+    expect(document.activeElement.id).toBe('wizard_media_path_in_jellyfin');
+  });
+
+  it('finishWizard should focus the target path field when only it is missing', async () => {
+    const showErrorDialog = vi.fn();
+    vi.doMock('../../static/js/core/ui.js', () => ({
+      showToast: vi.fn(),
+      showErrorDialog,
+      setLoading: vi.fn(),
+      showModal: vi.fn(),
+      hideModal: vi.fn(),
+      getEl: (id) => document.getElementById(id),
+    }));
+    vi.doMock('../../static/js/core/api.js', () => ({
+      apiPost: vi.fn().mockResolvedValue({}),
+      autoDetectPaths: vi.fn(),
+    }));
+
+    const mod = await import('../../static/js/features/wizard.js');
+    mod.openWizardManual();
+    document.getElementById('wizard_jellyfin_url').value = 'http://jf';
+    document.getElementById('wizard_api_key').value = 'key';
+    document.getElementById('wizard_media_path_in_jellyfin').value = '/media';
+    document.getElementById('wizard_media_path_on_host').value = '/host';
+    mod.wizardNext();
+    mod.wizardNext();
+    mod.wizardNext();
+    document.getElementById('wizard-next').click();
+
+    expect(showErrorDialog).toHaveBeenCalledWith('All fields are required to complete the setup.');
+    expect(document.activeElement.id).toBe('wizard_target_path');
+  });
+
+  it('initWizard should wire up buttons and open wizard when setup not done', async () => {
+    const stateMod = await import('../../static/js/core/state.js');
+    stateMod.state.currentConfig = { setup_done: false };
+
+    const showModal = vi.fn();
+    vi.doMock('../../static/js/core/ui.js', () => ({
+      showToast: vi.fn(),
+      showErrorDialog: vi.fn(),
+      setLoading: vi.fn(),
+      showModal,
+      hideModal: vi.fn(),
+      getEl: (id) => document.getElementById(id),
+    }));
+    vi.doMock('../../static/js/core/api.js', () => ({
+      apiPost: vi.fn(),
+      autoDetectPaths: vi.fn(),
+    }));
+
+    const mod = await import('../../static/js/features/wizard.js');
+    mod.initWizard();
+
+    expect(showModal).toHaveBeenCalledWith('setup-wizard-modal');
+    expect(document.getElementById('wizard-test-btn').onclick).toBeDefined();
+    expect(document.getElementById('wizard-detect-btn').onclick).toBeDefined();
+  });
+
+  it('initWizard should not open wizard when setup is done', async () => {
+    const stateMod = await import('../../static/js/core/state.js');
+    stateMod.state.currentConfig = { setup_done: true };
+
+    const showModal = vi.fn();
+    vi.doMock('../../static/js/core/ui.js', () => ({
+      showToast: vi.fn(),
+      showErrorDialog: vi.fn(),
+      setLoading: vi.fn(),
+      showModal,
+      hideModal: vi.fn(),
+      getEl: (id) => document.getElementById(id),
+    }));
+    vi.doMock('../../static/js/core/api.js', () => ({
+      apiPost: vi.fn(),
+      autoDetectPaths: vi.fn(),
+    }));
+
+    const mod = await import('../../static/js/features/wizard.js');
+    mod.initWizard();
+
+    expect(showModal).not.toHaveBeenCalled();
+  });
 });

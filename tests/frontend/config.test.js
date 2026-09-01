@@ -409,6 +409,68 @@ describe('config module', () => {
 
       expect(showErrorDialog).toHaveBeenCalledWith('Failed to load configuration');
     });
+
+    it('should render an env override warning banner when overrides are active', async () => {
+      const apiLoadConfig = vi.fn().mockResolvedValue({
+        jellyfin_url: 'http://jf:8096',
+        api_key: 'key',
+        _active_env_overrides: {
+          api_key: 'JELLYFIN_API_KEY',
+          tmdb_api_key: 'TMDB_API_KEY',
+          some_unknown_key: 'SOME_ENV',
+        },
+      });
+      vi.doMock('../../static/js/core/api.js', () => ({
+        loadConfig: apiLoadConfig,
+        apiPost: vi.fn(),
+      }));
+      vi.doMock('../../static/js/features/metadata.js', () => ({
+        updateSourceTypeOptions: vi.fn(),
+        updateSourceValueUI: vi.fn(),
+        refreshMetadata: vi.fn(),
+      }));
+      vi.doMock('../../static/js/features/groupings.js', () => ({ renderGroups: vi.fn() }));
+      vi.doMock('../../static/js/features/test-connection.js', () => ({ updateValidationUI: vi.fn() }));
+
+      const mod = await import('../../static/js/features/config.js');
+      await mod.loadConfig();
+
+      const banner = document.getElementById('env-override-warning');
+      expect(banner).not.toBeNull();
+      expect(banner.className).toContain('status-msg info');
+      const html = banner.innerHTML;
+      // Known label mapping is applied.
+      expect(html).toContain('Jellyfin API Key');
+      expect(html).toContain('JELLYFIN_API_KEY');
+      expect(html).toContain('TMDb API Key');
+      expect(html).toContain('TMDB_API_KEY');
+      // Unknown keys fall back to the raw key name.
+      expect(html).toContain('some_unknown_key');
+      expect(html).toContain('SOME_ENV');
+    });
+
+    it('should not render an env override banner when no overrides are active', async () => {
+      const apiLoadConfig = vi.fn().mockResolvedValue({
+        jellyfin_url: 'http://jf:8096',
+        _active_env_overrides: {},
+      });
+      vi.doMock('../../static/js/core/api.js', () => ({
+        loadConfig: apiLoadConfig,
+        apiPost: vi.fn(),
+      }));
+      vi.doMock('../../static/js/features/metadata.js', () => ({
+        updateSourceTypeOptions: vi.fn(),
+        updateSourceValueUI: vi.fn(),
+        refreshMetadata: vi.fn(),
+      }));
+      vi.doMock('../../static/js/features/groupings.js', () => ({ renderGroups: vi.fn() }));
+      vi.doMock('../../static/js/features/test-connection.js', () => ({ updateValidationUI: vi.fn() }));
+
+      const mod = await import('../../static/js/features/config.js');
+      await mod.loadConfig();
+
+      expect(document.getElementById('env-override-warning')).toBeNull();
+    });
   });
 
   describe('initConfig', () => {
@@ -452,6 +514,43 @@ describe('config module', () => {
 
       expect(saveConfig).toHaveBeenCalled();
       expect(setLoading).toHaveBeenCalled();
+    });
+
+    it('should wire up the API config form submit handler', async () => {
+      const setLoading = vi.fn();
+      const saveConfig = vi.fn().mockResolvedValue(undefined);
+
+      vi.doMock('../../static/js/core/ui.js', () => ({
+        setLoading,
+        showLoadingOverlay: vi.fn(),
+        hideLoadingOverlay: vi.fn(),
+        updateLoadingStatus: vi.fn(),
+        showToast: vi.fn(),
+        showErrorDialog: vi.fn(),
+        getEl: (id) => document.getElementById(id),
+      }));
+      vi.doMock('../../static/js/core/api.js', () => ({ saveConfig }));
+      vi.doMock('../../static/js/features/metadata.js', () => ({
+        updateSourceTypeOptions: vi.fn(),
+        updateSourceValueUI: vi.fn(),
+        refreshMetadata: vi.fn(),
+      }));
+      vi.doMock('../../static/js/features/groupings.js', () => ({ renderGroups: vi.fn() }));
+
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig = { groups: [], scheduler: {} };
+
+      const mod = await import('../../static/js/features/config.js');
+      mod.initConfig();
+
+      const apiForm = document.getElementById('api-config-form');
+      apiForm.dispatchEvent(new Event('submit', { cancelable: true }));
+
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(saveConfig).toHaveBeenCalled();
+      expect(setLoading).toHaveBeenCalledWith(expect.anything(), true);
+      expect(setLoading).toHaveBeenCalledWith(expect.anything(), false);
     });
   });
 });
