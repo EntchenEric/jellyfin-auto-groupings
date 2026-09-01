@@ -811,12 +811,18 @@ describe('modal focus trap', () => {
     const { showModal } = await import('../../static/js/core/ui.js');
     const modal = document.getElementById('some-modal');
     const trigger = document.createElement('button');
+    trigger.id = 'escape-trigger';
     trigger.setAttribute('data-modal', 'some-modal');
     document.body.appendChild(trigger);
     trigger.focus();
 
     showModal('some-modal');
     expect(modal.style.display).toBe('flex');
+    // The trigger id is stored so hideModal can restore focus to it.
+    expect(modal.dataset.previousActive).toBe('escape-trigger');
+    // Advance the focus timer so focus actually moves into the modal first.
+    vi.runAllTimers();
+    expect(modal.contains(document.activeElement)).toBe(true);
 
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     expect(modal.style.display).toBe('none');
@@ -828,11 +834,17 @@ describe('modal focus trap', () => {
     const { showModal } = await import('../../static/js/core/ui.js');
     const modal = document.getElementById('some-modal');
     const trigger = document.createElement('button');
+    trigger.id = 'close-trigger';
     trigger.setAttribute('data-modal', 'some-modal');
     document.body.appendChild(trigger);
     trigger.focus();
 
     showModal('some-modal');
+    expect(modal.dataset.previousActive).toBe('close-trigger');
+    // Advance the focus timer so focus actually moves into the modal first.
+    vi.runAllTimers();
+    expect(modal.contains(document.activeElement)).toBe(true);
+
     const closeBtn = modal.querySelector('.close-modal-btn');
     closeBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(modal.style.display).toBe('none');
