@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `tests/frontend/config.test.js`: add coverage for the previously-uncovered
+  `config.js` branches — the main-form reconnect flow (loading overlay,
+  `refreshMetadata` success and failure paths), the env-override banner
+  `sidebar.prepend` fallback when the connection-warning element is missing,
+  the `people`→`actor` source-type migration when `source_category` is already
+  set, the `saveAllConfig` failure path, missing-scheduler creation, invalid
+  cleanup-schedule rejection, and the empty-credentials load path. This raises
+  `config.js` statement coverage from ~90% to 100% (branch ~88% to 100%) and
+  the full frontend suite to 294 tests across 15 files.
+
 - `tests/frontend/ui.test.js`: add coverage for the previously-uncovered
   `ui.js` modal event handlers and progress-bar ETA logic — `hideModal`
   focus restoration and `modal-open` body-class management (including the

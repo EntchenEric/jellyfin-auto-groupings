@@ -252,6 +252,119 @@ describe('config module', () => {
       expect(saveConfig).not.toHaveBeenCalled();
     });
 
+    it('should not throw when saveConfig fails (error already surfaced by api.js)', async () => {
+      const showToast = vi.fn();
+      const showErrorDialog = vi.fn();
+      const saveConfig = vi.fn().mockRejectedValue(new Error('boom'));
+      const renderGroups = vi.fn();
+      const updateSourceTypeOptions = vi.fn();
+
+      vi.doMock('../../static/js/core/ui.js', () => ({
+        showToast,
+        showErrorDialog,
+        getEl: (id) => document.getElementById(id),
+      }));
+      vi.doMock('../../static/js/core/api.js', () => ({ saveConfig }));
+      vi.doMock('../../static/js/features/groupings.js', () => ({ renderGroups }));
+      vi.doMock('../../static/js/features/metadata.js', () => ({
+        updateSourceTypeOptions,
+        updateSourceValueUI: vi.fn(),
+        refreshMetadata: vi.fn(),
+      }));
+
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig = { groups: [], scheduler: {} };
+
+      const mod = await import('../../static/js/features/config.js');
+      await expect(mod.saveAllConfig()).resolves.toBeUndefined();
+
+      expect(saveConfig).toHaveBeenCalled();
+      expect(showToast).not.toHaveBeenCalled();
+      expect(showErrorDialog).not.toHaveBeenCalled();
+      expect(renderGroups).not.toHaveBeenCalled();
+    });
+
+    it('should reject an invalid cleanup schedule', async () => {
+      const showErrorDialog = vi.fn();
+      const saveConfig = vi.fn();
+
+      vi.doMock('../../static/js/core/ui.js', () => ({
+        showToast: vi.fn(),
+        showErrorDialog,
+        getEl: (id) => document.getElementById(id),
+      }));
+      vi.doMock('../../static/js/core/api.js', () => ({ saveConfig }));
+
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig = { groups: [], scheduler: {} };
+
+      document.getElementById('cleanup_scheduler_enabled').checked = true;
+      document.getElementById('cleanup_sync_schedule').value = 'bad cron';
+
+      const mod = await import('../../static/js/features/config.js');
+      await mod.saveAllConfig();
+
+      expect(showErrorDialog).toHaveBeenCalledWith(expect.stringContaining('Cleanup schedule'));
+      expect(saveConfig).not.toHaveBeenCalled();
+    });
+
+    it('should handle an existing scheduler object without overwriting it', async () => {
+      const saveConfig = vi.fn().mockResolvedValue(undefined);
+
+      vi.doMock('../../static/js/core/ui.js', () => ({
+        showToast: vi.fn(),
+        showErrorDialog: vi.fn(),
+        getEl: (id) => document.getElementById(id),
+      }));
+      vi.doMock('../../static/js/core/api.js', () => ({ saveConfig }));
+      vi.doMock('../../static/js/features/groupings.js', () => ({ renderGroups: vi.fn() }));
+      vi.doMock('../../static/js/features/metadata.js', () => ({
+        updateSourceTypeOptions: vi.fn(),
+        updateSourceValueUI: vi.fn(),
+        refreshMetadata: vi.fn(),
+      }));
+
+      const { state } = await import('../../static/js/core/state.js');
+      // scheduler already exists -> the `if (!scheduler)` guard is skipped
+      state.currentConfig = { groups: [], scheduler: { global_enabled: true } };
+
+      document.getElementById('global_scheduler_enabled').checked = true;
+      document.getElementById('global_sync_schedule').value = '0 0 * * *';
+
+      const mod = await import('../../static/js/features/config.js');
+      await mod.saveAllConfig();
+
+      expect(saveConfig).toHaveBeenCalled();
+      expect(state.currentConfig.scheduler.global_enabled).toBe(true);
+    });
+
+    it('should create a scheduler object when it is missing', async () => {
+      const saveConfig = vi.fn().mockResolvedValue(undefined);
+
+      vi.doMock('../../static/js/core/ui.js', () => ({
+        showToast: vi.fn(),
+        showErrorDialog: vi.fn(),
+        getEl: (id) => document.getElementById(id),
+      }));
+      vi.doMock('../../static/js/core/api.js', () => ({ saveConfig }));
+      vi.doMock('../../static/js/features/groupings.js', () => ({ renderGroups: vi.fn() }));
+      vi.doMock('../../static/js/features/metadata.js', () => ({
+        updateSourceTypeOptions: vi.fn(),
+        updateSourceValueUI: vi.fn(),
+        refreshMetadata: vi.fn(),
+      }));
+
+      const { state } = await import('../../static/js/core/state.js');
+      // scheduler is missing entirely -> the `if (!scheduler)` guard creates it
+      state.currentConfig = { groups: [] };
+
+      const mod = await import('../../static/js/features/config.js');
+      await mod.saveAllConfig();
+
+      expect(state.currentConfig.scheduler).toBeDefined();
+      expect(saveConfig).toHaveBeenCalled();
+    });
+
     it('should default cleanup schedule to hourly when empty', async () => {
       const saveConfig = vi.fn().mockResolvedValue(undefined);
 
@@ -449,6 +562,102 @@ describe('config module', () => {
       expect(html).toContain('SOME_ENV');
     });
 
+    it('should prepend the env override banner to the sidebar when connection-warning is missing', async () => {
+      // Remove the connection-warning element so the `else if (sidebar)` branch runs.
+      document.getElementById('connection-warning').remove();
+      const prependSpy = vi.spyOn(document.getElementById('sidebar'), 'prepend');
+
+      const apiLoadConfig = vi.fn().mockResolvedValue({
+        jellyfin_url: 'http://jf:8096',
+        api_key: 'key',
+        _active_env_overrides: { api_key: 'JELLYFIN_API_KEY' },
+      });
+      vi.doMock('../../static/js/core/api.js', () => ({
+        loadConfig: apiLoadConfig,
+        apiPost: vi.fn(),
+      }));
+      vi.doMock('../../static/js/features/metadata.js', () => ({
+        updateSourceTypeOptions: vi.fn(),
+        updateSourceValueUI: vi.fn(),
+        refreshMetadata: vi.fn(),
+      }));
+      vi.doMock('../../static/js/features/groupings.js', () => ({ renderGroups: vi.fn() }));
+      vi.doMock('../../static/js/features/test-connection.js', () => ({ updateValidationUI: vi.fn() }));
+
+      const mod = await import('../../static/js/features/config.js');
+      await mod.loadConfig();
+
+      const banner = document.getElementById('env-override-warning');
+      expect(banner).not.toBeNull();
+      expect(prependSpy).toHaveBeenCalledWith(banner);
+    });
+
+    it('should migrate people source_type to actor even when source_category is already set', async () => {
+      const apiLoadConfig = vi.fn().mockResolvedValue({
+        jellyfin_url: 'http://jf:8096',
+        api_key: 'key',
+        groups: [
+          { name: 'G1', source_type: 'people', source_category: 'jellyfin' },
+        ],
+      });
+      vi.doMock('../../static/js/core/api.js', () => ({
+        loadConfig: apiLoadConfig,
+        apiPost: vi.fn(),
+      }));
+      vi.doMock('../../static/js/features/metadata.js', () => ({
+        updateSourceTypeOptions: vi.fn(),
+        updateSourceValueUI: vi.fn(),
+        refreshMetadata: vi.fn(),
+      }));
+      vi.doMock('../../static/js/features/groupings.js', () => ({ renderGroups: vi.fn() }));
+      vi.doMock('../../static/js/features/test-connection.js', () => ({ updateValidationUI: vi.fn() }));
+
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig = {};
+
+      const mod = await import('../../static/js/features/config.js');
+      await mod.loadConfig();
+
+      expect(state.currentConfig.groups[0].source_type).toBe('actor');
+      expect(state.currentConfig.groups[0].source_category).toBe('jellyfin');
+    });
+
+    it('should handle empty jellyfin_url and api_key without triggering a silent test', async () => {
+      const apiLoadConfig = vi.fn().mockResolvedValue({
+        jellyfin_url: '',
+        api_key: '',
+        groups: [],
+      });
+      const updateSourceTypeOptions = vi.fn();
+      const renderGroups = vi.fn();
+      const updateValidationUI = vi.fn();
+      const apiPost = vi.fn();
+
+      vi.doMock('../../static/js/core/api.js', () => ({
+        loadConfig: apiLoadConfig,
+        apiPost,
+      }));
+      vi.doMock('../../static/js/features/metadata.js', () => ({
+        updateSourceTypeOptions,
+        updateSourceValueUI: vi.fn(),
+        refreshMetadata: vi.fn(),
+      }));
+      vi.doMock('../../static/js/features/groupings.js', () => ({ renderGroups }));
+      vi.doMock('../../static/js/features/test-connection.js', () => ({ updateValidationUI }));
+
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig = {};
+
+      const mod = await import('../../static/js/features/config.js');
+      await mod.loadConfig();
+
+      expect(document.getElementById('jellyfin_url').value).toBe('');
+      expect(document.getElementById('api_key').value).toBe('');
+      // No silent test when credentials are empty.
+      expect(apiPost).not.toHaveBeenCalled();
+      expect(updateValidationUI).not.toHaveBeenCalled();
+    });
+
     it('should not render an env override banner when no overrides are active', async () => {
       const apiLoadConfig = vi.fn().mockResolvedValue({
         jellyfin_url: 'http://jf:8096',
@@ -551,6 +760,109 @@ describe('config module', () => {
       expect(saveConfig).toHaveBeenCalled();
       expect(setLoading).toHaveBeenCalledWith(expect.anything(), true);
       expect(setLoading).toHaveBeenCalledWith(expect.anything(), false);
+    });
+
+    it('should run the reconnect flow when jellyfin_url and api_key are set on main form submit', async () => {
+      const setLoading = vi.fn();
+      const showLoadingOverlay = vi.fn();
+      const hideLoadingOverlay = vi.fn();
+      const updateLoadingStatus = vi.fn();
+      const refreshMetadata = vi.fn().mockResolvedValue(undefined);
+      const saveConfig = vi.fn().mockResolvedValue(undefined);
+
+      vi.doMock('../../static/js/core/ui.js', () => ({
+        setLoading,
+        showLoadingOverlay,
+        hideLoadingOverlay,
+        updateLoadingStatus,
+        showToast: vi.fn(),
+        showErrorDialog: vi.fn(),
+        getEl: (id) => document.getElementById(id),
+      }));
+      vi.doMock('../../static/js/core/api.js', () => ({ saveConfig }));
+      vi.doMock('../../static/js/features/metadata.js', () => ({
+        updateSourceTypeOptions: vi.fn(),
+        updateSourceValueUI: vi.fn(),
+        refreshMetadata,
+      }));
+      vi.doMock('../../static/js/features/groupings.js', () => ({ renderGroups: vi.fn() }));
+
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig = {
+        groups: [],
+        scheduler: {},
+        jellyfin_url: 'http://jf:8096',
+        api_key: 'key',
+      };
+      // syncDomToState() reads these from the DOM on submit, so populate them.
+      document.getElementById('jellyfin_url').value = 'http://jf:8096';
+      document.getElementById('api_key').value = 'key';
+
+      const mod = await import('../../static/js/features/config.js');
+      mod.initConfig();
+
+      const configForm = document.getElementById('config-form');
+      configForm.dispatchEvent(new Event('submit', { cancelable: true }));
+
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(saveConfig).toHaveBeenCalled();
+      expect(showLoadingOverlay).toHaveBeenCalledWith(
+        'Reconnecting to Jellyfin',
+        expect.any(String),
+        1,
+      );
+      expect(refreshMetadata).toHaveBeenCalledWith(updateLoadingStatus);
+      expect(updateLoadingStatus).toHaveBeenCalledWith('Done', true);
+      expect(hideLoadingOverlay).toHaveBeenCalled();
+    });
+
+    it('should still hide the loading overlay when refreshMetadata throws', async () => {
+      const setLoading = vi.fn();
+      const showLoadingOverlay = vi.fn();
+      const hideLoadingOverlay = vi.fn();
+      const updateLoadingStatus = vi.fn();
+      const refreshMetadata = vi.fn().mockRejectedValue(new Error('boom'));
+      const saveConfig = vi.fn().mockResolvedValue(undefined);
+
+      vi.doMock('../../static/js/core/ui.js', () => ({
+        setLoading,
+        showLoadingOverlay,
+        hideLoadingOverlay,
+        updateLoadingStatus,
+        showToast: vi.fn(),
+        showErrorDialog: vi.fn(),
+        getEl: (id) => document.getElementById(id),
+      }));
+      vi.doMock('../../static/js/core/api.js', () => ({ saveConfig }));
+      vi.doMock('../../static/js/features/metadata.js', () => ({
+        updateSourceTypeOptions: vi.fn(),
+        updateSourceValueUI: vi.fn(),
+        refreshMetadata,
+      }));
+      vi.doMock('../../static/js/features/groupings.js', () => ({ renderGroups: vi.fn() }));
+
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig = {
+        groups: [],
+        scheduler: {},
+        jellyfin_url: 'http://jf:8096',
+        api_key: 'key',
+      };
+      // syncDomToState() reads these from the DOM on submit, so populate them.
+      document.getElementById('jellyfin_url').value = 'http://jf:8096';
+      document.getElementById('api_key').value = 'key';
+
+      const mod = await import('../../static/js/features/config.js');
+      mod.initConfig();
+
+      const configForm = document.getElementById('config-form');
+      configForm.dispatchEvent(new Event('submit', { cancelable: true }));
+
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(refreshMetadata).toHaveBeenCalled();
+      expect(hideLoadingOverlay).toHaveBeenCalled();
     });
   });
 });
