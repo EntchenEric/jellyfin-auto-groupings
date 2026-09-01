@@ -1061,7 +1061,7 @@ def _coerce_year_int(value: Any) -> int | None:
         # serialisation.
         try:
             return int(float(stripped))
-        except ValueError:
+        except (ValueError, OverflowError):
             return None
     return None
 
@@ -1086,10 +1086,12 @@ def _parse_year_int(expr: str) -> int | None:
     except (TypeError, ValueError):
         pass
     # Tolerate a trailing ``.0`` (e.g. ``"2001.0"``) from float
-    # serialisation, mirroring _coerce_year_int.
+    # serialisation, mirroring _coerce_year_int.  ``OverflowError`` covers
+    # non-finite or oversized expressions (e.g. ``"inf"``, ``"1e309"``)
+    # that ``int(float(...))`` cannot convert.
     try:
         return int(float(expr))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
 
 

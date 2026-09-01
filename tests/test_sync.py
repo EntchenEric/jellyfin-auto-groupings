@@ -1262,6 +1262,12 @@ def test_match_year_ranges() -> None:
     assert _match_year("2001.0", "2001.0")
     assert not _match_year(2002, "2001.0")
 
+    # Non-finite or oversized expressions are rejected instead of aborting
+    # matching (``int(float(...))`` raises OverflowError for these).
+    assert not _match_year(2001, "inf")
+    assert not _match_year(2001, "1e309")
+    assert not _match_year(2001, "nan")
+
 
 def test_parse_year_int() -> None:
     """_parse_year_int parses plain and float-formatted year expressions."""
@@ -1276,6 +1282,12 @@ def test_parse_year_int() -> None:
     assert _parse_year_int("abc") is None
     assert _parse_year_int("") is None
     assert _parse_year_int(None) is None
+    # Non-finite or oversized expressions are rejected instead of aborting
+    # (``int(float(...))`` raises OverflowError for these).
+    assert _parse_year_int("inf") is None
+    assert _parse_year_int("-inf") is None
+    assert _parse_year_int("nan") is None
+    assert _parse_year_int("1e309") is None
 
 
 def test_coerce_year_int() -> None:
@@ -1291,6 +1303,9 @@ def test_coerce_year_int() -> None:
     assert _coerce_year_int(True) is None
     assert _coerce_year_int("abc") is None
     assert _coerce_year_int(None) is None
+    # Non-finite or oversized string values are rejected instead of aborting.
+    assert _coerce_year_int("inf") is None
+    assert _coerce_year_int("1e309") is None
 
 
 @patch("sync.fetch_jellyfin_items")

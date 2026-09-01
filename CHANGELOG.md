@@ -18,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the same year. Added `test_parse_year_int` and extended
   `test_match_year_ranges` to cover float-formatted expressions.
 
+- `sync.py`: `_parse_year_int` and `_coerce_year_int` now also catch
+  `OverflowError` when converting float-formatted year expressions/values, so
+  non-finite or oversized inputs (e.g. `"inf"`, `"1e309"`) are rejected
+  cleanly instead of aborting year matching. Added regression coverage for
+  these inputs.
+
 - `static/js/features/sidebar-resizer.js`: the saved sidebar width restored
   from `localStorage` is now clamped to the valid 200–800px range and validated
   as a finite number. A stale or corrupt value (e.g. from an older version, an
