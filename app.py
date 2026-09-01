@@ -39,8 +39,17 @@ def _resolve_log_level(name: str) -> int:
 
     """
     raw = os.environ.get(name, "").strip().upper()
+    # Validate against the explicit set of level constants rather than
+    # accepting any integer attribute on the ``logging`` module, so an
+    # unrecognised value can never silently resolve to an unrelated int.
     level = getattr(logging, raw, None)
-    if isinstance(level, int):
+    if level in (
+        logging.DEBUG,
+        logging.INFO,
+        logging.WARNING,
+        logging.ERROR,
+        logging.CRITICAL,
+    ):
         return level
     return logging.INFO
 
