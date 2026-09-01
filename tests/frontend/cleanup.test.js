@@ -1,5 +1,9 @@
 /**
  * @file Tests for the cleanup feature module (cleanup.js).
+ *
+ * cleanup.js delegates HTTP to the centralized api.js helpers
+ * (getCleanupItems / performCleanup), so these tests mock that module
+ * directly and focus on cleanup.js's own rendering / UX logic.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
@@ -41,15 +45,16 @@ describe('cleanup feature module', () => {
   });
 
   it('openCleanupModal should render items on success', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      json: vi.fn().mockResolvedValue({
+    vi.doMock('../../static/js/core/api.js', () => ({
+      getCleanupItems: vi.fn().mockResolvedValue({
         status: 'success',
         items: [
           { name: 'Action', is_configured: true },
           { name: 'Orphan', is_configured: false },
         ],
       }),
-    });
+      performCleanup: vi.fn(),
+    }));
 
     const mod = await import('../../static/js/features/cleanup.js');
     await mod.openCleanupModal();
@@ -63,9 +68,10 @@ describe('cleanup feature module', () => {
   });
 
   it('openCleanupModal should show empty state when no items', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      json: vi.fn().mockResolvedValue({ status: 'success', items: [] }),
-    });
+    vi.doMock('../../static/js/core/api.js', () => ({
+      getCleanupItems: vi.fn().mockResolvedValue({ status: 'success', items: [] }),
+      performCleanup: vi.fn(),
+    }));
 
     const mod = await import('../../static/js/features/cleanup.js');
     await mod.openCleanupModal();
@@ -75,9 +81,10 @@ describe('cleanup feature module', () => {
   });
 
   it('openCleanupModal should show error when API returns failure', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      json: vi.fn().mockResolvedValue({ status: 'error', message: 'Failed to load' }),
-    });
+    vi.doMock('../../static/js/core/api.js', () => ({
+      getCleanupItems: vi.fn().mockResolvedValue({ status: 'error', message: 'Failed to load' }),
+      performCleanup: vi.fn(),
+    }));
 
     const mod = await import('../../static/js/features/cleanup.js');
     await mod.openCleanupModal();
@@ -87,9 +94,10 @@ describe('cleanup feature module', () => {
   });
 
   it('openCleanupModal should use fallback message when API error has no message', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      json: vi.fn().mockResolvedValue({ status: 'error' }),
-    });
+    vi.doMock('../../static/js/core/api.js', () => ({
+      getCleanupItems: vi.fn().mockResolvedValue({ status: 'error' }),
+      performCleanup: vi.fn(),
+    }));
 
     const mod = await import('../../static/js/features/cleanup.js');
     await mod.openCleanupModal();
@@ -98,8 +106,11 @@ describe('cleanup feature module', () => {
     expect(document.getElementById('cleanup-error').style.display).toBe('block');
   });
 
-  it('openCleanupModal should show network error on fetch failure', async () => {
-    global.fetch = vi.fn().mockRejectedValue(new Error('Network down'));
+  it('openCleanupModal should show network error when the API helper rejects', async () => {
+    vi.doMock('../../static/js/core/api.js', () => ({
+      getCleanupItems: vi.fn().mockRejectedValue(new Error('Network down')),
+      performCleanup: vi.fn(),
+    }));
 
     const mod = await import('../../static/js/features/cleanup.js');
     await mod.openCleanupModal();
@@ -143,24 +154,22 @@ describe('cleanup feature module', () => {
       showErrorDialog,
       getEl: (id) => document.getElementById(id),
     }));
+    const performCleanup = vi.fn().mockResolvedValue({ status: 'success', deleted: 1 });
+    vi.doMock('../../static/js/core/api.js', () => ({
+      getCleanupItems: vi.fn(),
+      performCleanup,
+    }));
 
     document.getElementById('cleanup-list').innerHTML = `
       <input type="checkbox" class="cleanup-item-checkbox" value="Action" checked>
       <input type="checkbox" class="cleanup-item-checkbox" value="Drama">
     `;
 
-    global.fetch = vi.fn().mockResolvedValue({
-      json: vi.fn().mockResolvedValue({ status: 'success', deleted: 1 }),
-    });
-
     const mod = await import('../../static/js/features/cleanup.js');
     await mod.execCleanup();
 
-    // Verify the POST body only contains checked folders
-    const [url, opts] = global.fetch.mock.calls[0];
-    expect(url).toBe('/api/cleanup');
-    expect(opts.method).toBe('POST');
-    expect(JSON.parse(opts.body).folders).toEqual(['Action']);
+    // Verify only checked folders are sent to the centralized helper
+    expect(performCleanup).toHaveBeenCalledWith(['Action']);
     expect(showToast).toHaveBeenCalled();
     expect(showErrorDialog).not.toHaveBeenCalled();
   });
@@ -173,18 +182,18 @@ describe('cleanup feature module', () => {
       showErrorDialog,
       getEl: (id) => document.getElementById(id),
     }));
-
-    document.getElementById('cleanup-list').innerHTML = `
-      <input type="checkbox" class="cleanup-item-checkbox" value="Action" checked>
-    `;
-
-    global.fetch = vi.fn().mockResolvedValue({
-      json: vi.fn().mockResolvedValue({
+    vi.doMock('../../static/js/core/api.js', () => ({
+      getCleanupItems: vi.fn(),
+      performCleanup: vi.fn().mockResolvedValue({
         status: 'partial_success',
         deleted: 1,
         errors: ['Drama: permission denied'],
       }),
-    });
+    }));
+
+    document.getElementById('cleanup-list').innerHTML = `
+      <input type="checkbox" class="cleanup-item-checkbox" value="Action" checked>
+    `;
 
     const mod = await import('../../static/js/features/cleanup.js');
     await mod.execCleanup();
@@ -204,14 +213,14 @@ describe('cleanup feature module', () => {
       showErrorDialog,
       getEl: (id) => document.getElementById(id),
     }));
+    vi.doMock('../../static/js/core/api.js', () => ({
+      getCleanupItems: vi.fn(),
+      performCleanup: vi.fn().mockResolvedValue({ status: 'error', message: 'Permission denied' }),
+    }));
 
     document.getElementById('cleanup-list').innerHTML = `
       <input type="checkbox" class="cleanup-item-checkbox" value="Action" checked>
     `;
-
-    global.fetch = vi.fn().mockResolvedValue({
-      json: vi.fn().mockResolvedValue({ status: 'error', message: 'Permission denied' }),
-    });
 
     const mod = await import('../../static/js/features/cleanup.js');
     await mod.execCleanup();
@@ -219,7 +228,7 @@ describe('cleanup feature module', () => {
     expect(showErrorDialog).toHaveBeenCalledWith('Error deleting folders: Permission denied');
   });
 
-  it('execCleanup should show error dialog on network failure', async () => {
+  it('execCleanup should show error dialog when the API helper rejects', async () => {
     const showToast = vi.fn();
     const showErrorDialog = vi.fn();
     vi.doMock('../../static/js/core/ui.js', () => ({
@@ -227,12 +236,14 @@ describe('cleanup feature module', () => {
       showErrorDialog,
       getEl: (id) => document.getElementById(id),
     }));
+    vi.doMock('../../static/js/core/api.js', () => ({
+      getCleanupItems: vi.fn(),
+      performCleanup: vi.fn().mockRejectedValue(new Error('Network down')),
+    }));
 
     document.getElementById('cleanup-list').innerHTML = `
       <input type="checkbox" class="cleanup-item-checkbox" value="Action" checked>
     `;
-
-    global.fetch = vi.fn().mockRejectedValue(new Error('Network down'));
 
     const mod = await import('../../static/js/features/cleanup.js');
     await mod.execCleanup();
@@ -253,16 +264,19 @@ describe('cleanup feature module', () => {
       showErrorDialog,
       getEl: (id) => document.getElementById(id),
     }));
+    const performCleanup = vi.fn();
+    vi.doMock('../../static/js/core/api.js', () => ({
+      getCleanupItems: vi.fn(),
+      performCleanup,
+    }));
 
     document.getElementById('cleanup-list').innerHTML = `
       <input type="checkbox" class="cleanup-item-checkbox" value="Action">
     `;
 
-    global.fetch = vi.fn();
-
     const mod = await import('../../static/js/features/cleanup.js');
     await mod.execCleanup();
 
-    expect(global.fetch).not.toHaveBeenCalled();
+    expect(performCleanup).not.toHaveBeenCalled();
   });
 });

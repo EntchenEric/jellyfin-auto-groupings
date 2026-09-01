@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `static/js/features/cleanup.js`: the cleanup modal now routes its HTTP
+  requests through the centralized `api.js` helpers (`getCleanupItems` /
+  `performCleanup`) instead of calling `fetch` directly. This gives cleanup
+  the same auth headers, request timeout, and 401 retry handling as the rest
+  of the app, and removes the previously-unused `getCleanupItems` /
+  `performCleanup` wrappers from dead-code status. Frontend tests were
+  updated to mock the api module directly.
+
 ### Fixed
 
 - `static/js/features/path-picker.js`: `browseDir` now handles explicit
