@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `tests/frontend/groupings.test.js`: add coverage for the previously-uncovered
+  `groupings.js` branches — the external source-category label, the fallback to
+  the raw `source_type` when the category is unknown, the fallback to the raw
+  `sort_order` when it has no known label, the no-badge rendering when
+  sort/seasonal/collection are unset, the delete-button wiring, the missing
+  count-badge and search-input no-op paths, the hidden optional panels when a
+  group has no sort/schedule/seasonal, the skip-disk-cleanup path when a group
+  has no name, the disk-cleanup failure toasts for both delete and clear-all,
+  the append-vs-splice re-insert path when the array shrinks during a save
+  failure, and the missing-scheduler / missing-`global_exclude_ids`
+  initialisation plus the unnamed-group skip in the exclusions UI. This raises
+  `groupings.js` statement coverage from ~97% to 100% (branch ~78% to ~93%)
+  and the full frontend suite to 322 tests across 15 files.
+
 - `tests/frontend/ui.test.js`: add coverage for the remaining uncovered
   `ui.js` modal focus-trap and progress-bar edge cases — excluding focusables
   nested inside a hidden ancestor from the trap, preventing Tab (and keeping
