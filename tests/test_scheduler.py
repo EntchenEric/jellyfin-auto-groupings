@@ -286,6 +286,22 @@ def test_run_global_sync_job_error(mock_load, mock_sync) -> None:
 
 @patch("scheduler.run_sync")
 @patch("scheduler.load_config")
+def test_run_global_sync_job_unexpected_exception(mock_load, mock_sync) -> None:
+    """_run_global_sync_job catches unexpected exceptions (e.g. KeyError)."""
+    mock_load.return_value = {
+        "groups": [
+            {"name": "G1"},
+        ],
+    }
+    # KeyError is not in the original (ValueError, OSError, RuntimeError) set,
+    # but must still be caught so the background job never dies silently.
+    mock_sync.side_effect = KeyError("missing_key")
+    _run_global_sync_job([])
+    mock_sync.assert_called_once()
+
+
+@patch("scheduler.run_sync")
+@patch("scheduler.load_config")
 def test_run_global_sync_job_empty_groups(mock_load, mock_sync) -> None:
     """_run_global_sync_job handles empty groups list."""
     mock_load.return_value = {
@@ -305,6 +321,15 @@ def test_run_global_sync_job_empty_groups(mock_load, mock_sync) -> None:
 def test_run_group_sync_job_error(mock_load, mock_sync) -> None:
     """_run_group_sync_job catches and logs sync exceptions."""
     mock_sync.side_effect = ValueError("bad config")
+    _run_group_sync_job("G1")
+    mock_sync.assert_called_once()
+
+
+@patch("scheduler.run_sync")
+@patch("scheduler.load_config")
+def test_run_group_sync_job_unexpected_exception(mock_load, mock_sync) -> None:
+    """_run_group_sync_job catches unexpected exceptions (e.g. KeyError)."""
+    mock_sync.side_effect = KeyError("missing_key")
     _run_group_sync_job("G1")
     mock_sync.assert_called_once()
 

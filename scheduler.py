@@ -224,7 +224,10 @@ def _run_global_sync_job(exclude_names: list[str]) -> None:
         with sync_lock:
             try:
                 run_sync(config, group_names=sync_names)
-            except (ValueError, OSError, RuntimeError):
+            except Exception:
+                # Catch broadly so an unexpected error (e.g. a KeyError from a
+                # malformed config, or a requests exception from a fetcher)
+                # never silently kills the background job — it is always logged.
                 logger.exception(
                     "Background global sync failed",
                 )
@@ -246,7 +249,9 @@ def _run_group_sync_job(group_name: str) -> None:
     with sync_lock:
         try:
             run_sync(config, group_names=[group_name])
-        except (ValueError, OSError, RuntimeError):
+        except Exception:
+            # Catch broadly so an unexpected error never silently kills the
+            # background job — it is always logged.
             logger.exception(
                 "Background sync failed for group '%s'",
                 group_name,
