@@ -365,6 +365,34 @@ describe('export-import feature module', () => {
     vi.unstubAllGlobals();
   });
 
+  it('handleFileSelected should treat a partial config (url without api_key) as a groups-only import', async () => {
+    const showErrorDialog = vi.fn();
+    vi.doMock('../../static/js/core/ui.js', () => ({
+      showToast: vi.fn(),
+      showErrorDialog,
+      getEl: (id) => document.getElementById(id),
+    }));
+
+    const mockReader = { readAsText: vi.fn() };
+    vi.stubGlobal('FileReader', vi.fn(() => mockReader));
+
+    const mod = await import('../../static/js/features/export-import.js');
+    const file = new File(['{}'], 'test.json', { type: 'application/json' });
+    const event = { target: { files: [file], value: 'x' } };
+
+    mod.handleFileSelected(event);
+    mockReader.onload({
+      target: { result: JSON.stringify({ jellyfin_url: 'http://jf', groups: [{ name: 'Action' }] }) },
+    });
+
+    // Not a full config (missing api_key), so it should fall through to the groups-only path.
+    expect(document.getElementById('import-warning').style.display).toBe('none');
+    expect(document.getElementById('import-selection-list').style.display).toBe('block');
+    expect(document.getElementById('confirm-import').textContent).toBe('Import Selected');
+    expect(showErrorDialog).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
   it('handleFileSelected should handle full config import (Overwrite All)', async () => {
     const showErrorDialog = vi.fn();
     vi.doMock('../../static/js/core/ui.js', () => ({

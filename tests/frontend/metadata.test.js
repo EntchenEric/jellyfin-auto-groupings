@@ -313,6 +313,16 @@ describe('updateSourceValueUI', () => {
     expect(document.getElementById('metadata_rules_container').style.display).toBe('none');
   });
 
+  it('pre-fills the manual input for a metadata type when the server is not validated and preValue is given', () => {
+    document.getElementById('source_type').value = 'genre';
+    state.isServerValidated = false;
+    metadata.updateSourceValueUI('Horror AND Action');
+    const input = document.getElementById('source_value');
+    expect(input.value).toBe('Horror AND Action');
+    expect(input.style.display).toBe('block');
+    expect(document.getElementById('metadata_rules_container').style.display).toBe('none');
+  });
+
   it('sets placeholder and help for imdb_list', () => {
     document.getElementById('source_type').value = 'imdb_list';
     metadata.updateSourceValueUI();
