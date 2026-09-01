@@ -203,7 +203,10 @@ function downloadJSON(data, filename) {
     a.href = url;
     a.download = filename;
     a.click();
-    URL.revokeObjectURL(url);
+    // Revoke asynchronously: revoking synchronously right after click() can
+    // abort the download in some browsers (e.g. Firefox/Safari) before the
+    // browser has had a chance to start fetching the blob URL.
+    setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 export function initExportImport() {

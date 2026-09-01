@@ -105,6 +105,8 @@ describe('export-import feature module', () => {
 
     expect(clickSpy).toHaveBeenCalled();
     expect(createObjectURL).toHaveBeenCalled();
+    // Revoke happens asynchronously (setTimeout 0) to avoid aborting the download.
+    await new Promise((r) => setTimeout(r, 0));
     expect(revokeObjectURL).toHaveBeenCalled();
     expect(document.getElementById('export-modal').style.display).toBe('none');
     clickSpy.mockRestore();
@@ -270,6 +272,8 @@ describe('export-import feature module', () => {
 
     expect(clickSpy).toHaveBeenCalled();
     expect(createObjectURL).toHaveBeenCalled();
+    // Revoke happens asynchronously (setTimeout 0) to avoid aborting the download.
+    await new Promise((r) => setTimeout(r, 0));
     expect(revokeObjectURL).toHaveBeenCalled();
     expect(document.getElementById('export-modal').style.display).toBe('none');
     clickSpy.mockRestore();
