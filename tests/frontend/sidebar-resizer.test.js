@@ -50,6 +50,36 @@ describe('sidebar-resizer module', () => {
     expect(width).toBe('300px');
   });
 
+  it('should clamp a saved width below the minimum to 200px', async () => {
+    localStorage.setItem('sidebarWidth', '150');
+    const mod = await import('../../static/js/features/sidebar-resizer.js');
+    mod.initSidebarResizer();
+    const width = getComputedStyle(document.documentElement)
+      .getPropertyValue('--sidebar-width')
+      .trim();
+    expect(width).toBe('200px');
+  });
+
+  it('should clamp a saved width above the maximum to 800px', async () => {
+    localStorage.setItem('sidebarWidth', '900');
+    const mod = await import('../../static/js/features/sidebar-resizer.js');
+    mod.initSidebarResizer();
+    const width = getComputedStyle(document.documentElement)
+      .getPropertyValue('--sidebar-width')
+      .trim();
+    expect(width).toBe('800px');
+  });
+
+  it('should ignore a non-numeric saved width and keep the default', async () => {
+    localStorage.setItem('sidebarWidth', 'abc');
+    const mod = await import('../../static/js/features/sidebar-resizer.js');
+    mod.initSidebarResizer();
+    const width = getComputedStyle(document.documentElement)
+      .getPropertyValue('--sidebar-width')
+      .trim();
+    expect(width).toBe('300px');
+  });
+
   it('should not throw when resizer element is missing', async () => {
     document.body.innerHTML = '';
     const mod = await import('../../static/js/features/sidebar-resizer.js');

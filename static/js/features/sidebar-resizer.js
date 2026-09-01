@@ -45,10 +45,17 @@ export function initSidebarResizer() {
     const resizer = document.getElementById('sidebar-resizer');
     if (!resizer) return;
 
-    /* Restore saved width */
+    /* Restore saved width, clamped to valid bounds and validated so a stale
+       or corrupt localStorage value (e.g. from an older version, a value
+       outside the 200-800px range, or a non-numeric string) can never break
+       the layout. Falls back to the CSS default when invalid. */
     const savedWidth = localStorage.getItem('sidebarWidth');
     if (savedWidth) {
-        document.documentElement.style.setProperty('--sidebar-width', `${savedWidth}px`);
+        const parsed = Number.parseFloat(savedWidth);
+        if (Number.isFinite(parsed)) {
+            const clamped = clampSidebarWidth(parsed);
+            document.documentElement.style.setProperty('--sidebar-width', `${clamped}px`);
+        }
     }
 
     /* ── Mouse support ── */
