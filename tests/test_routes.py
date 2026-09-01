@@ -2212,6 +2212,36 @@ def test_delete_folder_path_traversal_via_symlink(tmp_path) -> None:
     assert "Path traversal detected" in err
 
 
+def test_delete_folder_rejects_symlink(tmp_path) -> None:
+    """_delete_folder refuses to delete a symlink to a directory.
+
+    ``path.is_dir()`` follows symlinks, so a symlink pointing at a directory
+    would otherwise pass the existence check and then hit ``shutil.rmtree``'s
+    confusing "Cannot call rmtree on a symbolic link" error. The explicit
+    symlink guard returns a clear message instead, and the symlink's target
+    is left untouched.
+    """
+    from routes import _delete_folder
+
+    target_base = str(tmp_path / "target")
+    (tmp_path / "target").mkdir()
+    # A symlink that stays *inside* target_base passes the path-traversal
+    # check (resolve() stays within base) and reaches the explicit symlink
+    # guard, which is the branch this test targets.
+    real_dir = tmp_path / "target" / "real"
+    real_dir.mkdir()
+    link = tmp_path / "target" / "linked"
+    link.symlink_to(real_dir, target_is_directory=True)
+
+    deleted, err = _delete_folder("linked", target_base, False, "", "")
+
+    assert deleted is False
+    assert "Refusing to delete symlink" in err
+    # The symlink itself and its target are both left untouched.
+    assert link.is_symlink()
+    assert real_dir.exists()
+
+
 def test_delete_folder_resolve_oserror(monkeypatch, tmp_path) -> None:
     """_delete_folder handles Path.resolve() OSError gracefully (lines 746-747)."""
     from pathlib import Path

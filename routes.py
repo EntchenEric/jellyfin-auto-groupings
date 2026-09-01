@@ -1206,6 +1206,13 @@ def _delete_folder(
         return False, f"Path traversal detected for: {name}"
     if not path.exists() or not path.is_dir():
         return False, None
+    # Reject symlinks explicitly. ``path.is_dir()`` follows symlinks, so a
+    # symlink pointing at a directory would otherwise pass the check above
+    # and then hit ``shutil.rmtree``'s confusing "Cannot call rmtree on a
+    # symbolic link" error. The cleanup GET endpoint already excludes
+    # symlinks; this is the second line of defence for direct POSTs.
+    if path.is_symlink():
+        return False, f"Refusing to delete symlink: {name}"
     try:
         shutil.rmtree(path)
         _prune_empty_parents(path.parent, Path(target_base))
