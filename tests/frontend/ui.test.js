@@ -735,4 +735,176 @@ describe('modal focus trap', () => {
     expect(evt.defaultPrevented).toBe(true);
     hideModal('cover-generator-modal');
   });
+
+  it('should wrap Tab from the last focusable element back to the first', async () => {
+    const { showModal, hideModal } = await import('../../static/js/core/ui.js');
+    const modal = document.getElementById('cover-generator-modal');
+    const btn1 = document.createElement('button');
+    btn1.id = 'trap-first';
+    const btn2 = document.createElement('button');
+    btn2.id = 'trap-last';
+    modal.appendChild(btn1);
+    modal.appendChild(btn2);
+
+    showModal('cover-generator-modal');
+    vi.runAllTimers();
+    btn2.focus();
+
+    // Tab from the last focusable should wrap back to the first, keeping
+    // keyboard focus trapped inside the modal (WCAG 2.1.2).
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+    expect(document.activeElement).toBe(btn1);
+    hideModal('cover-generator-modal');
+  });
+
+  it('should wrap Tab back to the first when focus is outside the modal', async () => {
+    const { showModal, hideModal } = await import('../../static/js/core/ui.js');
+    const modal = document.getElementById('cover-generator-modal');
+    const btn1 = document.createElement('button');
+    btn1.id = 'trap-outside-first';
+    const btn2 = document.createElement('button');
+    btn2.id = 'trap-outside-last';
+    modal.appendChild(btn1);
+    modal.appendChild(btn2);
+
+    showModal('cover-generator-modal');
+    vi.runAllTimers();
+    // Focus is on an element outside the modal (e.g. the background page).
+    const outside = document.createElement('button');
+    outside.id = 'trap-outside';
+    document.body.appendChild(outside);
+    outside.focus();
+
+    // Tab with focus outside the modal should pull focus back to the first
+    // focusable inside the modal.
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+    expect(document.activeElement).toBe(btn1);
+    hideModal('cover-generator-modal');
+  });
+
+  it('should wrap Shift+Tab back to the last when focus is outside the modal', async () => {
+    const { showModal, hideModal } = await import('../../static/js/core/ui.js');
+    const modal = document.getElementById('cover-generator-modal');
+    const btn1 = document.createElement('button');
+    btn1.id = 'trap-shift-first';
+    const btn2 = document.createElement('button');
+    btn2.id = 'trap-shift-last';
+    modal.appendChild(btn1);
+    modal.appendChild(btn2);
+
+    showModal('cover-generator-modal');
+    vi.runAllTimers();
+    // Focus is on an element outside the modal.
+    const outside = document.createElement('button');
+    outside.id = 'trap-shift-outside';
+    document.body.appendChild(outside);
+    outside.focus();
+
+    // Shift+Tab with focus outside the modal should pull focus back to the
+    // last focusable inside the modal.
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true }));
+    expect(document.activeElement).toBe(btn2);
+    hideModal('cover-generator-modal');
+  });
+
+  it('should restore focus to the trigger element when closing via Escape', async () => {
+    const { showModal } = await import('../../static/js/core/ui.js');
+    const modal = document.getElementById('some-modal');
+    const trigger = document.createElement('button');
+    trigger.id = 'escape-trigger';
+    trigger.setAttribute('data-modal', 'some-modal');
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    showModal('some-modal');
+    expect(modal.style.display).toBe('flex');
+    // The trigger id is stored so hideModal can restore focus to it.
+    expect(modal.dataset.previousActive).toBe('escape-trigger');
+    // Advance the focus timer so focus actually moves into the modal first.
+    vi.runAllTimers();
+    expect(modal.contains(document.activeElement)).toBe(true);
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(modal.style.display).toBe('none');
+    // Focus should be restored to the element that opened the modal.
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it('should restore focus to the trigger element when closing via close button', async () => {
+    const { showModal } = await import('../../static/js/core/ui.js');
+    const modal = document.getElementById('some-modal');
+    const trigger = document.createElement('button');
+    trigger.id = 'close-trigger';
+    trigger.setAttribute('data-modal', 'some-modal');
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    showModal('some-modal');
+    expect(modal.dataset.previousActive).toBe('close-trigger');
+    // Advance the focus timer so focus actually moves into the modal first.
+    vi.runAllTimers();
+    expect(modal.contains(document.activeElement)).toBe(true);
+
+    const closeBtn = modal.querySelector('.close-modal-btn');
+    closeBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(modal.style.display).toBe('none');
+    // Focus should be restored to the element that opened the modal.
+    expect(document.activeElement).toBe(trigger);
+  });
+});
+
+describe('showModal previousActive handling', () => {
+  beforeEach(() => {
+    setupDOM();
+  });
+
+  it('should store an empty previousActive when the active element has no id', async () => {
+    const { showModal, hideModal } = await import('../../static/js/core/ui.js');
+    const trigger = document.createElement('button');
+    // No id set on purpose — the previousActive fallback should be empty.
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    showModal('some-modal');
+    const modal = document.getElementById('some-modal');
+    expect(modal.dataset.previousActive).toBe('');
+
+    // Hiding should not throw even though there is no stored trigger id.
+    expect(() => hideModal('some-modal')).not.toThrow();
+  });
+
+  it('should not store previousActive when the active element is the body', async () => {
+    const { showModal, hideModal } = await import('../../static/js/core/ui.js');
+    // Ensure focus is on the body (no element focused).
+    document.body.focus();
+
+    showModal('some-modal');
+    const modal = document.getElementById('some-modal');
+    expect(modal.dataset.previousActive).toBe('');
+
+    expect(() => hideModal('some-modal')).not.toThrow();
+  });
+});
+
+describe('hideModal focus restoration when trigger is missing', () => {
+  beforeEach(() => {
+    setupDOM();
+  });
+
+  it('should not throw when the previousActive element no longer exists', async () => {
+    const { showModal, hideModal } = await import('../../static/js/core/ui.js');
+    const trigger = document.createElement('button');
+    trigger.id = 'vanished-trigger';
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    showModal('some-modal');
+    const modal = document.getElementById('some-modal');
+    expect(modal.dataset.previousActive).toBe('vanished-trigger');
+
+    // Remove the trigger element before hiding — focus restoration must
+    // gracefully skip the missing element instead of throwing.
+    trigger.remove();
+    expect(() => hideModal('some-modal')).not.toThrow();
+  });
 });
