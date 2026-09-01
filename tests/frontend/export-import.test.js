@@ -67,6 +67,20 @@ describe('export-import feature module', () => {
     expect(document.getElementById('export-modal').style.display).toBe('flex');
   });
 
+  it('openExportModal should fall back to Unnamed Group for missing fields', async () => {
+    const stateMod = await import('../../static/js/core/state.js');
+    stateMod.state.currentConfig = {
+      groups: [{ name: '', source_type: '' }],
+    };
+
+    const mod = await import('../../static/js/features/export-import.js');
+    mod.openExportModal();
+
+    const container = document.getElementById('export-groups-container');
+    expect(container.querySelector('.item-name').textContent).toBe('Unnamed Group');
+    expect(container.querySelector('.item-type').textContent).toBe('');
+  });
+
   it('openExportModal should show empty message when no groups', async () => {
     const stateMod = await import('../../static/js/core/state.js');
     stateMod.state.currentConfig = { groups: [] };
@@ -163,6 +177,33 @@ describe('export-import feature module', () => {
     expect(stateMod.state.pendingImportData.groups.length).toBe(1);
     expect(document.getElementById('import-step-2').style.display).toBe('flex');
     expect(document.getElementById('import-groups-container').querySelectorAll('.modal-item').length).toBe(1);
+    expect(showErrorDialog).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it('handleFileSelected should render groups missing source_type/source_value', async () => {
+    const showErrorDialog = vi.fn();
+    vi.doMock('../../static/js/core/ui.js', () => ({
+      showToast: vi.fn(),
+      showErrorDialog,
+      getEl: (id) => document.getElementById(id),
+    }));
+
+    // Mock FileReader so onload fires synchronously with the file text
+    const mockReader = { readAsText: vi.fn() };
+    vi.stubGlobal('FileReader', vi.fn(() => mockReader));
+
+    const mod = await import('../../static/js/features/export-import.js');
+    const file = new File([JSON.stringify({ groups: [{ name: 'Unnamed Group' }] })], 'test.json', { type: 'application/json' });
+    const event = { target: { files: [file], value: 'x' } };
+
+    mod.handleFileSelected(event);
+    mockReader.onload({ target: { result: JSON.stringify({ groups: [{ name: 'Unnamed Group' }] }) } });
+
+    const container = document.getElementById('import-groups-container');
+    expect(container.querySelectorAll('.modal-item').length).toBe(1);
+    // The type/value fallback renders an empty string rather than "undefined"
+    expect(container.querySelector('.item-type').textContent).toBe(': ');
     expect(showErrorDialog).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
