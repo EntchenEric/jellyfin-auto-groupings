@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `tests/frontend/path-picker.test.js`: add coverage for the previously-uncovered
+  `path-picker.js` branches — the auto-detect success-without-host-path warning,
+  the auto-fill of empty path fields from a detected result, the no-op when
+  auto-detection returns a non-success status, and the root-directory path-join
+  edge case (no double slash when browsing `/`). This raises `path-picker.js`
+  statement coverage from ~97% to 100% (branch ~85% to ~98%).
+
+- `tests/frontend/export-import.test.js`: add coverage for the previously-uncovered
+  `export-import.js` branches — the non-`SyntaxError` import-processing failure
+  path (e.g. when the parsed JSON is `null`) and the `initExportImport` no-op.
+  This raises `export-import.js` statement coverage from ~98% to 100% (branch
+  ~89% to ~91%) and the full frontend suite to 328 tests across 15 files.
+
 - `tests/frontend/groupings.test.js`: add coverage for the previously-uncovered
   `groupings.js` branches — the external source-category label, the fallback to
   the raw `source_type` when the category is unknown, the fallback to the raw
