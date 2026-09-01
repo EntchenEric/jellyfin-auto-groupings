@@ -86,6 +86,18 @@ describe('cleanup feature module', () => {
     expect(document.getElementById('cleanup-error').style.display).toBe('block');
   });
 
+  it('openCleanupModal should use fallback message when API error has no message', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      json: vi.fn().mockResolvedValue({ status: 'error' }),
+    });
+
+    const mod = await import('../../static/js/features/cleanup.js');
+    await mod.openCleanupModal();
+
+    expect(document.getElementById('cleanup-error').textContent).toBe('Failed to load folders');
+    expect(document.getElementById('cleanup-error').style.display).toBe('block');
+  });
+
   it('openCleanupModal should show network error on fetch failure', async () => {
     global.fetch = vi.fn().mockRejectedValue(new Error('Network down'));
 
@@ -153,6 +165,37 @@ describe('cleanup feature module', () => {
     expect(showErrorDialog).not.toHaveBeenCalled();
   });
 
+  it('execCleanup should show warning toast with errors on partial success', async () => {
+    const showToast = vi.fn();
+    const showErrorDialog = vi.fn();
+    vi.doMock('../../static/js/core/ui.js', () => ({
+      showToast,
+      showErrorDialog,
+      getEl: (id) => document.getElementById(id),
+    }));
+
+    document.getElementById('cleanup-list').innerHTML = `
+      <input type="checkbox" class="cleanup-item-checkbox" value="Action" checked>
+    `;
+
+    global.fetch = vi.fn().mockResolvedValue({
+      json: vi.fn().mockResolvedValue({
+        status: 'partial_success',
+        deleted: 1,
+        errors: ['Drama: permission denied'],
+      }),
+    });
+
+    const mod = await import('../../static/js/features/cleanup.js');
+    await mod.execCleanup();
+
+    expect(showToast).toHaveBeenCalledWith(
+      'Successfully deleted 1 folder(s). Errors: Drama: permission denied',
+      'warning'
+    );
+    expect(showErrorDialog).not.toHaveBeenCalled();
+  });
+
   it('execCleanup should show error dialog on API failure', async () => {
     const showToast = vi.fn();
     const showErrorDialog = vi.fn();
@@ -195,6 +238,11 @@ describe('cleanup feature module', () => {
     await mod.execCleanup();
 
     expect(showErrorDialog).toHaveBeenCalledWith('Network error while deleting folders.');
+  });
+
+  it('initCleanup should be callable without throwing', async () => {
+    const mod = await import('../../static/js/features/cleanup.js');
+    expect(() => mod.initCleanup()).not.toThrow();
   });
 
   it('execCleanup should do nothing when no folders selected', async () => {

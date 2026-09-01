@@ -189,6 +189,27 @@ describe('sync feature module', () => {
     expect(showErrorDialog).not.toHaveBeenCalled();
   });
 
+  it('initSync should be callable without throwing', async () => {
+    const mod = await import('../../static/js/features/sync.js');
+    expect(() => mod.initSync()).not.toThrow();
+  });
+
+  it('previewSyncAll should use fallback message when error has no message', async () => {
+    const showErrorDialog = vi.fn();
+    vi.doMock('../../static/js/core/api.js', () => ({
+      apiPost: vi.fn().mockResolvedValue({ status: 'error' }),
+    }));
+    vi.doMock('../../static/js/core/ui.js', () => ({
+      showToast: vi.fn(),
+      showErrorDialog,
+      getEl: (id) => document.getElementById(id),
+    }));
+
+    const mod = await import('../../static/js/features/sync.js');
+    await mod.previewSyncAll();
+    expect(showErrorDialog).toHaveBeenCalledWith('Preview failed');
+  });
+
   it('showConfirmSyncDialog should show error when no groups', async () => {
     const showErrorDialog = vi.fn();
     vi.doMock('../../static/js/core/ui.js', () => ({
