@@ -208,6 +208,30 @@ describe('export-import feature module', () => {
     vi.unstubAllGlobals();
   });
 
+  it('handleFileSelected should fall back to Unnamed Group for a nameless imported group', async () => {
+    const showErrorDialog = vi.fn();
+    vi.doMock('../../static/js/core/ui.js', () => ({
+      showToast: vi.fn(),
+      showErrorDialog,
+      getEl: (id) => document.getElementById(id),
+    }));
+
+    const mockReader = { readAsText: vi.fn() };
+    vi.stubGlobal('FileReader', vi.fn(() => mockReader));
+
+    const mod = await import('../../static/js/features/export-import.js');
+    const file = new File([JSON.stringify({ groups: [{ source_type: 'genre', source_value: 'Action' }] })], 'test.json', { type: 'application/json' });
+    const event = { target: { files: [file], value: 'x' } };
+
+    mod.handleFileSelected(event);
+    mockReader.onload({ target: { result: JSON.stringify({ groups: [{ source_type: 'genre', source_value: 'Action' }] }) } });
+
+    const container = document.getElementById('import-groups-container');
+    expect(container.querySelector('.item-name').textContent).toBe('Unnamed Group');
+    expect(showErrorDialog).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
   it('handleFileSelected should show error for invalid JSON', async () => {
     const showErrorDialog = vi.fn();
     vi.doMock('../../static/js/core/ui.js', () => ({
@@ -362,6 +386,31 @@ describe('export-import feature module', () => {
 
     expect(showErrorDialog).toHaveBeenCalledWith('Incompatible file structure');
     expect(document.getElementById('import-modal').style.display).toBe('none');
+    vi.unstubAllGlobals();
+  });
+
+  it('handleFileSelected should accept a raw array of groups', async () => {
+    const showErrorDialog = vi.fn();
+    vi.doMock('../../static/js/core/ui.js', () => ({
+      showToast: vi.fn(),
+      showErrorDialog,
+      getEl: (id) => document.getElementById(id),
+    }));
+
+    const mockReader = { readAsText: vi.fn() };
+    vi.stubGlobal('FileReader', vi.fn(() => mockReader));
+
+    const mod = await import('../../static/js/features/export-import.js');
+    const file = new File([JSON.stringify([{ name: 'Action' }])], 'test.json', { type: 'application/json' });
+    const event = { target: { files: [file], value: 'x' } };
+
+    mod.handleFileSelected(event);
+    mockReader.onload({ target: { result: JSON.stringify([{ name: 'Action' }]) } });
+
+    const container = document.getElementById('import-groups-container');
+    expect(container.querySelectorAll('.modal-item').length).toBe(1);
+    expect(container.querySelector('.item-name').textContent).toBe('Action');
+    expect(showErrorDialog).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
 

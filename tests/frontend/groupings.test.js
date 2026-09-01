@@ -222,6 +222,25 @@ describe('groupings module', () => {
       expect(document.querySelector('.group-category-label').textContent).toBe('Jellyfin');
     });
 
+    it('should fall back to Unnamed Group and empty value when name/source_value are missing', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup({ name: '', source_value: '' })];
+      const mod = await import('../../static/js/features/groupings.js');
+      mod.renderGroups();
+      const card = document.querySelector('.group-card');
+      expect(card.querySelector('h4').textContent).toContain('Unnamed Group');
+      // The meta line should not contain the literal 'undefined' for the value.
+      expect(card.querySelector('.group-meta').textContent).not.toContain('undefined');
+    });
+
+    it('should fall back to Unnamed Group when the group has no name property', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [{ source_category: 'jellyfin', source_type: 'genre', source_value: 'Action' }];
+      const mod = await import('../../static/js/features/groupings.js');
+      mod.renderGroups();
+      expect(document.querySelector('.group-card h4').textContent).toContain('Unnamed Group');
+    });
+
     it('should fall back to the raw source_type when the category is unknown', async () => {
       const { state } = await import('../../static/js/core/state.js');
       state.currentConfig.groups = [makeGroup({ source_category: 'unknown_cat', source_type: 'mystery_type' })];
@@ -327,6 +346,14 @@ describe('groupings module', () => {
       expect(document.getElementById('group_scheduler_panel').style.display).toBe('none');
       expect(document.getElementById('seasonal_enabled').checked).toBe(false);
       expect(document.getElementById('seasonal_panel').style.display).toBe('none');
+    });
+
+    it('should default the source category to jellyfin when missing', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup({ source_category: '' })];
+      const mod = await import('../../static/js/features/groupings.js');
+      mod.editGroup(0);
+      expect(document.getElementById('source_category').value).toBe('jellyfin');
     });
   });
 
@@ -447,6 +474,17 @@ describe('groupings module', () => {
   });
 
   describe('clearAllGroups', () => {
+    it('should do nothing when confirmation is declined', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup({ name: 'Action' })];
+      showConfirmDialog.mockResolvedValue(false);
+      const mod = await import('../../static/js/features/groupings.js');
+      await mod.clearAllGroups();
+      expect(state.currentConfig.groups.length).toBe(1);
+      expect(saveConfig).not.toHaveBeenCalled();
+      expect(apiPost).not.toHaveBeenCalled();
+    });
+
     it('should clear all groups after confirmation and save', async () => {
       const { state } = await import('../../static/js/core/state.js');
       state.currentConfig.groups = [makeGroup({ name: 'Action' }), makeGroup({ name: 'Comedy' })];

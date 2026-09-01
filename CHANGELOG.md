@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `tests/frontend/groupings.test.js`, `tests/frontend/metadata.test.js`,
+  `tests/frontend/export-import.test.js`, `tests/frontend/wizard.test.js`,
+  `tests/frontend/cover-generator.test.js`, `tests/frontend/path-picker.test.js`
+  and `tests/frontend/api.test.js`: added tests covering previously uncovered
+  branches — fallbacks for missing/empty group names and source values in
+  `groupings.js`, the declined-confirmation path in `clearAllGroups`, the
+  whitespace-only required-key and missing-rule-type fallbacks in
+  `metadata.js`, raw-array and nameless-group imports in `export-import.js`,
+  the missing host-path focus branch and default detection-failure message in
+  `wizard.js`, the `devicePixelRatio` fallback in `cover-generator.js`, the
+  default auto-detection-failure message in `path-picker.js`, and the
+  `finally`-block timer cleanup on the success path in `api.js`. This raises
+  overall frontend branch coverage to 99.87%.
+
+- `static/js/features/metadata.js`: removed a redundant `|| 'genre'` fallback
+  in `renderMetadataRules` — `rule.type` is always set to a truthy value for
+  complex rules before the `rowType` expression is evaluated, so the fallback
+  was unreachable dead code.
+
 - `tests/frontend/wizard.test.js`, `tests/frontend/metadata.test.js` and
   `tests/frontend/export-import.test.js`: added tests covering previously
   uncovered branches — the wizard's Continue button enabled state on step 2
