@@ -27,6 +27,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `routes.py`: `_delete_folder` now explicitly rejects symlinks before
+  calling `shutil.rmtree`. `Path.is_dir()` follows symlinks, so a symlink
+  pointing at a directory previously passed the existence check and then hit
+  `shutil.rmtree`'s confusing "Cannot call rmtree on a symbolic link" error.
+  The new guard returns a clear "Refusing to delete symlink" message and
+  leaves the symlink and its target untouched, matching the cleanup GET
+  endpoint which already excludes symlinks. Added a regression test covering
+  the symlink branch.
+
 - `static/js/features/path-picker.js`: `browseDir` now handles explicit
   non-2xx HTTP responses (e.g. a 500 with an HTML error body) by showing a
   readable "Could not load directory (HTTP <status>)" message in the picker
