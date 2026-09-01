@@ -179,6 +179,12 @@ async function performImport(type, sourceGroups = null) {
     } else {
         const selectedIndices = Array.from(document.querySelectorAll('.import-check:checked'))
             .map(cb => parseInt(cb.dataset.index));
+
+        if (selectedIndices.length === 0) {
+            showErrorDialog('Please select at least one grouping to import.');
+            return;
+        }
+
         const toImport = selectedIndices.map(i => sourceGroups[i]);
         state.currentConfig.groups = [...state.currentConfig.groups, ...toImport];
     }
