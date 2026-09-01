@@ -283,10 +283,10 @@ export function openCoverGenerator(index) {
 export function renderCover() {
     const canvas = getEl('cover-canvas');
     const ctx = canvas.getContext('2d');
-    const text = getEl('cover-text').value.trim() || 'Group Name';
-    const theme = getEl('cover-theme').value;
-    const color1 = getEl('cover-color-1').value;
-    const color2 = getEl('cover-color-2').value;
+    const text = getEl('cover-text')?.value?.trim() || 'Group Name';
+    const theme = getEl('cover-theme')?.value || 'modern-dark';
+    const color1 = getEl('cover-color-1')?.value || '#4f46e5';
+    const color2 = getEl('cover-color-2')?.value || '#9333ea';
 
     const seed = getSeed(text + theme + color1 + color2);
     const seededRand = mulberry32(seed);
@@ -334,8 +334,8 @@ export function renderCover() {
     ctx.shadowColor = 'transparent';
 
     // Border drawing
-    const borderStyle = getEl('cover-border-style').value;
-    const borderColor = getEl('cover-border-color').value;
+    const borderStyle = getEl('cover-border-style')?.value || 'none';
+    const borderColor = getEl('cover-border-color')?.value || '#ffffff';
 
     if (borderStyle !== 'none') {
         if (borderStyle === 'elegant') {
