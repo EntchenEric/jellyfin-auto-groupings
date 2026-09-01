@@ -37,7 +37,7 @@
 ---
 
 > [!NOTE]
-> **This project was largely AI-generated.** I'm a CS student who could have written this myself — I just didn't want to. I reviewed the code, understand how it works, and actively maintain it. The AI was basically just a faster keyboard.
+> **This project is 100% AI-generated.** Every line of code, config, and documentation in this repository is produced by AI. The repo is actively maintained by an **OpenClaw instance** — an autonomous AI agent that writes, tests, and commits changes on its own. No human writes code here anymore; the AI is the developer, and it's a faster keyboard than any of us.
 
 **Jellyfin Groupings** is a Flask-powered web utility that allows you to create **virtual libraries** in [Jellyfin](https://jellyfin.org/) by grouping existing media into symlinked directories. 
 
