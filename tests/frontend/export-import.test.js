@@ -221,4 +221,179 @@ describe('export-import feature module', () => {
     mod.handleFileSelected({ target: { files: [] } });
     expect(showErrorDialog).not.toHaveBeenCalled();
   });
+
+  it('execExport with selective and selected groups should download selected', async () => {
+    const stateMod = await import('../../static/js/core/state.js');
+    stateMod.state.currentConfig = {
+      groups: [{ name: 'Action', source_type: 'genre' }, { name: 'Drama', source_type: 'studio' }],
+    };
+
+    const createObjectURL = vi.fn(() => 'blob:mock');
+    const revokeObjectURL = vi.fn();
+    Object.defineProperty(URL, 'createObjectURL', { value: createObjectURL, configurable: true });
+    Object.defineProperty(URL, 'revokeObjectURL', { value: revokeObjectURL, configurable: true });
+
+    document.querySelector('input[name="export-type"][value="selective"]').checked = true;
+    document.getElementById('export-groups-container').innerHTML = `
+      <input type="checkbox" class="export-check item-checkbox" data-index="0" checked>
+      <input type="checkbox" class="export-check item-checkbox" data-index="1">
+    `;
+
+    const mod = await import('../../static/js/features/export-import.js');
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    mod.execExport();
+
+    expect(clickSpy).toHaveBeenCalled();
+    expect(createObjectURL).toHaveBeenCalled();
+    expect(revokeObjectURL).toHaveBeenCalled();
+    expect(document.getElementById('export-modal').style.display).toBe('none');
+    clickSpy.mockRestore();
+  });
+
+  it('handleFileSelected should show error when reader fails', async () => {
+    const showErrorDialog = vi.fn();
+    vi.doMock('../../static/js/core/ui.js', () => ({
+      showToast: vi.fn(),
+      showErrorDialog,
+      getEl: (id) => document.getElementById(id),
+    }));
+
+    const mockReader = { readAsText: vi.fn() };
+    vi.stubGlobal('FileReader', vi.fn(() => mockReader));
+
+    const mod = await import('../../static/js/features/export-import.js');
+    const file = new File(['{}'], 'test.json', { type: 'application/json' });
+    const event = { target: { files: [file], value: 'x' } };
+
+    mod.handleFileSelected(event);
+    mockReader.onerror();
+
+    expect(showErrorDialog).toHaveBeenCalledWith('Failed to read the selected file');
+    vi.unstubAllGlobals();
+  });
+
+  it('handleFileSelected should show error for incompatible structure', async () => {
+    const showErrorDialog = vi.fn();
+    vi.doMock('../../static/js/core/ui.js', () => ({
+      showToast: vi.fn(),
+      showErrorDialog,
+      getEl: (id) => document.getElementById(id),
+    }));
+
+    const mockReader = { readAsText: vi.fn() };
+    vi.stubGlobal('FileReader', vi.fn(() => mockReader));
+
+    const mod = await import('../../static/js/features/export-import.js');
+    const file = new File(['{}'], 'test.json', { type: 'application/json' });
+    const event = { target: { files: [file], value: 'x' } };
+
+    mod.handleFileSelected(event);
+    mockReader.onload({ target: { result: '{}' } });
+
+    expect(showErrorDialog).toHaveBeenCalledWith('Incompatible file structure');
+    expect(document.getElementById('import-modal').style.display).toBe('none');
+    vi.unstubAllGlobals();
+  });
+
+  it('handleFileSelected should handle full config import (Overwrite All)', async () => {
+    const showErrorDialog = vi.fn();
+    vi.doMock('../../static/js/core/ui.js', () => ({
+      showToast: vi.fn(),
+      showErrorDialog,
+      getEl: (id) => document.getElementById(id),
+    }));
+
+    const mockReader = { readAsText: vi.fn() };
+    vi.stubGlobal('FileReader', vi.fn(() => mockReader));
+
+    const mod = await import('../../static/js/features/export-import.js');
+    const file = new File(['{}'], 'test.json', { type: 'application/json' });
+    const event = { target: { files: [file], value: 'x' } };
+
+    mod.handleFileSelected(event);
+    mockReader.onload({
+      target: { result: JSON.stringify({ jellyfin_url: 'http://jf', api_key: 'key', groups: [] }) },
+    });
+
+    expect(document.getElementById('import-warning').style.display).toBe('block');
+    expect(document.getElementById('import-selection-list').style.display).toBe('none');
+    expect(document.getElementById('confirm-import').textContent).toBe('Overwrite All');
+    vi.unstubAllGlobals();
+  });
+
+  it('performImport full should overwrite config and save', async () => {
+    const saveConfig = vi.fn().mockResolvedValue(undefined);
+    const showToast = vi.fn();
+    const renderGroups = vi.fn();
+    vi.doMock('../../static/js/core/api.js', () => ({ saveConfig }));
+    vi.doMock('../../static/js/core/ui.js', () => ({
+      showToast,
+      showErrorDialog: vi.fn(),
+      getEl: (id) => document.getElementById(id),
+    }));
+    vi.doMock('../../static/js/features/groupings.js', () => ({ renderGroups }));
+
+    const stateMod = await import('../../static/js/core/state.js');
+    stateMod.state.currentConfig = { groups: [{ name: 'Old' }] };
+
+    const mod = await import('../../static/js/features/export-import.js');
+    // Drive the real full-config flow via handleFileSelected + setupImportStep2.
+    const mockReader = { readAsText: vi.fn() };
+    vi.stubGlobal('FileReader', vi.fn(() => mockReader));
+    mod.handleFileSelected({ target: { files: [new File(['{}'], 'x.json')], value: '' } });
+    mockReader.onload({
+      target: { result: JSON.stringify({ jellyfin_url: 'http://new', api_key: 'k', groups: [{ name: 'X' }] }) },
+    });
+
+    document.getElementById('confirm-import').onclick();
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(stateMod.state.currentConfig).toEqual({
+      jellyfin_url: 'http://new',
+      api_key: 'k',
+      groups: [{ name: 'X' }],
+    });
+    expect(saveConfig).toHaveBeenCalled();
+    expect(showToast).toHaveBeenCalledWith('Import successful!', 'success');
+    expect(renderGroups).toHaveBeenCalled();
+    expect(document.getElementById('import-modal').style.display).toBe('none');
+    vi.unstubAllGlobals();
+  });
+
+  it('performImport groups should append selected groups', async () => {
+    const saveConfig = vi.fn().mockResolvedValue(undefined);
+    const showToast = vi.fn();
+    const renderGroups = vi.fn();
+    vi.doMock('../../static/js/core/api.js', () => ({ saveConfig }));
+    vi.doMock('../../static/js/core/ui.js', () => ({
+      showToast,
+      showErrorDialog: vi.fn(),
+      getEl: (id) => document.getElementById(id),
+    }));
+    vi.doMock('../../static/js/features/groupings.js', () => ({ renderGroups }));
+
+    const stateMod = await import('../../static/js/core/state.js');
+    stateMod.state.currentConfig = { groups: [{ name: 'Existing' }] };
+
+    const mod = await import('../../static/js/features/export-import.js');
+    // Drive the real groups-import flow via handleFileSelected + setupImportStep2.
+    const mockReader = { readAsText: vi.fn() };
+    vi.stubGlobal('FileReader', vi.fn(() => mockReader));
+    mod.handleFileSelected({ target: { files: [new File(['{}'], 'x.json')], value: '' } });
+    mockReader.onload({
+      target: { result: JSON.stringify({ groups: [{ name: 'New1' }, { name: 'New2' }] }) },
+    });
+
+    // Select only the first group.
+    const checkboxes = document.querySelectorAll('.import-check');
+    checkboxes[1].checked = false;
+    document.getElementById('confirm-import').onclick();
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(stateMod.state.currentConfig.groups).toEqual([{ name: 'Existing' }, { name: 'New1' }]);
+    expect(saveConfig).toHaveBeenCalled();
+    expect(showToast).toHaveBeenCalledWith('Import successful!', 'success');
+    expect(renderGroups).toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
 });
