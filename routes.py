@@ -268,6 +268,11 @@ def _add_security_headers(response: Response) -> Response:
 
     * ``X-Content-Type-Options: nosniff`` — prevents MIME-type sniffing.
     * ``X-Frame-Options: DENY`` — prevents clickjacking in frames.
+    * ``Referrer-Policy: no-referrer`` — prevents leaking the current URL
+      (which may contain query parameters) in the ``Referer`` header of
+      outbound requests.
+    * ``X-XSS-Protection: 1; mode=block`` — legacy XSS filter for older
+      browsers that do not support a Content-Security-Policy.
 
     Args:
         response: The HTTP response object.
@@ -275,6 +280,8 @@ def _add_security_headers(response: Response) -> Response:
     """
     response.headers.set("X-Content-Type-Options", "nosniff")
     response.headers.set("X-Frame-Options", "DENY")
+    response.headers.set("Referrer-Policy", "no-referrer")
+    response.headers.set("X-XSS-Protection", "1; mode=block")
     return response
 
 

@@ -271,6 +271,26 @@ def test_index(client) -> None:
     assert response.status_code == 200
 
 
+def test_security_headers_present(client) -> None:
+    """Every response carries the standard security hardening headers."""
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.headers.get("X-Content-Type-Options") == "nosniff"
+    assert response.headers.get("X-Frame-Options") == "DENY"
+    assert response.headers.get("Referrer-Policy") == "no-referrer"
+    assert response.headers.get("X-XSS-Protection") == "1; mode=block"
+
+
+def test_security_headers_present_on_api(client) -> None:
+    """API responses also carry the security hardening headers."""
+    response = client.get("/api/version")
+    assert response.status_code == 200
+    assert response.headers.get("X-Content-Type-Options") == "nosniff"
+    assert response.headers.get("X-Frame-Options") == "DENY"
+    assert response.headers.get("Referrer-Policy") == "no-referrer"
+    assert response.headers.get("X-XSS-Protection") == "1; mode=block"
+
+
 def test_browse_security(client) -> None:
     # Test disallowed path
     response = client.get("/api/browse?path=/etc")
