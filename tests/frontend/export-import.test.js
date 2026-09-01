@@ -422,6 +422,43 @@ describe('export-import feature module', () => {
     vi.unstubAllGlobals();
   });
 
+  it('performImport groups should show error when no groups selected', async () => {
+    const saveConfig = vi.fn().mockResolvedValue(undefined);
+    const showToast = vi.fn();
+    const showErrorDialog = vi.fn();
+    const renderGroups = vi.fn();
+    vi.doMock('../../static/js/core/api.js', () => ({ saveConfig }));
+    vi.doMock('../../static/js/core/ui.js', () => ({
+      showToast,
+      showErrorDialog,
+      getEl: (id) => document.getElementById(id),
+    }));
+    vi.doMock('../../static/js/features/groupings.js', () => ({ renderGroups }));
+
+    const stateMod = await import('../../static/js/core/state.js');
+    stateMod.state.currentConfig = { groups: [{ name: 'Existing' }] };
+
+    const mod = await import('../../static/js/features/export-import.js');
+    const mockReader = { readAsText: vi.fn() };
+    vi.stubGlobal('FileReader', vi.fn(() => mockReader));
+    mod.handleFileSelected({ target: { files: [new File(['{}'], 'x.json')], value: '' } });
+    mockReader.onload({
+      target: { result: JSON.stringify({ groups: [{ name: 'New1' }, { name: 'New2' }] }) },
+    });
+
+    // Uncheck every group so nothing is selected.
+    document.querySelectorAll('.import-check').forEach((cb) => { cb.checked = false; });
+    document.getElementById('confirm-import').onclick();
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(showErrorDialog).toHaveBeenCalledWith('Please select at least one grouping to import.');
+    expect(stateMod.state.currentConfig.groups).toEqual([{ name: 'Existing' }]);
+    expect(saveConfig).not.toHaveBeenCalled();
+    expect(showToast).not.toHaveBeenCalled();
+    expect(renderGroups).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
   it('initExportImport should not throw', async () => {
     const mod = await import('../../static/js/features/export-import.js');
     expect(() => mod.initExportImport()).not.toThrow();
