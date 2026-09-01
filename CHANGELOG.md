@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `sync.py`: `_parse_year_int` now tolerates float-formatted year expressions
+  (e.g. `"2001.0"`), mirroring how `_coerce_year_int` already normalises
+  float-formatted *values*. A plain year rule such as `"2001.0"` now matches
+  the integer year `2001` (and vice-versa), making the plain comparison path
+  symmetric with the range-comparison path. Previously `_match_year(2001,
+  "2001.0")` returned `False` even though the value and expression represent
+  the same year. Added `test_parse_year_int` and extended
+  `test_match_year_ranges` to cover float-formatted expressions.
+
 - `static/js/features/sidebar-resizer.js`: the saved sidebar width restored
   from `localStorage` is now clamped to the valid 200–800px range and validated
   as a finite number. A stale or corrupt value (e.g. from an older version, an

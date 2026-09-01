@@ -1253,6 +1253,30 @@ def test_match_year_ranges() -> None:
     assert not _match_year(2001, "abc")
     assert not _match_year(2001.0, "abc")
 
+    # Float-formatted plain expressions (e.g. ``"2001.0"``) match the
+    # corresponding integer value, mirroring how float-formatted *values*
+    # are tolerated by _coerce_year_int.
+    assert _match_year(2001, "2001.0")
+    assert _match_year(2001.0, "2001.0")
+    assert _match_year("2001", "2001.0")
+    assert _match_year("2001.0", "2001.0")
+    assert not _match_year(2002, "2001.0")
+
+
+def test_parse_year_int() -> None:
+    """_parse_year_int parses plain and float-formatted year expressions."""
+    from sync import _parse_year_int
+
+    assert _parse_year_int("2001") == 2001
+    assert _parse_year_int(" 2001 ") == 2001
+    # Float-formatted expressions are tolerated, mirroring _coerce_year_int.
+    assert _parse_year_int("2001.0") == 2001
+    assert _parse_year_int("2001.5") == 2001
+    # Non-numeric expressions are rejected.
+    assert _parse_year_int("abc") is None
+    assert _parse_year_int("") is None
+    assert _parse_year_int(None) is None
+
 
 def test_coerce_year_int() -> None:
     """_coerce_year_int normalises int/float/string years to an int."""

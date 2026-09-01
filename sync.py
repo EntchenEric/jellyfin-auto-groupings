@@ -1069,6 +1069,11 @@ def _coerce_year_int(value: Any) -> int | None:
 def _parse_year_int(expr: str) -> int | None:
     """Parse a plain year expression into an int, or ``None`` if invalid.
 
+    Tolerates float-formatted expressions (e.g. ``"2001.0"``) so that a
+    plain comparison is symmetric with :func:`_coerce_year_int`, which
+    already normalises float-formatted *values*.  This mirrors the
+    ``"2001.0"`` serialisation some API responses use.
+
     Args:
         expr: The stripped year expression (e.g. ``"2001"``).
 
@@ -1078,6 +1083,12 @@ def _parse_year_int(expr: str) -> int | None:
     """
     try:
         return int(expr)
+    except (TypeError, ValueError):
+        pass
+    # Tolerate a trailing ``.0`` (e.g. ``"2001.0"``) from float
+    # serialisation, mirroring _coerce_year_int.
+    try:
+        return int(float(expr))
     except (TypeError, ValueError):
         return None
 
