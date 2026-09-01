@@ -205,6 +205,72 @@ describe('groupings module', () => {
       coverBtn.click();
       expect(openCoverGenerator).toHaveBeenCalledWith(0);
     });
+
+    it('should label an external source category as External', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup({ source_category: 'external', source_type: 'imdb_list' })];
+      const mod = await import('../../static/js/features/groupings.js');
+      mod.renderGroups();
+      expect(document.querySelector('.group-category-label').textContent).toBe('External');
+    });
+
+    it('should fall back to the raw source_type when the category is unknown', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup({ source_category: 'unknown_cat', source_type: 'mystery_type' })];
+      const mod = await import('../../static/js/features/groupings.js');
+      mod.renderGroups();
+      expect(document.querySelector('.group-meta').textContent).toContain('mystery_type');
+    });
+
+    it('should fall back to the raw sort_order when it is not a known label', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup({ sort_order: 'CustomOrder' })];
+      const mod = await import('../../static/js/features/groupings.js');
+      mod.renderGroups();
+      const badge = document.querySelector('.badge-sort');
+      expect(badge).not.toBeNull();
+      expect(badge.textContent).toBe('CustomOrder');
+    });
+
+    it('should not render sort/seasonal/collection badges when unset', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup({ sort_order: '', seasonal_enabled: false, create_as_collection: false })];
+      const mod = await import('../../static/js/features/groupings.js');
+      mod.renderGroups();
+      expect(document.querySelector('.badge-sort')).toBeNull();
+      expect(document.querySelector('.badge-seasonal')).toBeNull();
+      expect(document.querySelector('.badge-collection')).toBeNull();
+    });
+
+    it('should wire the delete button to deleteGroup', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup()];
+      showConfirmDialog.mockResolvedValue(false);
+      const mod = await import('../../static/js/features/groupings.js');
+      mod.renderGroups();
+      const delBtn = document.querySelector('.delete-btn');
+      delBtn.click();
+      expect(showConfirmDialog).toHaveBeenCalled();
+      expect(state.currentConfig.groups.length).toBe(1);
+    });
+  });
+
+  describe('updateGroupCount', () => {
+    it('should no-op when the count badge element is missing', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup()];
+      document.getElementById('groups-count-badge').remove();
+      const mod = await import('../../static/js/features/groupings.js');
+      expect(() => mod.renderGroups()).not.toThrow();
+    });
+  });
+
+  describe('initGroupSearch', () => {
+    it('should no-op when the search input is missing', async () => {
+      document.getElementById('groups-search').remove();
+      const mod = await import('../../static/js/features/groupings.js');
+      expect(() => mod.initGroupSearch()).not.toThrow();
+    });
   });
 
   describe('editGroup', () => {
@@ -240,6 +306,19 @@ describe('groupings module', () => {
       expect(document.getElementById('seasonal_start_day').value).toBe('15');
       expect(document.getElementById('seasonal_end_month').value).toBe('11');
       expect(document.getElementById('seasonal_end_day').value).toBe('20');
+    });
+
+    it('should hide optional panels when the group has no sort/schedule/seasonal', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup({ sort_order: '', schedule_enabled: false, seasonal_enabled: false })];
+      const mod = await import('../../static/js/features/groupings.js');
+      mod.editGroup(0);
+      expect(document.getElementById('sort_order_enabled').checked).toBe(false);
+      expect(document.getElementById('sort_order_panel').style.display).toBe('none');
+      expect(document.getElementById('schedule_enabled').checked).toBe(false);
+      expect(document.getElementById('group_scheduler_panel').style.display).toBe('none');
+      expect(document.getElementById('seasonal_enabled').checked).toBe(false);
+      expect(document.getElementById('seasonal_panel').style.display).toBe('none');
     });
   });
 
@@ -303,6 +382,45 @@ describe('groupings module', () => {
       expect(state.currentConfig.groups[0].name).toBe('Action');
       expect(showToast).toHaveBeenCalledWith('Failed to save after deleting group', 'error');
     });
+
+    it('should skip the disk cleanup when the group has no name', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup({ name: '' })];
+      showConfirmDialog.mockResolvedValue(true);
+      saveConfig.mockResolvedValue({});
+      const mod = await import('../../static/js/features/groupings.js');
+      await mod.deleteGroup(0);
+      expect(saveConfig).toHaveBeenCalled();
+      expect(apiPost).not.toHaveBeenCalled();
+    });
+
+    it('should toast when the disk cleanup fails', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup({ name: 'Action' })];
+      showConfirmDialog.mockResolvedValue(true);
+      saveConfig.mockResolvedValue({});
+      apiPost.mockRejectedValue(new Error('disk error'));
+      const mod = await import('../../static/js/features/groupings.js');
+      await mod.deleteGroup(0);
+      expect(showToast).toHaveBeenCalledWith('Failed to clean up folder from disk: disk error', 'error');
+    });
+
+    it('should append the removed group when the array shrank during save failure', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup({ name: 'Action' }), makeGroup({ name: 'Comedy' })];
+      showConfirmDialog.mockResolvedValue(true);
+      // Simulate the array being modified between splice and the save failure.
+      saveConfig.mockImplementation(() => {
+        state.currentConfig.groups.length = 0;
+        return Promise.reject(new Error('boom'));
+      });
+      const mod = await import('../../static/js/features/groupings.js');
+      // Delete the second group (index 1); after the array is emptied, index 1 > length 0.
+      await mod.deleteGroup(1);
+      // The removed group should be appended at the end rather than spliced in.
+      expect(state.currentConfig.groups).toEqual([makeGroup({ name: 'Comedy' })]);
+      expect(showToast).toHaveBeenCalledWith('Failed to save after deleting group', 'error');
+    });
   });
 
   describe('clearAllGroups', () => {
@@ -328,6 +446,28 @@ describe('groupings module', () => {
       await mod.clearAllGroups();
       expect(state.currentConfig.groups.length).toBe(1);
       expect(showToast).toHaveBeenCalledWith('Failed to save after clearing groups', 'error');
+    });
+
+    it('should skip the disk cleanup when there are no named groups', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup({ name: '' })];
+      showConfirmDialog.mockResolvedValue(true);
+      saveConfig.mockResolvedValue({});
+      const mod = await import('../../static/js/features/groupings.js');
+      await mod.clearAllGroups();
+      expect(saveConfig).toHaveBeenCalled();
+      expect(apiPost).not.toHaveBeenCalled();
+    });
+
+    it('should toast when the disk cleanup fails', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup({ name: 'Action' })];
+      showConfirmDialog.mockResolvedValue(true);
+      saveConfig.mockResolvedValue({});
+      apiPost.mockRejectedValue(new Error('disk error'));
+      const mod = await import('../../static/js/features/groupings.js');
+      await mod.clearAllGroups();
+      expect(showToast).toHaveBeenCalledWith('Failed to clean up folders from disk: disk error', 'error');
     });
   });
 
@@ -412,6 +552,39 @@ describe('groupings module', () => {
       cb.checked = false;
       cb.dispatchEvent(new Event('change'));
       expect(state.currentConfig.scheduler.global_exclude_ids).toEqual([]);
+    });
+
+    it('should initialise a missing scheduler config', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup({ name: 'Action' })];
+      delete state.currentConfig.scheduler;
+      const mod = await import('../../static/js/features/groupings.js');
+      mod.updateGlobalSyncExclusionsUI();
+      expect(state.currentConfig.scheduler).toEqual({
+        global_enabled: false,
+        global_schedule: '',
+        global_exclude_ids: [],
+      });
+    });
+
+    it('should initialise a missing global_exclude_ids array', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup({ name: 'Action' })];
+      state.currentConfig.scheduler = { global_enabled: false, global_schedule: '' };
+      const mod = await import('../../static/js/features/groupings.js');
+      mod.updateGlobalSyncExclusionsUI();
+      expect(state.currentConfig.scheduler.global_exclude_ids).toEqual([]);
+    });
+
+    it('should skip groups without a name when rendering exclusions', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup({ name: '' }), makeGroup({ name: 'Action' })];
+      state.currentConfig.scheduler = { global_enabled: false, global_schedule: '', global_exclude_ids: [] };
+      const mod = await import('../../static/js/features/groupings.js');
+      mod.updateGlobalSyncExclusionsUI();
+      const checkboxes = document.querySelectorAll('#global_sync_exclusions input[type="checkbox"]');
+      expect(checkboxes.length).toBe(1);
+      expect(checkboxes[0].nextSibling.textContent).toBe('Action');
     });
   });
 });
