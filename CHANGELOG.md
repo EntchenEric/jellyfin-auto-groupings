@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `tests/frontend/ui.test.js`: add coverage for the previously-uncovered
+  `ui.js` modal event handlers and progress-bar ETA logic — `hideModal`
+  focus restoration and `modal-open` body-class management (including the
+  keep-class-when-another-modal-visible case), the Escape-key and backdrop
+  click handlers, and the `_updateProgressBar` ETA display (show when
+  remaining > 2s, hide when small or on the final step). This raises
+  `ui.js` statement coverage from ~90% to 100% and the full frontend suite
+  to 281 tests across 15 files.
+
 - `tests/frontend/metadata.test.js`: add unit tests for the `metadata.js`
   feature module (`parseMetadataValue`, `getFilterValue`,
   `updateSourceTypeOptions`, `renderMetadataRules`, `addMetadataRule`,
