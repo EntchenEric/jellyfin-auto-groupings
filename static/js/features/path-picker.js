@@ -53,6 +53,12 @@ export async function browseDir(path) {
         const url = new URL('/api/browse', window.location.origin);
         url.searchParams.set('path', path);
         const resp = await fetch(url.toString());
+        if (resp.ok === false) {
+            // Explicit non-2xx response (e.g. 500) — surface a readable message
+            // instead of letting resp.json() throw a confusing parse error.
+            bodyEl.innerHTML = `<p class="picker-empty">Could not load directory (HTTP ${resp.status})</p>`;
+            return;
+        }
         result = await resp.json();
     } catch (e) {
         bodyEl.innerHTML = `<p class="picker-empty">Could not load directory: ${e.message}</p>`;
