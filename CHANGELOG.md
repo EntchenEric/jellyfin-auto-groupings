@@ -70,6 +70,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   traversal. Removed the resulting dead `_is_valid_folder_name` helper and added
   a regression test.
 
+- `static/js/features/export-import.js`: `downloadJSON` now revokes the blob
+  URL asynchronously via `setTimeout(0)` instead of synchronously right after
+  `a.click()`. In some browsers (notably Firefox and Safari) a synchronous
+  revoke can abort the download before the browser has started fetching the
+  blob URL, resulting in a failed or empty export. The two `execExport`
+  frontend tests were updated to await the deferred revoke.
+
 ### Added
 
 - `SECURITY.md`: document the security hardening headers applied to every
