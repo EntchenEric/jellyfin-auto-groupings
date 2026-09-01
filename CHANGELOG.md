@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `tests/frontend/metadata.test.js`: add coverage for the remaining uncovered
+  `metadata.js` statements — the `updateSourceValueUI` preValue parsing path
+  (parsing a filter string into rules for a validated metadata type) and the
+  `initMetadata` event-handler wiring (source-category change, add-rule click,
+  and the `window` exports). This raises `metadata.js` statement coverage from
+  ~97% to 100% and the full frontend suite to 301 tests across 15 files.
+
 - `tests/frontend/config.test.js`: add coverage for the previously-uncovered
   `config.js` branches — the main-form reconnect flow (loading overlay,
   `refreshMetadata` success and failure paths), the env-override banner
