@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `static/js/features/sidebar-resizer.js`: the saved sidebar width restored
+  from `localStorage` is now clamped to the valid 200–800px range and validated
+  as a finite number. A stale or corrupt value (e.g. from an older version, an
+  out-of-range width, or a non-numeric string) can no longer break the layout;
+  it falls back to the CSS default. Added frontend tests covering below-min,
+  above-max, and non-numeric saved widths.
+
 - `app.py`: `_resolve_log_level` now validates the `LOG_LEVEL` value against the
   explicit set of logging level constants (`DEBUG`, `INFO`, `WARNING`, `ERROR`,
   `CRITICAL`) instead of accepting any integer attribute on the `logging`
