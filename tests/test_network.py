@@ -308,6 +308,33 @@ def test_parse_retry_config_trailing_comma(monkeypatch) -> None:
     assert len(statuses) == 2
 
 
+def test_parse_retry_config_empty_forcelist(monkeypatch) -> None:
+    """Empty NETWORK_RETRY_STATUS_FORCELIST yields an empty status list."""
+    monkeypatch.setenv("NETWORK_RETRY_STATUS_FORCELIST", "")
+    from network import _parse_retry_config
+
+    _, _, statuses = _parse_retry_config()
+    assert statuses == []
+
+
+def test_parse_retry_config_whitespace_forcelist(monkeypatch) -> None:
+    """Whitespace-only NETWORK_RETRY_STATUS_FORCELIST yields an empty list."""
+    monkeypatch.setenv("NETWORK_RETRY_STATUS_FORCELIST", "   ")
+    from network import _parse_retry_config
+
+    _, _, statuses = _parse_retry_config()
+    assert statuses == []
+
+
+def test_parse_retry_config_forcelist_empty_entries(monkeypatch) -> None:
+    """Empty entries between commas are tolerated and skipped."""
+    monkeypatch.setenv("NETWORK_RETRY_STATUS_FORCELIST", "429, ,500")
+    from network import _parse_retry_config
+
+    _, _, statuses = _parse_retry_config()
+    assert statuses == [429, 500]
+
+
 def test_parse_retry_config_nan_backoff_fallback(monkeypatch) -> None:
     """NaN NETWORK_RETRY_BACKOFF_FACTOR falls back to default 1.0."""
     monkeypatch.setenv("NETWORK_RETRY_BACKOFF_FACTOR", "nan")

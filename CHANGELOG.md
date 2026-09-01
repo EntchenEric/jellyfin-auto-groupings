@@ -26,6 +26,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `tests/test_network.py`: add coverage for the `NETWORK_RETRY_STATUS_FORCELIST`
+  edge cases in `_parse_retry_config` — an empty or whitespace-only value yields
+  an empty status list (no status-code retries), and empty entries between
+  commas (e.g. `"429, ,500"`) are tolerated and skipped. This documents the
+  intended behaviour of the retry configuration parser.
+
 - `routes.py`: the `_add_security_headers` after-request hook now also sets
   `Referrer-Policy: no-referrer` (prevents leaking the current URL, which may
   contain query parameters, in the `Referer` header of outbound requests) and
