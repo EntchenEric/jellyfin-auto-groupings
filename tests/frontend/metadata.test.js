@@ -293,6 +293,17 @@ describe('updateSourceValueUI', () => {
     expect(document.getElementById('source_value').style.display).toBe('none');
   });
 
+  it('parses a preValue string into rules for a validated metadata type', () => {
+    document.getElementById('source_type').value = 'genre';
+    state.isServerValidated = true;
+    metadata.updateSourceValueUI('Horror AND Action');
+    expect(window._currentMetadataRules).toEqual([
+      { operator: '', value: 'Horror' },
+      { operator: 'AND', value: 'Action' },
+    ]);
+    expect(state.lastRenderedType).toBe('genre');
+  });
+
   it('shows manual help text for metadata types when server is not validated', () => {
     document.getElementById('source_type').value = 'genre';
     state.isServerValidated = false;
@@ -310,6 +321,60 @@ describe('updateSourceValueUI', () => {
     expect(document.getElementById('source_value_help').textContent).toContain('IMDb list ID');
   });
 
+  it('pre-fills the manual input for non-metadata types when preValue is given', () => {
+    document.getElementById('source_type').value = 'imdb_list';
+    metadata.updateSourceValueUI('ls000024390');
+    expect(document.getElementById('source_value').value).toBe('ls000024390');
+  });
+
+  it('uses the fallback placeholder and help for an unknown non-metadata type', () => {
+    document.getElementById('source_type').value = 'some_unknown_type';
+    metadata.updateSourceValueUI();
+    const input = document.getElementById('source_value');
+    expect(input.placeholder).toContain('e.g. Action');
+    expect(document.getElementById('source_value_help').textContent).toContain('Enter the value manually.');
+  });
+
+  it('shows the manual input for recommendations when the server is not validated', () => {
+    document.getElementById('source_type').value = 'recommendations';
+    state.isServerValidated = false;
+    metadata.updateSourceValueUI('u1');
+    const input = document.getElementById('source_value');
+    expect(input.style.display).toBe('block');
+    expect(input.required).toBe(true);
+    expect(input.value).toBe('u1');
+    const userSel = document.getElementById('source_value_user_select');
+    expect(userSel).toBeTruthy();
+    expect(userSel.style.display).toBe('none');
+  });
+
+  it('pre-selects the matching user and dispatches change when preValue matches a user id', async () => {
+    document.getElementById('source_type').value = 'recommendations';
+    state.isServerValidated = true;
+    fetchUsers.mockResolvedValue({
+      status: 'success',
+      users: [{ id: 'u1', name: 'Alice' }, { id: 'u2', name: 'Bob' }],
+    });
+    metadata.updateSourceValueUI('u2');
+    await vi.waitFor(() => {
+      const userSel = document.getElementById('source_value_user_select');
+      expect(userSel).toBeTruthy();
+      expect(userSel.value).toBe('u2');
+    });
+  });
+
+  it('shows an error option when fetching users fails', async () => {
+    document.getElementById('source_type').value = 'recommendations';
+    state.isServerValidated = true;
+    fetchUsers.mockRejectedValue(new Error('Network down'));
+    metadata.updateSourceValueUI();
+    await vi.waitFor(() => {
+      const userSel = document.getElementById('source_value_user_select');
+      expect(userSel).toBeTruthy();
+      expect(userSel.innerHTML).toContain('Error loading users');
+    });
+  });
+
   it('populates the user select for recommendations when validated', async () => {
     document.getElementById('source_type').value = 'recommendations';
     state.isServerValidated = true;
@@ -324,6 +389,29 @@ describe('updateSourceValueUI', () => {
       expect(userSel).toBeTruthy();
       expect(userSel.options.length).toBeGreaterThan(1);
     });
+  });
+});
+
+describe('initMetadata', () => {
+  beforeEach(() => {
+    setupDOM();
+    state.currentConfig = {};
+    state.isServerValidated = false;
+    window._currentMetadataRules = [{ operator: '', value: '' }];
+  });
+
+  it('wires up the source category, type and add-rule handlers', () => {
+    metadata.initMetadata();
+    expect(window.updateSourceTypeOptions).toBe(metadata.updateSourceTypeOptions);
+    expect(window.updateSourceValueUI).toBe(metadata.updateSourceValueUI);
+    // Trigger the category change handler and verify it repopulates options.
+    document.getElementById('source_category').value = 'jellyfin';
+    document.getElementById('source_category').onchange();
+    const typeSelect = document.getElementById('source_type');
+    expect(typeSelect.options.length).toBeGreaterThan(0);
+    // Trigger the add-rule handler and verify a rule is appended.
+    document.getElementById('add-rule-btn').onclick();
+    expect(window._currentMetadataRules.length).toBe(2);
   });
 });
 
