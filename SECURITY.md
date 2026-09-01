@@ -45,6 +45,24 @@ You should receive a response within 48 hours. If the vulnerability is confirmed
 - All state-changing requests (POST, PUT, DELETE, PATCH) require the `X-Requested-With: XMLHttpRequest` header.
 - This prevents simple cross-site request forgery attacks.
 
+### Security Headers
+
+Every HTTP response is hardened with the following security headers:
+
+- `X-Content-Type-Options: nosniff` — prevents MIME-type sniffing.
+- `X-Frame-Options: DENY` — prevents clickjacking in frames.
+- `Referrer-Policy: no-referrer` — prevents leaking the current URL (which may
+  contain query parameters) in the `Referer` header of outbound requests.
+- `X-XSS-Protection: 1; mode=block` — legacy XSS filter for older browsers that
+  do not support a Content-Security-Policy.
+- `Permissions-Policy` — disables browser features the app does not use
+  (camera, microphone, geolocation, payment, USB, sensors, `sync-xhr`, etc.) to
+  reduce the attack surface and prevent silent feature abuse. `fullscreen` is
+  allowed for the app itself (`fullscreen=(self)`).
+
+These headers are applied in the `_add_security_headers` Flask
+`after_request` handler in `routes.py`.
+
 ### Filesystem Access
 
 - The filesystem browser is restricted to whitelisted roots (home directory, `/media`, `/mnt`).
