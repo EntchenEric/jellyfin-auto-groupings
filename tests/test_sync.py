@@ -1226,6 +1226,21 @@ def test_match_year_ranges() -> None:
     assert not _match_year("abc", ">2000")
     assert not _match_year("abc", "<=2000")
 
+    # Float-formatted range limits (e.g. ``">2001.0"`` from float
+    # serialisation) are tolerated, mirroring the exact-comparison path.
+    assert _match_year(2002, ">2001.0")
+    assert not _match_year(2001, ">2001.0")
+    assert _match_year(2001, ">=2001.0")
+    assert not _match_year(2000, ">=2001.0")
+    assert _match_year(2000, "<2001.0")
+    assert not _match_year(2001, "<2001.0")
+    assert _match_year(2001, "<=2001.0")
+    assert not _match_year(2002, "<=2001.0")
+    # Unparseable range limits are rejected instead of silently matching.
+    assert not _match_year(2002, ">nonsense")
+    assert not _match_year(2002, ">inf")
+    assert not _match_year(2002, ">1e309")
+
     # Float years (e.g. from some API responses) match the plain integer form.
     assert _match_year(2001.0, "2001")
     assert not _match_year(2001.0, "2002")
