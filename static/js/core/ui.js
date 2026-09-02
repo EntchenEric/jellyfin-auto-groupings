@@ -16,9 +16,12 @@ export function showToast(msg, type = 'success', duration = null) {
     el.className = `status-msg ${type}`;
     // Show toast to screen readers when visible
     el.removeAttribute('aria-hidden');
-    // Add close button
+    // Add close button. The aria-label gives screen readers a descriptive
+    // name instead of announcing the raw '×' glyph (WCAG 4.1.2).
     const closeBtn = document.createElement('button');
     closeBtn.className = 'close-btn toast-close';
+    closeBtn.type = 'button';
+    closeBtn.setAttribute('aria-label', 'Dismiss notification');
     closeBtn.innerHTML = '&times;';
     closeBtn.onclick = () => { el.style.display = 'none'; el.setAttribute('aria-hidden', 'true'); clearTimeout(toastTimer); };
     // Remove existing close buttons
