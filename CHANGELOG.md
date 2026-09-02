@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `sync.py`: `_match_year` now parses range-comparison limits (e.g.
+  `>2001.0`, `>=2001.0`) with `_parse_year_int`, so float-formatted limits
+  are tolerated just like float-formatted plain expressions and values.
+  Previously a bare `int()` rejected these and silently returned no matches.
+  Unparseable limits (e.g. `>nonsense`, `>inf`) are still rejected.
+
+- `tests/test_sync.py`: added tests covering float-formatted range limits in
+  `_match_year` (all four comparison operators) and rejection of unparseable
+  range limits.
+
 - `README.md`: documented the frontend test count (392 tests, 100%
   statement/function/line coverage) in the Frontend Tests section, matching
   the style used for the backend test count.

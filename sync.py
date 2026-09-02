@@ -1008,12 +1008,15 @@ def _match_year(value: Any, rule_value: str) -> bool:
     expr = rule_value.strip()
     for prefix in (">=", "<=", ">", "<"):
         if expr.startswith(prefix):
-            try:
-                year = _coerce_year_int(value)
-                limit = int(expr[len(prefix) :].strip())
-            except (TypeError, ValueError):
-                return False
+            year = _coerce_year_int(value)
             if year is None:
+                return False
+            # Parse the limit with _parse_year_int so float-formatted limits
+            # (e.g. ">2001.0" or ">=2001.0") are tolerated, mirroring the
+            # exact-comparison path below.  A bare ``int()`` would reject
+            # these and silently return no matches.
+            limit = _parse_year_int(expr[len(prefix) :].strip())
+            if limit is None:
                 return False
             if prefix == ">=":
                 return year >= limit
