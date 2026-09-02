@@ -176,6 +176,74 @@ describe('wizard feature module', () => {
     expect(nextBtn.title).toBe('');
   });
 
+  it('typing in the jellyfin URL input resets the connected state and disables Continue on step 2', async () => {
+    vi.doMock('../../static/js/features/test-connection.js', () => ({
+      testConnection: vi.fn().mockResolvedValue({ success: true, message: 'Connected!' }),
+    }));
+    vi.doMock('../../static/js/core/ui.js', () => ({
+      showToast: vi.fn(),
+      showErrorDialog: vi.fn(),
+      setLoading: vi.fn(),
+      showModal: vi.fn(),
+      hideModal: vi.fn(),
+      getEl: (id) => document.getElementById(id),
+    }));
+    vi.doMock('../../static/js/core/api.js', () => ({
+      apiPost: vi.fn(),
+      autoDetectPaths: vi.fn(),
+    }));
+
+    const mod = await import('../../static/js/features/wizard.js');
+    mod.openWizardManual();
+    // Connect the server, then advance to step 2 so Continue is enabled.
+    await mod.testWizardConnection();
+    mod.wizardNext();
+    const nextBtn = document.getElementById('wizard-next');
+    expect(nextBtn.disabled).toBe(false);
+
+    // Editing the URL must invalidate the connection and re-render the UI.
+    const urlInput = document.getElementById('wizard_jellyfin_url');
+    urlInput.value = 'http://changed';
+    urlInput.dispatchEvent(new Event('input'));
+
+    expect(nextBtn.disabled).toBe(true);
+    expect(nextBtn.style.opacity).toBe('0.5');
+    expect(nextBtn.title).toBe('Please test your connection first');
+  });
+
+  it('typing in the API key input resets the connected state and disables Continue on step 2', async () => {
+    vi.doMock('../../static/js/features/test-connection.js', () => ({
+      testConnection: vi.fn().mockResolvedValue({ success: true, message: 'Connected!' }),
+    }));
+    vi.doMock('../../static/js/core/ui.js', () => ({
+      showToast: vi.fn(),
+      showErrorDialog: vi.fn(),
+      setLoading: vi.fn(),
+      showModal: vi.fn(),
+      hideModal: vi.fn(),
+      getEl: (id) => document.getElementById(id),
+    }));
+    vi.doMock('../../static/js/core/api.js', () => ({
+      apiPost: vi.fn(),
+      autoDetectPaths: vi.fn(),
+    }));
+
+    const mod = await import('../../static/js/features/wizard.js');
+    mod.openWizardManual();
+    await mod.testWizardConnection();
+    mod.wizardNext();
+    const nextBtn = document.getElementById('wizard-next');
+    expect(nextBtn.disabled).toBe(false);
+
+    const keyInput = document.getElementById('wizard_api_key');
+    keyInput.value = 'new-key';
+    keyInput.dispatchEvent(new Event('input'));
+
+    expect(nextBtn.disabled).toBe(true);
+    expect(nextBtn.style.opacity).toBe('0.5');
+    expect(nextBtn.title).toBe('Please test your connection first');
+  });
+
   it('runWizardAutoDetect should populate detected paths', async () => {
     vi.doMock('../../static/js/core/api.js', () => ({
       apiPost: vi.fn().mockResolvedValue({}),

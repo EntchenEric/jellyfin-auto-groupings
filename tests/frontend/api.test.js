@@ -92,6 +92,18 @@ describe('api module', () => {
     }
   });
 
+  it('should clear the timeout timer even when the request throws', async () => {
+    global.fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+    const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
+    try {
+      await expect(api.apiGet('/api/config')).rejects.toBeInstanceOf(TypeError);
+      // The finally block must still clear the abort timer on the error path.
+      expect(clearTimeoutSpy).toHaveBeenCalled();
+    } finally {
+      clearTimeoutSpy.mockRestore();
+    }
+  });
+
   it('apiPost should make a POST request with JSON body', async () => {
     global.fetch = mockFetchResponse({ body: { status: 'success', count: 5 } });
     const result = await api.apiPost('/api/grouping/preview', { type: 'genre', value: 'Action' });
