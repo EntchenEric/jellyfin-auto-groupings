@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `app.py`: unknown `/api/*` routes now return a JSON `404` body
+  (`{"status": "error", "message": "Not found"}`) instead of Flask's
+  default HTML 404 page. The frontend API client expects every `/api/*`
+  response to be JSON, so a mistyped or removed endpoint previously broke
+  that contract and surfaced as a generic "Request failed" toast. Non-API
+  paths keep the standard HTML 404 page.
+
+- `tests/test_routes.py`: added tests verifying that unknown `/api/*` routes
+  return a JSON 404 while unknown non-API routes keep the HTML 404 page.
+
 - `tests/frontend/api.test.js`: added a test covering the 401 password-prompt
   edge case where the user submits an empty string (rather than cancelling
   with `null`). An empty password is treated like a cancelled prompt: no
