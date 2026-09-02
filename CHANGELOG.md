@@ -37,6 +37,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   raw name, so it deleted a non-existent directory and left the real
   (normalised) group directory behind when the group went out of season.
 
+- `sync.py`: `_parse_year_int` and `_coerce_year_int` now reject genuinely
+  **fractional** year values (e.g. `"2001.5"` or `2001.5`) instead of
+  silently truncating them to a whole year.  A rule like `>2001.5` previously
+  matched year `2001` (and `"2001.5"` matched `2001` exactly), which could
+  produce surprising results from a typo or a malformed API response.
+  Whole-number float serialisations (e.g. `"2001.0"`) are still tolerated.
+  `tests/test_sync.py` updated to cover the fractional rejection.
+
 ### Changed
 
 - `tmdb.py`: `get_tmdb_recommendations` now retries a rate-limited item

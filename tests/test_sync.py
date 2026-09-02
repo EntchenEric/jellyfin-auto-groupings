@@ -1240,6 +1240,13 @@ def test_match_year_ranges() -> None:
     assert not _match_year(2002, ">nonsense")
     assert not _match_year(2002, ">inf")
     assert not _match_year(2002, ">1e309")
+    # Fractional range limits (e.g. ``">2001.5"``) are rejected rather than
+    # silently truncated to a whole year, so ``>2001.5`` never matches 2001.
+    assert not _match_year(2002, ">2001.5")
+    assert not _match_year(2001, ">2001.5")
+    assert not _match_year(2001, ">=2001.5")
+    assert not _match_year(2000, "<2001.5")
+    assert not _match_year(2001, "<=2001.5")
     # Non-finite float year values are rejected instead of crashing.
     assert not _match_year(float("inf"), ">2000")
     assert not _match_year(float("nan"), "2000")
@@ -1249,6 +1256,9 @@ def test_match_year_ranges() -> None:
     assert not _match_year(2001.0, "2002")
     assert _match_year(2001.0, ">2000")
     assert _match_year(2001.0, "<=2001")
+    # A fractional float year (e.g. ``2001.5``) is malformed and never matches.
+    assert not _match_year(2001.5, "2001")
+    assert not _match_year(2001.5, ">2000")
 
     # String years (e.g. ``"2001.0"`` from float serialisation) also match
     # both the plain integer form and range comparisons.
@@ -1260,6 +1270,12 @@ def test_match_year_ranges() -> None:
     assert _match_year("2001.0", ">=2001")
     assert _match_year("2001", ">2000")
     assert not _match_year("2001.0", "abc")
+    # A fractional string year (e.g. ``"2001.5"``) is malformed and never
+    # matches a numeric expression, mirroring the fractional float rejection
+    # above.  (It may still match an identical string via the non-numeric
+    # string-comparison fallback, which is intentional.)
+    assert not _match_year("2001.5", "2001")
+    assert not _match_year("2001.5", ">2000")
 
     # Non-numeric values fall back to string comparison and never match a
     # plain numeric expression.
@@ -1295,7 +1311,9 @@ def test_parse_year_int() -> None:
     assert _parse_year_int(" 2001 ") == 2001
     # Float-formatted expressions are tolerated, mirroring _coerce_year_int.
     assert _parse_year_int("2001.0") == 2001
-    assert _parse_year_int("2001.5") == 2001
+    # A genuinely fractional expression (e.g. ``"2001.5"``) is rejected
+    # rather than silently truncated to a whole year.
+    assert _parse_year_int("2001.5") is None
     # Non-numeric expressions are rejected.
     assert _parse_year_int("abc") is None
     assert _parse_year_int("") is None
@@ -1317,6 +1335,10 @@ def test_coerce_year_int() -> None:
     assert _coerce_year_int("2001") == 2001
     assert _coerce_year_int("2001.0") == 2001
     assert _coerce_year_int(" 2001 ") == 2001
+    # Fractional years (e.g. ``2001.5`` or ``"2001.5"``) are malformed and
+    # rejected rather than silently truncated to a whole year.
+    assert _coerce_year_int(2001.5) is None
+    assert _coerce_year_int("2001.5") is None
     # Booleans and non-coercible values are rejected.
     assert _coerce_year_int(True) is None
     assert _coerce_year_int("abc") is None
