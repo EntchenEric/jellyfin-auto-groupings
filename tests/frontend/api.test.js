@@ -152,6 +152,16 @@ describe('api module', () => {
     expect(options.headers.Authorization).toBe(`Basic ${btoa('user:secret123')}`);
   });
 
+  it('should omit Authorization header when no app password is stored', async () => {
+    // No password set: the authHeaders helper must not add an Authorization
+    // header at all (the falsy-password branch of authHeaders).
+    global.fetch = mockFetchResponse({ body: {} });
+    await api.apiGet('/api/config');
+
+    const [, options] = global.fetch.mock.calls[0];
+    expect(options.headers.Authorization).toBeUndefined();
+  });
+
   it('setAppPassword should remove the stored password when given falsy value', () => {
     api.setAppPassword('secret123');
     expect(globalThis.sessionStorage.getItem('jfg_app_password')).toBe('secret123');
