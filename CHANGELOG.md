@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- `routes.py`: the HTTP Basic Auth password check in `_check_auth` now uses
+  `hmac.compare_digest` instead of a plain `==` string comparison. A plain
+  comparison short-circuits on the first mismatching byte, leaking the
+  password length and prefix through response timing; `compare_digest` runs
+  in constant time, closing that timing side-channel.
+
 ### Fixed
 
 - `sync.py`: out-of-season cleanup for a seasonal group now targets the
@@ -43,6 +51,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Authorization` header is sent when no app password is stored, closing the
   falsy-password edge case in `authHeaders`. The frontend suite is now 394
   tests (100% statement/function/line coverage, 99.87% branch coverage).
+
+- `tests/test_routes.py`: added a test asserting that the password check
+  in `_check_auth` is routed through `hmac.compare_digest` (timing-safe)
+  rather than a raw equality comparison.
 
 - `tests/test_routes.py`: added tests verifying that unknown `/api/*` routes
   return a JSON 404 while unknown non-API routes keep the HTML 404 page.
