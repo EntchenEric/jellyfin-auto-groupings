@@ -126,6 +126,7 @@ def _handle_not_found(_exc: Exception) -> ResponseReturnValue:
         404,
     )
 
+
 # Start the background sync scheduler
 if (
     not app.testing
