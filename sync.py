@@ -1054,14 +1054,15 @@ def _coerce_year_int(value: Any) -> int | None:
     if isinstance(value, int):
         return value
     if isinstance(value, float):
-        # Guard against non-finite floats (``inf``/``nan``) which raise
-        # ``OverflowError``/``ValueError`` in ``int()``.  A malformed or
-        # corrupt API response could otherwise crash the sync with an
-        # uncaught exception instead of simply not matching the rule.
-        try:
+        # Guard against non-finite floats (``inf``/``nan``) and reject
+        # fractional years (e.g. ``2001.5``) which are malformed.  A corrupt
+        # API response could otherwise silently truncate a fractional year
+        # to a whole one and match the wrong rule.  ``float.is_integer()``
+        # is safe for all floats (including ``inf``/``nan``, which return
+        # ``False``), so no exception handling is needed here.
+        if value.is_integer():
             return int(value)
-        except (OverflowError, ValueError):
-            return None
+        return None
     if isinstance(value, str):
         stripped = value.strip()
         try:
@@ -1069,11 +1070,15 @@ def _coerce_year_int(value: Any) -> int | None:
         except ValueError:
             pass
         # Tolerate a trailing ``.0`` (e.g. ``"2001.0"``) from float
-        # serialisation.
+        # serialisation, but reject genuinely fractional years (e.g.
+        # ``"2001.5"``) rather than silently truncating them.
         try:
-            return int(float(stripped))
+            f = float(stripped)
         except (ValueError, OverflowError):
             return None
+        if f.is_integer():
+            return int(f)
+        return None
     return None
 
 
@@ -1099,11 +1104,16 @@ def _parse_year_int(expr: str) -> int | None:
     # Tolerate a trailing ``.0`` (e.g. ``"2001.0"``) from float
     # serialisation, mirroring _coerce_year_int.  ``OverflowError`` covers
     # non-finite or oversized expressions (e.g. ``"inf"``, ``"1e309"``)
-    # that ``int(float(...))`` cannot convert.
+    # that ``float()`` cannot convert.  A genuinely fractional expression
+    # (e.g. ``"2001.5"``) is rejected rather than silently truncated to a
+    # whole year, so a rule like ``>2001.5`` never matches ``2001``.
     try:
-        return int(float(expr))
+        f = float(expr)
     except (TypeError, ValueError, OverflowError):
         return None
+    if f.is_integer():
+        return int(f)
+    return None
 
 
 def _match_condition(item: dict[str, Any], r_type: str, r_val: str) -> bool:
