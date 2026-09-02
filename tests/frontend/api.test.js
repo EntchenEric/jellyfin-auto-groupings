@@ -204,6 +204,26 @@ describe('api module', () => {
     promptSpy.mockRestore();
   });
 
+  it('should throw ApiError(401) when password prompt returns an empty string', async () => {
+    // An empty-string password is falsy, so it must be treated like a
+    // cancelled prompt: no retry, no stored password, and a 401 ApiError.
+    global.fetch = mockFetchResponse({
+      ok: false,
+      status: 401,
+      body: { message: 'Unauthorized' },
+    });
+    const promptSpy = vi.spyOn(globalThis, 'prompt').mockReturnValue('');
+
+    await expect(api.apiGet('/api/config')).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 401,
+      message: 'Authentication required',
+    });
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(globalThis.sessionStorage.getItem('jfg_app_password')).toBeNull();
+    promptSpy.mockRestore();
+  });
+
   it('should not re-prompt for password on a retried request', async () => {
     global.fetch = vi
       .fn()
