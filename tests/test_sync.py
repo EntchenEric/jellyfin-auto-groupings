@@ -2194,6 +2194,52 @@ def test_run_sync_seasonal_cleanup(
     assert results[0]["status"] == "out_of_season"
 
 
+@patch("sync._process_group")
+@patch("sync._is_in_season")
+@patch("sync.get_libraries")
+def test_run_sync_seasonal_cleanup_normalized_path(
+    mock_libs,
+    mock_season,
+    mock_process,
+    tmp_path,
+) -> None:
+    """Out-of-season cleanup targets the *normalized* group directory.
+
+    A group name may carry surrounding whitespace or redundant slashes
+    (e.g. ``" Anime / Action "``).  _process_group normalises such a name
+    to ``<target>/Anime/Action`` via normalize_group_relpath, so the
+    out-of-season cleanup must delete that same normalised directory rather
+    than a literal path derived from the raw name (which would not exist and
+    would leave the real directory behind).
+    """
+    mock_libs.return_value = []
+    mock_season.return_value = False
+    mock_process.return_value = {"group": "Anime/Action", "links": 0}
+    target = tmp_path / "target"
+    target.mkdir()
+    # The directory _process_group would create for the raw name
+    # " Anime / Action " is the normalised <target>/Anime/Action.
+    (target / "Anime" / "Action").mkdir(parents=True)
+    config = {
+        "jellyfin_url": "http://jf",
+        "api_key": "key",
+        "target_path": str(target),
+        "groups": [
+            {
+                "name": " Anime / Action ",
+                "seasonal_enabled": True,
+                "seasonal_start": "01-01",
+                "seasonal_end": "01-02",
+            },
+        ],
+    }
+    results = run_sync(config, dry_run=False)
+    assert results[0]["status"] == "out_of_season"
+    # The normalised directory was removed; the raw-name path never existed.
+    assert not (target / "Anime" / "Action").exists()
+    assert not (target / " Anime " / " Action ").exists()
+
+
 # --- run_cleanup_broken_symlinks ---
 
 
