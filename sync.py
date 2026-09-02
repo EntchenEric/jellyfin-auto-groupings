@@ -2416,21 +2416,30 @@ def _maybe_handle_seasonal(
     if _is_in_season(start, end):
         return None
     if not dry_run and name:
-        group_dir = str(Path(target_base) / name)
-        if Path(group_dir).is_dir():
-            logger.info(
-                "Seasonal group %r is out of season. Deleting directory: %s",
-                name,
-                group_dir,
-            )
-            try:
-                shutil.rmtree(group_dir)
-            except OSError:
-                logger.exception(
-                    "Failed to delete directory for out-of-season group %r: %s",
+        # Resolve the directory exactly as _process_group does, so an
+        # out-of-season group cleans up the *same* directory that would
+        # otherwise be created/synced.  A name may describe a nested folder
+        # ("Anime/Action") and may carry surrounding whitespace or redundant
+        # slashes; normalising here keeps the two paths in lock-step.  If the
+        # name is invalid (e.g. contains ".."), _process_group would reject it
+        # anyway, so there is nothing to clean up.
+        relpath = normalize_group_relpath(name)
+        if relpath is not None:
+            group_dir = str(Path(target_base).joinpath(*relpath.split("/")))
+            if Path(group_dir).is_dir():
+                logger.info(
+                    "Seasonal group %r is out of season. Deleting directory: %s",
                     name,
                     group_dir,
                 )
+                try:
+                    shutil.rmtree(group_dir)
+                except OSError:
+                    logger.exception(
+                        "Failed to delete directory for out-of-season group %r: %s",
+                        name,
+                        group_dir,
+                    )
     return {"group": name or "(unnamed)", "links": 0, "status": "out_of_season"}
 
 

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `sync.py`: out-of-season cleanup for a seasonal group now targets the
+  **normalised** group directory, matching how `_process_group` creates it.
+  A group name may carry surrounding whitespace or redundant slashes (e.g.
+  `" Anime / Action "`); previously the cleanup derived the path from the
+  raw name, so it deleted a non-existent directory and left the real
+  (normalised) group directory behind when the group went out of season.
+
 ### Changed
 
 - `tmdb.py`: `get_tmdb_recommendations` now retries a rate-limited item
