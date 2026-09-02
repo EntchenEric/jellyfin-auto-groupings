@@ -39,7 +39,7 @@ def _fetch_tmdb_page(
 
     Args:
         list_id: The TMDb list ID.
-        api_key: Jellyfin API key.
+        api_key: TMDb API key.
         page: Page number to fetch.
 
     Raises:

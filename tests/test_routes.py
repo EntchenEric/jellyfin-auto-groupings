@@ -1206,6 +1206,15 @@ def test_browse_directory_permission_error(mock_iterdir, client) -> None:
     assert response.get_json()["dirs"] == []
 
 
+@patch("routes.Path.resolve")
+def test_browse_directory_resolve_error(mock_resolve, client) -> None:
+    """A path that fails to resolve returns a clean 400, not a 500."""
+    mock_resolve.side_effect = OSError("Symlink loop")
+    response = client.get("/api/browse?path=/some/path")
+    assert response.status_code == 400
+    assert response.get_json()["status"] == "error"
+
+
 # ---------------------------------------------------------------------------
 # get_test_results
 # ---------------------------------------------------------------------------

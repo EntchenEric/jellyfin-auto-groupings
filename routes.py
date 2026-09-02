@@ -1530,7 +1530,13 @@ def browse_directory() -> ResponseReturnValue:
 
     """
     raw: str = request.args.get("path", "")
-    path: str = str(Path(raw).resolve()) if raw else str(Path.home())
+    try:
+        # ``resolve()`` can raise OSError (e.g. symlink loops) or RuntimeError
+        # for certain malformed paths; treat those as a bad request rather
+        # than surfacing an unhandled 500 to the client.
+        path: str = str(Path(raw).resolve()) if raw else str(Path.home())
+    except (OSError, RuntimeError, ValueError):
+        return _error("Invalid path", 400)
 
     # Fall back to parent if the supplied path resolves to a file
     if not Path(path).is_dir():
