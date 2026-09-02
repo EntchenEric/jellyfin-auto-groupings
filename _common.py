@@ -117,6 +117,12 @@ def normalize_group_relpath(name: str) -> str | None:
     rejected outright rather than sanitised, so a malformed name can never
     be silently turned into a path that escapes the base directory.
 
+    Windows drive-letter absolute paths (e.g. ``"C:\\foo"`` or
+    ``"C:/foo"``) are also rejected: after normalising separators they would
+    otherwise be treated as a *relative* path rooted at a literal ``"C:"``
+    segment, silently creating a confusing ``C:`` folder inside the target
+    directory instead of the intended location.
+
     Args:
         name: The raw group name.
 
@@ -134,6 +140,18 @@ def normalize_group_relpath(name: str) -> str | None:
     if not cleaned:
         return None
     if any(seg in (".", "..") for seg in cleaned):
+        return None
+    # A leading single-letter drive segment (e.g. ``"C:"``) followed by more
+    # segments is a Windows absolute path (``"C:\\foo"`` / ``"C:/foo"``).
+    # Reject it so it can't be misread as a relative ``C:`` folder.  A bare
+    # ``"C:"`` alone is left alone (ambiguous, harmless on POSIX), and
+    # names like ``"a:b"`` (a colon inside a single segment) are unaffected.
+    if (
+        len(cleaned) > 1
+        and len(cleaned[0]) == 2
+        and cleaned[0][1] == ":"
+        and cleaned[0][0].isalpha()
+    ):
         return None
 
     return "/".join(cleaned)

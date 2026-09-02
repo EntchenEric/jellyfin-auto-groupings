@@ -17,6 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `_common.py`: `normalize_group_relpath` now rejects Windows drive-letter
+  absolute paths (e.g. `"C:\\foo"` or `"C:/foo"`). Previously these were
+  normalised into a *relative* path rooted at a literal `"C:"` segment,
+  silently creating a confusing `C:` folder inside the target directory
+  instead of the intended location. A bare `"C:"` and names with a colon
+  inside a single segment (e.g. `"a:b"`) are still accepted as valid
+  relative names. `tests/test_common.py` updated to cover the rejection.
+
 - `routes.py`: the `/api/browse` endpoint now returns a clean `400` (instead
   of an unhandled `500`) when the requested path cannot be resolved — e.g.
   a symlink loop or a malformed path that makes `Path.resolve()` raise
