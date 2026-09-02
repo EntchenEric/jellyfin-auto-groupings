@@ -17,6 +17,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `routes.py`: the `/api/browse` endpoint now returns a clean `400` (instead
+  of an unhandled `500`) when the requested path cannot be resolved — e.g.
+  a symlink loop or a malformed path that makes `Path.resolve()` raise
+  `OSError`/`RuntimeError`.
+
+- `tmdb.py`: corrected the `_fetch_tmdb_page` docstring, which described the
+  `api_key` parameter as the "Jellyfin API key" when it is in fact the TMDb
+  API key (matching `fetch_tmdb_list` and `get_tmdb_recommendations`).
+
 - `sync.py`: out-of-season cleanup for a seasonal group now targets the
   **normalised** group directory, matching how `_process_group` creates it.
   A group name may carry surrounding whitespace or redundant slashes (e.g.

@@ -487,7 +487,7 @@ make run
 ### 🧪 Testing
 
 ```bash
-# Run the full test suite (892 backend tests, 100% coverage)
+# Run the full test suite (893 backend tests, 100% coverage)
 python3 -m pytest
 
 # Run tests with coverage report
