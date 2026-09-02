@@ -1240,6 +1240,9 @@ def test_match_year_ranges() -> None:
     assert not _match_year(2002, ">nonsense")
     assert not _match_year(2002, ">inf")
     assert not _match_year(2002, ">1e309")
+    # Non-finite float year values are rejected instead of crashing.
+    assert not _match_year(float("inf"), ">2000")
+    assert not _match_year(float("nan"), "2000")
 
     # Float years (e.g. from some API responses) match the plain integer form.
     assert _match_year(2001.0, "2001")
@@ -1321,6 +1324,11 @@ def test_coerce_year_int() -> None:
     # Non-finite or oversized string values are rejected instead of aborting.
     assert _coerce_year_int("inf") is None
     assert _coerce_year_int("1e309") is None
+    # Non-finite float values (e.g. from a corrupt API response) are rejected
+    # instead of raising OverflowError/ValueError and crashing the sync.
+    assert _coerce_year_int(float("inf")) is None
+    assert _coerce_year_int(float("-inf")) is None
+    assert _coerce_year_int(float("nan")) is None
 
 
 @patch("sync.fetch_jellyfin_items")

@@ -1054,7 +1054,14 @@ def _coerce_year_int(value: Any) -> int | None:
     if isinstance(value, int):
         return value
     if isinstance(value, float):
-        return int(value)
+        # Guard against non-finite floats (``inf``/``nan``) which raise
+        # ``OverflowError``/``ValueError`` in ``int()``.  A malformed or
+        # corrupt API response could otherwise crash the sync with an
+        # uncaught exception instead of simply not matching the rule.
+        try:
+            return int(value)
+        except (OverflowError, ValueError):
+            return None
     if isinstance(value, str):
         stripped = value.strip()
         try:
