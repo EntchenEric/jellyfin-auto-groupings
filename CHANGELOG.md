@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `routes.py`: `_search_local_filesystem` now measures the
+  `_AUTO_DETECT_MAX_DEPTH` traversal cap relative to each search root instead
+  of the filesystem root. Previously the effective depth limit varied with
+  where the search root lived (e.g. `/media` vs `/home/user`), so the same
+  directory tree could be pruned at different depths depending on the root.
+  The cap is now consistent regardless of the root's own depth.
+
+- `tests/test_routes.py`: added a test verifying the auto-detect depth limit
+  is measured relative to the search root (a file beyond the cap is not found,
+  a file within it is).
+
+- `README.md`: updated the backend test count from 884 to 885.
+
 - `sync.py`: `_match_year` now parses range-comparison limits (e.g.
   `>2001.0`, `>=2001.0`) with `_parse_year_int`, so float-formatted limits
   are tolerated just like float-formatted plain expressions and values.

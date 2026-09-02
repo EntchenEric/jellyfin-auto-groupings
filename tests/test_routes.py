@@ -1665,6 +1665,41 @@ def test_search_filesystem_skip_nonexistent_root() -> None:
     assert result is None
 
 
+@patch("routes.os.path.ismount")
+def test_search_filesystem_depth_relative_to_root(mock_ismount) -> None:
+    """Depth limit is measured relative to the search root, not the filesystem root.
+
+    A file nested more than _AUTO_DETECT_MAX_DEPTH levels below the search root
+    is not found, while a file within the limit is found — regardless of how
+    deep the search root itself sits in the filesystem.
+    """
+    import tempfile
+
+    from routes import _AUTO_DETECT_MAX_DEPTH, _search_local_filesystem
+
+    mock_ismount.return_value = False
+
+    with tempfile.TemporaryDirectory() as tmp:
+        # Build a chain of nested dirs deeper than the max depth.
+        deep_dir = Path(tmp)
+        for _ in range(_AUTO_DETECT_MAX_DEPTH + 2):
+            deep_dir = deep_dir / "d"
+        deep_dir.mkdir(parents=True)
+        (deep_dir / "deep.mkv").touch()
+
+        # A file just within the depth limit.
+        shallow_dir = Path(tmp) / "d"
+        shallow_dir.mkdir(exist_ok=True)
+        (shallow_dir / "shallow.mkv").touch()
+
+        # The deep file is beyond the relative depth cap and must not be found.
+        assert _search_local_filesystem("deep.mkv", [str(Path(tmp))]) is None
+        # The shallow file is within the cap and must be found.
+        assert _search_local_filesystem("shallow.mkv", [str(Path(tmp))]) == str(
+            shallow_dir / "shallow.mkv"
+        )
+
+
 # Auto-detect: mount point skip (lines 697-698)
 @patch("routes.fetch_jellyfin_items")
 @patch("routes.os.path.ismount")
