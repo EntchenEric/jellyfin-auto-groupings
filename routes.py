@@ -1334,7 +1334,8 @@ def _search_local_filesystem(
     """Walk *search_roots* looking for *filename*.
 
     Prunes mount points (except the root itself), enforces a *timeout* and
-    *max_files* cap, and stops at _AUTO_DETECT_MAX_DEPTH path-component depth.
+    *max_files* cap, and stops at _AUTO_DETECT_MAX_DEPTH path-component depth
+    measured relative to each search root.
 
     Returns the absolute path of the first match found, or ``None``.
 
@@ -1348,9 +1349,15 @@ def _search_local_filesystem(
     for root in search_roots:
         if not Path(root).is_dir():
             continue
+        # Measure depth relative to the search root so the _AUTO_DETECT_MAX_DEPTH
+        # cap is consistent regardless of where the root lives in the filesystem
+        # (e.g. "/media" vs "/home/user").  Previously the depth was measured
+        # from the filesystem root, so the effective limit varied with the root's
+        # own depth.
+        root_depth = len(Path(root).parts)
         for dirpath, dirnames, filenames in os.walk(root):
             # Compute depth once per directory entry
-            dir_depth = len(Path(dirpath).parts)
+            dir_depth = len(Path(dirpath).parts) - root_depth
             try:
                 is_mount = os.path.ismount(dirpath)
             except OSError:
