@@ -264,6 +264,29 @@ def test_run_cleanup_job(mock_load, mock_cleanup) -> None:
     mock_cleanup.assert_called_once()
 
 
+@patch("scheduler.run_cleanup_broken_symlinks")
+@patch("scheduler.load_config")
+def test_run_cleanup_job_error(mock_load, mock_cleanup) -> None:
+    """_run_cleanup_job catches and logs cleanup exceptions."""
+    mock_load.return_value = {"target_path": "/tmp"}
+    mock_cleanup.side_effect = OSError("filesystem failure")
+    # Should not raise
+    _run_cleanup_job()
+    mock_cleanup.assert_called_once()
+
+
+@patch("scheduler.run_cleanup_broken_symlinks")
+@patch("scheduler.load_config")
+def test_run_cleanup_job_unexpected_exception(mock_load, mock_cleanup) -> None:
+    """_run_cleanup_job catches unexpected exceptions (e.g. KeyError)."""
+    mock_load.return_value = {"target_path": "/tmp"}
+    # KeyError is not in the original (ValueError, OSError, RuntimeError) set,
+    # but must still be caught so the background job never dies silently.
+    mock_cleanup.side_effect = KeyError("missing_key")
+    _run_cleanup_job()
+    mock_cleanup.assert_called_once()
+
+
 # ---------------------------------------------------------------------------
 # _run_global_sync_job error resilience
 # ---------------------------------------------------------------------------

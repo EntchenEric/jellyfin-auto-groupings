@@ -263,7 +263,17 @@ def _run_cleanup_job() -> None:
     config = load_config()
     logger.info("Background cleanup job starting")
     with sync_lock:
-        deleted = run_cleanup_broken_symlinks(config)
+        try:
+            deleted = run_cleanup_broken_symlinks(config)
+        except Exception:
+            # Catch broadly so an unexpected error (e.g. a KeyError from a
+            # malformed config, or an OSError from a filesystem issue) never
+            # silently kills the background job — it is always logged. This
+            # mirrors the resilience of the global/group sync job handlers.
+            logger.exception(
+                "Background cleanup job failed",
+            )
+            return
         logger.info(
             "Background cleanup job finished: deleted %s broken symlinks",
             deleted,
