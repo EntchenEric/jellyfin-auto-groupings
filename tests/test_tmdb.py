@@ -62,6 +62,23 @@ def test_fetch_tmdb_list_failure(mock_get) -> None:
         fetch_tmdb_list("123", "test_key")
 
 
+@patch("network.get")
+def test_fetch_tmdb_list_empty_items(mock_get) -> None:
+    """A page with no items stops pagination immediately."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "items": [],
+        "total_pages": 5,
+    }
+    mock_get.return_value = mock_resp
+
+    ids = fetch_tmdb_list("123", "test_key")
+    assert ids == []
+    # Only the first page is fetched; the empty items list short-circuits.
+    assert mock_get.call_count == 1
+
+
 def test_get_tmdb_recommendations_missing_key() -> None:
     with pytest.raises(ValueError, match="A TMDb API Key is required"):
         get_tmdb_recommendations([("101", "movie")], "")
@@ -120,7 +137,7 @@ def test_get_tmdb_recommendations_rate_limit_retry_after(
     mock_get,
     mock_sleep,
 ) -> None:
-    """429 response with Retry-After header sleeps the specified duration."""
+    """429 response with Retry-After header sleeps, then retries the item."""
     mock_resp_429 = MagicMock()
     mock_resp_429.status_code = 429
     mock_resp_429.headers = {"Retry-After": "3"}
@@ -131,13 +148,17 @@ def test_get_tmdb_recommendations_rate_limit_retry_after(
         "results": [{"id": 301}],
     }
 
-    mock_get.side_effect = [mock_resp_429, mock_resp_ok]
+    # Item 101 is rate-limited once, then retried successfully; item 102
+    # succeeds on the first attempt.
+    mock_get.side_effect = [mock_resp_429, mock_resp_ok, mock_resp_ok]
 
     recs = get_tmdb_recommendations(
         [("101", "movie"), ("102", "movie")],
         "test_key",
     )
     mock_sleep.assert_called_once_with(3)
+    # Both items contribute their recommendations (the rate-limited item is
+    # retried rather than dropped).
     assert recs == ["301"]
 
 
@@ -147,7 +168,7 @@ def test_get_tmdb_recommendations_rate_limit_no_header(
     mock_get,
     mock_sleep,
 ) -> None:
-    """429 without Retry-After header falls back to 1s sleep."""
+    """429 without Retry-After header falls back to 1s sleep, then retries."""
     mock_resp_429 = MagicMock()
     mock_resp_429.status_code = 429
     mock_resp_429.headers = {}
@@ -158,7 +179,7 @@ def test_get_tmdb_recommendations_rate_limit_no_header(
         "results": [{"id": 302}],
     }
 
-    mock_get.side_effect = [mock_resp_429, mock_resp_ok]
+    mock_get.side_effect = [mock_resp_429, mock_resp_ok, mock_resp_ok]
 
     recs = get_tmdb_recommendations(
         [("101", "movie"), ("102", "movie")],
@@ -174,7 +195,7 @@ def test_get_tmdb_recommendations_rate_limit_non_numeric_header(
     mock_get,
     mock_sleep,
 ) -> None:
-    """429 with non-numeric Retry-After falls back to 1s sleep."""
+    """429 with non-numeric Retry-After falls back to 1s sleep, then retries."""
     mock_resp_429 = MagicMock()
     mock_resp_429.status_code = 429
     mock_resp_429.headers = {"Retry-After": "not-a-number"}
@@ -185,7 +206,7 @@ def test_get_tmdb_recommendations_rate_limit_non_numeric_header(
         "results": [{"id": 303}],
     }
 
-    mock_get.side_effect = [mock_resp_429, mock_resp_ok]
+    mock_get.side_effect = [mock_resp_429, mock_resp_ok, mock_resp_ok]
 
     recs = get_tmdb_recommendations(
         [("101", "movie"), ("102", "movie")],
@@ -193,3 +214,62 @@ def test_get_tmdb_recommendations_rate_limit_non_numeric_header(
     )
     mock_sleep.assert_called_once_with(1)
     assert recs == ["303"]
+
+
+@patch("tmdb.time.sleep")
+@patch("network.get")
+def test_get_tmdb_recommendations_rate_limit_retry_exhausted(
+    mock_get,
+    mock_sleep,
+) -> None:
+    """A persistently rate-limited item is dropped after retries are exhausted."""
+    mock_resp_429 = MagicMock()
+    mock_resp_429.status_code = 429
+    mock_resp_429.headers = {"Retry-After": "1"}
+
+    mock_resp_ok = MagicMock()
+    mock_resp_ok.status_code = 200
+    mock_resp_ok.json.return_value = {
+        "results": [{"id": 401}],
+    }
+
+    # Item 101 is rate-limited on every retry (3 attempts total); item 102
+    # succeeds on the first attempt.
+    mock_get.side_effect = [
+        mock_resp_429,
+        mock_resp_429,
+        mock_resp_429,
+        mock_resp_ok,
+    ]
+
+    recs = get_tmdb_recommendations(
+        [("101", "movie"), ("102", "movie")],
+        "test_key",
+    )
+    # Three sleeps: one per 429 retry for item 101.
+    assert mock_sleep.call_count == 3
+    # Only item 102's recommendation survives; item 101 was dropped after
+    # exhausting its retries.
+    assert recs == ["401"]
+
+
+@patch("network.get")
+def test_get_tmdb_recommendations_non_200_skipped(mock_get) -> None:
+    """A non-200, non-429 status skips the item without retrying."""
+    mock_resp_404 = MagicMock()
+    mock_resp_404.status_code = 404
+
+    mock_resp_ok = MagicMock()
+    mock_resp_ok.status_code = 200
+    mock_resp_ok.json.return_value = {
+        "results": [{"id": 501}],
+    }
+
+    # Item 101 returns 404 (skipped, no retry); item 102 succeeds.
+    mock_get.side_effect = [mock_resp_404, mock_resp_ok]
+
+    recs = get_tmdb_recommendations(
+        [("101", "movie"), ("102", "movie")],
+        "test_key",
+    )
+    assert recs == ["501"]

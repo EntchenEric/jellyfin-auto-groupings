@@ -23,6 +23,12 @@ _TMDB_API_BASE: str = "https://api.themoviedb.org/3"
 _DEFAULT_TMDB_LANGUAGE: str = "en-US"
 _MAX_TMDB_PAGES: int = 50
 
+# Maximum number of attempts per item when retrying a 429 rate-limit
+# response.  A 429 means "slow down and retry", not "skip this item", so a
+# bounded retry loop prevents a rate-limited item's recommendations from
+# being silently dropped while still bounding the total wait time.
+_MAX_RECOMMENDATION_RETRIES: int = 3
+
 
 def _fetch_tmdb_page(
     list_id: str,
@@ -166,27 +172,38 @@ def get_tmdb_recommendations(
             "language": _DEFAULT_TMDB_LANGUAGE,
             "page": "1",
         }
-        try:
-            resp = network.get(url, params=params, timeout=10)
-            if resp.status_code == 200:
-                data = resp.json()
-                for i, rec in enumerate(data.get("results", [])):
-                    rec_id = str(rec.get("id"))
-                    score = 1.0 / (i + 1)  # Higher weight for top recommendations
-                    recommendation_counts[rec_id] = (
-                        recommendation_counts.get(rec_id, 0.0) + score
+        # Retry on 429 rate limits (bounded) so a rate-limited item's
+        # recommendations are not silently dropped.  Other non-200 statuses
+        # and request/parse errors still skip the item as before.
+        for _attempt in range(_MAX_RECOMMENDATION_RETRIES):
+            try:
+                resp = network.get(url, params=params, timeout=10)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    for i, rec in enumerate(data.get("results", [])):
+                        rec_id = str(rec.get("id"))
+                        score = 1.0 / (i + 1)  # Higher weight for top recommendations
+                        recommendation_counts[rec_id] = (
+                            recommendation_counts.get(rec_id, 0.0) + score
+                        )
+                    break
+                if resp.status_code == 429:
+                    # Rate limited — back off to avoid further 429s, then retry
+                    retry_after = resp.headers.get("Retry-After")
+                    wait = (
+                        int(retry_after) if retry_after and retry_after.isdigit() else 1
                     )
-            elif resp.status_code == 429:
-                # Rate limited — back off to avoid further 429s
-                retry_after = resp.headers.get("Retry-After")
-                wait = int(retry_after) if retry_after and retry_after.isdigit() else 1
-                logger.debug(
-                    "TMDb rate limited (429) — sleeping %ds",
-                    wait,
-                )
-                time.sleep(wait)
-        except (requests.exceptions.RequestException, ValueError):
-            logger.debug("Skipping failed recommendation item", exc_info=True)
+                    logger.debug(
+                        "TMDb rate limited (429) — sleeping %ds",
+                        wait,
+                    )
+                    time.sleep(wait)
+                    continue
+                # Other non-200 status: skip this item.
+                break
+            except (requests.exceptions.RequestException, ValueError):
+                logger.debug("Skipping failed recommendation item", exc_info=True)
+                break
 
     # Sort items by their accumulated score
     sorted_recs = sorted(
