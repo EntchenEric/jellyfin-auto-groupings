@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `README.md`: documented the frontend test count (392 tests, 100%
+  statement/function/line coverage) in the Frontend Tests section, matching
+  the style used for the backend test count.
+
 - `README.md`: corrected the backend test count in the Testing section from
   876 to 884 to match the current suite.
 
