@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a symlink loop or a malformed path that makes `Path.resolve()` raise
   `OSError`/`RuntimeError`.
 
+- `docs/API.md`: document the `400` error returned by `/api/browse` when a
+  path cannot be resolved, keeping the API reference in sync with the
+  endpoint's behaviour.
+
 - `tmdb.py`: corrected the `_fetch_tmdb_page` docstring, which described the
   `api_key` parameter as the "Jellyfin API key" when it is in fact the TMDb
   API key (matching `fetch_tmdb_list` and `get_tmdb_recommendations`).
