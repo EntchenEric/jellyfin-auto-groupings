@@ -1764,9 +1764,10 @@ def _create_group_symlinks(
         # make symlink_to() raise FileExistsError and silently drop the link.
         with contextlib.suppress(OSError):
             # Directory may not exist yet or be unreadable — nothing to seed.
-            used_dest_names.update(
-                entry.name for entry in Path(group_dir).iterdir() if entry.is_file()
-            )
+            # Reserve every existing entry name (files, directories, and
+            # dangling symlinks alike) so a generated suffix can never collide
+            # with anything already on disk.
+            used_dest_names.update(entry.name for entry in Path(group_dir).iterdir())
 
     for idx, item in enumerate(items, start=1):
         if not isinstance(item, dict):

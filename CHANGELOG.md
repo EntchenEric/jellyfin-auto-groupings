@@ -10,18 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `sync.py`: the symlink-filename collision disambiguation in
-  `_create_group_symlinks` now also avoids colliding with files already
+  `_create_group_symlinks` now also avoids colliding with anything already
   present on disk in the group directory (e.g. a leftover from a partial or
-  aborted run, a manually-placed file, or a nested group's own symlink).
-  Previously a generated ``(2)``/``(3)`` suffix could collide with an
-  existing file, making ``symlink_to()`` raise ``FileExistsError`` and
-  silently drop the link. The on-disk names are only seeded in non-dry-run
-  mode, so previews are unaffected.
+  aborted run, a manually-placed file, a directory, or a nested group's own
+  symlink). Previously a generated ``(2)``/``(3)`` suffix could collide with
+  an existing entry, making ``symlink_to()`` raise ``FileExistsError`` and
+  silently drop the link. Every existing entry name (files, directories, and
+  dangling symlinks alike) is reserved in non-dry-run mode, so previews are
+  unaffected.
 
 - `tests/test_sync.py`: added tests verifying that a pre-existing on-disk
-  file with a colliding name is skipped (the new link gets a higher suffix
-  and the existing file is left untouched), and that dry-run previews do not
-  seed from disk.
+  file, directory, or dangling symlink with a colliding name is skipped (the
+  new link gets a higher suffix and the existing entry is left untouched),
+  and that dry-run previews do not seed from disk.
 
 - `tests/frontend/wizard.test.js`: added tests covering the `oninput` handlers
   on the wizard's Jellyfin URL and API key inputs — editing either field resets

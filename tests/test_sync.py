@@ -2961,6 +2961,86 @@ def test_create_group_symlinks_avoids_existing_on_disk_collision(tmp_path) -> No
     assert (output_dir / "Movie (2).mkv").read_text() == "leftover"
 
 
+def test_create_group_symlinks_avoids_existing_on_disk_directory(tmp_path) -> None:
+    """A pre-existing directory on disk is not clobbered by a generated suffix."""
+    from sync import _create_group_symlinks
+
+    media_root = tmp_path / "media"
+    media_root.mkdir(parents=True)
+    folder_a = media_root / "a"
+    folder_b = media_root / "b"
+    folder_a.mkdir()
+    folder_b.mkdir()
+    (folder_a / "Movie.mkv").write_text("a")
+    (folder_b / "Movie.mkv").write_text("b")
+
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    # A pre-existing directory already claims the "(2)" suffix name.
+    (output_dir / "Movie (2).mkv").mkdir()
+
+    items = [
+        {"Id": "m1", "Name": "M1", "Path": str(folder_a / "Movie.mkv")},
+        {"Id": "m2", "Name": "M2", "Path": str(folder_b / "Movie.mkv")},
+    ]
+    links, _ = _create_group_symlinks(
+        items,
+        str(output_dir),
+        "TestGroup",
+        jellyfin_root="",
+        host_root="",
+        sort_order="",
+        dry_run=False,
+    )
+
+    # Both items must be linked; the second must skip past the directory.
+    assert links == 2
+    names = sorted(p.name for p in output_dir.iterdir())
+    assert names == ["Movie (2).mkv", "Movie (3).mkv", "Movie.mkv"]
+    # The pre-existing directory is untouched (still a directory).
+    assert (output_dir / "Movie (2).mkv").is_dir()
+
+
+def test_create_group_symlinks_avoids_existing_dangling_symlink(tmp_path) -> None:
+    """A pre-existing dangling symlink on disk is not clobbered by a suffix."""
+    from sync import _create_group_symlinks
+
+    media_root = tmp_path / "media"
+    media_root.mkdir(parents=True)
+    folder_a = media_root / "a"
+    folder_b = media_root / "b"
+    folder_a.mkdir()
+    folder_b.mkdir()
+    (folder_a / "Movie.mkv").write_text("a")
+    (folder_b / "Movie.mkv").write_text("b")
+
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    # A dangling symlink (target does not exist) already claims the "(2)" name.
+    (output_dir / "Movie (2).mkv").symlink_to(tmp_path / "nonexistent-target")
+
+    items = [
+        {"Id": "m1", "Name": "M1", "Path": str(folder_a / "Movie.mkv")},
+        {"Id": "m2", "Name": "M2", "Path": str(folder_b / "Movie.mkv")},
+    ]
+    links, _ = _create_group_symlinks(
+        items,
+        str(output_dir),
+        "TestGroup",
+        jellyfin_root="",
+        host_root="",
+        sort_order="",
+        dry_run=False,
+    )
+
+    # Both items must be linked; the second must skip past the dangling symlink.
+    assert links == 2
+    names = sorted(p.name for p in output_dir.iterdir())
+    assert names == ["Movie (2).mkv", "Movie (3).mkv", "Movie.mkv"]
+    # The pre-existing dangling symlink is untouched.
+    assert (output_dir / "Movie (2).mkv").is_symlink()
+
+
 def test_create_group_symlinks_dry_run_ignores_existing_on_disk(tmp_path) -> None:
     """Dry-run previews do not seed from disk (no filesystem writes)."""
     from sync import _create_group_symlinks
