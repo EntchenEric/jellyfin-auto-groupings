@@ -193,6 +193,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `performCleanup` wrappers from dead-code status. Frontend tests were
   updated to mock the api module directly.
 
+- `README.md`: updated the backend test count from 885 to 891 to match the
+  current suite (the seasonal-cleanup regression test added six tests).
+
 ### Fixed
 
 - `routes.py`: `_delete_folder` now explicitly rejects symlinks before
