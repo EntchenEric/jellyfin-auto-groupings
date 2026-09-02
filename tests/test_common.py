@@ -50,11 +50,34 @@ class TestNormalizeGroupRelpath:
             "with\x00null",
             "/",
             "///",
+            # Windows drive-letter absolute paths are rejected rather than
+            # being misread as a relative ``C:`` folder.
+            "C:\\foo",
+            "C:/foo",
+            "D:\\a\\b",
+            "e:/media/movies",
         ],
     )
     def test_rejects_unsafe_names(self, raw: str) -> None:
         """Empty, relative-traversal and NUL-containing names are rejected."""
         assert normalize_group_relpath(raw) is None
+
+    @pytest.mark.parametrize(
+        "raw",
+        [
+            # A bare drive letter (ambiguous, harmless on POSIX) and names
+            # with a colon inside a single segment are still valid relative
+            # names and must not be rejected.
+            "C:",
+            "a:b",
+            "A:B",
+            "a:b/c",
+            "C:foo",
+        ],
+    )
+    def test_accepts_colon_names(self, raw: str) -> None:
+        """Colon-containing relative names are not mistaken for drive paths."""
+        assert normalize_group_relpath(raw) is not None
 
     def test_rejects_non_string(self) -> None:
         """Non-string input is rejected rather than raising."""
