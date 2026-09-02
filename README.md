@@ -511,7 +511,8 @@ python3 run_tests_to_file.py
 
 #### Frontend Tests
 
-The frontend JavaScript uses [Vitest](https://vitest.dev/) with jsdom for unit tests:
+The frontend JavaScript uses [Vitest](https://vitest.dev/) with jsdom for unit tests
+(392 tests, 100% statement/function/line coverage):
 
 ```bash
 # Install frontend dependencies
