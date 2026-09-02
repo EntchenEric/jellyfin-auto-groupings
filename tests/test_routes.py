@@ -2196,6 +2196,40 @@ def test_check_auth_with_no_password(app, monkeypatch) -> None:
     assert response.status_code == 200
 
 
+def test_check_auth_uses_constant_time_compare(app, monkeypatch) -> None:
+    """The password check uses hmac.compare_digest (timing-safe).
+
+    A plain ``==`` string comparison short-circuits on the first mismatching
+    byte, leaking the password length and prefix through response timing.
+    :func:`hmac.compare_digest` runs in constant time, so we assert the
+    comparison is routed through it rather than a raw equality check.
+    """
+    import hmac
+
+    import routes as routes_mod
+
+    monkeypatch.setattr(routes_mod, "_APP_PASSWORD", "secret")
+    if hasattr(routes_mod._check_auth, "cache_clear"):
+        routes_mod._check_auth.cache_clear()
+
+    calls: list[tuple[str, str]] = []
+    real_compare = hmac.compare_digest
+
+    def _spy(a: str, b: str) -> bool:
+        calls.append((a, b))
+        return real_compare(a, b)
+
+    monkeypatch.setattr(hmac, "compare_digest", _spy)
+
+    response = app.test_client().get(
+        "/api/config",
+        headers={"Authorization": "Basic dXNlcjpzZWNyZXQ="},  # user:secret
+    )
+    assert response.status_code == 200
+    assert calls, "hmac.compare_digest was not used for the password check"
+    assert calls[-1] == ("secret", "secret")
+
+
 # ---------------------------------------------------------------------------
 # _delete_folder: path-traversal checks (lines 741, 746-749)
 # ---------------------------------------------------------------------------

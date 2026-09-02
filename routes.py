@@ -11,6 +11,7 @@ from __future__ import annotations
 import base64
 import binascii
 import copy
+import hmac
 import logging
 import math
 import os
@@ -194,7 +195,13 @@ _APP_PASSWORD: str = os.environ.get("APP_PASSWORD", "")
 
 @bp.before_request
 def _check_auth() -> ResponseReturnValue | None:
-    """Require HTTP Basic Auth when APP_PASSWORD is set."""
+    """Require HTTP Basic Auth when APP_PASSWORD is set.
+
+    The password comparison uses :func:`hmac.compare_digest` so that a
+    timing side-channel cannot be used to enumerate the password character
+    by character (a plain ``==`` string comparison short-circuits on the
+    first mismatching byte).
+    """
     if not _APP_PASSWORD:
         return None
     # Allow unauthenticated access to the main UI, static assets, and health check
@@ -206,7 +213,11 @@ def _check_auth() -> ResponseReturnValue | None:
         return None  # pragma: no cover (defensive — Flask serves static at app level)
 
     auth = request.authorization
-    if auth and auth.password == _APP_PASSWORD:
+    if (
+        auth
+        and auth.password is not None
+        and hmac.compare_digest(auth.password, _APP_PASSWORD)
+    ):
         return None
 
     return Response(
