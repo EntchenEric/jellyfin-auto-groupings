@@ -1236,6 +1236,29 @@ def test_test_dashboard_removed(client) -> None:
     assert response.status_code == 404
 
 
+def test_unknown_api_route_returns_json_404(client) -> None:
+    """Unknown /api/* routes return a JSON 404, matching the API contract.
+
+    The frontend API client expects every /api/* response to be JSON, so a
+    mistyped or removed endpoint must not return Flask's default HTML 404
+    page.
+    """
+    response = client.get("/api/nonexistent-route")
+    assert response.status_code == 404
+    assert response.is_json
+    body = response.get_json()
+    assert body["status"] == "error"
+    assert body["message"] == "Not found"
+
+
+def test_unknown_non_api_route_returns_html_404(client) -> None:
+    """Unknown non-API routes keep the standard HTML 404 page."""
+    response = client.get("/nonexistent-page")
+    assert response.status_code == 404
+    assert "text/html" in response.content_type
+    assert b"<h1>" in response.data
+
+
 # ---------------------------------------------------------------------------
 # routes.py coverage improvements
 # ---------------------------------------------------------------------------

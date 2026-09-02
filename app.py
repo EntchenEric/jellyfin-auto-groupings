@@ -19,12 +19,16 @@ import logging
 import os
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from flask import Flask
+from flask import Flask, jsonify, request
 
 from config import CONFIG_FILE, DEFAULT_CONFIG, _env_flag, save_config
 from routes import bp
 from scheduler import start_scheduler
+
+if TYPE_CHECKING:
+    from flask.typing import ResponseReturnValue
 
 
 def _resolve_log_level(name: str) -> int:
@@ -98,6 +102,30 @@ __all__ = ["app"]
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.register_blueprint(bp)
+
+
+@app.errorhandler(404)
+def _handle_not_found(_exc: Exception) -> ResponseReturnValue:
+    """Return a JSON 404 for unknown ``/api/*`` routes, HTML otherwise.
+
+    The frontend API client (``static/js/core/api.js``) expects every
+    ``/api/*`` response to be JSON. Flask's default 404 handler for URLs
+    that match no route returns an HTML page, which would break that
+    contract for a mistyped or removed endpoint. Unknown ``/api/*`` paths
+    therefore get a JSON error body consistent with the rest of the API,
+    while non-API paths keep the standard HTML 404 page.
+
+    Args:
+        _exc: The underlying ``NotFound`` exception (unused).
+
+    """
+    if request.path.startswith("/api/"):
+        return jsonify({"status": "error", "message": "Not found"}), 404
+    return (
+        "<h1>Not Found</h1><p>The requested URL was not found on the server.</p>",
+        404,
+    )
+
 
 # Start the background sync scheduler
 if (
