@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `tmdb.py`: `get_tmdb_recommendations` now retries a rate-limited item
+  instead of silently dropping it. A `429` response means "slow down and
+  retry", not "skip this item", so a rate-limited item's recommendations
+  were previously lost. The function now sleeps on the `429` (honouring
+  `Retry-After` when present) and retries the same item, up to
+  `_MAX_RECOMMENDATION_RETRIES` (3) attempts, before giving up. Other
+  non-`200` statuses and request/parse errors still skip the item as before.
+
+- `tests/test_tmdb.py`: updated the three `429` rate-limit tests to assert
+  the item is retried (and its recommendations preserved) rather than
+  dropped, and added coverage for retry exhaustion, a non-`200`/non-`429`
+  status skip, and the empty-items short-circuit in `fetch_tmdb_list`.
+  `tmdb.py` is back to 100% coverage.
+
 - `app.py`: unknown `/api/*` routes now return a JSON `404` body
   (`{"status": "error", "message": "Not found"}`) instead of Flask's
   default HTML 404 page. The frontend API client expects every `/api/*`
