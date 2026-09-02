@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `scheduler.py`: the background cleanup job handler (`_run_cleanup_job`)
+  now catches unexpected exceptions (e.g. a `KeyError` from a malformed
+  config, or an `OSError` from a filesystem issue) and logs them instead of
+  silently killing the background job. This mirrors the resilience already
+  added to the global and per-group sync job handlers.
+
+- `tests/test_scheduler.py`: added tests verifying that the cleanup job
+  handler catches and logs both expected (`OSError`) and unexpected
+  (`KeyError`) exceptions without raising.
+
 - `sync.py`: the symlink-filename collision disambiguation in
   `_create_group_symlinks` now also avoids colliding with anything already
   present on disk in the group directory (e.g. a leftover from a partial or
