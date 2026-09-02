@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `README.md`: corrected the backend test count in the Testing section from
+  876 to 884 to match the current suite.
+
 - `scheduler.py`: the background cleanup job handler (`_run_cleanup_job`)
   now catches unexpected exceptions (e.g. a `KeyError` from a malformed
   config, or an `OSError` from a filesystem issue) and logs them instead of
