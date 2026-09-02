@@ -25,6 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   inside a single segment (e.g. `"a:b"`) are still accepted as valid
   relative names. `tests/test_common.py` updated to cover the rejection.
 
+- `_common.py`: the Windows drive-letter rejection in
+  `normalize_group_relpath` now only matches ASCII `[A-Za-z]` drive
+  letters. Previously any Unicode letter (e.g. `"Ä:"`, `"é:"`, `"Ω:"`)
+  followed by a colon was also rejected, even though Windows drive letters
+  are strictly ASCII — such names are valid relative folder names and are
+  now accepted again. `tests/test_common.py` updated to cover these cases.
+
 - `routes.py`: the `/api/browse` endpoint now returns a clean `400` (instead
   of an unhandled `500`) when the requested path cannot be resolved — e.g.
   a symlink loop or a malformed path that makes `Path.resolve()` raise
