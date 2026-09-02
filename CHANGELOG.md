@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `tests/frontend/api.test.js`: added a test covering the 401 password-prompt
+  edge case where the user submits an empty string (rather than cancelling
+  with `null`). An empty password is treated like a cancelled prompt: no
+  retry, no stored password, and a `401` `ApiError` is raised. This closes
+  the last remaining branch-coverage gap in `api.js`.
+
+- `README.md`: updated the frontend test count from 392 to 393.
+
 - `sync.py`: `_coerce_year_int` now guards against non-finite float year
   values (`inf`/`nan`) from a malformed or corrupt API response. Previously
   `int(float('inf'))` raised `OverflowError` and `int(float('nan'))` raised
