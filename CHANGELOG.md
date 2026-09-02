@@ -39,6 +39,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that contract and surfaced as a generic "Request failed" toast. Non-API
   paths keep the standard HTML 404 page.
 
+- `tests/frontend/api.test.js`: added a test asserting that no
+  `Authorization` header is sent when no app password is stored, closing the
+  falsy-password edge case in `authHeaders`. The frontend suite is now 394
+  tests (100% statement/function/line coverage, 99.87% branch coverage).
+
 - `tests/test_routes.py`: added tests verifying that unknown `/api/*` routes
   return a JSON 404 while unknown non-API routes keep the HTML 404 page.
 
