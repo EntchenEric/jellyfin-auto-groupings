@@ -146,10 +146,15 @@ def normalize_group_relpath(name: str) -> str | None:
     # Reject it so it can't be misread as a relative ``C:`` folder.  A bare
     # ``"C:"`` alone is left alone (ambiguous, harmless on POSIX), and
     # names like ``"a:b"`` (a colon inside a single segment) are unaffected.
+    #
+    # Windows drive letters are strictly ASCII ``[A-Za-z]``, so a non-ASCII
+    # letter (e.g. ``"Ä:"``) is *not* a drive path and must remain a valid
+    # relative name.
     if (
         len(cleaned) > 1
         and len(cleaned[0]) == 2
         and cleaned[0][1] == ":"
+        and cleaned[0][0].isascii()
         and cleaned[0][0].isalpha()
     ):
         return None

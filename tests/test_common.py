@@ -73,6 +73,12 @@ class TestNormalizeGroupRelpath:
             "A:B",
             "a:b/c",
             "C:foo",
+            # A non-ASCII letter followed by a colon is *not* a Windows drive
+            # path (drive letters are strictly ASCII ``[A-Za-z]``), so these
+            # remain valid relative names.
+            "Ä:/foo",
+            "é:/bar",
+            "Ω:/baz",
         ],
     )
     def test_accepts_colon_names(self, raw: str) -> None:
