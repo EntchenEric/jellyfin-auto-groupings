@@ -290,7 +290,7 @@ Browse host directories for the path picker. Restricted to whitelisted roots (ho
 }
 ```
 
-**Errors:** `403` path outside allowed roots.
+**Errors:** `400` path cannot be resolved (e.g. symlink loop or malformed path); `403` path outside allowed roots.
 
 ---
 
