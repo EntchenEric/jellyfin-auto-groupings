@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `sync.py`: `_coerce_year_int` now guards against non-finite float year
+  values (`inf`/`nan`) from a malformed or corrupt API response. Previously
+  `int(float('inf'))` raised `OverflowError` and `int(float('nan'))` raised
+  `ValueError`, which could propagate out of `_match_year` and crash a sync
+  instead of simply not matching the rule. Non-finite floats now return
+  `None` (no match), mirroring the existing handling for non-finite strings.
+
+- `tests/test_sync.py`: added coverage for non-finite float year values in
+  `_coerce_year_int` and `_match_year`.
+
 - `routes.py`: `_search_local_filesystem` now measures the
   `_AUTO_DETECT_MAX_DEPTH` traversal cap relative to each search root instead
   of the filesystem root. Previously the effective depth limit varied with
