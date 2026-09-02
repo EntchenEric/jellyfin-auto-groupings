@@ -1750,6 +1750,11 @@ def _create_group_symlinks(
     )
     links_created: int = 0
     preview_items: list[dict[str, Any]] = []
+    # Track destination filenames already claimed this run so that two
+    # distinct items resolving to the same basename (e.g. two movies both
+    # named "Movie (2000).mkv" in different folders) do not silently drop
+    # the second one — it gets a numeric suffix instead.
+    used_dest_names: set[str] = set()
 
     for idx, item in enumerate(items, start=1):
         if not isinstance(item, dict):
@@ -1771,6 +1776,17 @@ def _create_group_symlinks(
         file_name: str = Path(host_path).name
         if use_prefix:
             file_name = f"{str(idx).zfill(width)} - {file_name}"
+
+        # Disambiguate collisions with an already-claimed destination name.
+        base_name = Path(file_name).stem
+        ext = Path(file_name).suffix
+        candidate = file_name
+        suffix = 2
+        while candidate in used_dest_names:
+            candidate = f"{base_name} ({suffix}){ext}"
+            suffix += 1
+        file_name = candidate
+        used_dest_names.add(file_name)
 
         dest_path: str = str(Path(group_dir) / file_name)
         if _create_or_preview_link(

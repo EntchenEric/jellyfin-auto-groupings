@@ -2851,6 +2851,76 @@ def test_create_group_symlinks_path_translation_log(tmp_path, caplog) -> None:
     assert str(real_root / "movie.mkv") in translation_logs[0]
 
 
+def test_create_group_symlinks_disambiguates_filename_collisions(tmp_path) -> None:
+    """Two distinct items with the same basename get distinct symlinks."""
+    from sync import _create_group_symlinks
+
+    media_root = tmp_path / "media"
+    media_root.mkdir(parents=True)
+    # Two different folders, same filename.
+    folder_a = media_root / "a"
+    folder_b = media_root / "b"
+    folder_a.mkdir()
+    folder_b.mkdir()
+    (folder_a / "Movie (2000).mkv").write_text("a")
+    (folder_b / "Movie (2000).mkv").write_text("b")
+
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+
+    items = [
+        {"Id": "m1", "Name": "M1", "Path": str(folder_a / "Movie (2000).mkv")},
+        {"Id": "m2", "Name": "M2", "Path": str(folder_b / "Movie (2000).mkv")},
+    ]
+    links, _ = _create_group_symlinks(
+        items,
+        str(output_dir),
+        "TestGroup",
+        jellyfin_root="",
+        host_root="",
+        sort_order="",
+        dry_run=False,
+    )
+
+    assert links == 2
+    names = sorted(p.name for p in output_dir.iterdir())
+    assert names == ["Movie (2000) (2).mkv", "Movie (2000).mkv"]
+
+
+def test_create_group_symlinks_collision_preview_names(tmp_path) -> None:
+    """Dry-run previews also disambiguate colliding filenames."""
+    from sync import _create_group_symlinks
+
+    media_root = tmp_path / "media"
+    media_root.mkdir(parents=True)
+    folder_a = media_root / "a"
+    folder_b = media_root / "b"
+    folder_a.mkdir()
+    folder_b.mkdir()
+    (folder_a / "same.mkv").write_text("a")
+    (folder_b / "same.mkv").write_text("b")
+
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+
+    items = [
+        {"Id": "m1", "Name": "M1", "Path": str(folder_a / "same.mkv")},
+        {"Id": "m2", "Name": "M2", "Path": str(folder_b / "same.mkv")},
+    ]
+    _, previews = _create_group_symlinks(
+        items,
+        str(output_dir),
+        "TestGroup",
+        jellyfin_root="",
+        host_root="",
+        sort_order="",
+        dry_run=True,
+    )
+
+    file_names = [p["FileName"] for p in previews]
+    assert file_names == ["same.mkv", "same (2).mkv"]
+
+
 @patch("sync._process_group")
 @patch("sync._fetch_existing_libraries")
 def test_run_sync_path_translation_active(
