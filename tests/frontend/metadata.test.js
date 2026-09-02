@@ -279,6 +279,44 @@ describe('renderMetadataRules', () => {
     expect(window._currentMetadataRules.length).toBe(1);
     expect(container.querySelectorAll('.rule-row').length).toBe(1);
   });
+
+  it('operator select onchange updates the rule operator', () => {
+    window._currentMetadataRules = [
+      { operator: '', value: 'Horror' },
+      { operator: 'AND', value: 'Action' },
+    ];
+    metadata.renderMetadataRules();
+    const container = document.getElementById('metadata_rules_container');
+    const opSelect = container.querySelector('.rule-operator-select');
+    opSelect.value = 'OR';
+    opSelect.dispatchEvent(new Event('change'));
+    expect(window._currentMetadataRules[1].operator).toBe('OR');
+  });
+
+  it('type select onchange updates the rule type and re-renders', () => {
+    document.getElementById('source_type').value = 'complex';
+    state.cachedMetadata = { genre: ['Horror'], actor: ['Tom Hanks'] };
+    window._currentMetadataRules = [{ operator: '', type: 'genre', value: 'Horror' }];
+    metadata.renderMetadataRules();
+    const container = document.getElementById('metadata_rules_container');
+    const typeSelect = container.querySelector('.rule-type-select');
+    typeSelect.value = 'actor';
+    typeSelect.dispatchEvent(new Event('change'));
+    // The rule type is updated and the value select is re-populated from actor metadata.
+    expect(window._currentMetadataRules[0].type).toBe('actor');
+    const valSelect = container.querySelector('.rule-value-select');
+    expect(Array.from(valSelect.options).some((o) => o.value === 'Tom Hanks')).toBe(true);
+  });
+
+  it('value select onchange updates the rule value', () => {
+    window._currentMetadataRules = [{ operator: '', value: 'Horror' }];
+    metadata.renderMetadataRules();
+    const container = document.getElementById('metadata_rules_container');
+    const valSelect = container.querySelector('.rule-value-select');
+    valSelect.value = 'Action';
+    valSelect.dispatchEvent(new Event('change'));
+    expect(window._currentMetadataRules[0].value).toBe('Action');
+  });
 });
 
 describe('addMetadataRule', () => {
@@ -427,6 +465,25 @@ describe('updateSourceValueUI', () => {
     });
   });
 
+  it('selecting a user in the dropdown writes the user id into the source value input', async () => {
+    document.getElementById('source_type').value = 'recommendations';
+    state.isServerValidated = true;
+    fetchUsers.mockResolvedValue({
+      status: 'success',
+      users: [{ id: 'u1', name: 'Alice' }, { id: 'u2', name: 'Bob' }],
+    });
+    metadata.updateSourceValueUI();
+    await vi.waitFor(() => {
+      const userSel = document.getElementById('source_value_user_select');
+      expect(userSel).toBeTruthy();
+      expect(userSel.options.length).toBeGreaterThan(1);
+    });
+    const userSel = document.getElementById('source_value_user_select');
+    userSel.value = 'u1';
+    userSel.dispatchEvent(new Event('change'));
+    expect(document.getElementById('source_value').value).toBe('u1');
+  });
+
   it('shows an error option when fetching users fails', async () => {
     document.getElementById('source_type').value = 'recommendations';
     state.isServerValidated = true;
@@ -476,6 +533,18 @@ describe('initMetadata', () => {
     // Trigger the add-rule handler and verify a rule is appended.
     document.getElementById('add-rule-btn').onclick();
     expect(window._currentMetadataRules.length).toBe(2);
+  });
+
+  it('source_type onchange triggers updateSourceValueUI', () => {
+    state.isServerValidated = true;
+    state.cachedMetadata = { genre: ['Horror'] };
+    metadata.initMetadata();
+    // The onchange handler must re-render the metadata rules for the new type.
+    document.getElementById('source_type').value = 'genre';
+    document.getElementById('source_type').onchange();
+    const container = document.getElementById('metadata_rules_container');
+    expect(container.querySelectorAll('.rule-row').length).toBe(1);
+    expect(container.querySelectorAll('.rule-value-select').length).toBe(1);
   });
 });
 

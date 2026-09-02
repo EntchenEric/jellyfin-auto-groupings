@@ -123,6 +123,52 @@ describe('path-picker module', () => {
     expect(btn.title).toBe('/Movies');
   });
 
+  it('clicking a directory item browses into that subdirectory', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      json: () => Promise.resolve({ status: 'success', current: '/media', parent: '/', dirs: ['Movies', 'Shows'] }),
+    });
+    const mod = await import('../../static/js/features/path-picker.js');
+    await mod.browseDir('/media');
+    const body = document.getElementById('picker-body');
+    const movieBtn = Array.from(body.querySelectorAll('.picker-item')).find((b) => b.title === '/media/Movies');
+    expect(movieBtn).toBeTruthy();
+
+    // Clicking the item should trigger a new browseDir call for the child path.
+    let resolveFetch;
+    global.fetch = vi.fn().mockReturnValue(new Promise((res) => { resolveFetch = res; }));
+    movieBtn.click();
+    expect(global.fetch).toHaveBeenCalled();
+    resolveFetch({
+      json: () => Promise.resolve({ status: 'success', current: '/media/Movies', parent: '/media', dirs: [] }),
+    });
+    await vi.waitFor(() => {
+      expect(document.getElementById('picker-breadcrumb').textContent).toBe('/media/Movies');
+    });
+  });
+
+  it('clicking the go-up item browses into the parent directory', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      json: () => Promise.resolve({ status: 'success', current: '/media/Movies', parent: '/media', dirs: ['Action'] }),
+    });
+    const mod = await import('../../static/js/features/path-picker.js');
+    await mod.browseDir('/media/Movies');
+    const body = document.getElementById('picker-body');
+    const upBtn = body.querySelector('.picker-up');
+    expect(upBtn).not.toBeNull();
+
+    // Clicking the go-up button should browse to the parent directory.
+    let resolveFetch;
+    global.fetch = vi.fn().mockReturnValue(new Promise((res) => { resolveFetch = res; }));
+    upBtn.click();
+    expect(global.fetch).toHaveBeenCalled();
+    resolveFetch({
+      json: () => Promise.resolve({ status: 'success', current: '/media', parent: '/', dirs: ['Movies'] }),
+    });
+    await vi.waitFor(() => {
+      expect(document.getElementById('picker-breadcrumb').textContent).toBe('/media');
+    });
+  });
+
   it('browseDir should show an empty message when there are no subdirectories', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       json: () => Promise.resolve({ status: 'success', current: '/empty', parent: null, dirs: [] }),

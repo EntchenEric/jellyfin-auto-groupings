@@ -280,6 +280,21 @@ describe('groupings module', () => {
       expect(showConfirmDialog).toHaveBeenCalled();
       expect(state.currentConfig.groups.length).toBe(1);
     });
+
+    it('should wire the edit button to editGroup', async () => {
+      const { state } = await import('../../static/js/core/state.js');
+      state.currentConfig.groups = [makeGroup({ sort_order: 'SortName' })];
+      const mod = await import('../../static/js/features/groupings.js');
+      mod.populateSeasonalDays();
+      mod.renderGroups();
+      const editBtn = document.querySelector('.group-action-btn--edit');
+      editBtn.click();
+      // editGroup populates the form and switches to edit mode.
+      expect(state.editingIndex).toBe(0);
+      expect(document.getElementById('group-form-title').textContent).toBe('Edit Grouping');
+      expect(document.getElementById('add-group-btn').textContent).toBe('Update Grouping');
+      expect(document.getElementById('cancel-edit-btn').style.display).toBe('block');
+    });
   });
 
   describe('updateGroupCount', () => {

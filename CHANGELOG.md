@@ -9,6 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `tests/frontend/wizard.test.js`: added tests covering the `oninput` handlers
+  on the wizard's Jellyfin URL and API key inputs — editing either field resets
+  the internal `isWizardServerConnected` flag and re-renders the UI, disabling
+  the Continue button on step 2 until the connection is re-tested.
+
+- `tests/frontend/metadata.test.js`: added tests covering the rule-row
+  `onchange` handlers (`opSelect`, `rowTypeSelect`, `valSelect`), the
+  recommendations user-select `onchange` handler (writes the selected user id
+  into the source value input), and the `source_type` `onchange` handler wired
+  up in `initMetadata`.
+
+- `tests/frontend/groupings.test.js`: added a test verifying the rendered
+  Edit button is wired to `editGroup` (populates the form and switches to edit
+  mode).
+
+- `tests/frontend/path-picker.test.js`: added tests covering the directory-item
+  and go-up button click handlers in the path picker, verifying they browse
+  into the child and parent directories respectively.
+
+- `tests/frontend/api.test.js`: added a test verifying the abort timer is
+  cleared in the `finally` block even when the request throws (error path).
+
+  These additions raise overall frontend function coverage to 100% (previously
+  94%) and statement/line coverage to 100%.
+
 - `scheduler.py`: broadened the exception handling in the background sync job
   handlers (`_run_global_sync_job` and `_run_group_sync_job`) from
   `(ValueError, OSError, RuntimeError)` to `Exception`, so an unexpected error
