@@ -2921,6 +2921,82 @@ def test_create_group_symlinks_collision_preview_names(tmp_path) -> None:
     assert file_names == ["same.mkv", "same (2).mkv"]
 
 
+def test_create_group_symlinks_avoids_existing_on_disk_collision(tmp_path) -> None:
+    """A pre-existing file on disk is not overwritten by a generated suffix."""
+    from sync import _create_group_symlinks
+
+    media_root = tmp_path / "media"
+    media_root.mkdir(parents=True)
+    folder_a = media_root / "a"
+    folder_b = media_root / "b"
+    folder_a.mkdir()
+    folder_b.mkdir()
+    (folder_a / "Movie.mkv").write_text("a")
+    (folder_b / "Movie.mkv").write_text("b")
+
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    # A pre-existing file already claims the "(2)" suffix name.
+    (output_dir / "Movie (2).mkv").write_text("leftover")
+
+    items = [
+        {"Id": "m1", "Name": "M1", "Path": str(folder_a / "Movie.mkv")},
+        {"Id": "m2", "Name": "M2", "Path": str(folder_b / "Movie.mkv")},
+    ]
+    links, _ = _create_group_symlinks(
+        items,
+        str(output_dir),
+        "TestGroup",
+        jellyfin_root="",
+        host_root="",
+        sort_order="",
+        dry_run=False,
+    )
+
+    # Both items must be linked; the second must skip past the on-disk file.
+    assert links == 2
+    names = sorted(p.name for p in output_dir.iterdir())
+    assert names == ["Movie (2).mkv", "Movie (3).mkv", "Movie.mkv"]
+    # The pre-existing file is untouched.
+    assert (output_dir / "Movie (2).mkv").read_text() == "leftover"
+
+
+def test_create_group_symlinks_dry_run_ignores_existing_on_disk(tmp_path) -> None:
+    """Dry-run previews do not seed from disk (no filesystem writes)."""
+    from sync import _create_group_symlinks
+
+    media_root = tmp_path / "media"
+    media_root.mkdir(parents=True)
+    folder_a = media_root / "a"
+    folder_b = media_root / "b"
+    folder_a.mkdir()
+    folder_b.mkdir()
+    (folder_a / "Movie.mkv").write_text("a")
+    (folder_b / "Movie.mkv").write_text("b")
+
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    (output_dir / "Movie (2).mkv").write_text("leftover")
+
+    items = [
+        {"Id": "m1", "Name": "M1", "Path": str(folder_a / "Movie.mkv")},
+        {"Id": "m2", "Name": "M2", "Path": str(folder_b / "Movie.mkv")},
+    ]
+    _, previews = _create_group_symlinks(
+        items,
+        str(output_dir),
+        "TestGroup",
+        jellyfin_root="",
+        host_root="",
+        sort_order="",
+        dry_run=True,
+    )
+
+    # Dry-run only disambiguates in-run collisions, not on-disk files.
+    file_names = [p["FileName"] for p in previews]
+    assert file_names == ["Movie.mkv", "Movie (2).mkv"]
+
+
 @patch("sync._process_group")
 @patch("sync._fetch_existing_libraries")
 def test_run_sync_path_translation_active(

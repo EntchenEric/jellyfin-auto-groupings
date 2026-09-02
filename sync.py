@@ -12,6 +12,7 @@ responsible for:
 from __future__ import annotations
 
 import calendar
+import contextlib
 import hashlib
 import logging
 import re
@@ -1755,6 +1756,17 @@ def _create_group_symlinks(
     # named "Movie (2000).mkv" in different folders) do not silently drop
     # the second one — it gets a numeric suffix instead.
     used_dest_names: set[str] = set()
+    if not dry_run:
+        # Seed with names already present on disk so a generated suffix can
+        # never collide with a pre-existing file (e.g. a leftover from a
+        # partial/aborted run, a manually-placed file, or a nested group's
+        # own symlink). Without this, a collision with an on-disk file would
+        # make symlink_to() raise FileExistsError and silently drop the link.
+        with contextlib.suppress(OSError):
+            # Directory may not exist yet or be unreadable — nothing to seed.
+            used_dest_names.update(
+                entry.name for entry in Path(group_dir).iterdir() if entry.is_file()
+            )
 
     for idx, item in enumerate(items, start=1):
         if not isinstance(item, dict):
