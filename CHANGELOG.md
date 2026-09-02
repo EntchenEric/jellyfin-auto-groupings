@@ -52,6 +52,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   falsy-password edge case in `authHeaders`. The frontend suite is now 394
   tests (100% statement/function/line coverage, 99.87% branch coverage).
 
+- `static/js/core/ui.js`: the toast close button now carries a descriptive
+  `aria-label` ("Dismiss notification") and an explicit `type="button"`.
+  Previously a screen reader announced the raw `×` glyph, which is not a
+  meaningful control name (WCAG 4.1.2 Name, Role, Value). The frontend suite
+  is now 395 tests (100% statement/function/line coverage, 99.87% branch
+  coverage).
+
 - `tests/test_routes.py`: added a test asserting that the password check
   in `_check_auth` is routed through `hmac.compare_digest` (timing-safe)
   rather than a raw equality comparison.

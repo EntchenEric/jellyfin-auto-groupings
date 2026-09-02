@@ -71,6 +71,19 @@ describe('showToast', () => {
     expect(closeBtn).not.toBeNull();
   });
 
+  it('should give the toast close button a descriptive aria-label', async () => {
+    const { showToast } = await import('../../static/js/core/ui.js');
+    showToast('Test message');
+
+    const el = document.getElementById('status-msg');
+    const closeBtn = el.querySelector('.toast-close');
+    expect(closeBtn).not.toBeNull();
+    // Screen readers should announce a descriptive name rather than the
+    // raw '×' glyph (WCAG 4.1.2 Name, Role, Value).
+    expect(closeBtn.getAttribute('aria-label')).toBe('Dismiss notification');
+    expect(closeBtn.getAttribute('type')).toBe('button');
+  });
+
   it('should auto-dismiss the toast after the default duration', async () => {
     const { showToast } = await import('../../static/js/core/ui.js');
     showToast('Temporary message');
