@@ -7,7 +7,7 @@ export interface RuleOptions {
 }
 
 /**
- * Creates a rule to group media items by collection/franchise.
+ * Creates a grouping rule for franchise collections.
  */
 export function createFranchiseRule(options: RuleOptions = {}): GroupingRule {
   const minItems = options.minItems ?? 2;
@@ -44,7 +44,7 @@ export function createFranchiseRule(options: RuleOptions = {}): GroupingRule {
 }
 
 /**
- * Creates a rule to group media items by primary genre.
+ * Creates a grouping rule for genre clusters.
  */
 export function createGenreRule(options: RuleOptions = {}): GroupingRule {
   const minItems = options.minItems ?? 3;
@@ -82,7 +82,7 @@ export function createGenreRule(options: RuleOptions = {}): GroupingRule {
 }
 
 /**
- * Creates a rule to group media items by release decade.
+ * Creates a grouping rule for decade retrospectives.
  */
 export function createDecadeRule(options: RuleOptions = {}): GroupingRule {
   const minItems = options.minItems ?? 3;
@@ -123,9 +123,9 @@ export function createDecadeRule(options: RuleOptions = {}): GroupingRule {
  * Default grouping rules for Jellyfin media items.
  */
 export const defaultRules: GroupingRule[] = [
-  createFranchiseRule(),
-  createGenreRule(),
-  createDecadeRule(),
+  createFranchiseRule({ minItems: 2 }),
+  createGenreRule({ minItems: 3 }),
+  createDecadeRule({ minItems: 3 }),
 ];
 
 /**

@@ -30,9 +30,9 @@ for (const result of summary.results) {
 }
 ```
 
-## Custom & Configurable Rules
+## Custom Rules & Options
 
-You can supply custom grouping rules or configure built-in rule thresholds:
+You can supply custom grouping rules or configure rule thresholds:
 
 ```typescript
 import {
@@ -42,7 +42,7 @@ import {
   createDecadeRule,
 } from 'jellyfin-auto-groupings';
 
-// Create rules with custom threshold minimum items
+// Create custom rules with configurable thresholds
 const rules = [
   createFranchiseRule({ minItems: 2 }),
   createGenreRule({ minItems: 5 }),
@@ -57,9 +57,9 @@ await runAutoGrouping({
 
 ## Built-in Rules
 
-1. **Franchise Collections** (`franchise-collections`): Groups movies belonging to the same collection (default minimum 2 items).
-2. **Genre Clusters** (`genre-clusters`): Groups items by primary genre (default minimum 3 items).
-3. **Decade Retrospectives** (`decade-retrospectives`): Groups items released in the same decade (default minimum 3 items).
+1. **Franchise Collections** (`franchise-collections`): Groups movies belonging to the same collection (minimum 2 items by default).
+2. **Genre Clusters** (`genre-clusters`): Groups items by primary genre (minimum 3 items by default).
+3. **Decade Retrospectives** (`decade-retrospectives`): Groups items released in the same decade (minimum 3 items by default).
 
 ## License
 

@@ -5,8 +5,11 @@ import {
   createFranchiseRule,
   createGenreRule,
   createDecadeRule,
+  GroupingRule,
+  GroupingResult,
+  RuleOptions,
 } from './rules.js';
-import { GroupingRule, GroupingResult, MediaItem } from './types.js';
+import { MediaItem } from './types.js';
 
 export {
   JellyfinApiClient,
@@ -16,7 +19,7 @@ export {
   createGenreRule,
   createDecadeRule,
 };
-export type { JellyfinConfig, GroupingRule, GroupingResult, MediaItem };
+export type { JellyfinConfig, GroupingRule, GroupingResult, MediaItem, RuleOptions };
 
 export interface AutoGroupOptions {
   config: JellyfinConfig;
