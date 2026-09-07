@@ -1,5 +1,6 @@
 import pytest
-from sync import sanitize_filename, build_filename, clean_library_name, convert_language_codes
+from jellyfin import sanitize_filename, build_filename, clean_library_name
+from network import convert_language_codes
 
 def test_sanitize_filename_edge_cases():
     assert sanitize_filename("") == ""
