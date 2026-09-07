@@ -1,5 +1,6 @@
+from typing import Any, Dict, List
+
 import requests
-from typing import Any, Dict, List, Optional
 
 
 class JellyfinAPI:
