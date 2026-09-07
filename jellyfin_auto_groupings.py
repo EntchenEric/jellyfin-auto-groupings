@@ -8,7 +8,8 @@ import argparse
 import os
 import re
 import sys
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
+
 import requests
 
 
@@ -89,11 +90,11 @@ def group_items_by_prefix(items: List[Dict[str, Any]]) -> Dict[str, List[Dict[st
         candidates[base_name].append(item)
 
     # Keep groups with 2 or more items
-    for group_name, matched_items in candidates.items():
-        if len(matched_items) >= 2:
-            groups[group_name] = matched_items
-
-    return groups
+    return {
+        group_name: matched_items
+        for group_name, matched_items in candidates.items()
+        if len(matched_items) >= 2
+    }
 
 
 def create_collection(
@@ -131,10 +132,11 @@ def create_collection(
         data = res.json()
         collection_id = data.get("Id")
         print(f"Successfully created collection '{name}' (ID: {collection_id}).")
-        return collection_id
     except (requests.RequestException, ValueError) as err:
         print(f"Failed to create collection '{name}': {err}", file=sys.stderr)
         return None
+    else:
+        return collection_id
 
 
 def build_argument_parser() -> argparse.ArgumentParser:

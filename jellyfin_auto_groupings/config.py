@@ -1,6 +1,5 @@
 import os
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass
@@ -22,6 +21,7 @@ def load_config() -> Config:
     dry_run = os.environ.get("DRY_RUN", "false").lower() in ("true", "1", "yes")
 
     if not server_url or not api_key:
-        raise ValueError("JELLYFIN_URL and JELLYFIN_API_KEY must be set in environment.")
+        msg = "JELLYFIN_URL and JELLYFIN_API_KEY must be set in environment."
+        raise ValueError(msg)
 
     return Config(server_url=server_url, api_key=api_key, dry_run=dry_run)
