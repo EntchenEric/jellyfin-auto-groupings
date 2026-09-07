@@ -1,3 +1,4 @@
+import time
 import pytest
 from network import get, post, _build_retry_session
 
