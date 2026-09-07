@@ -7,7 +7,7 @@ export interface RuleOptions {
 }
 
 /**
- * Creates a grouping rule for franchise collections.
+ * Factory to create a franchise collection grouping rule with configurable minimum items threshold.
  */
 export function createFranchiseRule(options: RuleOptions = {}): GroupingRule {
   const minItems = options.minItems ?? 2;
@@ -44,7 +44,7 @@ export function createFranchiseRule(options: RuleOptions = {}): GroupingRule {
 }
 
 /**
- * Creates a grouping rule for genre clusters.
+ * Factory to create a genre cluster grouping rule with configurable minimum items threshold.
  */
 export function createGenreRule(options: RuleOptions = {}): GroupingRule {
   const minItems = options.minItems ?? 3;
@@ -82,7 +82,7 @@ export function createGenreRule(options: RuleOptions = {}): GroupingRule {
 }
 
 /**
- * Creates a grouping rule for decade retrospectives.
+ * Factory to create a decade retrospective grouping rule with configurable minimum items threshold.
  */
 export function createDecadeRule(options: RuleOptions = {}): GroupingRule {
   const minItems = options.minItems ?? 3;
@@ -95,7 +95,7 @@ export function createDecadeRule(options: RuleOptions = {}): GroupingRule {
       const decadeMap = new Map<string, MediaItem[]>();
 
       for (const item of items) {
-        if (item.productionYear) {
+        if (item.productionYear && item.productionYear > 0) {
           const decade = `${Math.floor(item.productionYear / 10) * 10}s`;
           const list = decadeMap.get(decade) ?? [];
           list.push(item);
@@ -123,9 +123,9 @@ export function createDecadeRule(options: RuleOptions = {}): GroupingRule {
  * Default grouping rules for Jellyfin media items.
  */
 export const defaultRules: GroupingRule[] = [
-  createFranchiseRule({ minItems: 2 }),
-  createGenreRule({ minItems: 3 }),
-  createDecadeRule({ minItems: 3 }),
+  createFranchiseRule(),
+  createGenreRule(),
+  createDecadeRule(),
 ];
 
 /**

@@ -11,12 +11,12 @@ def test_init_defaults(monkeypatch):
     assert jg.api_key == "test_key"
 
 def test_missing_api_key():
-    jg = JellyfinGroupings(server_url="http://localhost:8096", api_key=")
+    jg = JellyfinGroupings(server_url="http://localhost:8096", api_key="")
     with pytest.raises(ValueError, match="API key is missing"):
         jg.get_collections()
 
 def test_missing_server_url():
-    jg = JellyfinGroupings(server_url=", api_key="test_key")
+    jg = JellyfinGroupings(server_url="", api_key="test_key")
     with pytest.raises(ValueError, match="Server URL is missing"):
         jg.get_collections()
 

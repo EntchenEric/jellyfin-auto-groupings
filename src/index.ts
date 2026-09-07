@@ -19,7 +19,13 @@ export {
   createGenreRule,
   createDecadeRule,
 };
-export type { JellyfinConfig, GroupingRule, GroupingResult, MediaItem, RuleOptions };
+export type {
+  JellyfinConfig,
+  GroupingRule,
+  GroupingResult,
+  MediaItem,
+  RuleOptions,
+};
 
 export interface AutoGroupOptions {
   config: JellyfinConfig;
