@@ -148,7 +148,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the style used for the backend test count.
 
 - `README.md`: corrected the backend test count in the Testing section from
-  876 to 884 to match the current suite.
+  884 to 905 to match the current suite (888 collected + 17 skipped). Previously
+  the count had drifted as the suite grew, reporting a stale number to users.
 
 - `scheduler.py`: the background cleanup job handler (`_run_cleanup_job`)
   now catches unexpected exceptions (e.g. a `KeyError` from a malformed
