@@ -1,34 +1,66 @@
 # Jellyfin Auto Groupings
 
-Automated library item grouping and collection management for Jellyfin media servers.
+Automatic media grouping library for Jellyfin servers. Group your movies and shows by franchise collections, genre clusters, and decade retrospectives automatically.
 
-## Features
-- Fetch and manage collections (`BoxSet` items).
-- Automated grouping workflow.
-- Configurable API timeouts and logging.
-
-## Environment Variables
-
-| Variable | Description | Default |
-|---|---|---|
-| `JELLYFIN_URL` | Base URL of your Jellyfin server (e.g., `http://localhost:8096`) | None |
-| `JELLYFIN_API_KEY` | Valid API key generated in Jellyfin Dashboard | None |
-
-## Usage
-
-```python
-from main import JellyfinGroupings
-
-# Initialize with environment variables or explicit parameters
-jg = JellyfinGroupings(server_url="http://localhost:8096", api_key="your_api_key")
-result = jg.auto_group()
-print(result)
-```
-
-## Running Tests
-
-Run test suite using `pytest`:
+## Installation
 
 ```bash
-pytest
+npm install jellyfin-auto-groupings
 ```
+
+## Quick Start
+
+```typescript
+import { runAutoGrouping } from 'jellyfin-auto-groupings';
+
+const summary = await runAutoGrouping({
+  config: {
+    serverUrl: 'http://localhost:8096',
+    apiKey: 'your-jellyfin-api-key',
+    userId: 'optional-user-id',
+  },
+  dryRun: true, // Set to false to actually create collections in Jellyfin
+});
+
+console.log(`Scanned ${summary.totalItemsScanned} items.`);
+console.log(`Found ${summary.groupsFound} potential groups:`);
+
+for (const result of summary.results) {
+  console.log(`- ${result.groupName}: ${result.reason}`);
+}
+```
+
+## Custom & Configurable Rules
+
+You can supply custom grouping rules or configure built-in rule thresholds:
+
+```typescript
+import {
+  runAutoGrouping,
+  createFranchiseRule,
+  createGenreRule,
+  createDecadeRule,
+} from 'jellyfin-auto-groupings';
+
+// Create rules with custom threshold minimum items
+const rules = [
+  createFranchiseRule({ minItems: 2 }),
+  createGenreRule({ minItems: 5 }),
+  createDecadeRule({ minItems: 4 }),
+];
+
+await runAutoGrouping({
+  config: { serverUrl: 'http://localhost:8096', apiKey: 'your-key' },
+  rules,
+});
+```
+
+## Built-in Rules
+
+1. **Franchise Collections** (`franchise-collections`): Groups movies belonging to the same collection (default minimum 2 items).
+2. **Genre Clusters** (`genre-clusters`): Groups items by primary genre (default minimum 3 items).
+3. **Decade Retrospectives** (`decade-retrospectives`): Groups items released in the same decade (default minimum 3 items).
+
+## License
+
+MIT
