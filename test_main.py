@@ -1,5 +1,5 @@
-import pytest
 from unittest.mock import MagicMock, patch
+import pytest
 import requests
 from main import JellyfinGroupings
 
