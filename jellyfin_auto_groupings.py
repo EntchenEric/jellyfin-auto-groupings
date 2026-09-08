@@ -69,9 +69,7 @@ def group_items_by_prefix(items: List[Dict[str, Any]]) -> Dict[str, List[Dict[st
     Returns:
         A mapping of collection/group name to lists of item dicts.
     """
-    groups: Dict[str, List[Dict[str, Any]]] = {}
-    
-    # Normalize and extract root prefixes
+
     # Example regex patterns for franchise detection (e.g. "Toy Story", "Toy Story 2", "Toy Story: ...")
     prefix_pattern = re.compile(r"^(.*?)(?:\s+\d+|:\s+.*|\s+-[\s\w]+)?$", re.IGNORECASE)
 
