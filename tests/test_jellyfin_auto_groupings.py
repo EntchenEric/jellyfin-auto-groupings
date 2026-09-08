@@ -79,8 +79,8 @@ def test_main_missing_args(capsys):
 
 def test_main_success():
     items = [{"Id": "1", "Name": "Matrix 1"}, {"Id": "2", "Name": "Matrix 2"}]
-    with patch("jellyfin_auto_groupings.get_items", return_value=items),
-        patch("jellyfin_auto_groupings.create_collection", return_value="col_matrix") as mock_create:
-        exit_code = main(["--url", "http://localhost", "--api-key", "key", "--dry-run"])
-        assert exit_code == 0
-        assert mock_create.called
+    with patch("jellyfin_auto_groupings.get_items", return_value=items):
+        with patch("jellyfin_auto_groupings.create_collection", return_value="col_matrix") as mock_create:
+            exit_code = main(["--url", "http://localhost", "--api-key", "key", "--dry-run"])
+            assert exit_code == 0
+            assert mock_create.called
