@@ -60,7 +60,8 @@ class JellyfinClient:
                 return u["Id"]
         if users:
             return users[0]["Id"]
-        raise RuntimeError("No users found on Jellyfin server.")
+        msg = "No users found on Jellyfin server."
+        raise RuntimeError(msg)
 
     def get_all_items(self, item_types: Optional[List[str]] = None, parent_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """Get all items matching item_types."""
@@ -103,10 +104,7 @@ def group_items_by_pattern(
     regex = re.compile(pattern, re.IGNORECASE)
     for item in items:
         val = item.get(attribute, "")
-        if isinstance(val, list):
-            vals = val
-        else:
-            vals = [val]
+            vals = val if isinstance(val, list) else [val]
 
         for v in vals:
             if not isinstance(v, str):
