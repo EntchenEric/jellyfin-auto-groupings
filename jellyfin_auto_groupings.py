@@ -1,10 +1,9 @@
 """Auto-group Jellyfin collections, genres, or tags based on configurable rules."""
 import logging
-import os
 import re
 import sys
-from typing import Any, Dict, List, Optional, Set, Tuple
-import urllib.parse
+from typing import Any, Dict, List, Optional
+
 import requests
 
 logging.basicConfig(
