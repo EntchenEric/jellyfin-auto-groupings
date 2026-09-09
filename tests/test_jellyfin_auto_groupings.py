@@ -70,57 +70,35 @@ def test_jellyfin_client_get_all_items():
         assert items[0]["Id"] == "item1"
 
 
-def test_jellyfin_client_post_formats():
+def test_jellyfin_client_post_and_delete_responses():
     client = JellyfinClient("http://localhost:8096", "testkey")
 
-    # Plain string response (non-jsonable text)
-    mock_resp_text = MagicMock()
-    mock_resp_text.raise_for_status.return_value = None
-    mock_resp_text.text = "OK"
-    mock_resp_text.json.side_effect = ValueError()
+    # Test JSON response in post
+    mock_post_json = MagicMock()
+    mock_post_json.raise_for_status.return_value = None
+    mock_post_json.text = '{"Id": "col1"}'
+    mock_post_json.json.return_value = {"Id": "col1"}
+    with patch("requests.post", return_value=mock_post_json):
+        assert client.create_collection("Test Collection", ["1"]) == {"Id": "col1"}
 
-    with patch("requests.post", return_value=mock_resp_text):
-        res = client._post("/Test")
-        assert res == "OK"
+    # Test plain text response in post when json parsing fails
+    mock_post_text = MagicMock()
+    mock_post_text.raise_for_status.return_value = None
+    mock_post_text.text = "OK"
+    mock_post_text.json.side_effect = ValueError("Invalid JSON")
+    with patch("requests.post", return_value=mock_post_text):
+        assert client._post("/Collections") == "OK"
 
-    # Empty response text
-    mock_resp_empty = MagicMock()
-    mock_resp_empty.raise_for_status.return_value = None
-    mock_resp_empty.text = ""
-
-    with patch("requests.post", return_value=mock_resp_empty):
-        res = client._post("/Test")
-        assert res is None
-
-
-def test_jellyfin_client_create_add_remove_collection():
-    client = JellyfinClient("http://localhost:8096", "testkey")
-
-    mock_post_resp = MagicMock()
-    mock_post_resp.raise_for_status.return_value = None
-    mock_post_resp.text = '{"Id": "col1"}'
-    mock_post_resp.json.return_value = {"Id": "col1"}
-
-    with patch("requests.post", return_value=mock_post_resp) as mock_post:
-        coll = client.create_collection("Test Collection", ["1", "2"])
-        assert coll == {"Id": "col1"}
-
-    # Test non-JSON string response
-    mock_post_nonjson = MagicMock()
-    mock_post_nonjson.raise_for_status.return_value = None
-    mock_post_nonjson.text = "Plain Text Response"
-    mock_post_nonjson.json.side_effect = ValueError("Not JSON")
-    with patch("requests.post", return_value=mock_post_nonjson):
-        res_text = client._post("/TestText")
-        assert res_text == "Plain Text Response"
-
-    # Test empty response
+    # Test empty text response in post
     mock_post_empty = MagicMock()
     mock_post_empty.raise_for_status.return_value = None
     mock_post_empty.text = ""
     with patch("requests.post", return_value=mock_post_empty):
-        res_empty = client._post("/TestEmpty")
-        assert res_empty is None
+        assert client._post("/Collections") is None
+
+    with patch("requests.post", return_value=mock_post_empty) as mock_post:
+        client.add_to_collection("col1", ["3"])
+        assert mock_post.call_count == 1
 
     mock_del_resp = MagicMock()
     mock_del_resp.raise_for_status.return_value = None
@@ -135,8 +113,8 @@ def test_group_items_by_pattern():
         {"Id": "2", "Name": "Toy Story 2 (1999)"},
         {"Id": "3", "Name": "Toy Story 3 (2010)"},
         {"Id": "4", "Name": "Standalone Movie"},
-        {"Id": "5", "Genres": ["Action", 123]},
-        {"Id": "6", "Name": "No Match Pattern"},
+        {"Id": "5", "Genres": ["Action", "Adventure", 123]},
+        {"Id": "6", "Name": 12345},
     ]
     pattern = r"^(Toy Story)"
     groups = group_items_by_pattern(items, pattern)
@@ -144,17 +122,52 @@ def test_group_items_by_pattern():
     assert len(groups["Toy Story"]) == 3
     assert "Standalone Movie" not in groups
 
-    # Pattern without capture groups
-    groups_no_capt = group_items_by_pattern(items, r"Toy Story")
-    assert "Toy Story" in groups_no_capt
-
     # Test attribute matching with list
     genre_groups = group_items_by_pattern(items, r"^(Action)", attribute="Genres")
     assert "Action" in genre_groups
     assert len(genre_groups["Action"]) == 1
 
+    # Test non-capturing regex match fallback
+    full_match_groups = group_items_by_pattern(items, r"Toy Story")
+    assert "Toy Story" in full_match_groups
 
-def test_sync_groupings_dry_run_and_real():
+
+def test_jellyfin_client_post_and_delete_edge_cases():
+    client = JellyfinClient("http://localhost:8096", "testkey")
+
+    # Test _post non-json response text
+    mock_resp_text = MagicMock()
+    mock_resp_text.raise_for_status.return_value = None
+    mock_resp_text.text = "Plain string result"
+    mock_resp_text.json.side_effect = ValueError("Invalid JSON")
+    with patch("requests.post", return_value=mock_resp_text):
+        res = client._post("/test")
+        assert res == "Plain string result"
+
+    # Test _post empty response
+    mock_resp_empty = MagicMock()
+    mock_resp_empty.raise_for_status.return_value = None
+    mock_resp_empty.text = ""
+    with patch("requests.post", return_value=mock_resp_empty):
+        assert client._post("/test") is None
+
+    # Test _delete
+    mock_resp_del = MagicMock()
+    mock_resp_del.raise_for_status.return_value = None
+    with patch("requests.delete", return_value=mock_resp_del) as mock_del:
+        client._delete("/test")
+        assert mock_del.called
+
+
+def test_group_items_by_pattern_edge_cases():
+    items = [
+        {"Id": "1", "Name": 12345},  # Non-string attribute value
+        {"Id": "2", "Name": "Toy Story 4"},
+        {"Id": "3", "Name": "   "},  # Whitespace resulting in empty group key
+    ]
+    pattern = r"^(Toy Story)?"
+    groups = group_items_by_pattern(items, pattern)
+    assert "Toy Story" in groups
     mock_client = MagicMock()
     mock_client.get_all_items.return_value = [{"Id": "col_existing", "Name": "Existing Coll"}]
     groups = {
