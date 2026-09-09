@@ -1,6 +1,7 @@
 import logging
 import os
 from typing import Any, Dict, List, Optional
+
 import requests
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
