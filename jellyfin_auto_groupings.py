@@ -104,7 +104,7 @@ def group_items_by_pattern(
     regex = re.compile(pattern, re.IGNORECASE)
     for item in items:
         val = item.get(attribute, "")
-            vals = val if isinstance(val, list) else [val]
+        vals = val if isinstance(val, list) else [val]
 
         for v in vals:
             if not isinstance(v, str):
