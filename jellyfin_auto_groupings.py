@@ -1,195 +1,157 @@
-"""Jellyfin Auto Groupings tool.
-
-Automatically group movies/shows into collections/boxsets in Jellyfin
-based on common title prefixes, patterns, or sequel naming conventions.
-"""
-
-import argparse
+"""Auto-group Jellyfin collections, genres, or tags based on configurable rules."""
+import logging
 import os
 import re
 import sys
-from typing import Any, Dict, List, Optional
-
+from typing import Any, Dict, List, Optional, Set, Tuple
+import urllib.parse
 import requests
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
+)
+logger = logging.getLogger("jellyfin-auto-groupings")
 
-def get_items(url: str, api_key: str, parent_id: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Fetch movie/show items from Jellyfin API with pagination support.
 
-    Args:
-        url: Base URL of the Jellyfin server.
-        api_key: Jellyfin API access key.
-        parent_id: Optional parent folder/library ID.
+class JellyfinClient:
+    """Simple Jellyfin API client."""
 
-    Returns:
-        List of item dictionaries from Jellyfin.
-    """
-    headers = {"X-Emby-Token": api_key}
-    items: List[Dict[str, Any]] = []
-    limit = 500
-    start_index = 0
-
-    while True:
-        params: Dict[str, Any] = {
-            "IncludeItemTypes": "Movie",
-            "Recursive": True,
-            "Fields": "PrimaryImageAspectRatio,SortName",
-            "StartIndex": start_index,
-            "Limit": limit,
+    def __init__(self, server_url: str, api_key: str, user_id: Optional[str] = None) -> None:
+        self.server_url = server_url.rstrip("/")
+        self.api_key = api_key
+        self.user_id = user_id
+        self.headers = {
+            "X-Emby-Token": api_key,
+            "Content-Type": "application/json",
         }
+
+    def _get(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        url = f"{self.server_url}{endpoint}"
+        resp = requests.get(url, headers=self.headers, params=params, timeout=30)
+        resp.raise_for_status()
+        return resp.json()
+
+    def _post(self, endpoint: str, params: Optional[Dict[str, Any]] = None, json_data: Optional[Any] = None) -> Any:
+        url = f"{self.server_url}{endpoint}"
+        resp = requests.post(url, headers=self.headers, params=params, json=json_data, timeout=30)
+        resp.raise_for_status()
+        if resp.text:
+            try:
+                return resp.json()
+            except ValueError:
+                return resp.text
+        return None
+
+    def _delete(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> None:
+        url = f"{self.server_url}{endpoint}"
+        resp = requests.delete(url, headers=self.headers, params=params, timeout=30)
+        resp.raise_for_status()
+
+    def get_users(self) -> List[Dict[str, Any]]:
+        """Get list of users."""
+        return self._get("/Users")
+
+    def get_first_admin_user_id(self) -> str:
+        """Get the ID of the first admin user."""
+        users = self.get_users()
+        for u in users:
+            if u.get("Policy", {}).get("IsAdministrator"):
+                return u["Id"]
+        if users:
+            return users[0]["Id"]
+        raise RuntimeError("No users found on Jellyfin server.")
+
+    def get_all_items(self, item_types: Optional[List[str]] = None, parent_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Get all items matching item_types."""
+        uid = self.user_id or self.get_first_admin_user_id()
+        params = {
+            "Recursive": "true",
+            "Fields": "Genres,Tags,CollectionFolder,ProviderIds",
+        }
+        if item_types:
+            params["IncludeItemTypes"] = ",".join(item_types)
         if parent_id:
             params["ParentId"] = parent_id
 
-        try:
-            res = requests.get(f"{url.rstrip('/')}/Items", headers=headers, params=params, timeout=30)
-            res.raise_for_status()
-            data = res.json()
-        except (requests.RequestException, ValueError) as err:
-            print(f"Error fetching items from Jellyfin: {err}", file=sys.stderr)
-            break
+        res = self._get(f"/Users/{uid}/Items", params=params)
+        return res.get("Items", [])
 
-        fetched_items = data.get("Items", [])
-        items.extend(fetched_items)
-
-        total_record_count = data.get("TotalRecordCount", len(items))
-        start_index += len(fetched_items)
-
-        if not fetched_items or start_index >= total_record_count:
-            break
-
-    return items
-
-
-def group_items_by_prefix(items: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
-    """Group items that share a common title prefix or franchise root.
-
-    Args:
-        items: List of Jellyfin item dictionaries.
-
-    Returns:
-        A mapping of collection/group name to lists of item dicts.
-    """
-    groups: Dict[str, List[Dict[str, Any]]] = {}
-    
-    # Normalize and extract root prefixes
-    # Example regex patterns for franchise detection (e.g. "Toy Story", "Toy Story 2", "Toy Story: ...")
-    prefix_pattern = re.compile(r"^(.*?)(?:\s+\d+|:\s+.*|\s+-[\s\w]+)?$", re.IGNORECASE)
-
-    candidates: Dict[str, List[Dict[str, Any]]] = {}
-    for item in items:
-        name = item.get("Name", "").strip()
-        if not name:
-            continue
-        
-        # Extract base title prefix
-        match = prefix_pattern.match(name)
-        base_name = match.group(1).strip() if match else name
-        
-        if base_name not in candidates:
-            candidates[base_name] = []
-        candidates[base_name].append(item)
-
-    # Keep groups with 2 or more items
-    return {
-        group_name: matched_items
-        for group_name, matched_items in candidates.items()
-        if len(matched_items) >= 2
-    }
-
-
-def create_collection(
-    url: str,
-    api_key: str,
-    name: str,
-    item_ids: List[str],
-    dry_run: bool = False
-) -> Optional[str]:
-    """Create a collection in Jellyfin and add specified items.
-
-    Args:
-        url: Base URL of the Jellyfin server.
-        api_key: Jellyfin API access key.
-        name: Name of the collection to create.
-        item_ids: List of Jellyfin item IDs to include.
-        dry_run: If True, simulate creation without sending API requests.
-
-    Returns:
-        Collection ID if created successfully, or None.
-    """
-    if dry_run:
-        print(f"[DRY-RUN] Would create collection '{name}' with {len(item_ids)} item(s): {item_ids}")
-        return "dry-run-collection-id"
-
-    headers = {"X-Emby-Token": api_key}
-    endpoint = f"{url.rstrip('/')}/Collections"
-    params = {
-        "Name": name,
-        "Ids": ",".join(item_ids),
-    }
-    try:
-        res = requests.post(endpoint, headers=headers, params=params, timeout=30)
-        res.raise_for_status()
-        data = res.json()
-        collection_id = data.get("Id")
-        print(f"Successfully created collection '{name}' (ID: {collection_id}).")
-    except (requests.RequestException, ValueError) as err:
-        print(f"Failed to create collection '{name}': {err}", file=sys.stderr)
-        return None
-    else:
-        return collection_id
-
-
-def build_argument_parser() -> argparse.ArgumentParser:
-    """Build CLI argument parser for Jellyfin Auto Groupings tool."""
-    parser = argparse.ArgumentParser(
-        description="Automatically group Jellyfin items into collections based on title matching."
-    )
-    parser.add_argument(
-        "--url",
-        default=os.environ.get("JELLYFIN_URL", ""),
-        help="Jellyfin server URL (can also set JELLYFIN_URL env var)",
-    )
-    parser.add_argument(
-        "--api-key",
-        default=os.environ.get("JELLYFIN_API_KEY", ""),
-        help="Jellyfin API Key (can also set JELLYFIN_API_KEY env var)",
-    )
-    parser.add_argument(
-        "--parent-id",
-        default=None,
-        help="Optional Parent Library ID to restrict search",
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Perform a dry run without creating actual collections in Jellyfin",
-    )
-    return parser
-
-
-def main(args: Optional[List[str]] = None) -> int:
-    """CLI main entry point."""
-    parser = build_argument_parser()
-    parsed = parser.parse_args(args)
-
-    if not parsed.url or not parsed.api_key:
-        print("Error: Both --url and --api-key (or JELLYFIN_URL and JELLYFIN_API_KEY env vars) are required.", file=sys.stderr)
-        return 1
-
-    print(f"Fetching items from {parsed.url}...")
-    items = get_items(parsed.url, parsed.api_key, parent_id=parsed.parent_id)
-    print(f"Found {len(items)} item(s).")
-
-    groups = group_items_by_prefix(items)
-    print(f"Identified {len(groups)} group(s) with 2 or more matching items.")
-
-    for group_name, group_items in groups.items():
-        item_ids = [item["Id"] for item in group_items if "Id" in item]
+    def create_collection(self, name: str, item_ids: Optional[List[str]] = None) -> Dict[str, Any]:
+        """Create a collection with given name and initial item IDs."""
+        params = {"Name": name}
         if item_ids:
-            create_collection(parsed.url, parsed.api_key, group_name, item_ids, dry_run=parsed.dry_run)
+            params["Ids"] = ",".join(item_ids)
+        return self._post("/Collections", params=params)
 
-    return 0
+    def add_to_collection(self, collection_id: str, item_ids: List[str]) -> None:
+        """Add items to an existing collection."""
+        params = {"Ids": ",".join(item_ids)}
+        self._post(f"/Collections/{collection_id}/Items", params=params)
+
+    def remove_from_collection(self, collection_id: str, item_ids: List[str]) -> None:
+        """Remove items from a collection."""
+        params = {"Ids": ",".join(item_ids)}
+        self._delete(f"/Collections/{collection_id}/Items", params=params)
 
 
-if __name__ == "__main__":
-    sys.exit(main())
+def group_items_by_pattern(
+    items: List[Dict[str, Any]], pattern: str, attribute: str = "Name"
+) -> Dict[str, List[Dict[str, Any]]]:
+    """Group items based on a regex pattern extract from an attribute."""
+    groups: Dict[str, List[Dict[str, Any]]] = {}
+    regex = re.compile(pattern, re.IGNORECASE)
+    for item in items:
+        val = item.get(attribute, "")
+        if isinstance(val, list):
+            vals = val
+        else:
+            vals = [val]
+
+        for v in vals:
+            if not isinstance(v, str):
+                continue
+            match = regex.search(v)
+            if match:
+                # If regex has capture groups, use group 1, else use full match
+                group_key = match.group(1) if match.groups() else match.group(0)
+                group_key = group_key.strip()
+                if group_key:
+                    groups.setdefault(group_key, []).append(item)
+                    break  # Matched once for this item
+    return groups
+
+
+def sync_groupings(
+    client: JellyfinClient,
+    groups: Dict[str, List[Dict[str, Any]]],
+    dry_run: bool = True,
+    min_items: int = 1,
+) -> Dict[str, List[str]]:
+    """Sync calculated groups with Jellyfin collections."""
+    summary: Dict[str, List[str]] = {}
+
+    # Get existing collections
+    existing_collections = client.get_all_items(item_types=["BoxSet"])
+    collection_map = {c["Name"]: c["Id"] for c in existing_collections}
+
+    for group_name, items in groups.items():
+        if len(items) < min_items:
+            logger.info(f"Skipping group '{group_name}' because it has fewer than {min_items} items ({len(items)})")
+            continue
+
+        item_ids = [item["Id"] for item in items]
+        summary[group_name] = item_ids
+
+        if group_name in collection_map:
+            coll_id = collection_map[group_name]
+            logger.info(f"[Existing Collection] '{group_name}' ID: {coll_id}. Target items count: {len(item_ids)}")
+            if not dry_run:
+                client.add_to_collection(coll_id, item_ids)
+        else:
+            logger.info(f"[New Collection] '{group_name}'. Target items count: {len(item_ids)}")
+            if not dry_run:
+                client.create_collection(group_name, item_ids)
+
+    return summary

@@ -1,7 +1,7 @@
-import os
 import logging
+import os
+from typing import Any, Dict, List, Optional
 import requests
-from typing import Dict, Any, List, Optional
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -23,7 +23,8 @@ class JellyfinGroupings:
 
     def _get_headers(self) -> Dict[str, str]:
         if not self.api_key:
-            raise ValueError("API key is missing.")
+            err_msg = "API key is missing."
+            raise ValueError(err_msg)
         return {
             "X-Emby-Token": self.api_key,
             "Content-Type": "application/json"
@@ -32,15 +33,16 @@ class JellyfinGroupings:
     def get_collections(self) -> List[Dict[str, Any]]:
         """Fetch all collection folders from Jellyfin."""
         if not self.server_url:
-            raise ValueError("Server URL is missing.")
+            err_msg = "Server URL is missing."
+            raise ValueError(err_msg)
         url = f"{self.server_url}/Items?IncludeItemTypes=BoxSet&Recursive=true"
         try:
             response = self.session.get(url, headers=self._get_headers(), timeout=self.timeout)
             response.raise_for_status()
             data = response.json()
             return data.get("Items", [])
-        except requests.RequestException as e:
-            logger.error(f"Failed to fetch collections: {e}")
+        except requests.RequestException:
+            logger.exception("Failed to fetch collections")
             raise
 
     def auto_group(self) -> Dict[str, Any]:
@@ -52,6 +54,6 @@ class JellyfinGroupings:
             collections = self.get_collections()
             logger.info(f"Successfully fetched {len(collections)} collections.")
             return {"status": "success", "collections_count": len(collections), "collections": collections}
-        except Exception as e:
-            logger.error(f"Error during auto-grouping: {e}")
-            return {"status": "error", "message": str(e)}
+        except Exception:
+            logger.exception("Error during auto-grouping")
+            return {"status": "error", "message": "Error during auto-grouping"}
