@@ -6,30 +6,37 @@ import trakt
 import mal
 
 def test_anilist_fetch():
-    with patch("anilist.requests.post") as mock_post:
+    with patch("anilist.network.post") as mock_post:
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {
             "data": {
-                "Media": {
-                    "id": 12345,
-                    "title": {"romaji": "Test Anime"}
+                "MediaListCollection": {
+                    "lists": [
+                        {
+                            "name": "Completed",
+                            "entries": [{"mediaId": 12345}]
+                        }
+                    ]
                 }
             }
         }
         mock_post.return_value = mock_resp
-        res = anilist.get_anilist_data(12345)
-        assert res is not None
+        res = anilist.fetch_anilist_list("testuser")
+        assert res == [12345]
 
 def test_trakt_get_headers():
-    headers = trakt.get_trakt_headers("test_client_id")
+    headers = trakt._build_trakt_headers("test_client_id")
     assert headers.get("trakt-api-key") == "test_client_id"
 
 def test_mal_fetch():
-    with patch("mal.requests.get") as mock_get:
+    with patch("mal.network.get") as mock_get:
         mock_resp = MagicMock()
         mock_resp.status_code = 200
-        mock_resp.json.return_value = {"id": 1, "title": "Test Anime"}
+        mock_resp.json.return_value = {
+            "data": [{"node": {"id": 1, "title": "Test Anime"}}],
+            "paging": {}
+        }
         mock_get.return_value = mock_resp
-        res = mal.get_mal_data(1, "test_client_id")
-        assert res is not None
+        res = mal.fetch_mal_list("testuser", "test_client_id")
+        assert res == [1]
