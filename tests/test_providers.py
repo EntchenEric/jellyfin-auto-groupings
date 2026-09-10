@@ -106,7 +106,12 @@ def test_imdb_fetch_list_invalid():
 # --- letterboxd.py tests ---
 import letterboxd
 
-def test_letterboxd_normalize_url():
-    url = letterboxd.normalize_letterboxd_list_url("[https://letterboxd.com/](https://letterboxd.com/)user/list/test-list/)")
-    assert "letterboxd.com" in url
+def test_letterboxd_fetch_list():
+    with patch("letterboxd.network.get") as mock_get:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.text = '<html><div data-film-slug="test-movie"></div></html>'
+        mock_get.return_value = mock_resp
+        res = letterboxd.fetch_letterboxd_list("https://letterboxd.com/user/list/test-list/")
+        assert res == ["test-movie"]
 
