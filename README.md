@@ -1,33 +1,83 @@
 # Jellyfin Auto Groupings
 
-Automated script to categorize and group Jellyfin library items into curated collections such as franchises, genres, decades, exact release years, and custom tagged groups.
+Automatically organize your Jellyfin media items into collections based on shared metadata such as tags, genres, studios, or directors.
 
 ## Features
 
-- **Special Collections**: Auto-detect franchises like MCU, Star Wars, Harry Potter, Lord of the Rings, and James Bond.
-- **Custom Tag Groups**: Create collections based on keyword matching and tags (e.g. Sci-Fi Classics, Oscar Winners, 90s Action).
-- **Decade Collections**: Automatically group movies into decade collections (e.g. `2010s Movies`, `1990s Movies`) using `ProductionYear` or `PremiereDate`.
-- **Year Collections**: Dynamically group items into year collections (e.g. `Best of 2024`).
+- **Automatic Collections**: Group items into collections by `tag`, `genre`, `studio`, or `director`.
+- **Min Threshold**: Set minimum item count per group (e.g., only create collections for groups with $\ge 2$ items).
+- **Dry-run Mode**: Inspect created collections and items without changing your Jellyfin library.
+- **Clean Up / Prune**: Remove managed collections that no longer meet minimum size requirements.
+- **Robust Error Handling**: Graceful network and API failure reporting.
+
+## Installation
+
+Install from source using `pip`:
+
+```bash
+pip install .
+```
+
+Or using `uv` / `pip install -e .` for development.
 
 ## Usage
 
-```python
-from jellyfin_groupings import create_groupings
+### Command Line Options
 
-items = [
-    {"Name": "Iron Man", "Overview": "MCU origin", "ProductionYear": 2008},
-    {"Name": "The Avengers", "Overview": "MCU teamup", "ProductionYear": 2012},
-    {"Name": "Avengers: Endgame", "Overview": "MCU finale", "ProductionYear": 2019},
-]
-
-groupings = create_groupings(items)
-print(groupings)
+```text
+usage: jellyfin-auto-groupings [-h] --server SERVER --api-key API_KEY
+                                [--group-by {tag,genre,studio,director}]
+                                [--min-items MIN_ITEMS] [--dry-run]
+                                [--user-id USER_ID]
 ```
 
-## Running Tests
+| Option | Description | Default |
+| --- | --- | --- |
+| `--server` | Jellyfin server base URL (e.g. `http://localhost:8096`) | **Required** |
+| `--api-key` | Jellyfin API Key / Access Token | **Required** |
+| `--group-by` | Metadata attribute to group by (`tag`, `genre`, `studio`, `director`) | `tag` |
+| `--min-items` | Minimum number of items required to form a collection | `2` |
+| `--dry-run` | Preview actions without creating/modifying collections | `False` |
+| `--user-id` | Optional Jellyfin User ID | `None` |
 
-Run test suite and check code coverage:
+### Examples
+
+#### Group by Genre (Dry Run)
 
 ```bash
-pytest --cov=jellyfin_groupings
+jellyfin-auto-groupings \
+  --server http://localhost:8096 \
+  --api-key YOUR_API_KEY \
+  --group-by genre \
+  --min-items 3 \
+  --dry-run
 ```
+
+#### Group by Studio
+
+```bash
+jellyfin-auto-groupings \
+  --server http://localhost:8096 \
+  --api-key YOUR_API_KEY \
+  --group-by studio \
+  --min-items 2
+```
+
+## Development & Testing
+
+Run test suite and check coverage:
+
+```bash
+pytest --cov=jellyfin_auto_groupings
+```
+
+Run linter and type checker:
+
+```bash
+python3 -m ruff check .
+python3 -m mypy --ignore-missing-imports src tests
+```
+
+## License
+
+MIT
