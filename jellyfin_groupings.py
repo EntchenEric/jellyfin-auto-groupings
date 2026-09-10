@@ -1,104 +1,143 @@
-"""Auto-group Jellyfin media items by franchise, genre, director, decade, year, or custom tags."""
+"""Jellyfin Auto Groupings tool.
 
+Automatically groups movies in Jellyfin into collections based on custom criteria,
+TMDB collections, franchises, or custom tags/metadata.
+"""
+
+import os
+import sys
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Any, Optional, Set
+import requests
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
 logger = logging.getLogger(__name__)
 
-SPECIAL_COLLECTIONS: Dict[str, Dict[str, Any]] = {
-    "Marvel Cinematic Universe": {"query": "MCU", "min_count": 3},
-    "Star Wars Collection": {"query": "Star Wars", "min_count": 2},
-    "Harry Potter Collection": {"query": "Harry Potter", "min_count": 2},
-    "Lord of the Rings": {"query": "Lord of the Rings", "min_count": 2},
-    "James Bond Collection": {"query": "James Bond", "min_count": 3},
-}
 
-CUSTOM_TAG_GROUPS: Dict[str, Dict[str, Any]] = {
-    "Sci-Fi Classics": {"query": "Sci-Fi", "tags": ["sci-fi", "classic"], "min_count": 2},
-    "Oscar Winners": {"query": "Oscar", "tags": ["oscar", "academy-award"], "min_count": 2},
-    "90s Action": {"query": "Action", "tags": ["action", "90s"], "min_count": 2},
-}
+class JellyfinClient:
+    """Client interface for interacting with the Jellyfin REST API."""
+
+    def __init__(self, server_url: str, api_key: str, user_id: Optional[str] = None) -> None:
+        self.server_url = server_url.rstrip('/')
+        self.api_key = api_key
+        self.user_id = user_id
+        self.session = requests.Session()
+        self.session.headers.update({
+            "X-Emby-Token": self.api_key,
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        })
+
+    def get_users(self) -> List[Dict[str, Any]]:
+        """Fetch all users from Jellyfin."""
+        url = f"{self.server_url}/Users"
+        try:
+            resp = self.session.get(url, timeout=30)
+            resp.raise_for_status()
+            return resp.json()
+        except requests.RequestException as e:
+            logger.error(f"Failed to fetch users: {e}")
+            return []
+
+    def get_movies(self, user_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Fetch all movie items for a given user or default user."""
+        uid = user_id or self.user_id
+        if not uid:
+            users = self.get_users()
+            if users:
+                uid = users[0].get("Id")
+            else:
+                logger.error("No User ID available to query movies.")
+                return []
+
+        url = f"{self.server_url}/Users/{uid}/Items"
+        params = {
+            "IncludeItemTypes": "Movie",
+            "Recursive": "true",
+            "Fields": "Genres,Tags,ProviderIds,CollectionFolder"
+        }
+        try:
+            resp = self.session.get(url, params=params, timeout=30)
+            resp.raise_for_status()
+            return resp.json().get("Items", [])
+        except requests.RequestException as e:
+            logger.error(f"Failed to fetch movies: {e}")
+            return []
+
+    def create_collection(self, name: str, item_ids: List[str]) -> Optional[Dict[str, Any]]:
+        """Create a collection with given name and list of item IDs."""
+        if not item_ids:
+            logger.warning(f"Cannot create collection '{name}' with no items.")
+            return None
+
+        url = f"{self.server_url}/Collections"
+        params = {
+            "Name": name,
+            "Ids": ",".join(item_ids)
+        }
+        try:
+            resp = self.session.post(url, params=params, timeout=30)
+            resp.raise_for_status()
+            logger.info(f"Created collection '{name}' with {len(item_ids)} items.")
+            return resp.json()
+        except requests.RequestException as e:
+            logger.error(f"Failed to create collection '{name}': {e}")
+            return None
 
 
-def get_movies_by_query(
-    items: List[Dict[str, Any]], query: str, tags: Optional[List[str]] = None
-) -> List[Dict[str, Any]]:
-    """Filter items matching a search query in their Name or Overview, and optionally matching tags."""
-    matched: List[Dict[str, Any]] = []
-    q_lower = query.lower()
-    for item in items:
-        name = item.get("Name", "").lower()
-        overview = item.get("Overview", "").lower()
-        item_tags = [t.lower() for t in item.get("Tags", [])]
+def group_movies_by_tag(movies: List[Dict[str, Any]], tag_prefix: str = "Group:") -> Dict[str, List[str]]:
+    """Group movies based on tags starting with a specific prefix.
 
-        query_match = q_lower in name or q_lower in overview
-        tag_match = True
-        if tags:
-            tag_match = any(t.lower() in item_tags for t in tags)
-
-        if query_match and tag_match:
-            matched.append(item)
-    return matched
-
-
-def get_decade_groups(items: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
-    """Group items into decade collections based on PremiereDate or ProductionYear."""
-    decades: Dict[str, List[Dict[str, Any]]] = {}
-    for item in items:
-        year = item.get("ProductionYear")
-        if not year and item.get("PremiereDate"):
-            try:
-                year = int(item["PremiereDate"][:4])
-            except (ValueError, TypeError, IndexError):
-                year = None
-        if year and isinstance(year, int) and 1900 <= year <= 2100:
-            decade_start = (year // 10) * 10
-            decade_key = f"{decade_start}s Movies"
-            decades.setdefault(decade_key, []).append(item)
-    return decades
-
-
-def get_year_groups(items: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
-    """Group items into exact release year collections."""
-    years: Dict[str, List[Dict[str, Any]]] = {}
-    for item in items:
-        year = item.get("ProductionYear")
-        if not year and item.get("PremiereDate"):
-            try:
-                year = int(item["PremiereDate"][:4])
-            except (ValueError, TypeError, IndexError):
-                year = None
-        if year and isinstance(year, int) and 1900 <= year <= 2100:
-            year_key = f"Best of {year}"
-            years.setdefault(year_key, []).append(item)
-    return years
-
-
-def create_groupings(items: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
-    """Generate all collection groupings for a list of Jellyfin items."""
-    groups: Dict[str, List[Dict[str, Any]]] = {}
-
-    # Add standard collections
-    all_collections = dict(SPECIAL_COLLECTIONS)
-    all_collections.update(CUSTOM_TAG_GROUPS)
-    for group_name, config in all_collections.items():
-        query = config["query"]
-        tags = config.get("tags")
-        min_count = config.get("min_count", 2)
-        movies = get_movies_by_query(items, query, tags)
-        if len(movies) >= min_count:
-            groups[group_name] = movies
-
-    # Dynamic decade collections
-    decades = get_decade_groups(items)
-    for decade_name, movies in decades.items():
-        if len(movies) >= 2:
-            groups[decade_name] = movies
-
-    # Dynamic release year collections
-    years = get_year_groups(items)
-    for year_name, movies in years.items():
-        if len(movies) >= 3:
-            groups[year_name] = movies
-
+    Example tag: 'Group:Marvel Cinematic Universe'
+    """
+    groups: Dict[str, List[str]] = {}
+    for movie in movies:
+        item_id = movie.get("Id")
+        tags = movie.get("Tags", [])
+        if not item_id:
+            continue
+        for tag in tags:
+            if tag.startswith(tag_prefix):
+                group_name = tag[len(tag_prefix):].strip()
+                if group_name:
+                    groups.setdefault(group_name, []).append(item_id)
     return groups
+
+
+def group_movies_by_genre(movies: List[Dict[str, Any]], min_count: int = 2) -> Dict[str, List[str]]:
+    """Group movies by genres if a genre has at least `min_count` movies."""
+    genre_map: Dict[str, List[str]] = {}
+    for movie in movies:
+        item_id = movie.get("Id")
+        genres = movie.get("Genres", [])
+        if not item_id:
+            continue
+        for genre in genres:
+            genre_map.setdefault(genre, []).append(item_id)
+    return {g: ids for g, ids in genre_map.items() if len(ids) >= min_count}
+
+
+def main() -> None:
+    """Main entry point for jellyfin-auto-groupings."""
+    server_url = os.environ.get("JELLYFIN_URL", "http://localhost:8096")
+    api_key = os.environ.get("JELLYFIN_API_KEY", "")
+
+    if not api_key:
+        logger.error("JELLYFIN_API_KEY environment variable is required.")
+        sys.exit(1)
+
+    client = JellyfinClient(server_url, api_key)
+    movies = client.get_movies()
+    logger.info(f"Found {len(movies)} movies.")
+
+    grouped = group_movies_by_tag(movies)
+    for group_name, item_ids in grouped.items():
+        client.create_collection(group_name, item_ids)
+
+
+if __name__ == "__main__":
+    main()
