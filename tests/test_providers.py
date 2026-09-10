@@ -1,9 +1,12 @@
 """Tests for external metadata providers (Anilist, Trakt, Mal, TMDB, Letterboxd, IMDB)."""
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
+
 import anilist
-import trakt
 import mal
+import trakt
+
 
 def test_anilist_fetch():
     with patch("anilist.network.post") as mock_post:
@@ -44,6 +47,7 @@ def test_mal_fetch():
 # --- _common.py tests ---
 import _common
 
+
 def test_normalize_group_relpath():
     assert _common.normalize_group_relpath("Anime/Action") == "Anime/Action"
     assert _common.normalize_group_relpath("  Anime // Action  ") == "Anime/Action"
@@ -57,6 +61,7 @@ def test_normalize_group_relpath():
 
 # --- tmdb.py tests ---
 import tmdb
+
 
 def test_tmdb_fetch_list():
     with patch("tmdb.network.get") as mock_get:
@@ -90,6 +95,7 @@ def test_tmdb_recommendations():
 # --- imdb.py tests ---
 import imdb
 
+
 def test_imdb_fetch_list():
     with patch("imdb.network.get") as mock_get:
         mock_resp = MagicMock()
@@ -105,6 +111,7 @@ def test_imdb_fetch_list_invalid():
 
 # --- letterboxd.py tests ---
 import letterboxd
+
 
 def test_letterboxd_fetch_list():
     with patch("letterboxd.network.get") as mock_get:

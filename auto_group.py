@@ -1,9 +1,10 @@
-import os
-import sys
-import re
+import argparse
 import json
 import logging
-import argparse
+import os
+import re
+import sys
+
 import requests
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -67,7 +68,7 @@ def get_libraries(url, api_key):
         res.raise_for_status()
         return res.json().get("Items", [])
     except Exception as e:
-        logging.error(f"Error fetching libraries: {e}")
+        logging.exception(f"Error fetching libraries: {e}")
         return []
 
 def get_library_items(url, api_key, parent_id):
@@ -83,7 +84,7 @@ def get_library_items(url, api_key, parent_id):
         res.raise_for_status()
         return res.json().get("Items", [])
     except Exception as e:
-        logging.error(f"Error fetching library items for parent {parent_id}: {e}")
+        logging.exception(f"Error fetching library items for parent {parent_id}: {e}")
         return []
 
 def group_items(items, patterns, min_group_size=2):
@@ -110,7 +111,7 @@ def create_collection(url, api_key, collection_name, item_ids):
         logging.info(f"Successfully created collection: '{collection_name}' with {len(item_ids)} items.")
         return res.json().get("Id")
     except Exception as e:
-        logging.error(f"Error creating collection '{collection_name}': {e}")
+        logging.exception(f"Error creating collection '{collection_name}': {e}")
         return None
 
 def add_to_collection(url, api_key, collection_id, item_ids):
@@ -123,7 +124,7 @@ def add_to_collection(url, api_key, collection_id, item_ids):
         res.raise_for_status()
         logging.info(f"Successfully added items to collection {collection_id}.")
     except Exception as e:
-        logging.error(f"Error adding items to collection {collection_id}: {e}")
+        logging.exception(f"Error adding items to collection {collection_id}: {e}")
 
 def main():
     parser = argparse.ArgumentParser(description="Automatically group Jellyfin items into collections based on title patterns.")
