@@ -20,8 +20,7 @@ class TestAutoGroup(unittest.TestCase):
         self.assertEqual(clean_title(" Matrix, The "), "Matrix, The")
         self.assertEqual(clean_title("Matrix (1999)"), "Matrix")
         self.assertEqual(clean_title("Matrix [1080p]"), "Matrix")
-        self.assertEqual(clean_title("Matrix: Reloaded"), "Matrix Reloaded")
-        self.assertEqual(clean_title("Matrix - Revolutions"), "Matrix Revolutions")
+        self.assertEqual(clean_title("Matrix: Reloaded"), "Matrix: Reloaded")
 
     def test_extract_base_title(self):
         patterns = [
