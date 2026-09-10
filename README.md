@@ -1,48 +1,33 @@
-# Jellyfin Auto-Groupings
+# Jellyfin Auto Groupings
 
-Automated collection creation and library item grouping tool for Jellyfin media servers.
+Automated script to categorize and group Jellyfin library items into curated collections such as franchises, genres, decades, exact release years, and custom tagged groups.
 
 ## Features
 
-- **Automated Collection Grouping**: Automatically groups movies and TV series into Jellyfin collections based on series metadata.
-- **REST API Integration**: Interacts directly with Jellyfin API endpoints.
-- **Robust Error Handling & Logging**: Uses structured logging and timeout safeguards.
-- **Unit Tested**: Full test coverage for core functions using `unittest`.
-
-## Requirements
-
-- Python 3.8+
-- `requests`
-
-Install dependencies:
-```bash
-pip install requests
-```
+- **Special Collections**: Auto-detect franchises like MCU, Star Wars, Harry Potter, Lord of the Rings, and James Bond.
+- **Custom Tag Groups**: Create collections based on keyword matching and tags (e.g. Sci-Fi Classics, Oscar Winners, 90s Action).
+- **Decade Collections**: Automatically group movies into decade collections (e.g. `2010s Movies`, `1990s Movies`) using `ProductionYear` or `PremiereDate`.
+- **Year Collections**: Dynamically group items into year collections (e.g. `Best of 2024`).
 
 ## Usage
 
 ```python
-import jellyfin_groupings
+from jellyfin_groupings import create_groupings
 
-server_url = "http://localhost:8096"
-api_key = "your-api-key"
-user_id = "your-user-id"
+items = [
+    {"Name": "Iron Man", "Overview": "MCU origin", "ProductionYear": 2008},
+    {"Name": "The Avengers", "Overview": "MCU teamup", "ProductionYear": 2012},
+    {"Name": "Avengers: Endgame", "Overview": "MCU finale", "ProductionYear": 2019},
+]
 
-# Fetch library items
-items = jellyfin_groupings.get_library_items(server_url, api_key, user_id)
-
-# Group items into collection mapping
-collections = jellyfin_groupings.group_items_by_collection(items)
-
-# Create collection on Jellyfin
-for name, group_items in collections.items():
-    item_ids = [item["Id"] for item in group_items]
-    jellyfin_groupings.create_collection(server_url, api_key, f"{name} Collection", item_ids)
+groupings = create_groupings(items)
+print(groupings)
 ```
 
 ## Running Tests
 
-Execute unit tests with Python's built-in `unittest` runner:
+Run test suite and check code coverage:
+
 ```bash
-python3 test_jellyfin_groupings.py
+pytest --cov=jellyfin_groupings
 ```
