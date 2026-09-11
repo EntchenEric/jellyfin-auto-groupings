@@ -1,125 +1,100 @@
 import pytest
 from unittest.mock import MagicMock, patch
-import requests
+from jellyfin_groupings.main import JellyfinGroupings, main
 
-from jellyfin_auto_groupings.main import JellyfinAutoGroupings
+def test_jellyfin_groupings_init():
+    jg = JellyfinGroupings("http://localhost:8096", "test-api-key")
+    assert jg.url == "http://localhost:8096"
+    assert jg.api_key == "test-api-key"
+    assert jg.headers["X-Emby-Token"] == "test-api-key"
+    assert jg.headers["Content-Type"] == "application/json"
 
+def test_jellyfin_groupings_init_strip_slash():
+    jg = JellyfinGroupings("http://localhost:8096/", "test-api-key")
+    assert jg.url == "http://localhost:8096"
 
-@pytest.fixture
-def client():
-    return JellyfinAutoGroupings("http://localhost:8096", "test-api-key", dry_run=True)
-
-
-def test_init_normalizes_url():
-    client = JellyfinAutoGroupings("http://localhost:8096/", "test-api-key")
-    assert client.server_url == "http://localhost:8096"
-    assert client.headers["X-Emby-Token"] == "test-api-key"
-
-
-def test_get_headers(client):
-    headers = client._get_headers()
-    assert headers["X-Emby-Token"] == "test-api-key"
-    assert headers["Accept"] == "application/json"
-
-
-@patch("requests.Session.get")
-def test_get_movies(mock_get, client):
+@patch("requests.get")
+def test_get_collections(mock_get):
     mock_response = MagicMock()
-    mock_response.json.return_value = {
-        "Items": [
-            {"Id": "1", "Name": "Toy Story", "Type": "Movie"},
-            {"Id": "2", "Name": "Toy Story 2", "Type": "Movie"},
-        ]
-    }
+    mock_response.json.return_value = {"Items": [{"Id": "col1", "Name": "Collection 1"}]}
+    mock_response.raise_for_status.return_value = None
     mock_get.return_value = mock_response
 
-    movies = client.get_movies()
-    assert len(movies) == 2
-    assert movies[0]["Name"] == "Toy Story"
-    mock_get.assert_called_once()
-    assert "IncludeItemTypes=Movie" in mock_get.call_args[0][0]
+    jg = JellyfinGroupings("http://localhost:8096", "test-api-key")
+    collections = jg.get_collections()
 
+    assert len(collections) == 1
+    assert collections[0]["Name"] == "Collection 1"
+    mock_get.assert_called_once_with(
+        "http://localhost:8096/Collections",
+        headers=jg.headers,
+        params={"IncludeItemTypes": "BoxSet", "Recursive": True}
+    )
 
-@patch("requests.Session.get")
-def test_get_movies_http_error(mock_get, client):
+@patch("requests.get")
+def test_get_movies(mock_get):
     mock_response = MagicMock()
-    mock_response.raise_for_status.side_effect = requests.RequestException("API Error")
+    mock_response.json.return_value = {"Items": [{"Id": "mov1", "Name": "Movie 1"}]}
+    mock_response.raise_for_status.return_value = None
     mock_get.return_value = mock_response
 
-    with pytest.raises(requests.RequestException):
-        client.get_movies()
+    jg = JellyfinGroupings("http://localhost:8096", "test-api-key")
+    movies = jg.get_movies()
 
+    assert len(movies) == 1
+    assert movies[0]["Name"] == "Movie 1"
+    mock_get.assert_called_once_with(
+        "http://localhost:8096/Items",
+        headers=jg.headers,
+        params={"IncludeItemTypes": "Movie", "Recursive": True, "Fields": "ProviderIds"}
+    )
 
-def test_find_collections_by_name(client):
-    movies = [
-        {"Id": "1", "Name": "Toy Story 1"},
-        {"Id": "2", "Name": "Toy Story 2"},
-        {"Id": "3", "Name": "Toy Story 3"},
-        {"Id": "4", "Name": "Standalone Movie"},
-        {"Id": "5", "Name": "The Matrix"},
-        {"Id": "6", "Name": "The Matrix Reloaded"},
-    ]
-
-    collections = client.find_collections_by_name(movies, min_size=2)
-    assert "Toy Story" in collections
-    assert len(collections["Toy Story"]) == 3
-    assert "The Matrix" in collections
-    assert len(collections["The Matrix"]) == 2
-    assert "Standalone Movie" not in collections
-
-
-def test_find_collections_min_size(client):
-    movies = [
-        {"Id": "1", "Name": "Avatar"},
-        {"Id": "2", "Name": "Avatar: The Way of Water"},
-    ]
-    collections_min_3 = client.find_collections_by_name(movies, min_size=3)
-    assert len(collections_min_3) == 0
-
-    collections_min_2 = client.find_collections_by_name(movies, min_size=2)
-    assert len(collections_min_2) == 1
-
-
-@patch("requests.Session.post")
-def test_create_collection_dry_run(mock_post, client):
-    # client fixture has dry_run=True
-    result = client.create_collection("Test Collection", ["id1", "id2"])
-    assert result is True
-    mock_post.assert_not_called()
-
-
-@patch("requests.Session.post")
-def test_create_collection_real(mock_post):
-    real_client = JellyfinAutoGroupings("http://localhost:8096", "test-api-key", dry_run=False)
+@patch("requests.post")
+def test_create_collection(mock_post):
     mock_response = MagicMock()
-    mock_response.json.return_value = {"Id": "new_col_id"}
+    mock_response.json.return_value = {"Id": "new_col_id", "Name": "New Collection"}
+    mock_response.raise_for_status.return_value = None
     mock_post.return_value = mock_response
 
-    result = real_client.create_collection("Test Collection", ["id1", "id2"])
-    assert result is True
-    mock_post.assert_called_once()
+    jg = JellyfinGroupings("http://localhost:8096", "test-api-key")
+    result = jg.create_collection("New Collection", ["mov1", "mov2"])
 
+    assert result["Id"] == "new_col_id"
+    mock_post.assert_called_once_with(
+        "http://localhost:8096/Collections",
+        headers=jg.headers,
+        params={"Name": "New Collection", "Ids": "mov1,mov2"}
+    )
 
-@patch("requests.Session.post")
-def test_create_collection_failure(mock_post):
-    real_client = JellyfinAutoGroupings("http://localhost:8096", "test-api-key", dry_run=False)
+@patch("requests.post")
+def test_add_to_collection(mock_post):
     mock_response = MagicMock()
-    mock_response.raise_for_status.side_effect = requests.RequestException("Failed")
+    mock_response.raise_for_status.return_value = None
     mock_post.return_value = mock_response
 
-    result = real_client.create_collection("Test Collection", ["id1", "id2"])
-    assert result is False
+    jg = JellyfinGroupings("http://localhost:8096", "test-api-key")
+    jg.add_to_collection("col1", ["mov3"])
 
+    mock_post.assert_called_once_with(
+        "http://localhost:8096/Collections/col1/Items",
+        headers=jg.headers,
+        params={"Ids": "mov3"}
+    )
 
-@patch.object(JellyfinAutoGroupings, "get_movies")
-@patch.object(JellyfinAutoGroupings, "create_collection")
-def test_auto_group_all(mock_create_col, mock_get_movies, client):
-    mock_get_movies.return_value = [
-        {"Id": "1", "Name": "Shrek 1"},
-        {"Id": "2", "Name": "Shrek 2"},
-    ]
-    mock_create_col.return_value = True
+@patch.dict("os.environ", {"JELLYFIN_URL": "http://localhost:8096", "JELLYFIN_API_KEY": "test-key"})
+@patch("jellyfin_groupings.main.JellyfinGroupings.get_collections")
+@patch("jellyfin_groupings.main.JellyfinGroupings.get_movies")
+def test_main_success(mock_get_movies, mock_get_collections):
+    mock_get_collections.return_value = []
+    mock_get_movies.return_value = []
 
-    created = client.auto_group_all(min_size=2)
-    assert created == 1
-    mock_create_col.assert_called_once_with("Shrek", ["1", "2"])
+    with patch("builtins.print") as mock_print:
+        main()
+        mock_print.assert_any_call("Found 0 existing collections.")
+        mock_print.assert_any_call("Found 0 movies.")
+
+@patch.dict("os.environ", {}, clear=True)
+def test_main_missing_api_key():
+    with patch("builtins.print") as mock_print:
+        main()
+        mock_print.assert_called_once_with("Error: JELLYFIN_API_KEY environment variable is required.")
