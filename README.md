@@ -1,64 +1,82 @@
 # Jellyfin Auto Groupings
 
-Automatic media grouping library for Jellyfin servers. Group your movies and shows by franchise collections, genre clusters, and decade retrospectives automatically.
+Automatically organize your Jellyfin media items into collections based on shared metadata such as tags, genres, studios, or directors.
+
+## Features
+
+- **Automatic Collections**: Group items into collections by `tag`, `genre`, `studio`, or `director`.
+- **Min Threshold**: Set minimum item count per group (e.g., only create collections for groups with $\ge 2$ items).
+- **Dry-run Mode**: Inspect created collections and items without changing your Jellyfin library.
+- **Clean Up / Prune**: Remove managed collections that no longer meet minimum size requirements.
+- **Robust Error Handling**: Graceful network and API failure reporting.
 
 ## Installation
 
+Install from source using `pip`:
+
 ```bash
-npm install jellyfin-auto-groupings
+pip install .
 ```
 
-## Quick Start
+Or using `uv` / `pip install -e .` for development.
 
-```typescript
-import { runAutoGrouping } from 'jellyfin-auto-groupings';
+## Usage
 
-const summary = await runAutoGrouping({
-  config: {
-    serverUrl: 'http://localhost:8096',
-    apiKey: 'your-jellyfin-api-key',
-    userId: 'optional-user-id',
-  },
-  dryRun: true, // Set to false to actually create collections in Jellyfin
-});
+### Command Line Options
 
-console.log(`Scanned ${summary.totalItemsScanned} items.`);
-console.log(`Found ${summary.groupsFound} potential groups:`);
-
-for (const result of summary.results) {
-  console.log(`- ${result.groupName}: ${result.reason}`);
-}
+```text
+usage: jellyfin-auto-groupings [-h] --server SERVER --api-key API_KEY
+                                [--group-by {tag,genre,studio,director}]
+                                [--min-items MIN_ITEMS] [--dry-run]
+                                [--user-id USER_ID]
 ```
 
-## Custom & Configurable Rules
+| Option | Description | Default |
+| --- | --- | --- |
+| `--server` | Jellyfin server base URL (e.g. `http://localhost:8096`) | **Required** |
+| `--api-key` | Jellyfin API Key / Access Token | **Required** |
+| `--group-by` | Metadata attribute to group by (`tag`, `genre`, `studio`, `director`) | `tag` |
+| `--min-items` | Minimum number of items required to form a collection | `2` |
+| `--dry-run` | Preview actions without creating/modifying collections | `False` |
+| `--user-id` | Optional Jellyfin User ID | `None` |
 
-You can customize rule thresholds using the rule factories or disable default rules:
+### Examples
 
-```typescript
-import {
-  runAutoGrouping,
-  createFranchiseRule,
-  createGenreRule,
-  createDecadeRule,
-} from 'jellyfin-auto-groupings';
+#### Group by Genre (Dry Run)
 
-const customRules = [
-  createFranchiseRule({ minItems: 2 }),
-  createGenreRule({ minItems: 5 }), // Higher threshold for genre clusters
-  createDecadeRule({ minItems: 4 }),
-];
-
-await runAutoGrouping({
-  config: { serverUrl: 'http://localhost:8096', apiKey: 'your-key' },
-  rules: customRules,
-});
+```bash
+jellyfin-auto-groupings \
+  --server http://localhost:8096 \
+  --api-key YOUR_API_KEY \
+  --group-by genre \
+  --min-items 3 \
+  --dry-run
 ```
 
-## Built-in Rules
+#### Group by Studio
 
-1. **Franchise Collections** (`franchise-collections`): Groups movies belonging to the same collection (default minimum 2 items).
-2. **Genre Clusters** (`genre-clusters`): Groups items by primary genre (default minimum 3 items).
-3. **Decade Retrospectives** (`decade-retrospectives`): Groups items released in the same decade (default minimum 3 items).
+```bash
+jellyfin-auto-groupings \
+  --server http://localhost:8096 \
+  --api-key YOUR_API_KEY \
+  --group-by studio \
+  --min-items 2
+```
+
+## Development & Testing
+
+Run test suite and check coverage:
+
+```bash
+pytest --cov=jellyfin_auto_groupings
+```
+
+Run linter and type checker:
+
+```bash
+python3 -m ruff check .
+python3 -m mypy --ignore-missing-imports src tests
+```
 
 ## License
 

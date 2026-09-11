@@ -1,18 +1,18 @@
-import unittest
-from unittest.mock import MagicMock, patch
+import json
 import os
 import tempfile
-import json
+import unittest
+from unittest.mock import MagicMock, patch
+
 from auto_group import (
-    load_config,
     clean_title,
-    extract_base_title,
-    group_items,
     create_collection,
-    add_to_collection,
+    extract_base_title,
     get_libraries,
-    get_library_items,
+    group_items,
+    load_config,
 )
+
 
 class TestAutoGroup(unittest.TestCase):
 
