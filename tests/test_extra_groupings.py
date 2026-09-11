@@ -1,50 +1,23 @@
 import pytest
 from unittest.mock import MagicMock
-from jellyfin_auto_groupings import (
-    JellyfinGroupingManager,
-    group_movies_by_collection,
-    validate_movie_item,
-    extract_collection_name,
-)
-from src.jellyfin_auto_groupings.groupings import process_groupings, parse_grouping_rules
+from jellyfin_auto_groupings import JellyfinClient, group_items_by_pattern, sync_groupings
 
 
-def test_extract_collection_name():
-    assert extract_collection_name("Toy Story 2") == "Toy Story Collection"
-    assert extract_collection_name("Iron Man 3") == "Iron Man Collection"
-    assert extract_collection_name("The Dark Knight") is None
-    assert extract_collection_name("") is None
-    assert extract_collection_name(None) is None
-
-
-def test_validate_movie_item():
-    assert validate_movie_item({"Name": "Movie 1", "Id": "123"}) is True
-    assert validate_movie_item({"Name": "Movie 1"}) is False
-    assert validate_movie_item({"Id": "123"}) is False
-    assert validate_movie_item({}) is False
-    assert validate_movie_item(None) is False
-
-
-def test_group_movies_by_collection():
-    movies = [
-        {"Name": "Toy Story 1", "Id": "1"},
-        {"Name": "Toy Story 2", "Id": "2"},
-        {"Name": "Avatar", "Id": "3"},
+def test_group_items_by_pattern():
+    items = [
+        {"Id": "1", "Name": "Star Wars: Episode IV"},
+        {"Id": "2", "Name": "Star Wars: Episode V"},
+        {"Id": "3", "Name": "Avatar"},
     ]
-    grouped = group_movies_by_collection(movies)
-    assert "Toy Story Collection" in grouped
-    assert len(grouped["Toy Story Collection"]) == 2
-    assert "Avatar" not in grouped
+    groups = group_items_by_pattern(items, r"^(Star Wars)")
+    assert "Star Wars" in groups
+    assert len(groups["Star Wars"]) == 2
 
 
-def test_parse_grouping_rules():
-    rules = {"collections": {"Sci-Fi": ["Star Wars", "Star Trek"]}}
-    parsed = parse_grouping_rules(rules)
-    assert "Sci-Fi" in parsed
-    assert parsed["Sci-Fi"] == ["Star Wars", "Star Trek"]
-
-
-def test_process_groupings_empty():
-    client = MagicMock()
-    result = process_groupings(client, {})
-    assert result == {}
+def test_sync_groupings_dry_run():
+    mock_client = MagicMock(spec=JellyfinClient)
+    mock_client.get_all_items.return_value = []
+    groups = {"Star Wars": [{"Id": "1"}, {"Id": "2"}]}
+    summary = sync_groupings(mock_client, groups, dry_run=True)
+    assert summary["Star Wars"] == ["1", "2"]
+    mock_client.create_collection.assert_not_called()
