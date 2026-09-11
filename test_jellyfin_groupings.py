@@ -1,97 +1,91 @@
-import pytest
+"""Unit tests for jellyfin_groupings module."""
+
+import unittest
+from unittest.mock import MagicMock, patch
+
 from jellyfin_groupings import (
-    create_groupings,
-    get_decade_groups,
-    get_movies_by_query,
-    get_year_groups,
+    JellyfinClient,
+    group_items_by_director,
+    group_items_by_genre,
+    group_items_by_studio,
 )
 
 
-@pytest.fixture
-def sample_items():
-    return [
-        {
-            "Name": "Iron Man",
-            "Overview": "An MCU superhero origin story",
-            "ProductionYear": 2008,
-            "Tags": ["mcu", "action"],
-        },
-        {
-            "Name": "The Avengers",
-            "Overview": "Earth's mightiest heroes in MCU",
-            "ProductionYear": 2012,
-            "Tags": ["mcu", "action"],
-        },
-        {
-            "Name": "Avengers: Endgame",
-            "Overview": "The epic MCU finale",
-            "ProductionYear": 2019,
-            "Tags": ["mcu", "action"],
-        },
-        {
-            "Name": "Star Wars: A New Hope",
-            "Overview": "A long time ago...",
-            "ProductionYear": 1977,
-            "Tags": ["sci-fi", "classic"],
-        },
-        {
-            "Name": "Star Wars: Empire Strikes Back",
-            "Overview": "The Empire strikes back",
-            "ProductionYear": 1980,
-            "Tags": ["sci-fi", "classic"],
-        },
-        {
-            "Name": "Sci-Fi Classic Movie 1",
-            "Overview": "A great Sci-Fi classic",
-            "ProductionYear": 1995,
-            "Tags": ["sci-fi", "classic"],
-        },
-        {
-            "Name": "Sci-Fi Classic Movie 2",
-            "Overview": "Another Sci-Fi classic",
-            "PremiereDate": "1998-05-12T00:00:00Z",
-            "Tags": ["sci-fi", "classic"],
-        },
-        {
-            "Name": "Random Movie",
-            "Overview": "Just a movie",
-            "PremiereDate": "invalid-date",
-            "Tags": [],
-        },
-    ]
+class TestJellyfinGroupings(unittest.TestCase):
+    def setUp(self):
+        self.sample_items = [
+            {
+                "Id": "1",
+                "Name": "Item One",
+                "Genres": ["Action", "Sci-Fi"],
+                "Studios": [{"Name": "Studio A"}],
+                "People": [{"Name": "Director X", "Type": "Director"}],
+            },
+            {
+                "Id": "2",
+                "Name": "Item Two",
+                "Genres": ["Action"],
+                "Studios": [{"Name": "Studio A"}],
+                "People": [{"Name": "Director X", "Type": "Director"}],
+            },
+            {
+                "Id": "3",
+                "Name": "Item Three",
+                "Genres": ["Action", "Comedy"],
+                "Studios": [{"Name": "Studio A"}, {"Name": "Studio B"}],
+                "People": [{"Name": "Director Y", "Type": "Director"}],
+            },
+        ]
+
+    def test_group_items_by_genre(self):
+        # min_count=2 -> Action has 3 items, Sci-Fi has 1, Comedy has 1
+        groups = group_items_by_genre(self.sample_items, min_count=2)
+        self.assertIn("Action", groups)
+        self.assertEqual(len(groups["Action"]), 3)
+        self.assertNotIn("Sci-Fi", groups)
+
+    def test_group_items_by_studio(self):
+        groups = group_items_by_studio(self.sample_items, min_count=2)
+        self.assertIn("Studio A", groups)
+        self.assertEqual(groups["Studio A"], ["1", "2", "3"])
+        self.assertNotIn("Studio B", groups)
+
+    def test_group_items_by_director(self):
+        groups = group_items_by_director(self.sample_items, min_count=2)
+        self.assertIn("Director X", groups)
+        self.assertEqual(groups["Director X"], ["1", "2"])
+        self.assertNotIn("Director Y", groups)
+
+    @patch("requests.Session.get")
+    def test_jellyfin_client_get_items(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"Items": [{"Id": "123", "Name": "Test"}]}
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
+
+        client = JellyfinClient("http://localhost:8096", "test_token")
+        items = client.get_items()
+
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["Id"], "123")
+
+    @patch("requests.Session.post")
+    def test_jellyfin_client_create_collection(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"Id": "col123"}
+        mock_response.raise_for_status.return_value = None
+        mock_post.return_value = mock_response
+
+        client = JellyfinClient("http://localhost:8096", "test_token")
+        col_id = client.create_collection("Test Collection", ["1", "2"])
+
+        self.assertEqual(col_id, "col123")
+
+    def test_create_collection_empty_items(self):
+        client = JellyfinClient("http://localhost:8096", "test_token")
+        col_id = client.create_collection("Empty Collection", [])
+        self.assertIsNone(col_id)
 
 
-def test_get_movies_by_query(sample_items):
-    mcu_movies = get_movies_by_query(sample_items, "MCU")
-    assert len(mcu_movies) == 3
-
-
-def test_get_movies_by_query_with_tags(sample_items):
-    scifi_classics = get_movies_by_query(
-        sample_items, "Sci-Fi", tags=["sci-fi", "classic"]
-    )
-    assert len(scifi_classics) == 2
-
-
-def test_get_decade_groups(sample_items):
-    decades = get_decade_groups(sample_items)
-    assert "2000s Movies" in decades
-    assert "2010s Movies" in decades
-    assert "1970s Movies" in decades
-    assert "1990s Movies" in decades
-    assert len(decades["2010s Movies"]) == 2
-
-
-def test_get_year_groups(sample_items):
-    years = get_year_groups(sample_items)
-    # 2008, 2012, 2019, 1977, 1980, 1995, 1998 each have 1 movie
-    assert "Best of 2008" in years
-    assert len(years["Best of 2008"]) == 1
-
-
-def test_create_groupings(sample_items):
-    groups = create_groupings(sample_items)
-    assert "Marvel Cinematic Universe" in groups
-    assert "Star Wars Collection" in groups
-    assert "Sci-Fi Classics" in groups
-    assert "2010s Movies" in groups
+if __name__ == "__main__":
+    unittest.main()
