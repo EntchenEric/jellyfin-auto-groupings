@@ -38,7 +38,6 @@ class TestJellyfinGroupings(unittest.TestCase):
         ]
 
     def test_group_items_by_genre(self):
-        # min_count=2 -> Action has 3 items, Sci-Fi has 1, Comedy has 1
         groups = group_items_by_genre(self.sample_items, min_count=2)
         self.assertIn("Action", groups)
         self.assertEqual(len(groups["Action"]), 3)
