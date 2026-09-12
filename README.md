@@ -1,17 +1,11 @@
-## Testing
+# Jellyfin Auto Groupings
 
-Run unit tests with `pytest`:
-```bash
-pytest
-```
+Automated media grouping, tagging, and collection management for Jellyfin.
 
-All tests pass across core API wrapper and grouping modules.
+## Features
 
-## Testing
-
-Run unit tests with `pytest`:
-```bash
-pytest
-```
-
-All tests pass across core API wrapper and grouping modules.
+- Automated collection and grouping synchronization.
+- Integrations with TMDB, Trakt, IMDb, AniList, MyAnimeList, and Letterboxd.
+- Configurable scheduling and CLI support.
+- Comprehensive test suite.
+- Enhanced error handling, logging, and robust type hints.
