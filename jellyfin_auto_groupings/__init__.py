@@ -1,13 +1,4 @@
-from jellyfin_auto_groupings.jellyfin_api import JellyfinClient
-from jellyfin_auto_groupings.main import JellyfinGroupings, main, group_items_by_pattern
-from jellyfin_auto_groupings.config import Config
-from src.jellyfin_auto_groupings.groupings import JellyfinGroupingManager
+from jellyfin_auto_groupings.client import JellyfinClient, JellyfinAPIError
+from jellyfin_auto_groupings.main import main, group_items_by_pattern
 
-__all__ = [
-    "JellyfinClient",
-    "JellyfinGroupings",
-    "main",
-    "group_items_by_pattern",
-    "JellyfinGroupingManager",
-    "Config",
-]
+__all__ = ["JellyfinClient", "JellyfinAPIError", "main", "group_items_by_pattern"]

@@ -138,10 +138,7 @@ def group_movies_by_tag(items: List[Dict[str, Any]], min_group_size: int = 2) ->
     return {tag: val for tag, val in tag_groups.items() if len(val) >= min_group_size}
 
 
-def group_movies_by_genre(items: List[Dict[str, Any]], min_group_size: int = 2) -> Dict[str, List[Dict[str, Any]]]:
-    """Group items by genre."""
-    genre_groups: Dict[str, List[Dict[str, Any]]] = {}
-    for item in items:
-        for genre in item.get("Genres", []):
-            genre_groups.setdefault(genre, []).append(item)
-    return {genre: val for genre, val in genre_groups.items() if len(val) >= min_group_size}
+def main():
+    """CLI or programmatic entry point."""
+    print("Jellyfin Auto Groupings CLI")
+
