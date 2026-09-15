@@ -1,147 +1,155 @@
 import logging
+import os
+import sys
 from typing import Any, Dict, List, Optional
+import requests
 
 logger = logging.getLogger(__name__)
+
 
 class JellyfinAPIError(Exception):
     """Custom exception for Jellyfin API errors."""
     pass
 
+
 class JellyfinClient:
-    def __init__(self, server_url: str, api_key: str):
+    def __init__(self, server_url: str, api_key: str, user_id: Optional[str] = None):
         self.server_url = server_url.rstrip("/")
         self.api_key = api_key
+        self.user_id = user_id
+        self.session = requests.Session()
+        self.session.headers.update({
+            "X-Emby-Token": self.api_key,
+            "Content-Type": "application/json",
+        })
+
+    def get_users(self) -> List[Dict[str, Any]]:
+        url = f"{self.server_url}/Users"
+        try:
+            resp = self.session.get(url, timeout=30)
+            resp.raise_for_status()
+            return resp.json()
+        except requests.RequestException:
+            return []
+
+    def get_first_admin_user_id(self) -> Optional[str]:
+        users = self.get_users()
+        if not users:
+            return None
+        for u in users:
+            if u.get("Policy", {}).get("IsAdministrator"):
+                return u.get("Id")
+        return users[0].get("Id")
 
     def get_collections(self) -> List[Dict[str, Any]]:
-        return []
+        url = f"{self.server_url}/Items?IncludeItemTypes=BoxSet&Recursive=true"
+        try:
+            resp = self.session.get(url, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
+            return data.get("Items", [])
+        except requests.RequestException:
+            return []
 
-    def get_items(self, library_id: str) -> List[Dict[str, Any]]:
-        return []
+    def get_collection_items(self, collection_id: str) -> List[Dict[str, Any]]:
+        url = f"{self.server_url}/Items?ParentId={collection_id}&Recursive=true"
+        try:
+            resp = self.session.get(url, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
+            return data.get("Items", [])
+        except requests.RequestException:
+            return []
 
-    def create_collection(self, name: str, item_ids: List[str]) -> Dict[str, Any]:
-        return {"Name": name, "Ids": item_ids}
+    def get_movies(self) -> List[Dict[str, Any]]:
+        uid = self.user_id or self.get_first_admin_user_id()
+        if not uid:
+            return []
+        url = f"{self.server_url}/Users/{uid}/Items?IncludeItemTypes=Movie&Recursive=true"
+        try:
+            resp = self.session.get(url, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
+            return data.get("Items", [])
+        except requests.RequestException:
+            return []
+
+    def get_items(self, library_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        return self.get_movies()
+
+    def create_collection(self, name: str, item_ids: List[str]) -> Optional[Dict[str, Any]]:
+        if not item_ids:
+            return None
+        url = f"{self.server_url}/Collections?Name={name}&Ids={",".join(item_ids)}"
+        try:
+            resp = self.session.post(url, timeout=30)
+            resp.raise_for_status()
+            return resp.json()
+        except requests.RequestException:
+            return None
+
+    def update_item_sort_name(self, item_id: str, sort_name: str) -> None:
+        url = f"{self.server_url}/Items/{item_id}"
+        try:
+            self.session.post(url, json={"ForcedSortName": sort_name}, timeout=30)
+        except requests.RequestException:
+            pass
 
 
-def process_groupings(client: JellyfinClient, library_id: str, items: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
-    """Process library items and group them automatically."""
-    if items is None:
-        items = client.get_items(library_id)
-    if not items:
-        return []
-    
+def group_movies_by_tag(movies: List[Dict[str, Any]], tag_prefix: str = "Group:") -> Dict[str, List[str]]:
     groups: Dict[str, List[str]] = {}
-    for item in items:
-        name = item.get("Name", "")
-        prefix = name.split()[0] if name else "Unknown"
-        groups.setdefault(prefix, []).append(item.get("Id", ""))
-    
-    created = []
-    for group_name, item_ids in groups.items():
-        if len(item_ids) > 1:
-            col = client.create_collection(group_name, item_ids)
-            created.append(col)
-    return created
+    for movie in movies:
+        item_id = movie.get("Id")
+        if not item_id:
+            continue
+        for tag in movie.get("Tags", []):
+            if tag.startswith(tag_prefix):
+                group_name = tag[len(tag_prefix):].strip()
+                if group_name:
+                    groups.setdefault(group_name, []).append(item_id)
+    return groups
 
 
-def create_groupings(client_or_items: Any, library_id: Optional[str] = None, items: Optional[List[Dict[str, Any]]] = None, min_group_size: int = 2) -> Any:
-    """Create collections or grouping mapping for items matching criteria."""
-    if isinstance(client_or_items, list) and library_id is None:
-        # Called as create_groupings(items)
-        sample_items = client_or_items
-        res: Dict[str, List[Dict[str, Any]]] = {}
-        mcu = get_movies_by_query(sample_items, "MCU")
-        if mcu:
-            res["Marvel Cinematic Universe"] = mcu
-        sw = get_movies_by_query(sample_items, "Star Wars")
-        if sw:
-            res["Star Wars Collection"] = sw
-        scifi = get_movies_by_query(sample_items, "Sci-Fi", tags=["sci-fi", "classic"])
-        if scifi:
-            res["Sci-Fi Classics"] = scifi
-        decades = get_decade_groups(sample_items)
-        res.update(decades)
-        return res
-
-    # Called as create_groupings(client, library_id, items, min_group_size)
-    client = client_or_items
-    items = items or []
-    if not items:
-        return []
+def group_movies_by_genre(movies: List[Dict[str, Any]], min_count: int = 1) -> Dict[str, List[str]]:
     groups: Dict[str, List[str]] = {}
-    for item in items:
-        name = item.get("Name", "")
-        prefix = name.split()[0] if name else "Unknown"
-        groups.setdefault(prefix, []).append(item.get("Id", ""))
+    for movie in movies:
+        item_id = movie.get("Id")
+        if not item_id:
+            continue
+        for genre in movie.get("Genres", []):
+            groups.setdefault(genre, []).append(item_id)
+    return {g: ids for g, ids in groups.items() if len(ids) >= min_count}
 
-    created = []
+
+def process_groupings(client: JellyfinClient, dry_run: bool = True) -> List[tuple]:
+    collections = client.get_collections()
+    changes = []
+    for col in collections:
+        col_name = col.get("Name", "Collection")
+        items = client.get_collection_items(col.get("Id", ""))
+        sorted_items = sorted(items, key=lambda x: x.get("PremiereDate", ""))
+        for idx, item in enumerate(sorted_items, start=1):
+            expected_sort_name = f"{col_name} {idx:02d}"
+            current_sort = item.get("ForcedSortName", "")
+            if current_sort != expected_sort_name:
+                changes.append((item.get("Id"), item.get("Name"), expected_sort_name))
+                if not dry_run:
+                    client.update_item_sort_name(item.get("Id"), expected_sort_name)
+    return changes
+
+
+def main() -> None:
+    api_key = os.environ.get("JELLYFIN_API_KEY")
+    if not api_key:
+        print("Error: JELLYFIN_API_KEY environment variable is required.")
+        sys.exit(1)
+    url = os.environ.get("JELLYFIN_URL", "http://localhost:8096")
+    client = JellyfinClient(url, api_key)
+    movies = client.get_movies()
+    groups = group_movies_by_tag(movies)
     for group_name, item_ids in groups.items():
-        if len(item_ids) >= min_group_size:
-            col = client.create_collection(group_name, item_ids)
-            created.append(col)
-    return created
+        client.create_collection(group_name, item_ids)
 
 
-def get_decade_groups(items: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
-    """Group items by decade based on ProductionYear or PremiereDate."""
-    decades: Dict[str, List[Dict[str, Any]]] = {}
-    for item in items:
-        year = item.get("ProductionYear")
-        if not year and item.get("PremiereDate"):
-            date_str = str(item.get("PremiereDate"))
-            if len(date_str) >= 4 and date_str[:4].isdigit():
-                year = int(date_str[:4])
-        if year:
-            decade = (year // 10) * 10
-            key = f"{decade}s Movies"
-            decades.setdefault(key, []).append(item)
-    return decades
-
-
-def get_year_groups(items: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
-    """Group items by release year."""
-    years: Dict[str, List[Dict[str, Any]]] = {}
-    for item in items:
-        year = item.get("ProductionYear")
-        if not year and item.get("PremiereDate"):
-            date_str = str(item.get("PremiereDate"))
-            if len(date_str) >= 4 and date_str[:4].isdigit():
-                year = int(date_str[:4])
-        if year:
-            key = f"Best of {year}"
-            years.setdefault(key, []).append(item)
-    return years
-
-
-def get_movies_by_query(items: List[Dict[str, Any]], query: str, tags: Optional[List[str]] = None) -> List[Dict[str, Any]]:
-    """Filter items matching a query string in Name/Overview and optional tags."""
-    matching = []
-    query_lower = query.lower()
-    for item in items:
-        name = str(item.get("Name", "")).lower()
-        overview = str(item.get("Overview", "")).lower()
-        item_tags = [t.lower() for t in item.get("Tags", [])]
-        if query_lower in name or query_lower in overview:
-            if tags:
-                if all(t.lower() in item_tags for t in tags):
-                    matching.append(item)
-            else:
-                matching.append(item)
-    return matching
-
-
-def group_movies_by_tag(items: List[Dict[str, Any]], min_group_size: int = 2) -> Dict[str, List[Dict[str, Any]]]:
-    """Group items by tag."""
-    tag_groups: Dict[str, List[Dict[str, Any]]] = {}
-    for item in items:
-        for tag in item.get("Tags", []):
-            tag_groups.setdefault(tag, []).append(item)
-    return {tag: val for tag, val in tag_groups.items() if len(val) >= min_group_size}
-
-
-def group_movies_by_genre(items: List[Dict[str, Any]], min_group_size: int = 2) -> Dict[str, List[Dict[str, Any]]]:
-    """Group items by genre."""
-    genre_groups: Dict[str, List[Dict[str, Any]]] = {}
-    for item in items:
-        for genre in item.get("Genres", []):
-            genre_groups.setdefault(genre, []).append(item)
-    return {genre: val for genre, val in genre_groups.items() if len(val) >= min_group_size}
+if __name__ == "__main__":
+    main()
