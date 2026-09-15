@@ -19,6 +19,16 @@ GENRE_KEYWORDS = {
 }
 
 
+def parse_grouping_rules(rules: Dict[str, Any]) -> Dict[str, Any]:
+    if not isinstance(rules, dict):
+        return {}
+    return rules.get("collections", rules)
+
+
+def process_groupings(client: Any, rules: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    return {}
+
+
 def create_groupings(items: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
     if not items:
         return {}
