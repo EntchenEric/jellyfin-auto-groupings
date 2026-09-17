@@ -1,20 +1,18 @@
-from .groupings import (
-    create_groupings,
-    group_by_tag,
-    group_by_genre,
-    group_by_studio,
-    group_by_decade,
-)
-from .client import JellyfinClient, JellyfinAPIError
-from .main import JellyfinAutoGroupings
+import sys
+import os
 
-__all__ = [
-    "create_groupings",
-    "group_by_tag",
-    "group_by_genre",
-    "group_by_studio",
-    "group_by_decade",
-    "JellyfinClient",
-    "JellyfinAPIError",
-    "JellyfinAutoGroupings",
-]
+# Ensure src directory is in sys.path
+_src_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _src_dir not in sys.path:
+    sys.path.insert(0, _src_dir)
+
+try:
+    from jellyfin_auto_groupings.client import JellyfinClient, JellyfinAPIError
+except ImportError:
+    try:
+        from .client import JellyfinClient, JellyfinAPIError
+    except ImportError:
+        JellyfinClient = None
+        JellyfinAPIError = None
+
+__all__ = ["JellyfinClient", "JellyfinAPIError"]
