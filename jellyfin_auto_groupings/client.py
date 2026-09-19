@@ -23,6 +23,11 @@ class JellyfinClient:
         }
         self.session.headers.update(self.headers)
 
+    @property
+    def base_url(self) -> str:
+        """Return the base URL of the Jellyfin server."""
+        return self.server_url
+
     def _get(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Any:
         url = f"{self.server_url}{endpoint}"
         try:
@@ -64,9 +69,15 @@ class JellyfinClient:
             raise
 
     def get_users(self) -> List[Dict[str, Any]]:
+        """Fetch the list of users from the Jellyfin server."""
         return self._get("/Users")
 
     def get_first_admin_user_id(self) -> str:
+        """Return the ID of the first administrator user.
+
+        Raises:
+            RuntimeError: If no users are found on the server.
+        """
         users = self.get_users()
         if not users:
             raise RuntimeError("No users found on the Jellyfin server.")
@@ -76,6 +87,12 @@ class JellyfinClient:
         return users[0]["Id"]
 
     def get_all_items(self, item_types: Optional[List[str]] = None, parent_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Fetch items matching optional item type and parent filters.
+
+        Args:
+            item_types: Optional list of Jellyfin item type names to include.
+            parent_id: Optional parent folder ID to filter by.
+        """
         if not self.user_id:
             self.user_id = self.get_first_admin_user_id()
         params = {
@@ -90,6 +107,14 @@ class JellyfinClient:
         return data.get("Items", [])
 
     def get_items(self, library_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Fetch all items, optionally limited to a specific library.
+
+        Args:
+            library_id: Optional Jellyfin library folder ID.
+
+        Raises:
+            JellyfinAPIError: If the request fails.
+        """
         try:
             if not self.user_id:
                 self.user_id = self.get_first_admin_user_id()
@@ -106,15 +131,27 @@ class JellyfinClient:
             raise JellyfinAPIError(f"API request GET /Items failed: {e}") from e
 
     def get_collections(self) -> List[Dict[str, Any]]:
+        """Fetch all collections (BoxSets) from the Jellyfin server."""
         return self.get_all_items(item_types=["BoxSet"])
 
     def get_collection_items(self, collection_id: str) -> List[Dict[str, Any]]:
+        """Fetch all items belonging to a specific collection."""
         return self.get_all_items(parent_id=collection_id)
 
     def get_movies(self) -> List[Dict[str, Any]]:
+        """Fetch all movie items from the Jellyfin server."""
         return self.get_all_items(item_types=["Movie"])
 
     def create_collection(self, name: str, item_ids: List[str]) -> Dict[str, Any]:
+        """Create a new collection with the given name and items.
+
+        Args:
+            name: The display name for the collection.
+            item_ids: List of Jellyfin item IDs to include.
+
+        Returns:
+            The collection metadata, or an empty dictionary if no items were provided.
+        """
         if not item_ids:
             return {}
         params = {
@@ -125,6 +162,15 @@ class JellyfinClient:
         return res if isinstance(res, dict) else {"Id": str(res)}
 
     def add_to_collection(self, collection_id: str, item_ids: List[str]) -> Dict[str, Any]:
+        """Add items to an existing collection.
+
+        Args:
+            collection_id: The ID of the collection.
+            item_ids: List of Jellyfin item IDs to add.
+
+        Returns:
+            The response metadata, or an empty dictionary if no items were provided.
+        """
         if not item_ids:
             return {}
         params = {"Ids": ",".join(item_ids)}
@@ -132,6 +178,15 @@ class JellyfinClient:
         return res if isinstance(res, dict) else {}
 
     def remove_from_collection(self, collection_id: str, item_ids: List[str]) -> Dict[str, Any]:
+        """Remove items from an existing collection.
+
+        Args:
+            collection_id: The ID of the collection.
+            item_ids: List of Jellyfin item IDs to remove.
+
+        Returns:
+            The response metadata, or an empty dictionary if no items were provided.
+        """
         if not item_ids:
             return {}
         params = {"Ids": ",".join(item_ids)}
@@ -139,11 +194,18 @@ class JellyfinClient:
         return res if isinstance(res, dict) else {}
 
     def update_item_sort_name(self, item_id: str, sort_name: str) -> None:
+        """Update the forced sort name for a specific item.
+
+        Args:
+            item_id: The ID of the item to update.
+            sort_name: The new sort name to apply.
+        """
         url = f"{self.server_url}/Items/{item_id}"
         try:
             self.session.post(url, json={"ForcedSortName": sort_name}, timeout=30)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"Failed to update sort name for item {item_id}: {e}")
+            raise
 
 
 def group_items_by_pattern(
@@ -151,6 +213,16 @@ def group_items_by_pattern(
     pattern: str,
     attribute: str = "Name"
 ) -> Dict[str, List[Dict[str, Any]]]:
+    """Group items based on a regex pattern extracted from an attribute.
+
+    Args:
+        items: List of item dictionaries.
+        pattern: Regex pattern to match against item attributes.
+        attribute: Item attribute to match against (default: "Name").
+
+    Returns:
+        A dictionary mapping group names to lists of matching items.
+    """
     compiled = re.compile(pattern, re.IGNORECASE)
     groups: Dict[str, List[Dict[str, Any]]] = {}
 
@@ -180,6 +252,17 @@ def sync_groupings(
     dry_run: bool = False,
     min_items: int = 1
 ) -> Dict[str, List[str]]:
+    """Sync calculated groups with Jellyfin collections.
+
+    Args:
+        client: The JellyfinClient instance.
+        groups: Dictionary mapping group names to lists of items.
+        dry_run: If True, log actions without applying them.
+        min_items: Minimum number of items required for a group to be processed.
+
+    Returns:
+        A dictionary mapping group names to lists of item IDs.
+    """
     summary: Dict[str, List[str]] = {}
     existing_collections = {
         col["Name"]: col["Id"]
@@ -212,6 +295,14 @@ def sync_groupings(
 
 
 def get_decade_groups(items: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+    """Group items by their release decade.
+
+    Args:
+        items: List of item dictionaries.
+
+    Returns:
+        A dictionary mapping decade keys (e.g. "1990s Movies") to item lists.
+    """
     decades: Dict[str, List[Dict[str, Any]]] = {}
     for item in items:
         year = item.get("ProductionYear")
@@ -227,6 +318,14 @@ def get_decade_groups(items: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, A
 
 
 def get_year_groups(items: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+    """Group items by their release year.
+
+    Args:
+        items: List of item dictionaries.
+
+    Returns:
+        A dictionary mapping year keys (e.g. "Best of 1994") to item lists.
+    """
     years: Dict[str, List[Dict[str, Any]]] = {}
     for item in items:
         year = item.get("ProductionYear")
@@ -241,6 +340,16 @@ def get_year_groups(items: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any
 
 
 def get_movies_by_query(items: List[Dict[str, Any]], query: str, tags: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    """Filter items matching a query string in Name or Overview, optionally requiring tags.
+
+    Args:
+        items: List of item dictionaries.
+        query: Search string (case-insensitive).
+        tags: Optional list of tags that must all be present on matching items.
+
+    Returns:
+        A list of items matching the query and tag criteria.
+    """
     matching = []
     query_lower = query.lower()
     for item in items:
@@ -257,6 +366,15 @@ def get_movies_by_query(items: List[Dict[str, Any]], query: str, tags: Optional[
 
 
 def group_movies_by_tag(items: List[Dict[str, Any]], min_group_size: int = 2) -> Dict[str, List[Dict[str, Any]]]:
+    """Group items by their tags.
+
+    Args:
+        items: List of item dictionaries.
+        min_group_size: Minimum number of items required for a tag group.
+
+    Returns:
+        A dictionary mapping tag names to lists of items with that tag.
+    """
     tag_groups: Dict[str, List[Dict[str, Any]]] = {}
     for item in items:
         for tag in item.get("Tags", []):
@@ -265,6 +383,15 @@ def group_movies_by_tag(items: List[Dict[str, Any]], min_group_size: int = 2) ->
 
 
 def group_movies_by_genre(items: List[Dict[str, Any]], min_group_size: int = 2) -> Dict[str, List[Dict[str, Any]]]:
+    """Group items by their genres.
+
+    Args:
+        items: List of item dictionaries.
+        min_group_size: Minimum number of items required for a genre group.
+
+    Returns:
+        A dictionary mapping genre names to lists of items with that genre.
+    """
     genre_groups: Dict[str, List[Dict[str, Any]]] = {}
     for item in items:
         for genre in item.get("Genres", []):
@@ -273,6 +400,21 @@ def group_movies_by_genre(items: List[Dict[str, Any]], min_group_size: int = 2) 
 
 
 def process_groupings(client: Any, library_id: Any = None, items: Optional[List[Dict[str, Any]]] = None, dry_run: bool = True) -> Any:
+    """Process library items and group them automatically.
+
+    Handles two modes:
+    1. If client has collection methods, sorts items within existing collections by PremiereDate.
+    2. If client is a JellyfinClient, creates new collections grouped by name prefix.
+
+    Args:
+        client: JellyfinClient instance or compatible object.
+        library_id: Optional library ID to fetch items from.
+        items: Optional pre-fetched item list.
+        dry_run: If True, only return planned changes without applying.
+
+    Returns:
+        List of changes or created collections depending on mode.
+    """
     if hasattr(client, "get_collection_items"):
         collections = client.get_collections() if hasattr(client, "get_collections") else []
         changes = []
@@ -315,6 +457,24 @@ def create_groupings(
     items: Optional[List[Dict[str, Any]]] = None,
     min_group_size: int = 2
 ) -> Any:
+    """Create collections or grouping mapping for items matching criteria.
+
+    Can be called in two ways:
+    1. create_groupings(items_list) -> Dict[str, List[Dict[str, Any]]]
+       Groups items by common name prefix and returns a mapping of group names to item lists.
+    2. create_groupings(client, library_id, items, min_group_size) -> List[Dict[str, Any]]
+       Creates collections in Jellyfin for groups of items.
+
+    Args:
+        client_or_items: Either a JellyfinClient instance or a list of item dictionaries.
+        library_id: Optional library ID (used when first arg is a client).
+        items: Optional list of item dictionaries (used when first arg is a client).
+        min_group_size: Minimum number of items required to create a group/collection.
+
+    Returns:
+        For case 1: A dictionary mapping group names to lists of items.
+        For case 2: A list of created collection metadata.
+    """
     if isinstance(client_or_items, list) and library_id is None:
         sample_items = client_or_items
         res: Dict[str, List[Dict[str, Any]]] = {}

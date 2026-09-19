@@ -117,8 +117,8 @@ def test_letterboxd_fetch_list():
     with patch("letterboxd.network.get") as mock_get:
         mock_resp = MagicMock()
         mock_resp.status_code = 200
-        mock_resp.text = '<html><div data-film-slug="test-movie"></div></html>'
+        mock_resp.text = '<html><div data-film-slug="test-movie" data-tmdb-id="12345"></div></html>'
         mock_get.return_value = mock_resp
         res = letterboxd.fetch_letterboxd_list("https://letterboxd.com/user/list/test-list/")
-        assert res == ["test-movie"]
+        assert res == ["12345"]
 

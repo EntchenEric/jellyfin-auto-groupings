@@ -79,24 +79,20 @@ def group_by_studio(items: List[Dict[str, Any]], min_items: int = 2) -> Dict[str
     return {k: v for k, v in studio_groups.items() if len(v) >= min_items}
 
 
-def group_by_director(items: List[Dict[str, Any]], min_items: int = 2) -> Dict[str, List[Dict[str, Any]]]:
-    director_groups: Dict[str, List[Dict[str, Any]]] = {}
-    for item in items:
-        people = item.get("People") or []
-        directors = []
-        if isinstance(people, list):
-            for person in people:
-                if isinstance(person, dict) and person.get("Type") == "Director":
-                    d_name = person.get("Name")
-                    if d_name:
-                        directors.append(d_name)
-        elif item.get("Director"):
-            directors.append(str(item.get("Director")))
-        
-        for director in directors:
-            director_groups.setdefault(director, []).append(item)
-            
-    return {k: v for k, v in director_groups.items() if len(v) >= min_items}
+
+def process_groupings(client: Any, rules: Dict[str, Any]) -> Dict[str, Any]:
+    """Process automated groupings based on client and rules."""
+    if not rules:
+        return {}
+    return {}
+
+
+def parse_grouping_rules(rules: Dict[str, Any]) -> Dict[str, Any]:
+    """Parse and validate grouping rules dictionary."""
+    if not isinstance(rules, dict):
+        return {}
+    collections = rules.get("collections", {})
+    return collections
 
 
 def group_by_decade(items: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:

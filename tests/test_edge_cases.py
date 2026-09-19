@@ -1,4 +1,5 @@
 import pytest
+import requests
 from unittest.mock import MagicMock
 from jellyfin_auto_groupings.client import JellyfinClient, JellyfinAPIError
 from jellyfin_auto_groupings.grouper import CollectionGrouper
@@ -28,3 +29,11 @@ def test_cli_error_exit(mocker, capsys):
     assert exc_info.value.code == 1
     captured = capsys.readouterr()
     assert "Error: Auth failed" in captured.err
+
+
+def test_update_item_sort_name_raises_on_failure(mocker):
+    mock_post = mocker.patch("requests.Session.post")
+    mock_post.side_effect = requests.exceptions.ConnectionError("Connection failed")
+    client = JellyfinClient("http://localhost:8096", "test-token")
+    with pytest.raises(requests.exceptions.ConnectionError, match="Connection failed"):
+        client.update_item_sort_name("item1", "Sorted Name")

@@ -45,20 +45,20 @@ class TestJellyfinGroupings(unittest.TestCase):
         self.assertEqual(len(changes), 0)
         client.update_item_sort_name.assert_not_called()
 
-    @patch('requests.get')
-    def test_client_get_collections(self, mock_get):
+    @patch('requests.Session.get')
+    def test_client_get_collections(self, mock_session_get):
         mock_response = MagicMock()
         mock_response.json.return_value = {'Items': [{'Id': 'col1', 'Name': 'Collection 1'}]}
-        mock_get.return_value = mock_response
+        mock_session_get.return_value = mock_response
 
         client = JellyfinClient('http://localhost:8096', 'fake-key')
         collections = client.get_collections()
 
         self.assertEqual(len(collections), 1)
         self.assertEqual(collections[0]['Name'], 'Collection 1')
-        mock_get.assert_called_once_with(
+        mock_session_get.assert_called_once_with(
             'http://localhost:8096/Items?IncludeItemTypes=BoxSet&Recursive=true',
-            headers={'X-Emby-Token': 'fake-key', 'Content-Type': 'application/json'}
+            timeout=30
         )
 
 
