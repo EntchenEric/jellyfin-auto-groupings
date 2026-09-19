@@ -1,7 +1,7 @@
 import logging
 import re
 from typing import Any, Dict, List, Optional
-import requests
+
 from jellyfin_auto_groupings.client import (
     JellyfinAPIError,
     JellyfinClient,

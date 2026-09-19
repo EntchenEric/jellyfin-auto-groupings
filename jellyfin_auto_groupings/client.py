@@ -1,6 +1,7 @@
 import logging
 import re
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
+
 import requests
 
 logger = logging.getLogger(__name__)
@@ -34,8 +35,8 @@ class JellyfinClient:
             resp = requests.get(url, headers=self.headers, params=params, timeout=30)
             resp.raise_for_status()
             return resp.json()
-        except requests.RequestException as e:
-            logger.error(f"Error fetching {url}: {e}")
+        except requests.RequestException:
+            logger.exception("Error fetching %s", url)
             raise
 
     def _post(self, endpoint: str, params: Optional[Dict[str, Any]] = None, data: Optional[Dict[str, Any]] = None) -> Any:
@@ -49,8 +50,8 @@ class JellyfinClient:
                 return resp.json()
             except ValueError:
                 return resp.text
-        except requests.RequestException as e:
-            logger.error(f"Error posting to {url}: {e}")
+        except requests.RequestException:
+            logger.exception("Error posting to %s", url)
             raise
 
     def _delete(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Any:
@@ -64,8 +65,8 @@ class JellyfinClient:
                 return resp.json()
             except ValueError:
                 return resp.text
-        except requests.RequestException as e:
-            logger.error(f"Error deleting {url}: {e}")
+        except requests.RequestException:
+            logger.exception("Error deleting %s", url)
             raise
 
     def get_users(self) -> List[Dict[str, Any]]:
@@ -80,7 +81,8 @@ class JellyfinClient:
         """
         users = self.get_users()
         if not users:
-            raise RuntimeError("No users found on the Jellyfin server.")
+            msg = "No users found on the Jellyfin server."
+            raise RuntimeError(msg)
         for u in users:
             if u.get("Policy", {}).get("IsAdministrator"):
                 return u["Id"]
@@ -128,7 +130,8 @@ class JellyfinClient:
             data = self._get(endpoint, params=params)
             return data.get("Items", [])
         except Exception as e:
-            raise JellyfinAPIError(f"API request GET /Items failed: {e}") from e
+            msg = f"API request GET /Items failed: {e}"
+            raise JellyfinAPIError(msg) from e
 
     def get_collections(self) -> List[Dict[str, Any]]:
         """Fetch all collections (BoxSets) from the Jellyfin server."""
@@ -203,8 +206,8 @@ class JellyfinClient:
         url = f"{self.server_url}/Items/{item_id}"
         try:
             self.session.post(url, json={"ForcedSortName": sort_name}, timeout=30)
-        except Exception as e:
-            logger.error(f"Failed to update sort name for item {item_id}: {e}")
+        except Exception:
+            logger.exception("Failed to update sort name for item %s", item_id)
             raise
 
 
