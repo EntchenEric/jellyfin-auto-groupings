@@ -33,6 +33,12 @@ sync_groupings(client, groups)
 python -m jellyfin_auto_groupings.cli --url http://localhost:8096 --api-key YOUR_KEY --dry-run
 ```
 
+Options:
+- `--url` / `--server` - Jellyfin server URL (default: `http://localhost:8096`)
+- `--api-key` - Jellyfin API key (required)
+- `--dry-run` - Preview changes without applying them
+- `--pattern` - Regex pattern used to derive group names from item names (default: `^(.*)`)
+
 ## Configuration
 
 Set environment variables:
