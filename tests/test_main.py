@@ -1,6 +1,7 @@
-import pytest
 from unittest.mock import MagicMock, patch
+
 from jellyfin_groupings.main import JellyfinGroupings, main
+
 
 def test_jellyfin_groupings_init():
     jg = JellyfinGroupings("http://localhost:8096", "test-api-key")

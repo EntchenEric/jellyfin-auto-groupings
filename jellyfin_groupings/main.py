@@ -1,6 +1,8 @@
 import os
+from typing import Any, Dict, List
+
 import requests
-from typing import Dict, List, Any, Optional
+
 
 class JellyfinGroupings:
     """Client for managing Jellyfin collection groupings automatically."""

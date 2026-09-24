@@ -1,6 +1,6 @@
-import sys
-import os
 import importlib.util
+import os
+import sys
 
 # Get the directory containing this package
 _package_dir = os.path.dirname(os.path.abspath(__file__))
@@ -31,4 +31,4 @@ else:
     group_movies_by_genre = None
     main = None
 
-__all__ = ["JellyfinClient", "process_groupings", "group_movies_by_tag", "group_movies_by_genre", "main"]
+__all__ = ["JellyfinClient", "group_movies_by_genre", "group_movies_by_tag", "main", "process_groupings"]
