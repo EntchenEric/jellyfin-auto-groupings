@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import MagicMock, patch
-import requests
+
 from jellyfin_groupings import JellyfinClient, process_groupings
 
 

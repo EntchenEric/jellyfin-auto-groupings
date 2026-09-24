@@ -1,9 +1,9 @@
+
 import pytest
 import requests
-from unittest.mock import MagicMock
-from jellyfin_auto_groupings.client import JellyfinClient, JellyfinAPIError
-from jellyfin_auto_groupings.grouper import CollectionGrouper
+
 from jellyfin_auto_groupings.cli import main
+from jellyfin_auto_groupings.client import JellyfinAPIError, JellyfinClient
 
 
 def test_client_empty_item_ids():

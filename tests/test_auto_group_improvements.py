@@ -1,5 +1,6 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 
 class TestAutoGroupImprovements(unittest.TestCase):
     def test_grouping_logic_placeholder(self):

@@ -1,7 +1,14 @@
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 import requests
-from jellyfin_groupings import JellyfinClient, group_movies_by_tag, group_movies_by_genre, main
+
+from jellyfin_groupings import (
+    JellyfinClient,
+    group_movies_by_genre,
+    group_movies_by_tag,
+    main,
+)
 
 
 def test_group_movies_by_tag():

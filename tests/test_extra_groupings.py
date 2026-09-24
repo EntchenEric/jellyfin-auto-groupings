@@ -1,12 +1,14 @@
-import pytest
 from unittest.mock import MagicMock
+
 from jellyfin_auto_groupings import (
-    JellyfinGroupingManager,
+    extract_collection_name,
     group_movies_by_collection,
     validate_movie_item,
-    extract_collection_name,
 )
-from src.jellyfin_auto_groupings.groupings import process_groupings, parse_grouping_rules
+from src.jellyfin_auto_groupings.groupings import (
+    parse_grouping_rules,
+    process_groupings,
+)
 
 
 def test_extract_collection_name():
