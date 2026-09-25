@@ -91,8 +91,7 @@ def parse_grouping_rules(rules: Dict[str, Any]) -> Dict[str, Any]:
     """Parse and validate grouping rules dictionary."""
     if not isinstance(rules, dict):
         return {}
-    collections = rules.get("collections", {})
-    return collections
+    return rules.get("collections", {})
 
 
 def group_by_decade(items: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:

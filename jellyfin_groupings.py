@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import os
 import sys
@@ -81,7 +82,8 @@ class JellyfinClient:
     def create_collection(self, name: str, item_ids: List[str]) -> Optional[Dict[str, Any]]:
         if not item_ids:
             return None
-        url = f"{self.server_url}/Collections?Name={name}&Ids={",".join(item_ids)}"
+        ids_str = ",".join(item_ids)
+        url = f"{self.server_url}/Collections?Name={name}&Ids={ids_str}"
         try:
             resp = self.session.post(url, timeout=30)
             resp.raise_for_status()
@@ -91,10 +93,8 @@ class JellyfinClient:
 
     def update_item_sort_name(self, item_id: str, sort_name: str) -> None:
         url = f"{self.server_url}/Items/{item_id}"
-        try:
+        with contextlib.suppress(requests.RequestException):
             self.session.post(url, json={"ForcedSortName": sort_name}, timeout=30)
-        except requests.RequestException:
-            pass
 
 
 def group_movies_by_tag(movies: List[Dict[str, Any]], tag_prefix: str = "Group:") -> Dict[str, List[str]]:

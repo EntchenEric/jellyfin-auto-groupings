@@ -1,6 +1,7 @@
 import importlib.util
 import os
 import sys
+from pathlib import Path
 
 # Get the directory containing this package
 _package_dir = os.path.dirname(os.path.abspath(__file__))
