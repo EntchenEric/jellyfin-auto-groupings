@@ -2,6 +2,7 @@ import argparse
 import json
 import logging
 import os
+from pathlib import Path
 import re
 import sys
 
@@ -26,14 +27,15 @@ def load_config(config_path="config.json"):
         "PATTERNS": DEFAULT_PATTERNS
     }
     
-    if os.path.exists(config_path):
+    config_path_obj = Path(config_path)
+    if config_path_obj.exists():
         try:
-            with open(config_path, 'r', encoding='utf-8') as f:
+            with config_path_obj.open('r', encoding='utf-8') as f:
                 file_config = json.load(f)
                 config.update(file_config)
             logging.info(f"Loaded configuration from {config_path}")
-        except Exception as e:
-            logging.warning(f"Failed to load {config_path}: {e}")
+        except Exception:
+            logging.warning(f"Failed to load {config_path}", exc_info=True)
             
     return config
 
@@ -67,8 +69,8 @@ def get_libraries(url, api_key):
         res = requests.get(endpoint, headers=get_headers(api_key), timeout=10)
         res.raise_for_status()
         return res.json().get("Items", [])
-    except Exception as e:
-        logging.exception(f"Error fetching libraries: {e}")
+    except Exception:
+        logging.exception("Error fetching libraries:")
         return []
 
 def get_library_items(url, api_key, parent_id):
@@ -83,8 +85,8 @@ def get_library_items(url, api_key, parent_id):
         res = requests.get(endpoint, headers=get_headers(api_key), params=params, timeout=15)
         res.raise_for_status()
         return res.json().get("Items", [])
-    except Exception as e:
-        logging.exception(f"Error fetching library items for parent {parent_id}: {e}")
+    except Exception:
+        logging.exception(f"Error fetching library items for parent {parent_id}:")
         return []
 
 def group_items(items, patterns, min_group_size=2):
@@ -110,8 +112,8 @@ def create_collection(url, api_key, collection_name, item_ids):
         res.raise_for_status()
         logging.info(f"Successfully created collection: '{collection_name}' with {len(item_ids)} items.")
         return res.json().get("Id")
-    except Exception as e:
-        logging.exception(f"Error creating collection '{collection_name}': {e}")
+    except Exception:
+        logging.exception(f"Error creating collection '{collection_name}':")
         return None
 
 def add_to_collection(url, api_key, collection_id, item_ids):
@@ -123,8 +125,8 @@ def add_to_collection(url, api_key, collection_id, item_ids):
         res = requests.post(endpoint, headers=get_headers(api_key), params=params, timeout=10)
         res.raise_for_status()
         logging.info(f"Successfully added items to collection {collection_id}.")
-    except Exception as e:
-        logging.exception(f"Error adding items to collection {collection_id}: {e}")
+    except Exception:
+        logging.exception(f"Error adding items to collection {collection_id}:")
 
 def main():
     parser = argparse.ArgumentParser(description="Automatically group Jellyfin items into collections based on title patterns.")
