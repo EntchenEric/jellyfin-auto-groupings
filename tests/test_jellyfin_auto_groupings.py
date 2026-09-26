@@ -1,6 +1,5 @@
 import os
 import sys
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -52,9 +51,8 @@ def test_jellyfin_client_get_first_admin_user_id():
     with patch.object(client, "get_users", return_value=mock_non_admin):
         assert client.get_first_admin_user_id() == "user1"
 
-    with patch.object(client, "get_users", return_value=[]):
-        with pytest.raises(RuntimeError, match="No users found"):
-            client.get_first_admin_user_id()
+    with patch.object(client, "get_users", return_value=[]), pytest.raises(RuntimeError, match="No users found"):
+        client.get_first_admin_user_id()
 
 
 def test_jellyfin_client_get_all_items():

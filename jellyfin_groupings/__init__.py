@@ -1,14 +1,14 @@
-import importlib.util
-import os
 import sys
+import sys
+import importlib.util
 from pathlib import Path
 
 # Get the directory containing this package
-_package_dir = os.path.dirname(os.path.abspath(__file__))
+_package_dir = Path(__file__).resolve().parent
 # Get the project root directory (parent of package directory)
-_root_dir = os.path.dirname(_package_dir)
+_root_dir = _package_dir.parent
 # Path to the root-level jellyfin_groupings.py module
-_module_path = os.path.join(_root_dir, "jellyfin_groupings.py")
+_module_path = _root_dir / "jellyfin_groupings.py"
 
 # Load the root-level jellyfin_groupings.py module
 _spec = importlib.util.spec_from_file_location("jellyfin_groupings_root", _module_path)
