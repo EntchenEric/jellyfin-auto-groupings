@@ -2,6 +2,7 @@ import json
 import os
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from auto_group import (
@@ -74,7 +75,7 @@ class TestAutoGroup(unittest.TestCase):
             self.assertEqual(config["JELLYFIN_API_KEY"], "file_key")
             self.assertFalse(config["DRY_RUN"])
         finally:
-            os.remove(temp_path)
+            Path(temp_path).unlink()
 
     @patch('requests.get')
     def test_get_libraries(self, mock_get):

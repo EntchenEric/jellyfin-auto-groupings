@@ -3,8 +3,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import _common
 import anilist
+import imdb
+import letterboxd
 import mal
+import tmdb
 import trakt
 
 
@@ -45,7 +49,7 @@ def test_mal_fetch():
         assert res == [1]
 
 # --- _common.py tests ---
-import _common
+
 
 
 def test_normalize_group_relpath():
@@ -60,7 +64,7 @@ def test_normalize_group_relpath():
     assert _common.normalize_group_relpath("Test\x00Null") is None
 
 # --- tmdb.py tests ---
-import tmdb
+
 
 
 def test_tmdb_fetch_list():
@@ -93,7 +97,7 @@ def test_tmdb_recommendations():
         assert recs == ["201", "202"]
 
 # --- imdb.py tests ---
-import imdb
+
 
 
 def test_imdb_fetch_list():
@@ -110,7 +114,7 @@ def test_imdb_fetch_list_invalid():
         imdb.fetch_imdb_list("")
 
 # --- letterboxd.py tests ---
-import letterboxd
+
 
 
 def test_letterboxd_fetch_list():
