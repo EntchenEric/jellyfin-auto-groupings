@@ -26,13 +26,12 @@ def test_jellyfin_client_get_users():
     mock_resp.raise_for_status.return_value = None
     mock_resp.json.return_value = [{"Id": "u1", "Policy": {"IsAdministrator": True}}]
 
-    with patch("requests.get", return_value=mock_resp) as mock_get:
+    with patch.object(client.session, "get", return_value=mock_resp) as mock_get:
         users = client.get_users()
         assert len(users) == 1
         assert users[0]["Id"] == "u1"
         mock_get.assert_called_once_with(
             "http://localhost:8096/Users",
-            headers=client.headers,
             params=None,
             timeout=30,
         )
@@ -61,7 +60,7 @@ def test_jellyfin_client_get_all_items():
     mock_resp.raise_for_status.return_value = None
     mock_resp.json.return_value = {"Items": [{"Id": "item1", "Name": "Movie 1"}]}
 
-    with patch("requests.get", return_value=mock_resp):
+    with patch.object(client.session, "get", return_value=mock_resp):
         items = client.get_all_items(item_types=["Movie"], parent_id="folder1")
         assert len(items) == 1
         assert items[0]["Id"] == "item1"
@@ -75,7 +74,7 @@ def test_jellyfin_client_post_non_json_text_and_empty():
     mock_post_text.raise_for_status.return_value = None
     mock_post_text.text = "OK"
     mock_post_text.json.side_effect = ValueError("Not JSON")
-    with patch("requests.post", return_value=mock_post_text):
+    with patch.object(client.session, "post", return_value=mock_post_text):
         res = client._post("/test")
         assert res == "OK"
 
@@ -83,7 +82,7 @@ def test_jellyfin_client_post_non_json_text_and_empty():
     mock_post_empty = MagicMock()
     mock_post_empty.raise_for_status.return_value = None
     mock_post_empty.text = ""
-    with patch("requests.post", return_value=mock_post_empty):
+    with patch.object(client.session, "post", return_value=mock_post_empty):
         res = client._post("/test")
         assert res is None
 
@@ -96,7 +95,7 @@ def test_jellyfin_client_create_add_remove_collection():
     mock_post_resp.text = '{"Id": "col1"}'
     mock_post_resp.json.return_value = {"Id": "col1"}
 
-    with patch("requests.post", return_value=mock_post_resp) as mock_post:
+    with patch.object(client.session, "post", return_value=mock_post_resp) as mock_post:
         coll = client.create_collection("Test Collection", ["1", "2"])
         assert coll == {"Id": "col1"}
 
@@ -105,7 +104,7 @@ def test_jellyfin_client_create_add_remove_collection():
 
     mock_del_resp = MagicMock()
     mock_del_resp.raise_for_status.return_value = None
-    with patch("requests.delete", return_value=mock_del_resp) as mock_del:
+    with patch.object(client.session, "delete", return_value=mock_del_resp) as mock_del:
         client.remove_from_collection("col1", ["1"])
         assert mock_del.call_count == 1
 

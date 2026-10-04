@@ -9,29 +9,29 @@ def test_jellyfin_client_headers():
     assert client.headers["X-Emby-Token"] == "test-api-key"
     assert client.base_url == "http://localhost:8096"
 
-@patch("requests.get")
-def test_jellyfin_client_get_movies(mock_get):
-    mock_response = MagicMock()
-    mock_response.json.return_value = {"Items": [{"Name": "Movie 1", "Id": "123"}]}
-    mock_response.raise_for_status.return_value = None
-    mock_get.return_value = mock_response
 
-    # Pass user_id to skip admin lookup during get_movies
+def test_jellyfin_client_get_movies():
     client = JellyfinClient("http://localhost:8096", "test-api-key", user_id="admin")
-    movies = client.get_movies()
-    assert len(movies) == 1
-    assert movies[0]["Name"] == "Movie 1"
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"Items": [{"Name": "Movie 1", "Id": "123"}]}
+    mock_resp.raise_for_status.return_value = None
+    with patch.object(client.session, "get", return_value=mock_resp) as mock_get:
+        movies = client.get_movies()
+        assert len(movies) == 1
+        assert movies[0]["Name"] == "Movie 1"
+        mock_get.assert_called_once()
 
-@patch("requests.post")
-def test_jellyfin_client_create_collection(mock_post):
-    mock_response = MagicMock()
-    mock_response.json.return_value = {"Id": "coll-1"}
-    mock_response.raise_for_status.return_value = None
-    mock_post.return_value = mock_response
 
+def test_jellyfin_client_create_collection():
     client = JellyfinClient("http://localhost:8096", "test-api-key")
-    res = client.create_collection("Test Collection", ["123", "456"])
-    assert res == {"Id": "coll-1"}
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"Id": "coll-1"}
+    mock_resp.raise_for_status.return_value = None
+    with patch.object(client.session, "post", return_value=mock_resp) as mock_post:
+        res = client.create_collection("Test Collection", ["123", "456"])
+        assert res == {"Id": "coll-1"}
+        mock_post.assert_called_once()
+
 
 @patch("jellyfin_auto_groupings.cli.group_movies")
 @patch("jellyfin_auto_groupings.cli.JellyfinClient")

@@ -1,6 +1,8 @@
+import re
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+
 import pytest
 import requests
 
@@ -21,19 +23,19 @@ def test_root_jellyfin_groupings_init():
 
 def test_root_jellyfin_groupings_missing_api_key():
     client = root_main.JellyfinGroupings(server_url="http://localhost:8096", api_key="")
-    with pytest.raises(ValueError, match="API key is missing."):
+    with pytest.raises(ValueError, match=re.escape("API key is missing.")):
         client._get_headers()
 
 
 def test_root_jellyfin_groupings_missing_server_url():
     client = root_main.JellyfinGroupings(server_url="", api_key="key")
-    with pytest.raises(ValueError, match="Server URL is missing."):
+    with pytest.raises(ValueError, match=re.escape("Server URL is missing.")):
         client.get_collections()
-    with pytest.raises(ValueError, match="Server URL is missing."):
+    with pytest.raises(ValueError, match=re.escape("Server URL is missing.")):
         client.get_movies()
-    with pytest.raises(ValueError, match="Server URL is missing."):
+    with pytest.raises(ValueError, match=re.escape("Server URL is missing.")):
         client.create_collection("Test")
-    with pytest.raises(ValueError, match="Server URL is missing."):
+    with pytest.raises(ValueError, match=re.escape("Server URL is missing.")):
         client.add_to_collection("col1", ["item1"])
 
 
