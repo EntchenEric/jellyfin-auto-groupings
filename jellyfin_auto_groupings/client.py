@@ -32,7 +32,7 @@ class JellyfinClient:
     def _get(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Any:
         url = f"{self.server_url}{endpoint}"
         try:
-            resp = requests.get(url, headers=self.headers, params=params, timeout=30)
+            resp = self.session.get(url, params=params, timeout=30)
             resp.raise_for_status()
             return resp.json()
         except requests.RequestException:
@@ -42,7 +42,7 @@ class JellyfinClient:
     def _post(self, endpoint: str, params: Optional[Dict[str, Any]] = None, data: Optional[Dict[str, Any]] = None) -> Any:
         url = f"{self.server_url}{endpoint}"
         try:
-            resp = requests.post(url, headers=self.headers, params=params, json=data, timeout=30)
+            resp = self.session.post(url, params=params, json=data, timeout=30)
             resp.raise_for_status()
             if not resp.text.strip():
                 return None
@@ -57,7 +57,7 @@ class JellyfinClient:
     def _delete(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Any:
         url = f"{self.server_url}{endpoint}"
         try:
-            resp = requests.delete(url, headers=self.headers, params=params, timeout=30)
+            resp = self.session.delete(url, params=params, timeout=30)
             resp.raise_for_status()
             if not resp.text.strip():
                 return None
@@ -297,6 +297,33 @@ def sync_groupings(
     return summary
 
 
+def _resolve_release_year(item: Dict[str, Any]) -> Optional[int]:
+    """Extract a valid integer release year from an item.
+
+    Prefers ``ProductionYear`` and falls back to the first four digits of
+    ``PremiereDate``. Handles both int and string forms of the year safely so
+    that malformed data (e.g. a string year) never raises.
+
+    Args:
+        item: A single item dictionary.
+
+    Returns:
+        The release year as an int, or None when it cannot be resolved.
+    """
+    year = item.get("ProductionYear")
+    if isinstance(year, int) and year > 0:
+        return year
+    if isinstance(year, str) and year.isdigit():
+        parsed = int(year)
+        if parsed > 0:
+            return parsed
+    if year is None and item.get("PremiereDate"):
+        date_str = str(item.get("PremiereDate"))
+        if len(date_str) >= 4 and date_str[:4].isdigit():
+            return int(date_str[:4])
+    return None
+
+
 def get_decade_groups(items: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
     """Group items by their release decade.
 
@@ -308,14 +335,9 @@ def get_decade_groups(items: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, A
     """
     decades: Dict[str, List[Dict[str, Any]]] = {}
     for item in items:
-        year = item.get("ProductionYear")
-        if not year and item.get("PremiereDate"):
-            date_str = str(item.get("PremiereDate"))
-            if len(date_str) >= 4 and date_str[:4].isdigit():
-                year = int(date_str[:4])
-        if year:
-            decade = (year // 10) * 10
-            key = f"{decade}s Movies"
+        year = _resolve_release_year(item)
+        if year is not None and 1800 <= year <= 2100:
+            key = f"{(year // 10) * 10}s Movies"
             decades.setdefault(key, []).append(item)
     return decades
 
@@ -331,12 +353,8 @@ def get_year_groups(items: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any
     """
     years: Dict[str, List[Dict[str, Any]]] = {}
     for item in items:
-        year = item.get("ProductionYear")
-        if not year and item.get("PremiereDate"):
-            date_str = str(item.get("PremiereDate"))
-            if len(date_str) >= 4 and date_str[:4].isdigit():
-                year = int(date_str[:4])
-        if year:
+        year = _resolve_release_year(item)
+        if year is not None and 1800 <= year <= 2100:
             key = f"Best of {year}"
             years.setdefault(key, []).append(item)
     return years

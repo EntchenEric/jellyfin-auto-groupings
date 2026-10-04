@@ -68,3 +68,109 @@ def test_group_movies_by_genre():
     assert "Action" in grouped
     assert len(grouped["Action"]) == 2
     assert "Sci-Fi" not in grouped
+
+
+def test_get_decade_groups_robustness():
+    from jellyfin_auto_groupings.client import get_decade_groups
+
+    # Test string years (would crash before fix with TypeError)
+    items = [
+        {"Id": "1", "ProductionYear": "1994", "Name": "Test 1"},
+        {"Id": "2", "ProductionYear": "2003", "Name": "Test 2"},
+        {"Id": "3", "ProductionYear": "1987", "Name": "Test 3"},
+        {"Id": "4", "ProductionYear": "2015", "Name": "Test 4"},
+    ]
+    result = get_decade_groups(items)
+    assert "1990s Movies" in result
+    assert "2000s Movies" in result
+    assert "1980s Movies" in result
+    assert "2010s Movies" in result
+
+    # Test mixed int and string years
+    items2 = [
+        {"Id": "a", "ProductionYear": 1995, "Name": "Int year"},
+        {"Id": "b", "ProductionYear": "2005", "Name": "String year"},
+    ]
+    result2 = get_decade_groups(items2)
+    assert "1990s Movies" in result2
+    assert "2000s Movies" in result2
+
+    # Test invalid years are ignored
+    items3 = [
+        {"Id": "x", "ProductionYear": 0, "Name": "Year zero"},
+        {"Id": "y", "ProductionYear": -5, "Name": "Negative year"},
+        {"Id": "z", "ProductionYear": "", "Name": "Empty string year"},
+        {"Id": "w", "ProductionYear": "invalid", "Name": "Non-numeric string"},
+    ]
+    result3 = get_decade_groups(items3)
+    assert result3 == {}
+
+    # Test years outside valid range are ignored
+    items4 = [
+        {"Id": "old", "ProductionYear": 1700, "Name": "Too old"},
+        {"Id": "future", "ProductionYear": 2500, "Name": "Too far future"},
+    ]
+    result4 = get_decade_groups(items4)
+    assert result4 == {}
+
+    # Test fallback to PremiereDate
+    items5 = [
+        {"Id": "p1", "PremiereDate": "1999-05-21T00:00:00Z", "Name": "PremiereDate fallback"},
+        {"Id": "p2", "PremiereDate": "2007-12-03", "Name": "PremiereDate only"},
+    ]
+    result5 = get_decade_groups(items5)
+    assert "1990s Movies" in result5
+    assert "2000s Movies" in result5
+
+
+def test_get_year_groups_robustness():
+    from jellyfin_auto_groupings.client import get_year_groups
+
+    # Test string years
+    items = [
+        {"Id": "1", "ProductionYear": "1994", "Name": "Test 1"},
+        {"Id": "2", "ProductionYear": "2003", "Name": "Test 2"},
+        {"Id": "3", "ProductionYear": "1987", "Name": "Test 3"},
+        {"Id": "4", "ProductionYear": "2015", "Name": "Test 4"},
+    ]
+    result = get_year_groups(items)
+    assert "Best of 1994" in result
+    assert "Best of 2003" in result
+    assert "Best of 1987" in result
+    assert "Best of 2015" in result
+
+    # Test mixed int and string years
+    items2 = [
+        {"Id": "a", "ProductionYear": 1995, "Name": "Int year"},
+        {"Id": "b", "ProductionYear": "2005", "Name": "String year"},
+    ]
+    result2 = get_year_groups(items2)
+    assert "Best of 1995" in result2
+    assert "Best of 2005" in result2
+
+    # Test invalid years are ignored
+    items3 = [
+        {"Id": "x", "ProductionYear": 0, "Name": "Year zero"},
+        {"Id": "y", "ProductionYear": -5, "Name": "Negative year"},
+        {"Id": "z", "ProductionYear": "", "Name": "Empty string year"},
+        {"Id": "w", "ProductionYear": "invalid", "Name": "Non-numeric string"},
+    ]
+    result3 = get_year_groups(items3)
+    assert result3 == {}
+
+    # Test years outside valid range are ignored
+    items4 = [
+        {"Id": "old", "ProductionYear": 1700, "Name": "Too old"},
+        {"Id": "future", "ProductionYear": 2500, "Name": "Too far future"},
+    ]
+    result4 = get_year_groups(items4)
+    assert result4 == {}
+
+    # Test fallback to PremiereDate
+    items5 = [
+        {"Id": "p1", "PremiereDate": "1999-05-21T00:00:00Z", "Name": "PremiereDate fallback"},
+        {"Id": "p2", "PremiereDate": "2007-12-03", "Name": "PremiereDate only"},
+    ]
+    result5 = get_year_groups(items5)
+    assert "Best of 1999" in result5
+    assert "Best of 2007" in result5
