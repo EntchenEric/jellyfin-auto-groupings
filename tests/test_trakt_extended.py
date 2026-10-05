@@ -96,11 +96,9 @@ def test_fetch_trakt_list_missing_client_id():
 
 @patch("trakt._fetch_trakt_page")
 def test_fetch_trakt_list_pagination(mock_fetch_page):
-    # Page 1: 2 items, total_pages=2
     page1_items = [
         {"type": "movie", "movie": {"ids": {"imdb": "tt0000001"}}},
     ]
-    # Page 2: 1 item, total_pages=2
     page2_items = [
         {"type": "show", "show": {"ids": {"imdb": "tt0000002"}}},
     ]
