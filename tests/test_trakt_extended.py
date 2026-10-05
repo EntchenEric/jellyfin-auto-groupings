@@ -13,7 +13,7 @@ from trakt import (
 
 
 def test_parse_trakt_list_url_valid():
-    url = "[https://trakt.tv/users/john_doe/lists/favorite-movies](https://trakt.tv/users/john_doe/lists/favorite-movies)"
+    url = "https://trakt.tv/users/john_doe/lists/favorite-movies"
     username, slug = _parse_trakt_list_url(url)
     assert username == "john_doe"
     assert slug == "favorite-movies"
