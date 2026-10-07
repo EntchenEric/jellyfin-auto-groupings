@@ -9,8 +9,8 @@ import tmdb
 
 def test_tmdb_normalize_list_id():
     assert tmdb._normalize_tmdb_list_id("  12345  ") == "12345"
-    assert tmdb._normalize_tmdb_list_id("[https://www.themoviedb](https://www.themoviedb)") == "8204231"
-    assert tmdb._normalize_tmdb_list_id("[http://themoviedb.org/list](http://themoviedb.org/list)") == "8204231"
+    assert tmdb._normalize_tmdb_list_id("[https://www.themoviedb.org/list/8204231](https://www.themoviedb.org/list/8204231)") == "8204231"
+    assert tmdb._normalize_tmdb_list_id("[http://themoviedb.org/list/8204231/](http://themoviedb.org/list/8204231/)") == "8204231"
 
 
 def test_tmdb_fetch_page_http_error():
