@@ -132,10 +132,11 @@ def process_groupings(client: JellyfinClient, dry_run: bool = True) -> List[tupl
         for idx, item in enumerate(sorted_items, start=1):
             expected_sort_name = f"{col_name} {idx:02d}"
             current_sort = item.get("ForcedSortName", "")
-            if current_sort != expected_sort_name:
-                changes.append((item.get("Id"), item.get("Name"), expected_sort_name))
+            item_id = item.get("Id")
+            if item_id and current_sort != expected_sort_name:
+                changes.append((item_id, item.get("Name"), expected_sort_name))
                 if not dry_run:
-                    client.update_item_sort_name(item.get("Id"), expected_sort_name)
+                    client.update_item_sort_name(item_id, expected_sort_name)
     return changes
 
 
