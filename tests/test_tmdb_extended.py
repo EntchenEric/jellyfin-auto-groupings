@@ -15,8 +15,8 @@ import tmdb
 
 def test_tmdb_normalize_list_id():
     assert tmdb._normalize_tmdb_list_id("  12345  ") == "12345"
-    url1 = "[https://www.themoviedb](https://www.themoviedb)..org/list/8204231)"
-    url2 = "[http://themoviedb.org/list/8204231/](http://themoviedb.org/list/8204231/)"
+    url1 = "https://www.themoviedb.org/list/8204231"
+    url2 = "http://themoviedb.org/list/8204231/"
     assert tmdb._normalize_tmdb_list_id(url1) == "8204231"
     assert tmdb._normalize_tmdb_list_id(url2) == "8204231"
 
