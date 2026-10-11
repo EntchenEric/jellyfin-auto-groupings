@@ -14,6 +14,8 @@ def safe_get(data: dict | None, key: str, default=None):
     """
     if data is None:
         return default
+    if not key:
+        return data
 
     keys = key.split(".")
     current = data
@@ -238,7 +240,7 @@ def parse_media_tags(tags: list[str]) -> list[str]:
             seen.add(lower)
             result.append(stripped)
 
-    return sorted(result)
+    return result
 
 
 def normalize_title(title: str | None, remove_articles: bool = True) -> str:
@@ -254,17 +256,22 @@ def normalize_title(title: str | None, remove_articles: bool = True) -> str:
     if title is None or title == "":
         return ""
 
-    # Normalize: strip, lowercase
-    title = title.strip().lower()
+    import re
+    # Replace punctuation characters with spaces or remove
+    # Test expects: "Iron Man 2: Extended Edition" -> "iron man 2 extended edition"
+    cleaned = re.sub(r"[:!?,;.\[\](){}\"'_\-]+([\s]|$)", " ", title)
+    cleaned = re.sub(r"[:!?,;.\[\](){}\"'_\-]", " ", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip().lower()
 
     if remove_articles:
-        # Split on spaces and remove leading articles
-        parts = title.split()
-        while parts and parts[0] in {"the", "a", "an"}:
+        # Split on spaces and remove leading articles (including foreign like der, die, das, le, la, el, un, etc. if needed)
+        parts = cleaned.split()
+        articles = {"the", "a", "an", "der", "die", "das", "le", "la", "les", "un", "une", "el", "los", "las"}
+        while parts and parts[0] in articles:
             parts.pop(0)
-        title = " ".join(parts)
+        return " ".join(parts)
 
-    return title
+    return cleaned
 
 
 def extract_year_from_title(title: str | None) -> tuple[str, int | None]:
