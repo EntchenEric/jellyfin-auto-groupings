@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 
@@ -424,8 +424,14 @@ def process_groupings(client: Any, library_id: Any = None, items: Optional[List[
     """Process library items and group them automatically.
 
     Handles two modes:
-    1. If client has collection methods, sorts items within existing collections by PremiereDate.
-    2. If client is a JellyfinClient, creates new collections grouped by name prefix.
+    1. If the client supports collection methods, items within existing
+       collections are sorted by PremiereDate.
+    2. If a ``library_id`` is provided, new collections are created by grouping
+       item names on their leading prefix.
+
+    The two modes run independently: collection re-sorting is always performed
+    when supported, and prefix grouping runs only for ``JellyfinClient`` when
+    a ``library_id`` or ``items`` argument is supplied.
 
     Args:
         client: JellyfinClient instance or compatible object.
@@ -436,9 +442,11 @@ def process_groupings(client: Any, library_id: Any = None, items: Optional[List[
     Returns:
         List of changes or created collections depending on mode.
     """
+    changes: List[Tuple[str, str, str]] = []
+
+    # Mode 1: Sort items within existing collections by PremiereDate.
     if hasattr(client, "get_collection_items"):
         collections = client.get_collections() if hasattr(client, "get_collections") else []
-        changes = []
         for col in collections:
             col_name = col.get("Name", "Collection")
             col_items = client.get_collection_items(col.get("Id", ""))
@@ -450,14 +458,15 @@ def process_groupings(client: Any, library_id: Any = None, items: Optional[List[
                     changes.append((item.get("Id"), item.get("Name"), expected_sort_name))
                     if not dry_run and hasattr(client, "update_item_sort_name"):
                         client.update_item_sort_name(item.get("Id"), expected_sort_name)
-        if changes or not isinstance(library_id, str):
-            return changes
 
+    # If a specific library was requested, fetch its items for prefix grouping.
+    if items is None and isinstance(library_id, str) and library_id:
+        items = client.get_items(library_id)
+
+    # Mode 2: Create new collections grouped by name prefix.
     if isinstance(client, JellyfinClient):
-        if items is None and isinstance(library_id, str) and library_id:
-            items = client.get_items(library_id)
         if not items:
-            return []
+            return changes
         groups: Dict[str, List[str]] = {}
         for item in items:
             name = item.get("Name", "")
@@ -468,8 +477,8 @@ def process_groupings(client: Any, library_id: Any = None, items: Optional[List[
             if len(item_ids) > 1:
                 col = client.create_collection(group_name, item_ids)
                 created.append(col)
-        return created
-    return {}
+        return [*changes, *created]
+    return changes
 
 
 def create_groupings(
