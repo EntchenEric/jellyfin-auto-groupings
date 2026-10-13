@@ -29,14 +29,32 @@ class JellyfinGroupingManager:
 
 
 def extract_collection_name(name: Optional[str]) -> Optional[str]:
-    """Extract a collection name from a title (e.g. 'Toy Story 2' -> 'Toy Story Collection')."""
+    """Extract a collection name from a title (e.g. 'Toy Story 2' -> 'Toy Story Collection').
+
+    Handles trailing numeric suffixes (" 2"), parenthesized years (" (1999)", "[2020]"),
+    and colon separators ("Series: Episode 1" -> "Series").
+
+    Args:
+        name: The title to process.
+
+    Returns:
+        A collection name (e.g. "Toy Story Collection") when the title appears
+        to be part of a series; ``None`` when no series prefix can be inferred.
+    """
     if not name or not isinstance(name, str):
         return None
-    match = re.match(r"^(.*?)(?:\s+\d+|\s*:\s*.*)$", name.strip())
-    if match:
-        base = match.group(1).strip()
-        if base and base != name.strip():
-            return f"{base} Collection"
+
+    original = name.strip()
+
+    # Remove parenthesized / bracketed year or numeric suffixes, e.g. "(1999)", "[2020]".
+    base = re.sub(r"[\[(]?\d+[\])]\s*$", "", original)
+    # Remove trailing standalone numbers, e.g. " 2" or " 2020".
+    base = re.sub(r"\s+\d+\s*$", "", base)
+    # Take the portion before the first colon, e.g. "Series: Episode 1" -> "Series".
+    base = base.split(":", 1)[0].strip()
+
+    if base and base != original:
+        return f"{base} Collection"
     return None
 
 
@@ -47,8 +65,16 @@ def validate_movie_item(item: Optional[Dict[str, Any]]) -> bool:
     return bool(item.get("Name")) and bool(item.get("Id"))
 
 
-def group_movies_by_collection(movies: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
-    """Group movies into collections by inferring collection names."""
+def group_movies_by_collection(movies: List[Dict[str, Any]], min_group_size: int = 2) -> Dict[str, List[Dict[str, Any]]]:
+    """Group movies into collections by inferring collection names.
+
+    Args:
+        movies: List of movie item dictionaries.
+        min_group_size: Minimum number of movies required for a collection.
+
+    Returns:
+        A dictionary mapping collection names to lists of movies.
+    """
     collections: Dict[str, List[Dict[str, Any]]] = {}
     for movie in movies:
         if not validate_movie_item(movie):
@@ -56,7 +82,7 @@ def group_movies_by_collection(movies: List[Dict[str, Any]]) -> Dict[str, List[D
         coll_name = extract_collection_name(movie.get("Name"))
         if coll_name:
             collections.setdefault(coll_name, []).append(movie)
-    return {k: v for k, v in collections.items() if len(v) >= 2}
+    return {k: v for k, v in collections.items() if len(v) >= min_group_size}
 
 
 __all__ = [
