@@ -62,3 +62,5 @@ build/
 
 # Runtime logs
 logs/
+# Dispatcher worker markers (runtime artifacts, never commit)
+marker_*
