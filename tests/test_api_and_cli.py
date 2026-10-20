@@ -36,9 +36,18 @@ def test_jellyfin_client_create_collection():
 @patch("jellyfin_auto_groupings.cli.group_movies")
 @patch("jellyfin_auto_groupings.cli.JellyfinClient")
 def test_cli_main(mock_client_cls, mock_group_movies, monkeypatch):
-    test_args = ["cli.py", "--url", "http://localhost:8096", "--api-key", "testkey", "--dry-run"]
+    test_args = [
+        "cli.py",
+        "--url",
+        "http://localhost:8096",
+        "--api-key",
+        "testkey",
+        "--dry-run",
+    ]
     monkeypatch.setattr("sys.argv", test_args)
-    mock_group_movies.return_value = {"Collection A": [{"Name": "Movie 1"}, {"Name": "Movie 2"}]}
+    mock_group_movies.return_value = {
+        "Collection A": [{"Name": "Movie 1"}, {"Name": "Movie 2"}]
+    }
 
     main()
     mock_client_cls.assert_called_once_with("http://localhost:8096", "testkey")

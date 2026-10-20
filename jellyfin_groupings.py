@@ -1,4 +1,3 @@
-import contextlib
 import logging
 import os
 import sys
@@ -11,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 class JellyfinAPIError(Exception):
     """Custom exception for Jellyfin API errors."""
+
     pass
 
 
@@ -27,10 +27,12 @@ class JellyfinClient:
         self.api_key = api_key
         self.user_id = user_id
         self.session = requests.Session()
-        self.session.headers.update({
-            "X-Emby-Token": self.api_key,
-            "Content-Type": "application/json",
-        })
+        self.session.headers.update(
+            {
+                "X-Emby-Token": self.api_key,
+                "Content-Type": "application/json",
+            }
+        )
 
     def get_users(self) -> List[Dict[str, Any]]:
         """Get all users from Jellyfin server.
@@ -42,10 +44,10 @@ class JellyfinClient:
         try:
             resp = self.session.get(url, timeout=30)
             resp.raise_for_status()
-            return resp.json()
-        except requests.RequestException as e:
-            logger.error(f"Failed to get users: {e}")
+        except requests.RequestException:
+            logger.exception("Failed to get users")
             return []
+        return resp.json()
 
     def get_first_admin_user_id(self) -> Optional[str]:
         """Get the first administrator user ID.
@@ -71,11 +73,11 @@ class JellyfinClient:
         try:
             resp = self.session.get(url, timeout=30)
             resp.raise_for_status()
-            data = resp.json()
-            return data.get("Items", [])
-        except requests.RequestException as e:
-            logger.error(f"Failed to get collections: {e}")
+        except requests.RequestException:
+            logger.exception("Failed to get collections")
             return []
+        data = resp.json()
+        return data.get("Items", [])
 
     def get_collection_items(self, collection_id: str) -> List[Dict[str, Any]]:
         """Get all items in a specific collection.
@@ -90,11 +92,11 @@ class JellyfinClient:
         try:
             resp = self.session.get(url, timeout=30)
             resp.raise_for_status()
-            data = resp.json()
-            return data.get("Items", [])
-        except requests.RequestException as e:
-            logger.error(f"Failed to get collection items for {collection_id}: {e}")
+        except requests.RequestException:
+            logger.exception(f"Failed to get collection items for {collection_id}")
             return []
+        data = resp.json()
+        return data.get("Items", [])
 
     def get_movies(self) -> List[Dict[str, Any]]:
         """Get all movies from Jellyfin.
@@ -106,15 +108,17 @@ class JellyfinClient:
         if not uid:
             logger.warning("No user ID available for getting movies")
             return []
-        url = f"{self.server_url}/Users/{uid}/Items?IncludeItemTypes=Movie&Recursive=true"
+        url = (
+            f"{self.server_url}/Users/{uid}/Items?IncludeItemTypes=Movie&Recursive=true"
+        )
         try:
             resp = self.session.get(url, timeout=30)
             resp.raise_for_status()
-            data = resp.json()
-            return data.get("Items", [])
-        except requests.RequestException as e:
-            logger.error(f"Failed to get movies: {e}")
+        except requests.RequestException:
+            logger.exception("Failed to get movies")
             return []
+        data = resp.json()
+        return data.get("Items", [])
 
     def get_items(self, library_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """Get items from a specific library or all movies if library_id not provided.
@@ -132,12 +136,14 @@ class JellyfinClient:
                 resp.raise_for_status()
                 data = resp.json()
                 return data.get("Items", [])
-            except requests.RequestException as e:
-                logger.error(f"Failed to get items from library {library_id}: {e}")
+            except requests.RequestException:
+                logger.exception(f"Failed to get items from library {library_id}:")
                 return []
         return self.get_movies()
 
-    def create_collection(self, name: str, item_ids: List[str]) -> Optional[Dict[str, Any]]:
+    def create_collection(
+        self, name: str, item_ids: List[str]
+    ) -> Optional[Dict[str, Any]]:
         """Create a new collection with specified items.
 
         Args:
@@ -155,10 +161,10 @@ class JellyfinClient:
         try:
             resp = self.session.post(url, timeout=30)
             resp.raise_for_status()
-            return resp.json()
-        except requests.RequestException as e:
-            logger.error(f"Failed to create collection '{name}': {e}")
+        except requests.RequestException:
+            logger.exception(f"Failed to create collection '{name}'")
             return None
+        return resp.json()
 
     def update_item_sort_name(self, item_id: str, sort_name: str) -> bool:
         """Update the sort name of an item.
@@ -172,16 +178,20 @@ class JellyfinClient:
         """
         url = f"{self.server_url}/Items/{item_id}"
         try:
-            resp = self.session.post(url, json={"ForcedSortName": sort_name}, timeout=30)
+            resp = self.session.post(
+                url, json={"ForcedSortName": sort_name}, timeout=30
+            )
             resp.raise_for_status()
-            logger.debug(f"Updated sort name for item {item_id} to '{sort_name}'")
-            return True
-        except requests.RequestException as e:
-            logger.error(f"Failed to update sort name for item {item_id}: {e}")
+        except requests.RequestException:
+            logger.exception(f"Failed to update sort name for item {item_id}")
             return False
+        logger.debug(f"Updated sort name for item {item_id} to '{sort_name}'")
+        return True
 
 
-def group_movies_by_tag(movies: List[Dict[str, Any]], tag_prefix: str = "Group:") -> Dict[str, List[str]]:
+def group_movies_by_tag(
+    movies: List[Dict[str, Any]], tag_prefix: str = "Group:"
+) -> Dict[str, List[str]]:
     """Group movies by tags with specified prefix.
 
     Args:
@@ -198,13 +208,15 @@ def group_movies_by_tag(movies: List[Dict[str, Any]], tag_prefix: str = "Group:"
             continue
         for tag in movie.get("Tags", []):
             if tag.startswith(tag_prefix):
-                group_name = tag[len(tag_prefix):].strip()
+                group_name = tag[len(tag_prefix) :].strip()
                 if group_name:
                     groups.setdefault(group_name, []).append(item_id)
     return groups
 
 
-def group_movies_by_genre(movies: List[Dict[str, Any]], min_count: int = 1) -> Dict[str, List[str]]:
+def group_movies_by_genre(
+    movies: List[Dict[str, Any]], min_count: int = 1
+) -> Dict[str, List[str]]:
     """Group movies by genre.
 
     Args:
@@ -262,7 +274,9 @@ def process_groupings(client: JellyfinClient, dry_run: bool = True) -> List[tupl
             item_id = item.get("Id")
 
             if item_id and current_sort != expected_sort_name:
-                changes.append((item_id, item.get("Name", "Unknown"), expected_sort_name))
+                changes.append(
+                    (item_id, item.get("Name", "Unknown"), expected_sort_name)
+                )
                 if not dry_run:
                     success = client.update_item_sort_name(item_id, expected_sort_name)
                     if not success:
@@ -275,7 +289,9 @@ def main() -> None:
     """Main entry point for the jellyfin-groupings module."""
     api_key = os.environ.get("JELLYFIN_API_KEY")
     if not api_key:
-        print("Error: JELLYFIN_API_KEY environment variable is required.")
+        print(
+            "Error: JELLYFIN_API_KEY environment variable is required.", file=sys.stderr
+        )
         sys.exit(1)
     url = os.environ.get("JELLYFIN_URL", "http://localhost:8096")
     client = JellyfinClient(url, api_key)

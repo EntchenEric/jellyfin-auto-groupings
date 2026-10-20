@@ -12,7 +12,9 @@ import main as root_main
 
 
 def test_root_jellyfin_groupings_init():
-    client = root_main.JellyfinGroupings(server_url="http://localhost:8096/", api_key="test-key", timeout=15)
+    client = root_main.JellyfinGroupings(
+        server_url="http://localhost:8096/", api_key="test-key", timeout=15
+    )
     assert client.server_url == "http://localhost:8096"
     assert client.api_key == "test-key"
     assert client.timeout == 15
@@ -40,7 +42,9 @@ def test_root_jellyfin_groupings_missing_server_url():
 
 
 def test_root_jellyfin_groupings_get_collections():
-    client = root_main.JellyfinGroupings(server_url="http://localhost:8096", api_key="key")
+    client = root_main.JellyfinGroupings(
+        server_url="http://localhost:8096", api_key="key"
+    )
     mock_resp = MagicMock()
     mock_resp.json.return_value = {"Items": [{"Id": "col1", "Name": "Test Collection"}]}
     mock_resp.raise_for_status.return_value = None
@@ -57,9 +61,13 @@ def test_root_jellyfin_groupings_get_collections():
 
 
 def test_root_jellyfin_groupings_get_movies():
-    client = root_main.JellyfinGroupings(server_url="http://localhost:8096", api_key="key")
+    client = root_main.JellyfinGroupings(
+        server_url="http://localhost:8096", api_key="key"
+    )
     mock_resp = MagicMock()
-    mock_resp.json.return_value = {"Items": [{"Id": "mov1", "Name": "Movie 1", "CollectionName": "Set"}]}
+    mock_resp.json.return_value = {
+        "Items": [{"Id": "mov1", "Name": "Movie 1", "CollectionName": "Set"}]
+    }
     mock_resp.raise_for_status.return_value = None
 
     with patch.object(client.session, "get", return_value=mock_resp) as mock_get:
@@ -74,7 +82,9 @@ def test_root_jellyfin_groupings_get_movies():
 
 
 def test_root_jellyfin_groupings_create_collection():
-    client = root_main.JellyfinGroupings(server_url="http://localhost:8096", api_key="key")
+    client = root_main.JellyfinGroupings(
+        server_url="http://localhost:8096", api_key="key"
+    )
     mock_resp = MagicMock()
     mock_resp.json.return_value = {"Id": "new_col"}
     mock_resp.raise_for_status.return_value = None
@@ -90,7 +100,9 @@ def test_root_jellyfin_groupings_create_collection():
 
 
 def test_root_jellyfin_groupings_add_to_collection():
-    client = root_main.JellyfinGroupings(server_url="http://localhost:8096", api_key="key")
+    client = root_main.JellyfinGroupings(
+        server_url="http://localhost:8096", api_key="key"
+    )
     mock_resp = MagicMock()
     mock_resp.raise_for_status.return_value = None
 
@@ -104,14 +116,18 @@ def test_root_jellyfin_groupings_add_to_collection():
 
 
 def test_root_jellyfin_groupings_add_to_collection_empty():
-    client = root_main.JellyfinGroupings(server_url="http://localhost:8096", api_key="key")
+    client = root_main.JellyfinGroupings(
+        server_url="http://localhost:8096", api_key="key"
+    )
     with patch.object(client.session, "post") as mock_post:
         client.add_to_collection("col1", [])
         mock_post.assert_not_called()
 
 
 def test_root_jellyfin_groupings_auto_group():
-    client = root_main.JellyfinGroupings(server_url="http://localhost:8096", api_key="key")
+    client = root_main.JellyfinGroupings(
+        server_url="http://localhost:8096", api_key="key"
+    )
     with patch.object(client, "get_collections", return_value=[{"Id": "c1"}]):
         res = client.auto_group()
         assert res["status"] == "success"
@@ -123,7 +139,9 @@ def test_root_jellyfin_groupings_auto_group():
 
 
 def test_root_jellyfin_groupings_group_movies_by_collection():
-    client = root_main.JellyfinGroupings(server_url="http://localhost:8096", api_key="key")
+    client = root_main.JellyfinGroupings(
+        server_url="http://localhost:8096", api_key="key"
+    )
     movies = [
         {"Id": "m1", "CollectionName": "Existing Set"},
         {"Id": "m2", "CollectionName": "New Set"},
@@ -131,10 +149,14 @@ def test_root_jellyfin_groupings_group_movies_by_collection():
     ]
     existing_cols = [{"Id": "c1", "Name": "Existing Set"}]
 
-    with patch.object(client, "get_movies", return_value=movies), \
-         patch.object(client, "get_collections", return_value=existing_cols), \
-         patch.object(client, "create_collection", return_value={"Id": "c2"}) as mock_create, \
-         patch.object(client, "add_to_collection") as mock_add:
+    with (
+        patch.object(client, "get_movies", return_value=movies),
+        patch.object(client, "get_collections", return_value=existing_cols),
+        patch.object(
+            client, "create_collection", return_value={"Id": "c2"}
+        ) as mock_create,
+        patch.object(client, "add_to_collection") as mock_add,
+    ):
         res = client.group_movies_by_collection()
         assert res["status"] == "success"
         assert res["collections_created"] == 1
@@ -144,7 +166,11 @@ def test_root_jellyfin_groupings_group_movies_by_collection():
 
 
 def test_root_jellyfin_groupings_group_movies_by_collection_error():
-    client = root_main.JellyfinGroupings(server_url="http://localhost:8096", api_key="key")
-    with patch.object(client, "get_movies", side_effect=requests.RequestException("Fail")):
+    client = root_main.JellyfinGroupings(
+        server_url="http://localhost:8096", api_key="key"
+    )
+    with patch.object(
+        client, "get_movies", side_effect=requests.RequestException("Fail")
+    ):
         res = client.group_movies_by_collection()
         assert res["status"] == "error"

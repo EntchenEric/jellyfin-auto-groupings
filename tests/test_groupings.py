@@ -17,13 +17,10 @@ def test_group_movies_by_tag():
         {"Id": "2", "Tags": ["Group:MCU"]},
         {"Id": "3", "Tags": ["Group:Star Wars"]},
         {"Id": "4", "Tags": []},
-        {"Tags": ["Group:NoId"]}
+        {"Tags": ["Group:NoId"]},
     ]
     res = group_movies_by_tag(movies)
-    assert res == {
-        "MCU": ["1", "2"],
-        "Star Wars": ["3"]
-    }
+    assert res == {"MCU": ["1", "2"], "Star Wars": ["3"]}
 
 
 def test_group_movies_by_genre():
@@ -31,12 +28,10 @@ def test_group_movies_by_genre():
         {"Id": "1", "Genres": ["Action", "Sci-Fi"]},
         {"Id": "2", "Genres": ["Action"]},
         {"Id": "3", "Genres": ["Comedy"]},
-        {"Genres": ["Action"]}
+        {"Genres": ["Action"]},
     ]
     res = group_movies_by_genre(movies, min_count=2)
-    assert res == {
-        "Action": ["1", "2"]
-    }
+    assert res == {"Action": ["1", "2"]}
     assert "Sci-Fi" not in res
     assert "Comedy" not in res
 
@@ -133,8 +128,6 @@ def test_main_missing_api_key():
 @patch("jellyfin_groupings.JellyfinClient.get_movies")
 @patch.dict("os.environ", {"JELLYFIN_API_KEY": "testkey"})
 def test_main_success(mock_get_movies, mock_create_coll):
-    mock_get_movies.return_value = [
-        {"Id": "1", "Tags": ["Group:MCU"]}
-    ]
+    mock_get_movies.return_value = [{"Id": "1", "Tags": ["Group:MCU"]}]
     main()
     mock_create_coll.assert_called_once_with("MCU", ["1"])

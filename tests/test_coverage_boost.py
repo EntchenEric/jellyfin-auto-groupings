@@ -28,7 +28,9 @@ def test_load_config_success(monkeypatch):
 def test_load_config_missing_env(monkeypatch):
     monkeypatch.delenv("JELLYFIN_URL", raising=False)
     monkeypatch.delenv("JELLYFIN_API_KEY", raising=False)
-    with pytest.raises(ValueError, match="JELLYFIN_URL and JELLYFIN_API_KEY must be set"):
+    with pytest.raises(
+        ValueError, match="JELLYFIN_URL and JELLYFIN_API_KEY must be set"
+    ):
         load_config()
 
 
@@ -72,8 +74,22 @@ def test_collection_grouper():
 
 def test_src_groupings_functions():
     items = [
-        {"Name": "Iron Man", "Overview": "MCU movie", "ProductionYear": 2008, "Tags": ["action"], "Genres": ["Action"], "Studios": [{"Name": "Marvel Studios"}]},
-        {"Name": "Thor", "Overview": "MCU hero", "ProductionYear": 2011, "Tags": ["action"], "Genres": ["Action"], "Studios": ["Marvel Studios"]},
+        {
+            "Name": "Iron Man",
+            "Overview": "MCU movie",
+            "ProductionYear": 2008,
+            "Tags": ["action"],
+            "Genres": ["Action"],
+            "Studios": [{"Name": "Marvel Studios"}],
+        },
+        {
+            "Name": "Thor",
+            "Overview": "MCU hero",
+            "ProductionYear": 2011,
+            "Tags": ["action"],
+            "Genres": ["Action"],
+            "Studios": ["Marvel Studios"],
+        },
     ]
     res = create_groupings(items)
     assert "Marvel Cinematic Universe" in res

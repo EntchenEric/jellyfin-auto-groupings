@@ -1,25 +1,23 @@
-import pytest
-from unittest.mock import MagicMock, patch
 from utils.formatting import (
+    format_bitrate,
     format_duration,
     format_file_size,
-    format_bitrate,
-    format_resolution,
-    truncate_text,
-    slugify,
     format_release_date,
+    format_resolution,
+    slugify,
+    truncate_text,
 )
 from utils.helpers import (
-    safe_get,
     chunk_list,
     deep_merge,
-    flatten_dict,
-    sanitize_filename,
-    is_valid_uuid,
-    parse_media_tags,
-    normalize_title,
     extract_year_from_title,
+    flatten_dict,
     group_by_key,
+    is_valid_uuid,
+    normalize_title,
+    parse_media_tags,
+    safe_get,
+    sanitize_filename,
 )
 
 
@@ -151,7 +149,9 @@ def test_normalize_title():
     assert normalize_title("A Beautiful Mind") == "beautiful mind"
     assert normalize_title("An American Werewolf") == "american werewolf"
     assert normalize_title("Der Untergang", remove_articles=True) == "untergang"
-    assert normalize_title("Iron Man 2: Extended Edition") == "iron man 2 extended edition"
+    assert (
+        normalize_title("Iron Man 2: Extended Edition") == "iron man 2 extended edition"
+    )
     assert normalize_title("") == ""
     assert normalize_title(None) == ""
     assert normalize_title("The Matrix", remove_articles=False) == "the matrix"
@@ -159,7 +159,10 @@ def test_normalize_title():
 
 def test_extract_year_from_title():
     assert extract_year_from_title("Inception (2010)") == ("Inception", 2010)
-    assert extract_year_from_title("2001: A Space Odyssey (1968)") == ("2001: A Space Odyssey", 1968)
+    assert extract_year_from_title("2001: A Space Odyssey (1968)") == (
+        "2001: A Space Odyssey",
+        1968,
+    )
     assert extract_year_from_title("Blade Runner [1982]") == ("Blade Runner", 1982)
     assert extract_year_from_title("Interstellar 2014") == ("Interstellar", 2014)
     assert extract_year_from_title("Avengers") == ("Avengers", None)

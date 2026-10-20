@@ -15,7 +15,9 @@ from jellyfin_auto_groupings.client import (
 logger = logging.getLogger(__name__)
 
 
-def group_movies(items: list[dict[str, Any]], pattern: str = r"^(.*)") -> dict[str, list[dict[str, Any]]]:
+def group_movies(
+    items: list[dict[str, Any]], pattern: str = r"^(.*)"
+) -> dict[str, list[dict[str, Any]]]:
     """Group movies using a regex pattern applied to their ``Name`` field.
 
     Args:
@@ -38,21 +40,26 @@ def build_parser() -> argparse.ArgumentParser:
         description="Automate Jellyfin collection creation from media title patterns.",
     )
     parser.add_argument(
-        "--url", "--server",
+        "--url",
+        "--server",
         dest="url",
         default="http://localhost:8096",
         help="Jellyfin server URL (default: http://localhost:8096)",
     )
     parser.add_argument(
-        "--api-key", dest="api_key", required=True,
+        "--api-key",
+        dest="api_key",
+        required=True,
         help="Jellyfin API key (set JELLYFIN_API_KEY env var instead to avoid shell history)",
     )
     parser.add_argument(
-        "--dry-run", action="store_true",
+        "--dry-run",
+        action="store_true",
         help="Preview changes without applying them to the server",
     )
     parser.add_argument(
-        "--pattern", default=r"^(.*)",
+        "--pattern",
+        default=r"^(.*)",
         help="Regex pattern whose first capture group defines collection names (default: ^( .* ) — one collection per movie)",
     )
     return parser
@@ -60,7 +67,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(args: Optional[Sequence[str]] = None) -> int:
     """CLI entry point. Returns an exit code (0 on success, 1 on failure)."""
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
+    )
     parsed = build_parser().parse_args(args)
 
     if parsed.url.rstrip("/") != parsed.url:
@@ -84,7 +93,9 @@ def main(args: Optional[Sequence[str]] = None) -> int:
         )
         sys.exit(1)
     except requests.Timeout:
-        sys.stderr.write(f"Request to {parsed.url} timed out. The server may be busy.\n")
+        sys.stderr.write(
+            f"Request to {parsed.url} timed out. The server may be busy.\n"
+        )
         sys.exit(1)
     except JellyfinAPIError as exc:
         msg = f"Error: {exc}"
@@ -98,7 +109,9 @@ def main(args: Optional[Sequence[str]] = None) -> int:
     try:
         summary = sync_groupings(client, groups, dry_run=parsed.dry_run)
     except requests.ConnectionError:
-        sys.stderr.write("Connection lost while syncing. Re-run with --dry-run first to preview.\n")
+        sys.stderr.write(
+            "Connection lost while syncing. Re-run with --dry-run first to preview.\n"
+        )
         sys.exit(1)
     except Exception as exc:
         sys.stderr.write(f"Failed to sync groupings: {exc}\n")

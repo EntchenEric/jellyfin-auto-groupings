@@ -24,7 +24,9 @@ class JellyfinAPI:
             "IncludeItemTypes": "BoxSet",
             "Recursive": "true",
         }
-        res = requests.get(url, headers=self._get_headers(), params=params, timeout=self.timeout)
+        res = requests.get(
+            url, headers=self._get_headers(), params=params, timeout=self.timeout
+        )
         res.raise_for_status()
         data = res.json()
         return data.get("Items", [])
@@ -36,7 +38,9 @@ class JellyfinAPI:
             "ParentId": collection_id,
             "Recursive": "true",
         }
-        res = requests.get(url, headers=self._get_headers(), params=params, timeout=self.timeout)
+        res = requests.get(
+            url, headers=self._get_headers(), params=params, timeout=self.timeout
+        )
         res.raise_for_status()
         data = res.json()
         return data.get("Items", [])

@@ -1,4 +1,5 @@
 """Auto-group Jellyfin collections, genres, or tags based on configurable rules."""
+
 import logging
 import re
 import sys
@@ -17,7 +18,9 @@ logger = logging.getLogger("jellyfin-auto-groupings")
 class JellyfinClient:
     """Simple Jellyfin API client."""
 
-    def __init__(self, server_url: str, api_key: str, user_id: Optional[str] = None) -> None:
+    def __init__(
+        self, server_url: str, api_key: str, user_id: Optional[str] = None
+    ) -> None:
         self.server_url = server_url.rstrip("/")
         self.api_key = api_key
         self.user_id = user_id
@@ -26,15 +29,24 @@ class JellyfinClient:
             "Content-Type": "application/json",
         }
 
-    def _get(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def _get(
+        self, endpoint: str, params: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         url = f"{self.server_url}{endpoint}"
         resp = requests.get(url, headers=self.headers, params=params, timeout=30)
         resp.raise_for_status()
         return resp.json()
 
-    def _post(self, endpoint: str, params: Optional[Dict[str, Any]] = None, json_data: Optional[Any] = None) -> Any:
+    def _post(
+        self,
+        endpoint: str,
+        params: Optional[Dict[str, Any]] = None,
+        json_data: Optional[Any] = None,
+    ) -> Any:
         url = f"{self.server_url}{endpoint}"
-        resp = requests.post(url, headers=self.headers, params=params, json=json_data, timeout=30)
+        resp = requests.post(
+            url, headers=self.headers, params=params, json=json_data, timeout=30
+        )
         resp.raise_for_status()
         if resp.text:
             try:
@@ -63,7 +75,9 @@ class JellyfinClient:
         msg = "No users found on Jellyfin server."
         raise RuntimeError(msg)
 
-    def get_all_items(self, item_types: Optional[List[str]] = None, parent_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_all_items(
+        self, item_types: Optional[List[str]] = None, parent_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         """Get all items matching item_types."""
         uid = self.user_id or self.get_first_admin_user_id()
         params = {
@@ -78,7 +92,9 @@ class JellyfinClient:
         res = self._get(f"/Users/{uid}/Items", params=params)
         return res.get("Items", [])
 
-    def create_collection(self, name: str, item_ids: Optional[List[str]] = None) -> Dict[str, Any]:
+    def create_collection(
+        self, name: str, item_ids: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
         """Create a collection with given name and initial item IDs."""
         params = {"Name": name}
         if item_ids:
@@ -135,7 +151,9 @@ def sync_groupings(
 
     for group_name, items in groups.items():
         if len(items) < min_items:
-            logger.info(f"Skipping group '{group_name}' because it has fewer than {min_items} items ({len(items)})")
+            logger.info(
+                f"Skipping group '{group_name}' because it has fewer than {min_items} items ({len(items)})"
+            )
             continue
 
         item_ids = [item["Id"] for item in items]
@@ -143,11 +161,15 @@ def sync_groupings(
 
         if group_name in collection_map:
             coll_id = collection_map[group_name]
-            logger.info(f"[Existing Collection] '{group_name}' ID: {coll_id}. Target items count: {len(item_ids)}")
+            logger.info(
+                f"[Existing Collection] '{group_name}' ID: {coll_id}. Target items count: {len(item_ids)}"
+            )
             if not dry_run:
                 client.add_to_collection(coll_id, item_ids)
         else:
-            logger.info(f"[New Collection] '{group_name}'. Target items count: {len(item_ids)}")
+            logger.info(
+                f"[New Collection] '{group_name}'. Target items count: {len(item_ids)}"
+            )
             if not dry_run:
                 client.create_collection(group_name, item_ids)
 

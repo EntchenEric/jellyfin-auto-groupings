@@ -43,12 +43,12 @@ def format_file_size(size: int | float | None) -> str:
         return "0 B"
 
     abs_size = abs(size)
-    if abs_size >= 1024 ** 4:
-        return f"{abs_size / (1024 ** 4):.1f} TB"
-    if abs_size >= 1024 ** 3:
-        return f"{abs_size / (1024 ** 3):.1f} GB"
-    if abs_size >= 1024 ** 2:
-        return f"{abs_size / (1024 ** 2):.1f} MB"
+    if abs_size >= 1024**4:
+        return f"{abs_size / (1024**4):.1f} TB"
+    if abs_size >= 1024**3:
+        return f"{abs_size / (1024**3):.1f} GB"
+    if abs_size >= 1024**2:
+        return f"{abs_size / (1024**2):.1f} MB"
     if abs_size >= 1024:
         return f"{abs_size / 1024:.1f} KB"
 
@@ -68,12 +68,12 @@ def format_bitrate(bitrate: int | float | None) -> str:
         return "0 bps"
 
     abs_br = abs(bitrate)
-    if abs_br >= 10 ** 9:
-        return f"{abs_br / 10 ** 9:.1f} Gbps"
-    if abs_br >= 10 ** 6:
-        return f"{abs_br / 10 ** 6:.1f} Mbps"
-    if abs_br >= 10 ** 3:
-        return f"{abs_br / 10 ** 3:.1f} Kbps"
+    if abs_br >= 10**9:
+        return f"{abs_br / 10**9:.1f} Gbps"
+    if abs_br >= 10**6:
+        return f"{abs_br / 10**6:.1f} Mbps"
+    if abs_br >= 10**3:
+        return f"{abs_br / 10**3:.1f} Kbps"
 
     return f"{abs_br} bps"
 
@@ -168,10 +168,12 @@ def slugify(text: str | None) -> str:
 
     # Normalize unicode to ASCII (e.g., café -> cafe)
     import unicodedata
+
     text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
 
     # Replace any sequence of non-alphanumeric (except spaces) with a single hyphen
     import re
+
     text = re.sub(r"[^a-z0-9 ]+", "-", text)
 
     # Replace multiple spaces with a single hyphen

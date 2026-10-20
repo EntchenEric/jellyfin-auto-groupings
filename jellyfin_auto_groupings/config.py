@@ -5,6 +5,7 @@ from dataclasses import dataclass
 @dataclass
 class Config:
     """Configuration settings for Jellyfin Auto Groupings."""
+
     server_url: str
     api_key: str
     dry_run: bool = False

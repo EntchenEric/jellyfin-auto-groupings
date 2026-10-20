@@ -50,7 +50,10 @@ def test_jellyfin_client_get_first_admin_user_id():
     with patch.object(client, "get_users", return_value=mock_non_admin):
         assert client.get_first_admin_user_id() == "user1"
 
-    with patch.object(client, "get_users", return_value=[]), pytest.raises(RuntimeError, match="No users found"):
+    with (
+        patch.object(client, "get_users", return_value=[]),
+        pytest.raises(RuntimeError, match="No users found"),
+    ):
         client.get_first_admin_user_id()
 
 
@@ -138,7 +141,9 @@ def test_group_items_by_pattern():
 
 def test_sync_groupings_dry_run_and_real():
     mock_client = MagicMock()
-    mock_client.get_all_items.return_value = [{"Id": "col_existing", "Name": "Existing Coll"}]
+    mock_client.get_all_items.return_value = [
+        {"Id": "col_existing", "Name": "Existing Coll"}
+    ]
     groups = {
         "Existing Coll": [{"Id": "1"}, {"Id": "2"}],
         "New Coll": [{"Id": "3"}, {"Id": "4"}],

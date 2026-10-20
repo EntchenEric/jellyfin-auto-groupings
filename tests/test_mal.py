@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
+
 import pytest
 import requests
 
@@ -27,7 +28,7 @@ def test_normalize_mal_status_invalid():
 
 
 def test_fetch_mal_list_missing_client_id():
-    with pytest.raises(ValueError, match="MyAnimeList Client ID is required."):
+    with pytest.raises(ValueError, match=r"MyAnimeList Client ID is required\."):
         fetch_mal_list(username="testuser", client_id="")
 
 
@@ -40,7 +41,9 @@ def test_fetch_mal_list_success(mock_get):
             {"node": {"id": 101, "title": "Anime One"}},
             {"node": {"id": 102, "title": "Anime Two"}},
         ],
-        "paging": {"next": "[https://api.myanimelist.net/v2/users/testuser/animelist?offset=2](https://api.myanimelist.net/v2/users/testuser/animelist?offset=2)"},
+        "paging": {
+            "next": "[https://api.myanimelist.net/v2/users/testuser/animelist?offset=2](https://api.myanimelist.net/v2/users/testuser/animelist?offset=2)"
+        },
     }
 
     mock_response_2 = MagicMock()
@@ -54,7 +57,9 @@ def test_fetch_mal_list_success(mock_get):
 
     mock_get.side_effect = [mock_response_1, mock_response_2]
 
-    ids = fetch_mal_list(username="testuser", client_id="dummy_client_id", status="watching")
+    ids = fetch_mal_list(
+        username="testuser", client_id="dummy_client_id", status="watching"
+    )
 
     assert ids == [101, 102, 103]
     assert mock_get.call_count == 2
@@ -63,7 +68,9 @@ def test_fetch_mal_list_success(mock_get):
 @patch("network.get")
 def test_fetch_mal_list_network_error(mock_get):
     mock_get.side_effect = requests.exceptions.RequestException("Connection error")
-    with pytest.raises(RuntimeError, match="Failed to fetch MAL list for user 'testuser'"):
+    with pytest.raises(
+        RuntimeError, match="Failed to fetch MAL list for user 'testuser'"
+    ):
         fetch_mal_list(username="testuser", client_id="dummy_client_id")
 
 
@@ -74,5 +81,7 @@ def test_fetch_mal_list_invalid_json(mock_get):
     mock_response.json.side_effect = ValueError("Invalid JSON")
     mock_get.return_value = mock_response
 
-    with pytest.raises(RuntimeError, match="Invalid JSON response from MAL API for user 'testuser'"):
+    with pytest.raises(
+        RuntimeError, match="Invalid JSON response from MAL API for user 'testuser'"
+    ):
         fetch_mal_list(username="testuser", client_id="dummy_client_id")

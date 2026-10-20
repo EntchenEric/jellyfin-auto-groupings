@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 class JellyfinGroupingManager:
     """Manager for orchestrating groupings across Jellyfin libraries."""
+
     def __init__(self, client: JellyfinClient):
         self.client = client
 
@@ -65,7 +66,9 @@ def validate_movie_item(item: Optional[Dict[str, Any]]) -> bool:
     return bool(item.get("Name")) and bool(item.get("Id"))
 
 
-def group_movies_by_collection(movies: List[Dict[str, Any]], min_group_size: int = 2) -> Dict[str, List[Dict[str, Any]]]:
+def group_movies_by_collection(
+    movies: List[Dict[str, Any]], min_group_size: int = 2
+) -> Dict[str, List[Dict[str, Any]]]:
     """Group movies into collections by inferring collection names.
 
     Args:

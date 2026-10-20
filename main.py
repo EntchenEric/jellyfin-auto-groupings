@@ -4,15 +4,22 @@ from typing import Any, Dict, List, Optional
 
 import requests
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
 class JellyfinGroupings:
-    def __init__(self, server_url: Optional[str] = None, api_key: Optional[str] = None, timeout: int = 10) -> None:
+    def __init__(
+        self,
+        server_url: Optional[str] = None,
+        api_key: Optional[str] = None,
+        timeout: int = 10,
+    ) -> None:
         """
         Initialize JellyfinGroupings client.
-        
+
         :param server_url: Base URL of Jellyfin server. Defaults to JELLYFIN_URL env var.
         :param api_key: Jellyfin API Key. Defaults to JELLYFIN_API_KEY env var.
         :param timeout: HTTP request timeout in seconds.
@@ -26,10 +33,7 @@ class JellyfinGroupings:
         if not self.api_key:
             err_msg = "API key is missing."
             raise ValueError(err_msg)
-        return {
-            "X-Emby-Token": self.api_key,
-            "Content-Type": "application/json"
-        }
+        return {"X-Emby-Token": self.api_key, "Content-Type": "application/json"}
 
     def get_collections(self) -> List[Dict[str, Any]]:
         """Fetch all collection folders from Jellyfin."""
@@ -38,7 +42,9 @@ class JellyfinGroupings:
             raise ValueError(err_msg)
         url = f"{self.server_url}/Items?IncludeItemTypes=BoxSet&Recursive=true"
         try:
-            response = self.session.get(url, headers=self._get_headers(), timeout=self.timeout)
+            response = self.session.get(
+                url, headers=self._get_headers(), timeout=self.timeout
+            )
             response.raise_for_status()
             data = response.json()
             return data.get("Items", [])
@@ -53,7 +59,9 @@ class JellyfinGroupings:
             raise ValueError(err_msg)
         url = f"{self.server_url}/Items?IncludeItemTypes=Movie&Recursive=true"
         try:
-            response = self.session.get(url, headers=self._get_headers(), timeout=self.timeout)
+            response = self.session.get(
+                url, headers=self._get_headers(), timeout=self.timeout
+            )
             response.raise_for_status()
             data = response.json()
             return data.get("Items", [])
@@ -68,7 +76,9 @@ class JellyfinGroupings:
             raise ValueError(err_msg)
         url = f"{self.server_url}/Collections?Name={name}"
         try:
-            response = self.session.post(url, headers=self._get_headers(), timeout=self.timeout)
+            response = self.session.post(
+                url, headers=self._get_headers(), timeout=self.timeout
+            )
             response.raise_for_status()
             return response.json()
         except requests.RequestException:
@@ -85,7 +95,9 @@ class JellyfinGroupings:
         ids_param = ",".join(item_ids)
         url = f"{self.server_url}/Collections/{collection_id}/Items?Ids={ids_param}"
         try:
-            response = self.session.post(url, headers=self._get_headers(), timeout=self.timeout)
+            response = self.session.post(
+                url, headers=self._get_headers(), timeout=self.timeout
+            )
             response.raise_for_status()
         except requests.RequestException:
             logger.exception(f"Failed to add items to collection {collection_id}")
@@ -99,7 +111,11 @@ class JellyfinGroupings:
         try:
             collections = self.get_collections()
             logger.info(f"Successfully fetched {len(collections)} collections.")
-            return {"status": "success", "collections_count": len(collections), "collections": collections}
+            return {
+                "status": "success",
+                "collections_count": len(collections),
+                "collections": collections,
+            }
         except Exception:
             logger.exception("Error during auto-grouping")
             return {"status": "error", "message": "Error during auto-grouping"}
@@ -111,7 +127,11 @@ class JellyfinGroupings:
         logger.info("Starting group_movies_by_collection process...")
         try:
             movies = self.get_movies()
-            existing_collections = {col["Name"]: col["Id"] for col in self.get_collections() if "Name" in col and "Id" in col}
+            existing_collections = {
+                col["Name"]: col["Id"]
+                for col in self.get_collections()
+                if "Name" in col and "Id" in col
+            }
             collections_to_create: Dict[str, List[str]] = {}
 
             for movie in movies:
@@ -135,13 +155,15 @@ class JellyfinGroupings:
                     collection_id = existing_collections[collection_name]
 
                 if collection_id:
-                    logger.info(f"Adding movies to collection {collection_name}: {movie_ids}")
+                    logger.info(
+                        f"Adding movies to collection {collection_name}: {movie_ids}"
+                    )
                     self.add_to_collection(collection_id, movie_ids)
 
             return {
                 "status": "success",
                 "collections_created": created_count,
-                "grouped_collections": len(collections_to_create)
+                "grouped_collections": len(collections_to_create),
             }
         except Exception:
             logger.exception("Error grouping movies by collection")

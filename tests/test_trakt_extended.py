@@ -1,14 +1,14 @@
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 import requests
 
-import trakt
 from trakt import (
-    fetch_trakt_list,
-    _parse_trakt_list_url,
     _build_trakt_headers,
-    _fetch_trakt_page,
     _extract_imdb_ids_from_page,
+    _fetch_trakt_page,
+    _parse_trakt_list_url,
+    fetch_trakt_list,
 )
 
 
@@ -39,7 +39,9 @@ def test_build_trakt_headers():
 @patch("trakt.network.get")
 def test_fetch_trakt_page_success(mock_get):
     mock_resp = MagicMock()
-    mock_resp.json.return_value = [{"type": "movie", "movie": {"ids": {"imdb": "tt1234567"}}}]
+    mock_resp.json.return_value = [
+        {"type": "movie", "movie": {"ids": {"imdb": "tt1234567"}}}
+    ]
     mock_resp.headers = {"X-Pagination-Page-Count": "3"}
     mock_get.return_value = mock_resp
 
