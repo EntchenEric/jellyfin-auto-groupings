@@ -2,7 +2,7 @@ import logging
 import tempfile
 from pathlib import Path
 
-from utils.logging import get_logger, setup_logger
+from utils.log_setup import get_logger, setup_logger
 
 
 def test_setup_logger_console_only():

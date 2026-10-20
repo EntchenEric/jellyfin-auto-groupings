@@ -1,7 +1,7 @@
 import logging
 import os
 import sys
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import requests
 
@@ -11,11 +11,9 @@ logger = logging.getLogger(__name__)
 class JellyfinAPIError(Exception):
     """Custom exception for Jellyfin API errors."""
 
-    pass
-
 
 class JellyfinClient:
-    def __init__(self, server_url: str, api_key: str, user_id: Optional[str] = None):
+    def __init__(self, server_url: str, api_key: str, user_id: str | None = None):
         """Initialize Jellyfin client.
 
         Args:
@@ -34,7 +32,7 @@ class JellyfinClient:
             }
         )
 
-    def get_users(self) -> List[Dict[str, Any]]:
+    def get_users(self) -> list[dict[str, Any]]:
         """Get all users from Jellyfin server.
 
         Returns:
@@ -49,7 +47,7 @@ class JellyfinClient:
             return []
         return resp.json()
 
-    def get_first_admin_user_id(self) -> Optional[str]:
+    def get_first_admin_user_id(self) -> str | None:
         """Get the first administrator user ID.
 
         Returns:
@@ -63,7 +61,7 @@ class JellyfinClient:
                 return u.get("Id")
         return users[0].get("Id")
 
-    def get_collections(self) -> List[Dict[str, Any]]:
+    def get_collections(self) -> list[dict[str, Any]]:
         """Get all collections (BoxSets) from Jellyfin.
 
         Returns:
@@ -79,7 +77,7 @@ class JellyfinClient:
         data = resp.json()
         return data.get("Items", [])
 
-    def get_collection_items(self, collection_id: str) -> List[Dict[str, Any]]:
+    def get_collection_items(self, collection_id: str) -> list[dict[str, Any]]:
         """Get all items in a specific collection.
 
         Args:
@@ -98,7 +96,7 @@ class JellyfinClient:
         data = resp.json()
         return data.get("Items", [])
 
-    def get_movies(self) -> List[Dict[str, Any]]:
+    def get_movies(self) -> list[dict[str, Any]]:
         """Get all movies from Jellyfin.
 
         Returns:
@@ -120,7 +118,7 @@ class JellyfinClient:
         data = resp.json()
         return data.get("Items", [])
 
-    def get_items(self, library_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_items(self, library_id: str | None = None) -> list[dict[str, Any]]:
         """Get items from a specific library or all movies if library_id not provided.
 
         Args:
@@ -142,8 +140,8 @@ class JellyfinClient:
         return self.get_movies()
 
     def create_collection(
-        self, name: str, item_ids: List[str]
-    ) -> Optional[Dict[str, Any]]:
+        self, name: str, item_ids: list[str]
+    ) -> dict[str, Any] | None:
         """Create a new collection with specified items.
 
         Args:
@@ -190,8 +188,8 @@ class JellyfinClient:
 
 
 def group_movies_by_tag(
-    movies: List[Dict[str, Any]], tag_prefix: str = "Group:"
-) -> Dict[str, List[str]]:
+    movies: list[dict[str, Any]], tag_prefix: str = "Group:"
+) -> dict[str, list[str]]:
     """Group movies by tags with specified prefix.
 
     Args:
@@ -201,7 +199,7 @@ def group_movies_by_tag(
     Returns:
         Dictionary mapping group names to lists of item IDs
     """
-    groups: Dict[str, List[str]] = {}
+    groups: dict[str, list[str]] = {}
     for movie in movies:
         item_id = movie.get("Id")
         if not item_id:
@@ -215,8 +213,8 @@ def group_movies_by_tag(
 
 
 def group_movies_by_genre(
-    movies: List[Dict[str, Any]], min_count: int = 1
-) -> Dict[str, List[str]]:
+    movies: list[dict[str, Any]], min_count: int = 1
+) -> dict[str, list[str]]:
     """Group movies by genre.
 
     Args:
@@ -226,7 +224,7 @@ def group_movies_by_genre(
     Returns:
         Dictionary mapping genre names to lists of item IDs
     """
-    groups: Dict[str, List[str]] = {}
+    groups: dict[str, list[str]] = {}
     for movie in movies:
         item_id = movie.get("Id")
         if not item_id:
@@ -236,7 +234,7 @@ def group_movies_by_genre(
     return {g: ids for g, ids in groups.items() if len(ids) >= min_count}
 
 
-def process_groupings(client: JellyfinClient, dry_run: bool = True) -> List[tuple]:
+def process_groupings(client: JellyfinClient, dry_run: bool = True) -> list[tuple]:
     """Process groupings for all collections, updating sort names sequentially.
 
     Args:
@@ -260,7 +258,7 @@ def process_groupings(client: JellyfinClient, dry_run: bool = True) -> List[tupl
             continue
 
         # Sort items by PremiereDate (oldest first), fallback to Name if date missing
-        def get_sort_key(item: Dict[str, Any]) -> str:
+        def get_sort_key(item: dict[str, Any]) -> str:
             premiere_date = item.get("PremiereDate", "")
             if premiere_date:
                 return premiere_date

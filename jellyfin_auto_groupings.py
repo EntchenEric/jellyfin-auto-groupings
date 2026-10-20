@@ -3,7 +3,7 @@
 import logging
 import re
 import sys
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import requests
 
@@ -19,7 +19,7 @@ class JellyfinClient:
     """Simple Jellyfin API client."""
 
     def __init__(
-        self, server_url: str, api_key: str, user_id: Optional[str] = None
+        self, server_url: str, api_key: str, user_id: str | None = None
     ) -> None:
         self.server_url = server_url.rstrip("/")
         self.api_key = api_key
@@ -30,8 +30,8 @@ class JellyfinClient:
         }
 
     def _get(
-        self, endpoint: str, params: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, endpoint: str, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         url = f"{self.server_url}{endpoint}"
         resp = requests.get(url, headers=self.headers, params=params, timeout=30)
         resp.raise_for_status()
@@ -40,8 +40,8 @@ class JellyfinClient:
     def _post(
         self,
         endpoint: str,
-        params: Optional[Dict[str, Any]] = None,
-        json_data: Optional[Any] = None,
+        params: dict[str, Any] | None = None,
+        json_data: Any | None = None,
     ) -> Any:
         url = f"{self.server_url}{endpoint}"
         resp = requests.post(
@@ -55,12 +55,12 @@ class JellyfinClient:
                 return resp.text
         return None
 
-    def _delete(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> None:
+    def _delete(self, endpoint: str, params: dict[str, Any] | None = None) -> None:
         url = f"{self.server_url}{endpoint}"
         resp = requests.delete(url, headers=self.headers, params=params, timeout=30)
         resp.raise_for_status()
 
-    def get_users(self) -> List[Dict[str, Any]]:
+    def get_users(self) -> list[dict[str, Any]]:
         """Get list of users."""
         return self._get("/Users")
 
@@ -76,8 +76,8 @@ class JellyfinClient:
         raise RuntimeError(msg)
 
     def get_all_items(
-        self, item_types: Optional[List[str]] = None, parent_id: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, item_types: list[str] | None = None, parent_id: str | None = None
+    ) -> list[dict[str, Any]]:
         """Get all items matching item_types."""
         uid = self.user_id or self.get_first_admin_user_id()
         params = {
@@ -93,30 +93,30 @@ class JellyfinClient:
         return res.get("Items", [])
 
     def create_collection(
-        self, name: str, item_ids: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+        self, name: str, item_ids: list[str] | None = None
+    ) -> dict[str, Any]:
         """Create a collection with given name and initial item IDs."""
         params = {"Name": name}
         if item_ids:
             params["Ids"] = ",".join(item_ids)
         return self._post("/Collections", params=params)
 
-    def add_to_collection(self, collection_id: str, item_ids: List[str]) -> None:
+    def add_to_collection(self, collection_id: str, item_ids: list[str]) -> None:
         """Add items to an existing collection."""
         params = {"Ids": ",".join(item_ids)}
         self._post(f"/Collections/{collection_id}/Items", params=params)
 
-    def remove_from_collection(self, collection_id: str, item_ids: List[str]) -> None:
+    def remove_from_collection(self, collection_id: str, item_ids: list[str]) -> None:
         """Remove items from a collection."""
         params = {"Ids": ",".join(item_ids)}
         self._delete(f"/Collections/{collection_id}/Items", params=params)
 
 
 def group_items_by_pattern(
-    items: List[Dict[str, Any]], pattern: str, attribute: str = "Name"
-) -> Dict[str, List[Dict[str, Any]]]:
+    items: list[dict[str, Any]], pattern: str, attribute: str = "Name"
+) -> dict[str, list[dict[str, Any]]]:
     """Group items based on a regex pattern extract from an attribute."""
-    groups: Dict[str, List[Dict[str, Any]]] = {}
+    groups: dict[str, list[dict[str, Any]]] = {}
     regex = re.compile(pattern, re.IGNORECASE)
     for item in items:
         val = item.get(attribute, "")
@@ -138,12 +138,12 @@ def group_items_by_pattern(
 
 def sync_groupings(
     client: JellyfinClient,
-    groups: Dict[str, List[Dict[str, Any]]],
+    groups: dict[str, list[dict[str, Any]]],
     dry_run: bool = True,
     min_items: int = 1,
-) -> Dict[str, List[str]]:
+) -> dict[str, list[str]]:
     """Sync calculated groups with Jellyfin collections."""
-    summary: Dict[str, List[str]] = {}
+    summary: dict[str, list[str]] = {}
 
     # Get existing collections
     existing_collections = client.get_all_items(item_types=["BoxSet"])

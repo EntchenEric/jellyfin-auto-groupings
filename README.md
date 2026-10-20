@@ -19,7 +19,11 @@ pip install jellyfin-groupings
 ## Quick Start
 
 ```python
-from jellyfin_auto_groupings import JellyfinClient, sync_groupings, group_items_by_pattern
+from jellyfin_auto_groupings import (
+    JellyfinClient,
+    sync_groupings,
+    group_items_by_pattern,
+)
 
 client = JellyfinClient("http://localhost:8096", "your-api-key")
 items = client.get_all_items(item_types=["Movie"])

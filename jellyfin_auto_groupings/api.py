@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any
 
 import requests
 
@@ -11,13 +11,13 @@ class JellyfinAPI:
         self.api_key = api_key
         self.timeout = timeout
 
-    def _get_headers(self) -> Dict[str, str]:
+    def _get_headers(self) -> dict[str, str]:
         return {
             "X-Emby-Token": self.api_key,
             "Content-Type": "application/json",
         }
 
-    def get_collections(self) -> List[Dict[str, Any]]:
+    def get_collections(self) -> list[dict[str, Any]]:
         """Fetch all boxset/collection items from Jellyfin."""
         url = f"{self.server_url}/Items"
         params = {
@@ -31,7 +31,7 @@ class JellyfinAPI:
         data = res.json()
         return data.get("Items", [])
 
-    def get_collection_items(self, collection_id: str) -> List[Dict[str, Any]]:
+    def get_collection_items(self, collection_id: str) -> list[dict[str, Any]]:
         """Fetch items belonging to a given collection."""
         url = f"{self.server_url}/Items"
         params = {

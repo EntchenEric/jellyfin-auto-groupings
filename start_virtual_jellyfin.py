@@ -9,9 +9,8 @@ from __future__ import annotations
 import logging
 import os
 
-from tests.virtual_jellyfin import app
-
 from config import _env_flag
+from tests.virtual_jellyfin import app
 
 logger = logging.getLogger(__name__)
 

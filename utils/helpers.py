@@ -1,5 +1,7 @@
 """Helper utilities for Jellyfin Groupings."""
 
+from typing import Any
+
 
 def safe_get(data: dict | None, key: str, default=None):
     """Get a value from a nested dict/list using a dot-separated key path.
@@ -331,7 +333,7 @@ def group_by_key(items: list[dict], key: str) -> dict:
     Returns:
         Dictionary mapping key values to lists of items.
     """
-    result = {}
+    result: dict[Any, list[dict]] = {}
 
     for item in items:
         value = item.get(key)

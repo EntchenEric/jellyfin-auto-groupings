@@ -1,6 +1,8 @@
 import argparse
 import json
 import logging
+
+logger = logging.getLogger(__name__)
 import os
 import re
 import sys
@@ -44,9 +46,9 @@ def load_config(config_path="config.json"):
             with config_path_obj.open("r", encoding="utf-8") as f:
                 file_config = json.load(f)
                 config.update(file_config)
-            logging.info(f"Loaded configuration from {config_path}")
+            logger.info(f"Loaded configuration from {config_path}")
         except Exception:
-            logging.warning(f"Failed to load {config_path}", exc_info=True)
+            logger.warning(f"Failed to load {config_path}", exc_info=True)
 
     return config
 
@@ -105,7 +107,7 @@ def extract_base_title(title, patterns):
                 if base:
                     return base
         except re.error as e:
-            logging.warning(f"Invalid regex pattern '{pattern}': {e}")
+            logger.warning(f"Invalid regex pattern '{pattern}': {e}")
             continue
     return cleaned
 
@@ -126,7 +128,7 @@ def get_libraries(url, api_key):
         res.raise_for_status()
         return res.json().get("Items", [])
     except Exception:
-        logging.exception("Error fetching libraries:")
+        logger.exception("Error fetching libraries:")
         return []
 
 
@@ -155,7 +157,7 @@ def get_library_items(url, api_key, parent_id):
         res.raise_for_status()
         return res.json().get("Items", [])
     except Exception:
-        logging.exception(f"Error fetching library items for parent {parent_id}:")
+        logger.exception(f"Error fetching library items for parent {parent_id}:")
         return []
 
 
@@ -195,7 +197,7 @@ def create_collection(url, api_key, collection_name, item_ids):
         Collection ID if successful, None on failure
     """
     if not item_ids:
-        logging.error("Cannot create collection with empty item list")
+        logger.error("Cannot create collection with empty item list")
         return None
 
     endpoint = f"{url.rstrip('/')}/Collections"
@@ -205,12 +207,12 @@ def create_collection(url, api_key, collection_name, item_ids):
             endpoint, headers=get_headers(api_key), params=params, timeout=10
         )
         res.raise_for_status()
-        logging.info(
+        logger.info(
             f"Successfully created collection: '{collection_name}' with {len(item_ids)} items."
         )
         return res.json().get("Id")
     except Exception:
-        logging.exception(f"Error creating collection '{collection_name}':")
+        logger.exception(f"Error creating collection '{collection_name}':")
         return None
 
 
@@ -227,7 +229,7 @@ def add_to_collection(url, api_key, collection_id, item_ids):
         True if successful, False otherwise
     """
     if not item_ids:
-        logging.warning("No items to add to collection")
+        logger.warning("No items to add to collection")
         return False
 
     endpoint = f"{url.rstrip('/')}/Collections/{collection_id}/Items"
@@ -238,9 +240,9 @@ def add_to_collection(url, api_key, collection_id, item_ids):
         )
         res.raise_for_status()
     except Exception:
-        logging.exception(f"Error adding items to collection {collection_id}:")
+        logger.exception(f"Error adding items to collection {collection_id}:")
         return False
-    logging.info(f"Successfully added items to collection {collection_id}.")
+    logger.info(f"Successfully added items to collection {collection_id}.")
     return True
 
 
@@ -276,39 +278,37 @@ Examples:
         config["DRY_RUN"] = True
 
     if not config["JELLYFIN_API_KEY"]:
-        logging.error(
+        logger.error(
             "JELLYFIN_API_KEY is required. Please set it in config.json or env var."
         )
         sys.exit(1)
 
-    logging.info(f"Starting auto-grouping (Dry Run: {config['DRY_RUN']})...")
+    logger.info(f"Starting auto-grouping (Dry Run: {config['DRY_RUN']})...")
 
     libraries = get_libraries(config["JELLYFIN_URL"], config["JELLYFIN_API_KEY"])
-    logging.info(f"Found {len(libraries)} libraries.")
+    logger.info(f"Found {len(libraries)} libraries.")
 
     for lib in libraries:
         lib_name = lib.get("Name")
         lib_id = lib.get("Id")
-        logging.info(f"Processing library: '{lib_name}' ({lib_id})")
+        logger.info(f"Processing library: '{lib_name}' ({lib_id})")
 
         items = get_library_items(
             config["JELLYFIN_URL"], config["JELLYFIN_API_KEY"], lib_id
         )
-        logging.info(f"Retrieved {len(items)} items from '{lib_name}'.")
+        logger.info(f"Retrieved {len(items)} items from '{lib_name}'.")
 
         groups = group_items(
             items, config["PATTERNS"], min_group_size=config["MIN_GROUP_SIZE"]
         )
-        logging.info(
-            f"Found {len(groups)} potential collection groups in '{lib_name}'."
-        )
+        logger.info(f"Found {len(groups)} potential collection groups in '{lib_name}'.")
 
         for group_name, group_items_list in groups.items():
             item_names = [i.get("Name") for i in group_items_list]
             item_ids = [i.get("Id") for i in group_items_list]
             collection_title = f"{group_name} Collection"
 
-            logging.info(f"Group '{collection_title}': {item_names}")
+            logger.info(f"Group '{collection_title}': {item_names}")
             if not config["DRY_RUN"]:
                 create_collection(
                     config["JELLYFIN_URL"],

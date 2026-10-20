@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import requests
 
@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 class JellyfinGroupings:
     def __init__(
         self,
-        server_url: Optional[str] = None,
-        api_key: Optional[str] = None,
+        server_url: str | None = None,
+        api_key: str | None = None,
         timeout: int = 10,
     ) -> None:
         """
@@ -24,18 +24,18 @@ class JellyfinGroupings:
         :param api_key: Jellyfin API Key. Defaults to JELLYFIN_API_KEY env var.
         :param timeout: HTTP request timeout in seconds.
         """
-        self.server_url = (server_url or os.getenv("JELLYFIN_URL", "")).rstrip("/")
+        self.server_url = (server_url or os.getenv("JELLYFIN_URL") or "").rstrip("/")
         self.api_key = api_key or os.getenv("JELLYFIN_API_KEY", "")
         self.timeout = timeout
         self.session = requests.Session()
 
-    def _get_headers(self) -> Dict[str, str]:
+    def _get_headers(self) -> dict[str, str]:
         if not self.api_key:
             err_msg = "API key is missing."
             raise ValueError(err_msg)
         return {"X-Emby-Token": self.api_key, "Content-Type": "application/json"}
 
-    def get_collections(self) -> List[Dict[str, Any]]:
+    def get_collections(self) -> list[dict[str, Any]]:
         """Fetch all collection folders from Jellyfin."""
         if not self.server_url:
             err_msg = "Server URL is missing."
@@ -52,7 +52,7 @@ class JellyfinGroupings:
             logger.exception("Failed to fetch collections")
             raise
 
-    def get_movies(self) -> List[Dict[str, Any]]:
+    def get_movies(self) -> list[dict[str, Any]]:
         """Fetch all movie items from Jellyfin."""
         if not self.server_url:
             err_msg = "Server URL is missing."
@@ -69,7 +69,7 @@ class JellyfinGroupings:
             logger.exception("Failed to fetch movies")
             raise
 
-    def create_collection(self, name: str) -> Dict[str, Any]:
+    def create_collection(self, name: str) -> dict[str, Any]:
         """Create a new boxset collection by name in Jellyfin."""
         if not self.server_url:
             err_msg = "Server URL is missing."
@@ -85,7 +85,7 @@ class JellyfinGroupings:
             logger.exception(f"Failed to create collection: {name}")
             raise
 
-    def add_to_collection(self, collection_id: str, item_ids: List[str]) -> None:
+    def add_to_collection(self, collection_id: str, item_ids: list[str]) -> None:
         """Add movie/item IDs to an existing collection in Jellyfin."""
         if not self.server_url:
             err_msg = "Server URL is missing."
@@ -103,7 +103,7 @@ class JellyfinGroupings:
             logger.exception(f"Failed to add items to collection {collection_id}")
             raise
 
-    def auto_group(self) -> Dict[str, Any]:
+    def auto_group(self) -> dict[str, Any]:
         """
         Main execution entry point to process and group items.
         """
@@ -120,7 +120,7 @@ class JellyfinGroupings:
             logger.exception("Error during auto-grouping")
             return {"status": "error", "message": "Error during auto-grouping"}
 
-    def group_movies_by_collection(self) -> Dict[str, Any]:
+    def group_movies_by_collection(self) -> dict[str, Any]:
         """
         Group Jellyfin movies into collections based on metadata CollectionName.
         """
@@ -132,7 +132,7 @@ class JellyfinGroupings:
                 for col in self.get_collections()
                 if "Name" in col and "Id" in col
             }
-            collections_to_create: Dict[str, List[str]] = {}
+            collections_to_create: dict[str, list[str]] = {}
 
             for movie in movies:
                 collection_name = movie.get("CollectionName")

@@ -19,7 +19,7 @@ if _spec is not None and _spec.loader is not None:
     sys.modules["jellyfin_groupings_root"] = _jg
     try:
         _spec.loader.exec_module(_jg)
-    except Exception:
+    except Exception:  # noqa: BLE001 - optional legacy module load, fall back silently
         _jg = None
 else:
     _jg = None

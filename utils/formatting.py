@@ -12,8 +12,7 @@ def format_duration(seconds: int | None) -> str:
     """
     if seconds is None or seconds == 0:
         return "0m"
-    if seconds < 0:
-        seconds = 0
+    seconds = max(seconds, 0)
 
     hours = seconds // 3600
     minutes = (seconds % 3600) // 60
@@ -30,7 +29,7 @@ def format_duration(seconds: int | None) -> str:
     return " ".join(parts) if parts else "0m"
 
 
-def format_file_size(size: int | float | None) -> str:
+def format_file_size(size: float | None) -> str:
     """Format a file size in bytes to a human-readable string.
 
     Args:
@@ -55,7 +54,7 @@ def format_file_size(size: int | float | None) -> str:
     return f"{abs_size:.1f} B"
 
 
-def format_bitrate(bitrate: int | float | None) -> str:
+def format_bitrate(bitrate: float | None) -> str:
     """Format a bitrate in bits per second to a human-readable string.
 
     Args:

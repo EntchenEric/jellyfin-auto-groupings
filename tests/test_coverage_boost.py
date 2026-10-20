@@ -5,7 +5,7 @@ import pytest
 from jellyfin_auto_groupings.api import JellyfinAPI
 from jellyfin_auto_groupings.config import load_config
 from jellyfin_auto_groupings.grouper import CollectionGrouper
-from src.jellyfin_auto_groupings.groupings import (
+from jellyfin_auto_groupings.rules import (
     create_groupings,
     group_by_genre,
     group_by_studio,

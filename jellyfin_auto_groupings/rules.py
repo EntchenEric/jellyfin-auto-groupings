@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import Any, Dict, List
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -32,11 +32,11 @@ GENRE_KEYWORDS = {
 }
 
 
-def create_groupings(items: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+def create_groupings(items: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     if not items:
         return {}
 
-    groupings: Dict[str, List[Dict[str, Any]]] = {}
+    groupings: dict[str, list[dict[str, Any]]] = {}
 
     for item in items:
         title = item.get("Name", "")
@@ -64,9 +64,9 @@ def create_groupings(items: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, An
 
 
 def group_by_tag(
-    items: List[Dict[str, Any]], min_items: int = 2
-) -> Dict[str, List[Dict[str, Any]]]:
-    tag_groups: Dict[str, List[Dict[str, Any]]] = {}
+    items: list[dict[str, Any]], min_items: int = 2
+) -> dict[str, list[dict[str, Any]]]:
+    tag_groups: dict[str, list[dict[str, Any]]] = {}
     for item in items:
         tags = item.get("Tags") or []
         for tag in tags:
@@ -75,9 +75,9 @@ def group_by_tag(
 
 
 def group_by_genre(
-    items: List[Dict[str, Any]], min_items: int = 2
-) -> Dict[str, List[Dict[str, Any]]]:
-    genre_groups: Dict[str, List[Dict[str, Any]]] = {}
+    items: list[dict[str, Any]], min_items: int = 2
+) -> dict[str, list[dict[str, Any]]]:
+    genre_groups: dict[str, list[dict[str, Any]]] = {}
     for item in items:
         genres = item.get("Genres") or []
         for genre in genres:
@@ -86,9 +86,9 @@ def group_by_genre(
 
 
 def group_by_studio(
-    items: List[Dict[str, Any]], min_items: int = 2
-) -> Dict[str, List[Dict[str, Any]]]:
-    studio_groups: Dict[str, List[Dict[str, Any]]] = {}
+    items: list[dict[str, Any]], min_items: int = 2
+) -> dict[str, list[dict[str, Any]]]:
+    studio_groups: dict[str, list[dict[str, Any]]] = {}
     for item in items:
         studios = item.get("Studios") or []
         for studio in studios:
@@ -98,22 +98,22 @@ def group_by_studio(
     return {k: v for k, v in studio_groups.items() if len(v) >= min_items}
 
 
-def process_groupings(client: Any, rules: Dict[str, Any]) -> Dict[str, Any]:
+def process_groupings(client: Any, rules: dict[str, Any]) -> dict[str, Any]:
     """Process automated groupings based on client and rules."""
     if not rules:
         return {}
     return {}
 
 
-def parse_grouping_rules(rules: Dict[str, Any]) -> Dict[str, Any]:
+def parse_grouping_rules(rules: dict[str, Any]) -> dict[str, Any]:
     """Parse and validate grouping rules dictionary."""
     if not isinstance(rules, dict):
         return {}
     return rules.get("collections", {})
 
 
-def group_by_decade(items: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
-    collections: Dict[str, List[Dict[str, Any]]] = {}
+def group_by_decade(items: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    collections: dict[str, list[dict[str, Any]]] = {}
     for item in items:
         year = None
         prod_year = item.get("ProductionYear")
