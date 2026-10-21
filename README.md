@@ -96,6 +96,14 @@ client = JellyfinClient("http://localhost:8096", "api-key", user_id="optional-us
 - `process_groupings(client, library_id, items, dry_run)` - Main processing function
 - `create_groupings(client_or_items, library_id, items, min_group_size)` - Create groupings
 
+All grouping helpers tolerate the shapes Jellyfin actually returns: a `null`
+`Tags`, `Genres`, or `Studios` value, non-string entries inside those lists,
+and items without a `PremiereDate`. Such items are skipped rather than
+aborting the sync.
+
+`process_groupings(..., dry_run=True)` never mutates the server: it reports the
+planned sort-name changes and creates no collections.
+
 ## Development
 
 ```bash

@@ -1,6 +1,13 @@
 """Helper utilities for Jellyfin Groupings."""
 
+import re
 from typing import Any
+
+_UUID_WITH_DASHES = re.compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
+    r"[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+)
+_UUID_WITHOUT_DASHES = re.compile(r"^[0-9a-fA-F]{32}$")
 
 
 def safe_get(data: dict | None, key: str, default=None):
@@ -109,80 +116,44 @@ def flatten_dict(nested: dict, sep: str = ".") -> dict:
 
 
 def sanitize_filename(filename: str) -> str:
-    """Sanitize a filename by replacing invalid characters.
+    """Sanitize a filename by replacing characters that are unsafe on disk.
+
+    Leading ``./`` is dropped, while each leading ``../`` is rewritten as
+    ``.._`` so a traversal attempt stays visible in the result instead of
+    silently collapsing into a plain name.
 
     Args:
         filename: The filename to sanitize.
 
     Returns:
-        A sanitized filename safe for use as a file name.
+        A single path segment safe for use as a file name, or ``"unnamed"``
+        when nothing usable remains.
     """
-    if not filename or filename.strip() == "":
+    if not filename or not filename.strip():
         return "unnamed"
 
-    # Strip leading/trailing whitespace
-    filename = filename.strip()
+    name = filename.strip()
 
-    # Handle empty after strip
-    if not filename:
+    traversal = re.match(r"^(?:\.\./)+", name)
+    if traversal:
+        steps = traversal.group(0).count("../")
+        name = (".._" * steps) + name[traversal.end() :]
+    else:
+        name = re.sub(r"^\./+", "", name)
+
+    # Replace path separators and characters rejected by common filesystems.
+    for char in '<>:"/\\|?*':
+        name = name.replace(char, "_")
+
+    # Collapse whitespace so the result stays a single path segment.
+    name = re.sub(r"\s+", " ", name).strip()
+
+    if not name or re.fullmatch(r"\.+", name):
+        return "unnamed"
+    if not re.search(r"[a-zA-Z0-9]", name):
         return "unnamed"
 
-    # Replace path traversal sequences at the beginning: ../, ./, etc.
-    # Replace each leading "../" with ".._"
-    import re
-
-    # Match leading ../ or ./ sequences
-    filename = re.sub(r"^\./+", "", filename)  # Remove leading ./
-    # Replace each ../ at the start with .._
-    filename = re.sub(r"^(\./|\.\./)", lambda m: m.group(1).replace("/", "_"), filename)
-
-    # Actually, let me use a different approach based on test expectations:
-    # For "../../../etc/passwd" → ".._.._.._etc_passwd"
-    # Each "../" at the start becomes ".._", and remaining "/" becomes "_"
-
-    # Replacement strategy based on test expectations:
-    # 1. Replace leading "../" (one or more) with ".._" per occurrence
-    # 2. Replace remaining "/" with "_"
-    # 3. Replace ":" with "_"
-    # 4. Replace "?" with "_"
-    # 5. Replace "<>:\"|?*" with "_"
-    # 6. Collapse multiple spaces to single space, strip
-    # 7. If result is only dots or empty, return "unnamed"
-
-    # Step 1: Replace leading "../" sequences with ".._"
-    # Match one or more "../" at the start
-    traversal_match = re.match(r"^(\.\./)+", filename)
-    if traversal_match:
-        # Each "../" becomes ".._"
-        count = traversal_match.group(0).count("../")
-        filename = (".._" * count) + filename[traversal_match.end() :]
-
-    # Step 2: Replace remaining "/" with "_"
-    filename = filename.replace("/", "_")
-
-    # Step 3: Replace ":" with "_"
-    filename = filename.replace(":", "_")
-
-    # Step 4: Replace "?" with "_"
-    filename = filename.replace("?", "_")
-
-    # Step 5: Replace other invalid filename characters
-    invalid_chars = r'<>:"/\|?*'
-    for char in invalid_chars:
-        filename = filename.replace(char, "_")
-
-    # Step 6: Collapse multiple spaces to single space, strip
-    filename = re.sub(r"\s+", " ", filename).strip()
-
-    # Step 7: If result is empty or only dots, return "unnamed"
-    if not filename or re.match(r"^\.+$", filename):
-        return "unnamed"
-
-    # Step 8: If result is only underscores/dots after strip, return "unnamed"
-    if not re.search(r"[a-zA-Z0-9]", filename):
-        return "unnamed"
-
-    return filename
+    return name
 
 
 def is_valid_uuid(uuid_str: str | None) -> bool:
@@ -197,19 +168,10 @@ def is_valid_uuid(uuid_str: str | None) -> bool:
     if uuid_str is None or not isinstance(uuid_str, str):
         return False
 
-    # Accept UUID with or without dashes
-    # With dashes: 8-4-4-4-12 hex format
-    # Without dashes: 16 hex chars (or 32 hex chars for UUIDv5)
-    import re
-
-    # Pattern with dashes
-    uuid_with_dashes = re.compile(
-        r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    # With dashes: 8-4-4-4-12 hex digits. Without dashes: 32 hex digits.
+    return bool(
+        _UUID_WITH_DASHES.match(uuid_str) or _UUID_WITHOUT_DASHES.match(uuid_str)
     )
-    # Pattern without dashes (32 hex chars)
-    uuid_without_dashes = re.compile(r"^[0-9a-fA-F]{32}$")
-
-    return bool(uuid_with_dashes.match(uuid_str) or uuid_without_dashes.match(uuid_str))
 
 
 def parse_media_tags(tags: list[str]) -> list[str]:
@@ -250,8 +212,6 @@ def normalize_title(title: str | None, remove_articles: bool = True) -> str:
     """
     if title is None or title == "":
         return ""
-
-    import re
 
     # Replace punctuation characters with spaces or remove
     # Test expects: "Iron Man 2: Extended Edition" -> "iron man 2 extended edition"
@@ -298,8 +258,6 @@ def extract_year_from_title(title: str | None) -> tuple[str, int | None]:
     """
     if title is None or title == "":
         return ("", None)
-
-    import re
 
     # Try to find year in parentheses/brackets at end: ... (2023) or ... [2023]
     # Updated pattern to also match [YYYY]

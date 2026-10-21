@@ -212,10 +212,19 @@ class JellyfinClient:
         Args:
             item_id: The ID of the item to update.
             sort_name: The new sort name to apply.
+
+        Raises:
+            requests.RequestException: If the request fails or the server
+                rejects it.
         """
         url = f"{self.server_url}/Items/{item_id}"
         try:
-            self.session.post(url, json={"ForcedSortName": sort_name}, timeout=30)
+            resp = self.session.post(
+                url, json={"ForcedSortName": sort_name}, timeout=30
+            )
+            # Without this the caller cannot tell a rejected update (401/404)
+            # from a successful one, and every item would look re-sorted.
+            resp.raise_for_status()
         except Exception:
             logger.exception("Failed to update sort name for item %s", item_id)
             raise
@@ -325,13 +334,16 @@ def _resolve_release_year(item: dict[str, Any]) -> int | None:
         The release year as an int, or None when it cannot be resolved.
     """
     year = item.get("ProductionYear")
+    if isinstance(year, bool):
+        # ``bool`` is an ``int`` subclass; True/False are not release years.
+        year = None
     if isinstance(year, int) and year > 0:
         return year
-    if isinstance(year, str) and year.isdigit():
-        parsed = int(year)
+    if isinstance(year, str) and year.strip().isdigit():
+        parsed = int(year.strip())
         if parsed > 0:
             return parsed
-    if year is None and item.get("PremiereDate"):
+    if item.get("PremiereDate"):
         date_str = str(item.get("PremiereDate"))
         if len(date_str) >= 4 and date_str[:4].isdigit():
             return int(date_str[:4])
@@ -390,9 +402,12 @@ def get_movies_by_query(
     matching = []
     query_lower = query.lower()
     for item in items:
-        name = str(item.get("Name", "")).lower()
-        overview = str(item.get("Overview", "")).lower()
-        item_tags = [t.lower() for t in item.get("Tags", [])]
+        name = str(item.get("Name") or "").lower()
+        overview = str(item.get("Overview") or "").lower()
+        # Jellyfin sends ``null`` for empty tag lists and may include non-string
+        # entries; normalise before matching so a single bad item cannot abort
+        # the whole scan.
+        item_tags = [str(t).lower() for t in (item.get("Tags") or [])]
         if query_lower in name or query_lower in overview:
             if tags:
                 if all(t.lower() in item_tags for t in tags):
@@ -416,8 +431,10 @@ def group_movies_by_tag(
     """
     tag_groups: dict[str, list[dict[str, Any]]] = {}
     for item in items:
-        for tag in item.get("Tags", []):
-            tag_groups.setdefault(tag, []).append(item)
+        for tag in item.get("Tags") or []:
+            # Skip empty or non-string tag values instead of raising.
+            if isinstance(tag, str) and tag:
+                tag_groups.setdefault(tag, []).append(item)
     return {tag: val for tag, val in tag_groups.items() if len(val) >= min_group_size}
 
 
@@ -435,8 +452,10 @@ def group_movies_by_genre(
     """
     genre_groups: dict[str, list[dict[str, Any]]] = {}
     for item in items:
-        for genre in item.get("Genres", []):
-            genre_groups.setdefault(genre, []).append(item)
+        for genre in item.get("Genres") or []:
+            # Skip empty or non-string genre values instead of raising.
+            if isinstance(genre, str) and genre:
+                genre_groups.setdefault(genre, []).append(item)
     return {
         genre: val for genre, val in genre_groups.items() if len(val) >= min_group_size
     }
@@ -458,7 +477,8 @@ def process_groupings(
 
     The two modes run independently: collection re-sorting is always performed
     when supported, and prefix grouping runs only for ``JellyfinClient`` when
-    a ``library_id`` or ``items`` argument is supplied.
+    a ``library_id`` or ``items`` argument is supplied. ``dry_run`` applies to
+    both modes: no sort names are written and no collections are created.
 
     Args:
         client: JellyfinClient instance or compatible object.
@@ -477,9 +497,18 @@ def process_groupings(
             client.get_collections() if hasattr(client, "get_collections") else []
         )
         for col in collections:
-            col_name = col.get("Name", "Collection")
-            col_items = client.get_collection_items(col.get("Id", ""))
-            sorted_items = sorted(col_items, key=lambda x: x.get("PremiereDate", ""))
+            col_id = col.get("Id")
+            if not col_id:
+                # Querying items without a collection ID would return an
+                # unrelated item set, so skip malformed entries.
+                continue
+            col_name = col.get("Name") or "Collection"
+            col_items = client.get_collection_items(col_id)
+            # Jellyfin returns ``null`` for undated items; comparing ``None``
+            # with a date string raises TypeError, so coerce to "".
+            sorted_items = sorted(
+                col_items, key=lambda x: str(x.get("PremiereDate") or "")
+            )
             for idx, item in enumerate(sorted_items, start=1):
                 expected_sort_name = f"{col_name} {idx:02d}"
                 current_sort = item.get("ForcedSortName", "")
@@ -503,6 +532,9 @@ def process_groupings(
             name = item.get("Name", "")
             prefix = name.split()[0] if name else "Unknown"
             groups.setdefault(prefix, []).append(item.get("Id", ""))
+        if dry_run:
+            # A dry run must never mutate the server.
+            return changes
         created = []
         for group_name, item_ids in groups.items():
             if len(item_ids) > 1:
