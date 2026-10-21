@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- CLI: `--url` falls back to `$JELLYFIN_URL` (falling back to the
+  `http://localhost:8096` default when the variable is unset or empty) and
+  `--api-key` falls back to `$JELLYFIN_API_KEY`. Keeping the key in the
+  environment rather than on the command line avoids leaking it through shell
+  history and process listings.
+- CLI: a missing API key is now reported as a clear error on stderr with exit
+  code `1` instead of `argparse`'s usage dump, and the successful-run summary
+  distinguishes dry runs from applied syncs.
 - `tests/test_package_coverage_gaps.py`: 58 new tests covering previously
   untested error paths and branches across the migrated package modules
   (HTTP plumbing in `client._get`/`_post`/`_delete`, CLI argument-validation
@@ -16,6 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `process_groupings` modes, legacy-module library fetch / sort-name failure
   branches, loader-failure fallbacks in `jellyfin_groupings/__init__`, and
   the `jellyfin_groupings.main` `__main__` guard).
+- `tests/test_package_coverage_gaps.py`: tests for the CLI environment-variable
+  fallbacks, the explicit-flag override, the blank-`$JELLYFIN_URL` case, and
+  both summary strings.
 
 ### Changed
 
@@ -34,6 +45,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- CLI: the `--pattern` help text rendered a mangled default (`^( .* )`,
+  followed by a stray trailing clause); it now reads as the actual default
+  `^(.*)`.
 - `_common.py`: `normalize_group_relpath` now rejects Windows drive-letter
   absolute paths (e.g. `"C:\\foo"` or `"C:/foo"`). Previously these were
   normalised into a *relative* path rooted at a literal `"C:"` segment,
