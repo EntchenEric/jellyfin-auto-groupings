@@ -191,7 +191,7 @@ persisting them to disk.
 ## Testing
 
 Tests use `pytest` with mocking for external HTTP calls.  The CI pipeline
-enforces a coverage ratchet baseline (`--cov-fail-under=44`, raised as
+enforces a coverage ratchet baseline (`--cov-fail-under=46`, raised as
 coverage improves).  A virtual Jellyfin mock server
 (`start_virtual_jellyfin.py`) is available for integration testing without
 a real Jellyfin instance.

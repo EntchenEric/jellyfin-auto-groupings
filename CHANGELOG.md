@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `tests/test_package_coverage_gaps.py`: 58 new tests covering previously
+  untested error paths and branches across the migrated package modules
+  (HTTP plumbing in `client._get`/`_post`/`_delete`, CLI argument-validation
+  and request-failure exits, tag/genre grouping min-size filters, both
+  `process_groupings` modes, legacy-module library fetch / sort-name failure
+  branches, loader-failure fallbacks in `jellyfin_groupings/__init__`, and
+  the `jellyfin_groupings.main` `__main__` guard).
+
+### Changed
+
+- Coverage ratchet raised from `--cov-fail-under=44` to `46` in the Tests
+  workflow; package modules `client.py`, `rules.py`, `cli.py`, and
+  `__init__.py` are now at or near 100% line coverage under the standard
+  test job.
+
 ### Security
 
 - `routes.py`: the HTTP Basic Auth password check in `_check_auth` now uses
