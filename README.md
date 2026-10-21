@@ -38,10 +38,21 @@ python -m jellyfin_auto_groupings.cli --url http://localhost:8096 --api-key YOUR
 ```
 
 Options:
-- `--url` / `--server` - Jellyfin server URL (default: `http://localhost:8096`)
-- `--api-key` - Jellyfin API key (required)
+- `--url` / `--server` - Jellyfin server URL (default: `$JELLYFIN_URL`, else `http://localhost:8096`)
+- `--api-key` - Jellyfin API key (default: `$JELLYFIN_API_KEY`; required from one or the other)
 - `--dry-run` - Preview changes without applying them
 - `--pattern` - Regex pattern used to derive group names from item names (default: `^(.*)`)
+
+Prefer the environment variable so the key stays out of your shell history and
+the process list:
+
+```bash
+export JELLYFIN_API_KEY=your-api-key
+python -m jellyfin_auto_groupings.cli --url http://localhost:8096 --dry-run
+```
+
+Exit codes: `0` on success, `1` for a missing API key, an invalid `--pattern`
+regex, a connection/timeout failure, or a sync error.
 
 ## Configuration
 

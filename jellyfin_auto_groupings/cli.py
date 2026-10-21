@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os
 import re
 import sys
 from collections.abc import Sequence
@@ -10,10 +11,13 @@ import requests
 from jellyfin_auto_groupings.client import (
     JellyfinAPIError,
     JellyfinClient,
+    group_items_by_pattern,
     sync_groupings,
 )
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_URL = "http://localhost:8096"
 
 
 def group_movies(
@@ -29,8 +33,6 @@ def group_movies(
     Returns:
         Mapping of collection names to lists of items.
     """
-    from jellyfin_auto_groupings.client import group_items_by_pattern
-
     return group_items_by_pattern(items, pattern)
 
 
@@ -44,14 +46,17 @@ def build_parser() -> argparse.ArgumentParser:
         "--url",
         "--server",
         dest="url",
-        default="http://localhost:8096",
-        help="Jellyfin server URL (default: http://localhost:8096)",
+        default=os.environ.get("JELLYFIN_URL") or DEFAULT_URL,
+        help=(f"Jellyfin server URL (default: $JELLYFIN_URL, else {DEFAULT_URL})"),
     )
     parser.add_argument(
         "--api-key",
         dest="api_key",
-        required=True,
-        help="Jellyfin API key (set JELLYFIN_API_KEY env var instead to avoid shell history)",
+        default=os.environ.get("JELLYFIN_API_KEY") or None,
+        help=(
+            "Jellyfin API key (default: $JELLYFIN_API_KEY). Prefer the env var "
+            "so the key stays out of shell history and process listings."
+        ),
     )
     parser.add_argument(
         "--dry-run",
@@ -61,7 +66,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--pattern",
         default=r"^(.*)",
-        help="Regex pattern whose first capture group defines collection names (default: ^( .* ) — one collection per movie)",
+        help=(
+            "Regex pattern whose first capture group defines collection names "
+            r"(default: ^(.*), which puts each movie in its own collection)"
+        ),
     )
     return parser
 
@@ -72,6 +80,13 @@ def main(args: Sequence[str] | None = None) -> int:
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
     )
     parsed = build_parser().parse_args(args)
+
+    if not parsed.api_key:
+        sys.stderr.write(
+            "Error: a Jellyfin API key is required. Pass --api-key or set the "
+            "JELLYFIN_API_KEY environment variable.\n"
+        )
+        return 1
 
     if parsed.url.rstrip("/") != parsed.url:
         logger.warning("Trailing slash in --url; it will be stripped automatically.")
@@ -119,8 +134,10 @@ def main(args: Sequence[str] | None = None) -> int:
         sys.exit(1)
 
     n_groups = len(summary)
-    mode = "dry-run" if parsed.dry_run else "applied"
-    print(f"{n_groups} collection(s) would be {mode}. Use --dry-run to preview.")
+    if parsed.dry_run:
+        print(f"Dry run: {n_groups} collection(s) would be synced. No changes made.")
+    else:
+        print(f"Synced {n_groups} collection(s).")
     return 0
 
 

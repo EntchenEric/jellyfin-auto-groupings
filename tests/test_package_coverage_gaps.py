@@ -989,3 +989,72 @@ def test_legacy_main_module_dunder_main(capsys, monkeypatch):
     out = capsys.readouterr().out
     assert "Found 1 existing collections." in out
     assert "Found 0 movies." in out
+
+
+# ---------------------------------------------------------------------------
+# CLI environment-variable fallbacks for --api-key / --url
+# ---------------------------------------------------------------------------
+
+
+def test_cli_api_key_falls_back_to_env(monkeypatch):
+    monkeypatch.setenv("JELLYFIN_API_KEY", "env-key")
+    monkeypatch.delenv("JELLYFIN_URL", raising=False)
+    args = build_parser().parse_args([])
+    assert args.api_key == "env-key"
+    assert args.url == "http://localhost:8096"
+
+
+def test_cli_explicit_api_key_overrides_env(monkeypatch):
+    monkeypatch.setenv("JELLYFIN_API_KEY", "env-key")
+    args = build_parser().parse_args(["--api-key", "flag-key"])
+    assert args.api_key == "flag-key"
+
+
+def test_cli_url_falls_back_to_env(monkeypatch):
+    monkeypatch.setenv("JELLYFIN_URL", "http://media.local:9000")
+    args = build_parser().parse_args(["--api-key", "k"])
+    assert args.url == "http://media.local:9000"
+
+
+def test_cli_blank_env_url_uses_default(monkeypatch):
+    # An empty JELLYFIN_URL must not produce a bare "" base URL.
+    monkeypatch.setenv("JELLYFIN_URL", "")
+    args = build_parser().parse_args(["--api-key", "k"])
+    assert args.url == "http://localhost:8096"
+
+
+def test_cli_missing_api_key_returns_error(monkeypatch, capsys):
+    monkeypatch.delenv("JELLYFIN_API_KEY", raising=False)
+    rc = cli_main(["--dry-run"])
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "JELLYFIN_API_KEY" in err
+    assert "--api-key" in err
+
+
+def test_cli_uses_env_api_key_end_to_end(monkeypatch, capsys):
+    monkeypatch.setenv("JELLYFIN_API_KEY", "env-key")
+    client = MagicMock()
+    client.get_all_items.return_value = []
+    with (
+        patch("jellyfin_auto_groupings.cli.JellyfinClient", return_value=client) as cls,
+        patch("jellyfin_auto_groupings.cli.sync_groupings", return_value={"A": ["1"]}),
+    ):
+        rc = cli_main(["--dry-run"])
+    assert rc == 0
+    cls.assert_called_once_with("http://localhost:8096", "env-key")
+    out = capsys.readouterr().out
+    assert "Dry run: 1 collection(s) would be synced" in out
+
+
+def test_cli_applied_mode_does_not_say_would(monkeypatch, capsys):
+    client = MagicMock()
+    client.get_all_items.return_value = []
+    with (
+        patch("jellyfin_auto_groupings.cli.JellyfinClient", return_value=client),
+        patch("jellyfin_auto_groupings.cli.sync_groupings", return_value={"A": ["1"]}),
+    ):
+        rc = cli_main(["--api-key", "k"])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert out.strip() == "Synced 1 collection(s)."
