@@ -137,11 +137,9 @@ def truncate_text(text: str | None, max_width: int, suffix: str = "...") -> str:
     if max_width <= len(suffix):
         return text[:max_width]
 
-    # Reserve space for suffix
+    # Reserve space for the suffix. The guard above guarantees
+    # max_width > len(suffix) here, so ``available`` is always positive.
     available = max_width - len(suffix)
-    if available <= 0:
-        return text[:max_width]
-
     return text[:available].rstrip() + suffix
 
 

@@ -62,6 +62,12 @@ def test_format_resolution():
     assert format_resolution(854, 480) == "480p"
     assert format_resolution(640, 360) == "360p"
     assert format_resolution(800, 600) == "800x600"
+    # Non-standard widths fall back to the height-based pattern.
+    assert format_resolution(720, 480) == "720x480"
+    assert format_resolution(960, 720) == "960x720"
+    assert format_resolution(1440, 1080) == "1440x1080"
+    assert format_resolution(100, 2160) == "100x2160 (4K)"
+    assert format_resolution(1920, 1200) == "1920x1200"
 
 
 def test_truncate_text():
@@ -70,6 +76,8 @@ def test_truncate_text():
     assert truncate_text("hello world!", 8) == "hello..."
     assert truncate_text("hello world!", 8, suffix="~") == "hello w~"
     assert truncate_text("hello", 2, suffix="...") == "he"
+    # max_width exactly equal to the suffix length leaves no room for text.
+    assert truncate_text("hello", 3, suffix="...") == "hel"
 
 
 def test_slugify():
@@ -77,6 +85,9 @@ def test_slugify():
     assert slugify("  Hello World!  ") == "hello-world"
     assert slugify("Café & Bar") == "cafe-bar"
     assert slugify("__Special---Chars__") == "special-chars"
+    # Whitespace-only and punctuation-only input collapse to an empty slug.
+    assert slugify("   ") == ""
+    assert slugify("---") == ""
 
 
 def test_format_release_date():
@@ -85,6 +96,9 @@ def test_format_release_date():
     assert format_release_date("2023-05-12T14:30:00Z") == "2023-05-12"
     assert format_release_date("2023-05-12") == "2023-05-12"
     assert format_release_date("invalid-date") == "invalid-date"
+    # Year-month and bare-year forms are accepted as-is.
+    assert format_release_date("2023-05") == "2023-05"
+    assert format_release_date("2023") == "2023"
 
 
 def test_safe_get():
@@ -142,6 +156,9 @@ def test_parse_media_tags():
     assert parse_media_tags(tags) == ["Action", "Sci-Fi", "Comedy"]
     assert parse_media_tags([]) == []
     assert parse_media_tags(["  "]) == []
+    # Deduplication is case-insensitive and keeps first-seen order, so the
+    # result is not sorted (matching the documented behaviour).
+    assert parse_media_tags(["b", "A", "a", "c"]) == ["b", "A", "c"]
 
 
 def test_normalize_title():
