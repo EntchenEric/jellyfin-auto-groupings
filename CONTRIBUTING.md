@@ -75,7 +75,7 @@ When adding a new external source, follow the existing pattern:
   ```bash
   pytest
   ```
-- The project requires 100% code coverage (CI uses `--cov-fail-under=100`). New features must include tests.
+- The CI coverage gate is a ratchet baseline (currently `--cov-fail-under=44`). New features must include tests; raise the baseline in `.github/workflows/test.yml` and `.pre-commit-config.yaml` as coverage improves — never lower it.
 - Run individual test files during development:
   ```bash
   pytest tests/test_sync.py -v

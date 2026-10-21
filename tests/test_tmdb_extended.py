@@ -11,7 +11,7 @@ repo_root = Path(__file__).resolve().parent.parent
 if str(repo_root) not in sys.path:
     sys.path.insert(0, str(repo_root))
 
-import tmdb
+import tmdb  # noqa: E402  (import after sys.path setup for repo-root imports)
 
 
 def test_tmdb_normalize_list_id():
