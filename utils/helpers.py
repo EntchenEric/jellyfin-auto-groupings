@@ -183,7 +183,8 @@ def parse_media_tags(tags: list[str]) -> list[str]:
         tags: List of tag strings.
 
     Returns:
-        Sorted list of unique, normalized tags.
+        Unique normalized tags in first-seen order. Deduplication keeps the
+        first spelling encountered, so the result is not sorted.
     """
     seen = set()
     result = []

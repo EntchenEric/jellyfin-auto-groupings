@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `utils.helpers.parse_media_tags` docstring claimed the result was sorted,
+  but the implementation keeps first-seen order while deduplicating
+  case-insensitively. The docstring now describes the real behaviour.
+- `utils.formatting.truncate_text` had an unreachable `available <= 0` guard:
+  the earlier `max_width <= len(suffix)` check already returns in that case.
+  The dead branch is removed and the remaining arithmetic is documented.
+- `Makefile`: the `test-fast` target listed five test files
+  (`tests/test_config.py`, `test_cleanup.py`, `test_scheduler.py`,
+  `test_network.py`, `test_sync.py`) that no longer exist, so `make test-fast`
+  failed immediately with "file or directory not found". It now runs the
+  `tests/` directory with the slow/exhaustive suites ignored.
 - `client.update_item_sort_name` now calls `raise_for_status()`. Previously a
   rejected update (for example HTTP 401 or 404) was reported as success, so
   every item looked re-sorted while Jellyfin kept the old order.
@@ -35,6 +46,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `tests/test_utils_extended.py`: cover the height-based resolution fallbacks,
+  the exact-suffix-length `truncate_text` boundary, whitespace/punctuation-only
+  `slugify` inputs, year-month and bare-year `format_release_date` forms, and
+  the first-seen ordering of `parse_media_tags`.
 - `tests/test_null_field_robustness.py`: regression tests for `null` tag,
   genre, studio, and premiere-date metadata, boolean production years,
   collections without an `Id`, dry-run collection creation, and HTTP error
@@ -42,6 +57,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Untracked committed runtime artifacts that `.gitignore` already excludes:
+  leftover dispatcher marker files (`marker_*`) and the `venv3/lib64`,
+  `venv4/lib64` virtualenv symlinks. The files stay on disk; only the git
+  tracking is removed.
 - `rules.parse_grouping_rules` returns `{}` when `collections` is present but
   is not a mapping, instead of returning the non-mapping value.
 

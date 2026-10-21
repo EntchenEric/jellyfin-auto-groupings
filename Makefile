@@ -27,8 +27,9 @@ test-fast:
 	python3 -m pytest -x $(PYTEST_ARGS) -m "not exhaustive and not e2e" \
 		--ignore=tests/test_deep_sync.py \
 		--ignore=tests/test_virtual_jellyfin_exhaustive.py \
+		--ignore=tests/test_virtual_jellyfin_api.py \
 		--ignore=tests/test_e2e \
-		tests/test_config.py tests/test_cleanup.py tests/test_scheduler.py tests/test_network.py tests/test_sync.py
+		tests/
 
 test-to-file:
 	python3 run_tests_to_file.py
