@@ -191,8 +191,9 @@ persisting them to disk.
 ## Testing
 
 Tests use `pytest` with mocking for external HTTP calls.  The CI pipeline
-requires 100% code coverage (`--cov-fail-under=100`).  A virtual Jellyfin
-mock server (`start_virtual_jellyfin.py`) is available for integration
-testing without a real Jellyfin instance.
+enforces a coverage ratchet baseline (`--cov-fail-under=44`, raised as
+coverage improves).  A virtual Jellyfin mock server
+(`start_virtual_jellyfin.py`) is available for integration testing without
+a real Jellyfin instance.
 
 For detailed test descriptions and how to run them, see [CONTRIBUTING.md](../CONTRIBUTING.md).

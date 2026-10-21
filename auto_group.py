@@ -1,14 +1,14 @@
 import argparse
 import json
 import logging
-
-logger = logging.getLogger(__name__)
 import os
 import re
 import sys
 from pathlib import Path
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
