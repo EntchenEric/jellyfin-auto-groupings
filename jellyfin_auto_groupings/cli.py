@@ -102,7 +102,7 @@ def main(args: Sequence[str] | None = None) -> int:
         msg = f"Error: {exc}"
         sys.stderr.write(msg + "\n")
         sys.exit(1)
-    except Exception as exc:  # noqa: BLE001 - CLI boundary, report and exit
+    except Exception as exc:
         msg = f"Error: {exc}"
         sys.stderr.write(msg + "\n")
         sys.exit(1)
@@ -114,7 +114,7 @@ def main(args: Sequence[str] | None = None) -> int:
             "Connection lost while syncing. Re-run with --dry-run first to preview.\n"
         )
         sys.exit(1)
-    except Exception as exc:  # noqa: BLE001 - CLI boundary, report and exit
+    except Exception as exc:
         sys.stderr.write(f"Failed to sync groupings: {exc}\n")
         sys.exit(1)
 
