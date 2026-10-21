@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `config.load_config` returned a config whose nested containers aliased
+  `DEFAULT_CONFIG`: the returned dict was a shallow copy, so the `scheduler`
+  dict and the `groups` list were shared with the module-level defaults. Any
+  caller that mutated the returned config (for example toggling a scheduler
+  flag or appending a group) silently rewrote the process-wide defaults for
+  every later load. Defaults are now deep-copied on the missing-file,
+  corrupt-file, and unreadable-file paths.
 - `utils.helpers.parse_media_tags` docstring claimed the result was sorted,
   but the implementation keeps first-seen order while deduplicating
   case-insensitively. The docstring now describes the real behaviour.
@@ -46,6 +53,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `tests/test_config_defaults_isolation.py`: regression tests proving
+  `load_config` never aliases `DEFAULT_CONFIG` on the first-run, repeated-load,
+  and corrupt-file paths, and that mutations to a returned config do not leak
+  into the defaults.
 - `tests/test_utils_extended.py`: cover the height-based resolution fallbacks,
   the exact-suffix-length `truncate_text` boundary, whitespace/punctuation-only
   `slugify` inputs, year-month and bare-year `format_release_date` forms, and

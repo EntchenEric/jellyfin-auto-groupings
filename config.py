@@ -103,6 +103,21 @@ def _env_flag(name: str, *, default: bool = False) -> bool:
     return default
 
 
+def _default_config_copy() -> dict[str, Any]:
+    """Return a deep copy of :data:`DEFAULT_CONFIG`.
+
+    A shallow ``dict.copy()`` would leave nested containers (the
+    ``scheduler`` dict and the ``groups`` list) aliased to the module-level
+    defaults, so mutating the returned config would silently corrupt
+    :data:`DEFAULT_CONFIG` for the rest of the process.
+
+    Returns:
+        A new dict with independent nested containers.
+
+    """
+    return copy.deepcopy(DEFAULT_CONFIG)
+
+
 def _fill_defaults(cfg: dict[str, Any], defaults: dict[str, Any]) -> None:
     """Fill missing keys in *cfg* from *defaults*, recursing into nested dicts.
 
@@ -171,8 +186,8 @@ def load_config() -> dict[str, Any]:
     """
     cfg: dict[str, Any]
     if not Path(CONFIG_FILE).exists():
-        save_config(DEFAULT_CONFIG.copy())
-        cfg = DEFAULT_CONFIG.copy()
+        cfg = _default_config_copy()
+        save_config(cfg)
     else:
         try:
             with Path(CONFIG_FILE).open("r", encoding="utf-8") as fh:
@@ -203,7 +218,7 @@ def load_config() -> dict[str, Any]:
                     backup_path,
                     backup_path.exists(),
                 )
-            cfg = DEFAULT_CONFIG.copy()
+            cfg = _default_config_copy()
         except OSError:
             # If the file is unreadable, fall back to safe defaults
             logger.warning(
@@ -211,7 +226,7 @@ def load_config() -> dict[str, Any]:
                 CONFIG_FILE,
                 exc_info=True,
             )
-            cfg = DEFAULT_CONFIG.copy()
+            cfg = _default_config_copy()
 
     # Apply environment-variable overrides (additive, never persisted)
     for cfg_key, env_var in _ENV_OVERRIDES.items():
