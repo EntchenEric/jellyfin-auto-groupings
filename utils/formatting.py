@@ -12,8 +12,7 @@ def format_duration(seconds: int | None) -> str:
     """
     if seconds is None or seconds == 0:
         return "0m"
-    if seconds < 0:
-        seconds = 0
+    seconds = max(seconds, 0)
 
     hours = seconds // 3600
     minutes = (seconds % 3600) // 60
@@ -30,7 +29,7 @@ def format_duration(seconds: int | None) -> str:
     return " ".join(parts) if parts else "0m"
 
 
-def format_file_size(size: int | float | None) -> str:
+def format_file_size(size: float | None) -> str:
     """Format a file size in bytes to a human-readable string.
 
     Args:
@@ -43,19 +42,19 @@ def format_file_size(size: int | float | None) -> str:
         return "0 B"
 
     abs_size = abs(size)
-    if abs_size >= 1024 ** 4:
-        return f"{abs_size / (1024 ** 4):.1f} TB"
-    if abs_size >= 1024 ** 3:
-        return f"{abs_size / (1024 ** 3):.1f} GB"
-    if abs_size >= 1024 ** 2:
-        return f"{abs_size / (1024 ** 2):.1f} MB"
+    if abs_size >= 1024**4:
+        return f"{abs_size / (1024**4):.1f} TB"
+    if abs_size >= 1024**3:
+        return f"{abs_size / (1024**3):.1f} GB"
+    if abs_size >= 1024**2:
+        return f"{abs_size / (1024**2):.1f} MB"
     if abs_size >= 1024:
         return f"{abs_size / 1024:.1f} KB"
 
     return f"{abs_size:.1f} B"
 
 
-def format_bitrate(bitrate: int | float | None) -> str:
+def format_bitrate(bitrate: float | None) -> str:
     """Format a bitrate in bits per second to a human-readable string.
 
     Args:
@@ -68,12 +67,12 @@ def format_bitrate(bitrate: int | float | None) -> str:
         return "0 bps"
 
     abs_br = abs(bitrate)
-    if abs_br >= 10 ** 9:
-        return f"{abs_br / 10 ** 9:.1f} Gbps"
-    if abs_br >= 10 ** 6:
-        return f"{abs_br / 10 ** 6:.1f} Mbps"
-    if abs_br >= 10 ** 3:
-        return f"{abs_br / 10 ** 3:.1f} Kbps"
+    if abs_br >= 10**9:
+        return f"{abs_br / 10**9:.1f} Gbps"
+    if abs_br >= 10**6:
+        return f"{abs_br / 10**6:.1f} Mbps"
+    if abs_br >= 10**3:
+        return f"{abs_br / 10**3:.1f} Kbps"
 
     return f"{abs_br} bps"
 
@@ -168,10 +167,12 @@ def slugify(text: str | None) -> str:
 
     # Normalize unicode to ASCII (e.g., café -> cafe)
     import unicodedata
+
     text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
 
     # Replace any sequence of non-alphanumeric (except spaces) with a single hyphen
     import re
+
     text = re.sub(r"[^a-z0-9 ]+", "-", text)
 
     # Replace multiple spaces with a single hyphen

@@ -1,5 +1,7 @@
 """Helper utilities for Jellyfin Groupings."""
 
+from typing import Any
+
 
 def safe_get(data: dict | None, key: str, default=None):
     """Get a value from a nested dict/list using a dot-separated key path.
@@ -55,7 +57,7 @@ def chunk_list(lst: list, size: int) -> list:
     if not lst:
         return []
 
-    return [lst[i:i + size] for i in range(0, len(lst), size)]
+    return [lst[i : i + size] for i in range(0, len(lst), size)]
 
 
 def deep_merge(dict1: dict, dict2: dict) -> dict:
@@ -128,6 +130,7 @@ def sanitize_filename(filename: str) -> str:
     # Replace path traversal sequences at the beginning: ../, ./, etc.
     # Replace each leading "../" with ".._"
     import re
+
     # Match leading ../ or ./ sequences
     filename = re.sub(r"^\./+", "", filename)  # Remove leading ./
     # Replace each ../ at the start with .._
@@ -136,11 +139,6 @@ def sanitize_filename(filename: str) -> str:
     # Actually, let me use a different approach based on test expectations:
     # For "../../../etc/passwd" → ".._.._.._etc_passwd"
     # Each "../" at the start becomes ".._", and remaining "/" becomes "_"
-
-    # Let me redo: replace leading "../" patterns
-    # Count leading "../" or "..\" sequences
-    leading_traversal = re.match(r"^(\.?/)*\.?/\.", filename)
-    # Hmm, let me just handle the specific test cases with a targeted approach
 
     # Replacement strategy based on test expectations:
     # 1. Replace leading "../" (one or more) with ".._" per occurrence
@@ -157,10 +155,7 @@ def sanitize_filename(filename: str) -> str:
     if traversal_match:
         # Each "../" becomes ".._"
         count = traversal_match.group(0).count("../")
-        filename = (".._" * count) + filename[traversal_match.end():]
-    else:
-        # No leading path traversal, just replace "/" with "_"
-        pass
+        filename = (".._" * count) + filename[traversal_match.end() :]
 
     # Step 2: Replace remaining "/" with "_"
     filename = filename.replace("/", "_")
@@ -180,11 +175,11 @@ def sanitize_filename(filename: str) -> str:
     filename = re.sub(r"\s+", " ", filename).strip()
 
     # Step 7: If result is empty or only dots, return "unnamed"
-    if not filename or re.match(r'^\.+$', filename):
+    if not filename or re.match(r"^\.+$", filename):
         return "unnamed"
 
     # Step 8: If result is only underscores/dots after strip, return "unnamed"
-    if not re.search(r'[a-zA-Z0-9]', filename):
+    if not re.search(r"[a-zA-Z0-9]", filename):
         return "unnamed"
 
     return filename
@@ -257,6 +252,7 @@ def normalize_title(title: str | None, remove_articles: bool = True) -> str:
         return ""
 
     import re
+
     # Replace punctuation characters with spaces or remove
     # Test expects: "Iron Man 2: Extended Edition" -> "iron man 2 extended edition"
     cleaned = re.sub(r"[:!?,;.\[\](){}\"'_\-]+([\s]|$)", " ", title)
@@ -266,7 +262,22 @@ def normalize_title(title: str | None, remove_articles: bool = True) -> str:
     if remove_articles:
         # Split on spaces and remove leading articles (including foreign like der, die, das, le, la, el, un, etc. if needed)
         parts = cleaned.split()
-        articles = {"the", "a", "an", "der", "die", "das", "le", "la", "les", "un", "une", "el", "los", "las"}
+        articles = {
+            "the",
+            "a",
+            "an",
+            "der",
+            "die",
+            "das",
+            "le",
+            "la",
+            "les",
+            "un",
+            "une",
+            "el",
+            "los",
+            "las",
+        }
         while parts and parts[0] in articles:
             parts.pop(0)
         return " ".join(parts)
@@ -296,7 +307,7 @@ def extract_year_from_title(title: str | None) -> tuple[str, int | None]:
     if match:
         year = int(match.group(1))
         # Remove the year portion from the title
-        before = title[:match.start()].rstrip()
+        before = title[: match.start()].rstrip()
         # Clean up trailing colons, spaces, and brackets
         before = before.rstrip(" :[]")
         return (before, year)
@@ -306,7 +317,7 @@ def extract_year_from_title(title: str | None) -> tuple[str, int | None]:
     if match:
         year = int(match.group(1))
         # Check if the year is preceded by a space (not embedded in other text)
-        before = title[:match.start()].rstrip()
+        before = title[: match.start()].rstrip()
         return (before, year)
 
     return (title, None)
@@ -322,7 +333,7 @@ def group_by_key(items: list[dict], key: str) -> dict:
     Returns:
         Dictionary mapping key values to lists of items.
     """
-    result = {}
+    result: dict[Any, list[dict]] = {}
 
     for item in items:
         value = item.get(key)

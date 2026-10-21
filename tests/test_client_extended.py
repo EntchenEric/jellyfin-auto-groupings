@@ -115,7 +115,11 @@ def test_get_decade_groups_robustness():
 
     # Test fallback to PremiereDate
     items5 = [
-        {"Id": "p1", "PremiereDate": "1999-05-21T00:00:00Z", "Name": "PremiereDate fallback"},
+        {
+            "Id": "p1",
+            "PremiereDate": "1999-05-21T00:00:00Z",
+            "Name": "PremiereDate fallback",
+        },
         {"Id": "p2", "PremiereDate": "2007-12-03", "Name": "PremiereDate only"},
     ]
     result5 = get_decade_groups(items5)
@@ -168,7 +172,11 @@ def test_get_year_groups_robustness():
 
     # Test fallback to PremiereDate
     items5 = [
-        {"Id": "p1", "PremiereDate": "1999-05-21T00:00:00Z", "Name": "PremiereDate fallback"},
+        {
+            "Id": "p1",
+            "PremiereDate": "1999-05-21T00:00:00Z",
+            "Name": "PremiereDate fallback",
+        },
         {"Id": "p2", "PremiereDate": "2007-12-03", "Name": "PremiereDate only"},
     ]
     result5 = get_year_groups(items5)

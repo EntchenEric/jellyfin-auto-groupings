@@ -5,7 +5,7 @@ from jellyfin_auto_groupings import (
     group_movies_by_collection,
     validate_movie_item,
 )
-from src.jellyfin_auto_groupings.groupings import (
+from jellyfin_auto_groupings.rules import (
     parse_grouping_rules,
     process_groupings,
 )

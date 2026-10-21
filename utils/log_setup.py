@@ -1,10 +1,12 @@
 """Logging utilities for Jellyfin Groupings."""
 
 import logging
-import os
+from pathlib import Path
 
 
-def setup_logger(name: str, level: str = "INFO", log_file: str = None) -> logging.Logger:
+def setup_logger(
+    name: str, level: str = "INFO", log_file: str | None = None
+) -> logging.Logger:
     """Set up a logger with the given name, level, and optional file output.
 
     Args:
@@ -31,10 +33,9 @@ def setup_logger(name: str, level: str = "INFO", log_file: str = None) -> loggin
 
         # File handler if log_file is provided
         if log_file:
-            log_dir = os.path.dirname(log_file)
-            if log_dir and not os.path.exists(log_dir):
-                os.makedirs(log_dir, exist_ok=True)
-            file_handler = logging.FileHandler(log_file)
+            log_path = Path(log_file)
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            file_handler = logging.FileHandler(log_path)
             file_handler.setLevel(getattr(logging, level.upper(), logging.INFO))
             file_handler.setFormatter(formatter)
             logger.addHandler(file_handler)

@@ -1,4 +1,5 @@
 """Extended unit tests for tmdb.py to increase test coverage and edge-case handling."""
+
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -24,7 +25,9 @@ def test_tmdb_normalize_list_id():
 def test_tmdb_fetch_page_http_error():
     with patch("tmdb.network.get") as mock_get:
         mock_resp = MagicMock()
-        mock_resp.raise_for_status.side_effect = requests.exceptions.HTTPError("404 Not Found")
+        mock_resp.raise_for_status.side_effect = requests.exceptions.HTTPError(
+            "404 Not Found"
+        )
         mock_get.return_value = mock_resp
         with pytest.raises(RuntimeError, match="Failed to fetch TMDb list page 1"):
             tmdb._fetch_tmdb_page("123", "fake_key", 1)
@@ -54,9 +57,7 @@ def test_tmdb_recommendations_rate_limit_retry():
 
         ok_resp = MagicMock()
         ok_resp.status_code = 200
-        ok_resp.json.return_value = {
-            "results": [{"id": 501}, {"id": 502}]
-        }
+        ok_resp.json.return_value = {"results": [{"id": 501}, {"id": 502}]}
 
         mock_get.side_effect = [rate_limit_resp, ok_resp]
 

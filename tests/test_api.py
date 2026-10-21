@@ -11,7 +11,9 @@ from jellyfin_auto_groupings.api import JellyfinAPI
 
 @pytest.fixture
 def api_client():
-    return JellyfinAPI(server_url="http://localhost:8096/", api_key="testkey123", timeout=10)
+    return JellyfinAPI(
+        server_url="http://localhost:8096/", api_key="testkey123", timeout=10
+    )
 
 
 def test_init_headers(api_client):
@@ -24,7 +26,9 @@ def test_init_headers(api_client):
 @patch("requests.get")
 def test_get_collections_success(mock_get, api_client):
     mock_resp = MagicMock()
-    mock_resp.json.return_value = {"Items": [{"Name": "Marvel Collection", "Id": "col1"}]}
+    mock_resp.json.return_value = {
+        "Items": [{"Name": "Marvel Collection", "Id": "col1"}]
+    }
     mock_resp.raise_for_status.return_value = None
     mock_get.return_value = mock_resp
 

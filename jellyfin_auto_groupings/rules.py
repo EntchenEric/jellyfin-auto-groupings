@@ -1,11 +1,18 @@
 import logging
 import re
-from typing import Any, Dict, List
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 FRANCHISE_RULES = {
-    "Marvel Cinematic Universe": [r"\bmcu\b", r"marvel cinematic universe", r"avengers", r"iron man", r"thor", r"captain america"],
+    "Marvel Cinematic Universe": [
+        r"\bmcu\b",
+        r"marvel cinematic universe",
+        r"avengers",
+        r"iron man",
+        r"thor",
+        r"captain america",
+    ],
     "Star Wars": [r"star wars", r"\bsw\b"],
     "Harry Potter": [r"harry potter", r"wizarding world", r"fantastic beasts"],
     "Lord of the Rings": [r"lord of the rings", r"\blotr\b", r"the hobbit"],
@@ -13,17 +20,23 @@ FRANCHISE_RULES = {
 }
 
 GENRE_KEYWORDS = {
-    "Sci-Fi Classics": [r"sci-fi", r"science fiction", r"space", r"alien", r"cyberpunk"],
+    "Sci-Fi Classics": [
+        r"sci-fi",
+        r"science fiction",
+        r"space",
+        r"alien",
+        r"cyberpunk",
+    ],
     "Oscar Winners": [r"oscar", r"academy award", r"best picture"],
     "90s Action": [r"action"],
 }
 
 
-def create_groupings(items: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+def create_groupings(items: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     if not items:
         return {}
 
-    groupings: Dict[str, List[Dict[str, Any]]] = {}
+    groupings: dict[str, list[dict[str, Any]]] = {}
 
     for item in items:
         title = item.get("Name", "")
@@ -50,8 +63,10 @@ def create_groupings(items: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, An
     return groupings
 
 
-def group_by_tag(items: List[Dict[str, Any]], min_items: int = 2) -> Dict[str, List[Dict[str, Any]]]:
-    tag_groups: Dict[str, List[Dict[str, Any]]] = {}
+def group_by_tag(
+    items: list[dict[str, Any]], min_items: int = 2
+) -> dict[str, list[dict[str, Any]]]:
+    tag_groups: dict[str, list[dict[str, Any]]] = {}
     for item in items:
         tags = item.get("Tags") or []
         for tag in tags:
@@ -59,8 +74,10 @@ def group_by_tag(items: List[Dict[str, Any]], min_items: int = 2) -> Dict[str, L
     return {k: v for k, v in tag_groups.items() if len(v) >= min_items}
 
 
-def group_by_genre(items: List[Dict[str, Any]], min_items: int = 2) -> Dict[str, List[Dict[str, Any]]]:
-    genre_groups: Dict[str, List[Dict[str, Any]]] = {}
+def group_by_genre(
+    items: list[dict[str, Any]], min_items: int = 2
+) -> dict[str, list[dict[str, Any]]]:
+    genre_groups: dict[str, list[dict[str, Any]]] = {}
     for item in items:
         genres = item.get("Genres") or []
         for genre in genres:
@@ -68,8 +85,10 @@ def group_by_genre(items: List[Dict[str, Any]], min_items: int = 2) -> Dict[str,
     return {k: v for k, v in genre_groups.items() if len(v) >= min_items}
 
 
-def group_by_studio(items: List[Dict[str, Any]], min_items: int = 2) -> Dict[str, List[Dict[str, Any]]]:
-    studio_groups: Dict[str, List[Dict[str, Any]]] = {}
+def group_by_studio(
+    items: list[dict[str, Any]], min_items: int = 2
+) -> dict[str, list[dict[str, Any]]]:
+    studio_groups: dict[str, list[dict[str, Any]]] = {}
     for item in items:
         studios = item.get("Studios") or []
         for studio in studios:
@@ -79,23 +98,22 @@ def group_by_studio(items: List[Dict[str, Any]], min_items: int = 2) -> Dict[str
     return {k: v for k, v in studio_groups.items() if len(v) >= min_items}
 
 
-
-def process_groupings(client: Any, rules: Dict[str, Any]) -> Dict[str, Any]:
+def process_groupings(client: Any, rules: dict[str, Any]) -> dict[str, Any]:
     """Process automated groupings based on client and rules."""
     if not rules:
         return {}
     return {}
 
 
-def parse_grouping_rules(rules: Dict[str, Any]) -> Dict[str, Any]:
+def parse_grouping_rules(rules: dict[str, Any]) -> dict[str, Any]:
     """Parse and validate grouping rules dictionary."""
     if not isinstance(rules, dict):
         return {}
     return rules.get("collections", {})
 
 
-def group_by_decade(items: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
-    collections: Dict[str, List[Dict[str, Any]]] = {}
+def group_by_decade(items: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    collections: dict[str, list[dict[str, Any]]] = {}
     for item in items:
         year = None
         prod_year = item.get("ProductionYear")
@@ -103,14 +121,14 @@ def group_by_decade(items: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any
             year = prod_year
         elif isinstance(prod_year, str) and prod_year.isdigit():
             year = int(prod_year)
-        
+
         if year is None and item.get("PremiereDate"):
             pdate = item.get("PremiereDate")
             if isinstance(pdate, str) and len(pdate) >= 4 and pdate[:4].isdigit():
                 year = int(pdate[:4])
             elif isinstance(pdate, (int, float)):
                 year = int(pdate)
-        
+
         if year and 1800 <= year <= 2100:
             decade = f"{(year // 10) * 10}s Movies"
             if decade not in collections:
