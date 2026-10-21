@@ -68,6 +68,12 @@ __all__ = [
 # Pre-compiled regex for splitting complex query logical operators.
 _COMPLEX_QUERY_RE = re.compile(r"\s+(AND NOT|OR NOT|AND|OR)\s+", re.IGNORECASE)
 
+# A logical operator left dangling at the end of a query (``"Action AND"``).
+# Splitting on it would fold the operator into the previous value, so it is
+# stripped up front.  Requires the operator to be preceded by whitespace so a
+# genre genuinely named e.g. ``"Rock"`` is never truncated.
+_DANGLING_OPERATOR_RE = re.compile(r"\s+(?:AND NOT|OR NOT|AND|OR)\s*$", re.IGNORECASE)
+
 # ``sort_order`` values that mean "keep the order from the external list"
 # rather than applying a Jellyfin / in-memory sort.
 _LIST_ORDER_VALUES: frozenset[str] = frozenset(
@@ -996,16 +1002,21 @@ def _match_year(value: Any, rule_value: str) -> bool:
 
     Args:
         value: The item's ``ProductionYear`` (may be ``None``).
-        rule_value: The year expression from the rule.
+        rule_value: The year expression from the rule. ``None`` is treated as
+            "no match" so a partially filled rule in ``config.json`` cannot
+            abort a whole sync; other scalars are compared by their string
+            form so a numeric rule value still matches its year.
 
     Returns:
         ``True`` if the year satisfies the expression.
 
     """
-    if value is None:
+    if value is None or rule_value is None:
         return False
 
-    expr = rule_value.strip()
+    expr = str(rule_value).strip()
+    if not expr:
+        return False
     for prefix in (">=", "<=", ">", "<"):
         if expr.startswith(prefix):
             year = _coerce_year_int(value)
@@ -1359,6 +1370,14 @@ def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
 
     """
     stripped = query.strip()
+    if not stripped:
+        return []
+
+    # A trailing operator has nothing to combine with. Splitting on it would
+    # otherwise turn it into a literal filter value (``"Action AND NOT"``
+    # became a ``"not"`` genre that never matches), so drop the dangling
+    # operator before splitting instead of silently filtering everything out.
+    stripped = _DANGLING_OPERATOR_RE.sub("", stripped).strip()
     if not stripped:
         return []
 

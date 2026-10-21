@@ -11,6 +11,7 @@ import copy
 import json
 import logging
 import os
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -49,6 +50,17 @@ _ENV_TO_CONFIG: dict[str, str] = {v: k for k, v in _ENV_OVERRIDES.items()}
 _CONFIG_PATH = Path(__file__).parent / "config"
 CONFIG_DIR: Path = _CONFIG_PATH
 CONFIG_FILE: Path = _CONFIG_PATH / "config.json"
+
+#: How many timestamped ``config.json.<timestamp>.bak`` files to retain.
+#: Every save rotates the previous file, so without a cap the config
+#: directory grows without bound (one backup per POST /api/config).
+_BACKUP_KEEP: int = 5
+
+#: Suffix pattern of the rotation backups written by :func:`save_config`.
+#: Anchored so it matches only a ``<timestamp>.bak`` tail, which deliberately
+#: excludes ``.corrupt*.bak`` files — those are rare diagnostic artifacts and
+#: should survive normal pruning.
+_BACKUP_SUFFIX_RE: re.Pattern[str] = re.compile(r"^\d{8}_\d{6}\.bak$")
 
 # ---------------------------------------------------------------------------
 # Defaults
@@ -273,13 +285,45 @@ def _active_env_overrides() -> dict[str, str]:
     return overrides
 
 
+def _prune_config_backups(cfg_dir: Path, cfg_name: str) -> None:
+    """Delete the oldest rotation backups, keeping the newest few.
+
+    Pruning is best-effort: a failure here must never abort the config save
+    that triggered it, so every filesystem error is logged and swallowed.
+
+    Args:
+        cfg_dir: Directory holding the config file and its backups.
+        cfg_name: File name of the config (e.g. ``"config.json"``).
+
+    """
+    prefix = f"{cfg_name}."
+    try:
+        backups = sorted(
+            entry
+            for entry in cfg_dir.iterdir()
+            if entry.name.startswith(prefix)
+            and _BACKUP_SUFFIX_RE.match(entry.name[len(prefix) :])
+        )
+    except OSError:
+        logger.debug("Could not list config backups in %s", cfg_dir, exc_info=True)
+        return
+
+    # Names embed a zero-padded UTC timestamp, so lexical order is age order.
+    for stale in backups[: max(0, len(backups) - _BACKUP_KEEP)]:
+        with contextlib.suppress(OSError):
+            stale.unlink()
+            logger.debug("Pruned old config backup %s", stale)
+
+
 def save_config(config: dict[str, Any]) -> None:
     """Persist *config* to :data:`CONFIG_FILE` as pretty-printed JSON.
 
     The write is **atomic**: content is first written to a temporary file in
     the same directory, then renamed over the target.  If a previous config
     file existed, a timestamped backup is created via ``.bak`` suffix so
-    administrators can recover the last-good state.
+    administrators can recover the last-good state.  Only the newest
+    :data:`_BACKUP_KEEP` backups are kept so repeated saves cannot fill the
+    config directory.
 
     Args:
         config: The configuration dictionary to write.
@@ -302,6 +346,7 @@ def save_config(config: dict[str, Any]) -> None:
             backup_path = cfg_dir / backup_name
             cfg_file.rename(backup_path)
             logger.debug("Backed up previous config to %s", backup_path)
+            _prune_config_backups(cfg_dir, cfg_file.name)
         tmp_file.rename(cfg_file)
     except Exception:
         # Clean up temp file on failure
