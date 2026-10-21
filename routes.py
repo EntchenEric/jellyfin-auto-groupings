@@ -44,6 +44,7 @@ from _common import normalize_group_relpath
 from config import (
     _active_env_overrides,
     load_config,
+    load_stored_config,
     save_config,
 )
 from jellyfin import (
@@ -372,6 +373,32 @@ def _mask_config(config: dict[str, Any]) -> dict[str, Any]:
         if masked.get(key):
             masked[key] = _CONFIG_MASK
     return masked
+
+
+def _restore_masked_secrets(new_config: dict[str, Any]) -> dict[str, Any]:
+    """Replace echoed masks with the stored secret and drop internal keys.
+
+    ``GET /api/config`` masks secrets, and the frontend posts the whole
+    config object back when saving. Any sensitive field that still equals
+    :data:`_CONFIG_MASK` therefore means "unchanged" and is restored from
+    disk; without this the real key would be persisted as ``"****"``.
+    Non-persistent helper keys such as ``_active_env_overrides`` are removed.
+
+    Args:
+        new_config: The config dict parsed from the request body.
+
+    Returns:
+        A copy safe to persist.
+
+    """
+    cleaned = {k: v for k, v in new_config.items() if not k.startswith("_")}
+    if not any(cleaned.get(key) == _CONFIG_MASK for key in _SENSITIVE_CONFIG_KEYS):
+        return cleaned
+    stored = load_stored_config()
+    for key in _SENSITIVE_CONFIG_KEYS:
+        if cleaned.get(key) == _CONFIG_MASK:
+            cleaned[key] = stored.get(key, "")
+    return cleaned
 
 
 @bp.route("/api/config", methods=["GET"])
@@ -706,6 +733,12 @@ def update_config() -> ResponseReturnValue:
     if type_errors:
         return _error("Invalid config field type(s)", 400, errors=type_errors)
 
+    # The frontend loads the masked config and posts the whole object back on
+    # save, so any secret field still holding the mask must be replaced with
+    # its stored value; otherwise the real API key would be overwritten with
+    # "****". Internal, non-persistent keys are dropped at the same time.
+    new_config = _restore_masked_secrets(new_config)
+
     try:
         save_config(new_config)
     except OSError as exc:
@@ -748,6 +781,12 @@ def test_server() -> ResponseReturnValue:
         return _error("Request body must be a JSON object", 400)
     url: str = str(data.get("jellyfin_url") or "").rstrip("/")
     api_key: str = str(data.get("api_key") or "")
+
+    # The sidebar tests the connection using the value shown in the form,
+    # which is the mask when the config was loaded from the server. Resolve
+    # it to the stored key instead of failing the test with "****".
+    if api_key == _CONFIG_MASK:
+        api_key = str(load_stored_config().get("api_key") or "")
 
     if not url or not api_key:
         return _error("URL and API Key are required", 400)

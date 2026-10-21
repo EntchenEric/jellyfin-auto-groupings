@@ -24,6 +24,7 @@ __all__ = [
     "_ENV_TO_CONFIG",
     "_active_env_overrides",
     "load_config",
+    "load_stored_config",
     "save_config",
 ]
 
@@ -235,6 +236,26 @@ def load_config() -> dict[str, Any]:
             cfg[cfg_key] = env_val
 
     return cfg
+
+
+def load_stored_config() -> dict[str, Any]:
+    """Read the persisted configuration exactly as written on disk.
+
+    Unlike :func:`load_config`, this applies no defaults and no environment
+    overrides, so callers see the literal stored values.  It is used to
+    restore secret values that the frontend echoes back in masked form.
+
+    Returns:
+        The stored configuration dict, or an empty dict when the file is
+        missing, unreadable, or does not contain a JSON object.
+
+    """
+    try:
+        with Path(CONFIG_FILE).open("r", encoding="utf-8") as fh:
+            stored = json.load(fh)
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return stored if isinstance(stored, dict) else {}
 
 
 def _active_env_overrides() -> dict[str, str]:
