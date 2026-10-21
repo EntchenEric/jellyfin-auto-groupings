@@ -7,11 +7,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 import requests
 
-repo_root = Path(__file__).resolve().parent.parent
-if str(repo_root) not in sys.path:
-    sys.path.insert(0, str(repo_root))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import tmdb  # (import after sys.path setup for repo-root imports)
+import tmdb
 
 
 def test_tmdb_normalize_list_id():
