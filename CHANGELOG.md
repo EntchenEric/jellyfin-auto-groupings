@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `client.update_item_sort_name` now calls `raise_for_status()`. Previously a
+  rejected update (for example HTTP 401 or 404) was reported as success, so
+  every item looked re-sorted while Jellyfin kept the old order.
+- `get_movies_by_query`, `group_movies_by_tag`, and `group_movies_by_genre`
+  no longer raise `TypeError`/`AttributeError` when Jellyfin returns
+  `"Tags": null`, `"Genres": null`, or non-string entries inside those lists;
+  unusable values are skipped.
+- `rules.group_by_tag`, `group_by_genre`, and `group_by_studio` apply the same
+  null/non-string filtering, and `group_by_studio` no longer strings unexpected
+  values into bogus studio names.
+- `process_groupings` no longer raises `TypeError` when a collection item has
+  `"PremiereDate": null`, and skips collections that have no `Id` instead of
+  querying items with an empty parent ID.
+- `process_groupings(..., dry_run=True)` no longer creates collections in mode 2;
+  a dry run now leaves the server untouched in both modes.
+- `_resolve_release_year` and `rules.group_by_decade` treat `True`/`False` as
+  "no year" instead of as release years, and accept whitespace-padded year
+  strings.
+- `_resolve_release_year` now still falls back to `PremiereDate` when
+  `ProductionYear` is present but unusable (for example `"n/a"`).
+- `utils.helpers.sanitize_filename` no longer reshuffles `./` prefixes in a
+  way that could drop a leading `../../`, and the implementation is a single
+  documented pass instead of dead intermediate steps.
+
+### Added
+
+- `tests/test_null_field_robustness.py`: regression tests for `null` tag,
+  genre, studio, and premiere-date metadata, boolean production years,
+  collections without an `Id`, dry-run collection creation, and HTTP error
+  propagation from `update_item_sort_name`.
+
+### Changed
+
+- `rules.parse_grouping_rules` returns `{}` when `collections` is present but
+  is not a mapping, instead of returning the non-mapping value.
+
 ### Added
 
 - CLI: `--url` falls back to `$JELLYFIN_URL` (falling back to the

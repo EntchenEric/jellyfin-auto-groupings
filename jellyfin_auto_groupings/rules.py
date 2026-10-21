@@ -66,22 +66,26 @@ def create_groupings(items: list[dict[str, Any]]) -> dict[str, list[dict[str, An
 def group_by_tag(
     items: list[dict[str, Any]], min_items: int = 2
 ) -> dict[str, list[dict[str, Any]]]:
+    """Group items by tag, keeping groups with at least ``min_items`` members."""
     tag_groups: dict[str, list[dict[str, Any]]] = {}
     for item in items:
-        tags = item.get("Tags") or []
-        for tag in tags:
-            tag_groups.setdefault(tag, []).append(item)
+        # Jellyfin uses ``null`` for empty tag lists and may include
+        # non-string values; skip those rather than raising.
+        for tag in item.get("Tags") or []:
+            if isinstance(tag, str) and tag:
+                tag_groups.setdefault(tag, []).append(item)
     return {k: v for k, v in tag_groups.items() if len(v) >= min_items}
 
 
 def group_by_genre(
     items: list[dict[str, Any]], min_items: int = 2
 ) -> dict[str, list[dict[str, Any]]]:
+    """Group items by genre, keeping groups with at least ``min_items`` members."""
     genre_groups: dict[str, list[dict[str, Any]]] = {}
     for item in items:
-        genres = item.get("Genres") or []
-        for genre in genres:
-            genre_groups.setdefault(genre, []).append(item)
+        for genre in item.get("Genres") or []:
+            if isinstance(genre, str) and genre:
+                genre_groups.setdefault(genre, []).append(item)
     return {k: v for k, v in genre_groups.items() if len(v) >= min_items}
 
 
@@ -92,8 +96,8 @@ def group_by_studio(
     for item in items:
         studios = item.get("Studios") or []
         for studio in studios:
-            s_name = studio.get("Name") if isinstance(studio, dict) else str(studio)
-            if s_name:
+            s_name = studio.get("Name") if isinstance(studio, dict) else studio
+            if isinstance(s_name, str) and s_name:
                 studio_groups.setdefault(s_name, []).append(item)
     return {k: v for k, v in studio_groups.items() if len(v) >= min_items}
 
@@ -106,10 +110,17 @@ def process_groupings(client: Any, rules: dict[str, Any]) -> dict[str, Any]:
 
 
 def parse_grouping_rules(rules: dict[str, Any]) -> dict[str, Any]:
-    """Parse and validate grouping rules dictionary."""
+    """Return the ``collections`` section of a rules dict, or ``{}``.
+
+    Non-dict input, a missing ``collections`` key, and a non-dict
+    ``collections`` value all fall back to an empty mapping.
+    """
     if not isinstance(rules, dict):
         return {}
-    return rules.get("collections", {})
+    collections = rules.get("collections", {})
+    if not isinstance(collections, dict):
+        return {}
+    return collections
 
 
 def group_by_decade(items: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
@@ -117,16 +128,20 @@ def group_by_decade(items: list[dict[str, Any]]) -> dict[str, list[dict[str, Any
     for item in items:
         year = None
         prod_year = item.get("ProductionYear")
-        if isinstance(prod_year, int) and prod_year > 0:
+        if (
+            isinstance(prod_year, int)
+            and not isinstance(prod_year, bool)
+            and prod_year > 0
+        ):
             year = prod_year
-        elif isinstance(prod_year, str) and prod_year.isdigit():
-            year = int(prod_year)
+        elif isinstance(prod_year, str) and prod_year.strip().isdigit():
+            year = int(prod_year.strip())
 
         if year is None and item.get("PremiereDate"):
             pdate = item.get("PremiereDate")
             if isinstance(pdate, str) and len(pdate) >= 4 and pdate[:4].isdigit():
                 year = int(pdate[:4])
-            elif isinstance(pdate, (int, float)):
+            elif isinstance(pdate, (int, float)) and not isinstance(pdate, bool):
                 year = int(pdate)
 
         if year and 1800 <= year <= 2100:

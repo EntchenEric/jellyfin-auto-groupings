@@ -416,9 +416,29 @@ def test_process_groupings_mode2_fetches_library_when_items_none():
     ):
         result = process_groupings(client, library_id="lib1", dry_run=True)
     mock_get_items.assert_called_once_with("lib1")
-    # dry-run does not apply changes; but mode 2 ignores dry_run by design -
-    # verify that collections were actually created as part of the run.
-    assert mock_create.call_count == 1
+    # A dry run must not mutate the server.
+    mock_create.assert_not_called()
+    assert result == []
+
+
+def test_process_groupings_mode2_applies_when_not_dry_run():
+    client = _client()
+    with (
+        patch.object(client, "get_collections", return_value=[]),
+        patch.object(
+            client,
+            "get_items",
+            return_value=[
+                {"Id": "1", "Name": "Toy Story"},
+                {"Id": "2", "Name": "Toy Story 2"},
+            ],
+        ),
+        patch.object(
+            client, "create_collection", return_value={"Id": "c-1"}
+        ) as mock_create,
+    ):
+        result = process_groupings(client, library_id="lib1", dry_run=False)
+    mock_create.assert_called_once_with("Toy", ["1", "2"])
     assert result == [{"Id": "c-1"}]
 
 
