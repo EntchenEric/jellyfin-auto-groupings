@@ -144,3 +144,26 @@ def test_update_item_sort_name_raises_on_http_error():
     ):
         client.update_item_sort_name("missing", "Name 01")
     mock_post.assert_called_once()
+
+
+def test_group_items_by_pattern_tolerates_non_participating_capture_group():
+    """A regex whose alternation leaves a group unset must not abort grouping.
+
+    Patterns like ``^(\\d{4})|(.*)`` return ``None`` for the branch that did
+    not match; the unused group used to be ``.strip()``-ed and crashed the
+    whole sync with ``AttributeError``.
+    """
+    from jellyfin_auto_groupings.client import group_items_by_pattern
+
+    items = [{"Id": "1", "Name": "1994"}, {"Id": "2", "Name": "Heat"}]
+    groups = group_items_by_pattern(items, r"^(?:(\d{4})|(.*))")
+    assert groups == {"1994": [items[0]], "Heat": [items[1]]}
+
+
+def test_group_items_by_pattern_skips_when_all_capture_groups_unset():
+    """A match with only empty optional groups falls back to the full match."""
+    from jellyfin_auto_groupings.client import group_items_by_pattern
+
+    items = [{"Id": "1", "Name": "abc"}]
+    groups = group_items_by_pattern(items, r"^(?:(\d+))?(\w+)")
+    assert groups == {"abc": items}

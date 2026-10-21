@@ -258,12 +258,26 @@ def group_items_by_pattern(
         for target in target_vals:
             match = compiled.search(target)
             if match:
-                group_name = match.group(1) if match.groups() else match.group(0)
-                group_name = group_name.strip()
+                group_name = _matched_group_name(match)
                 if group_name:
                     groups.setdefault(group_name, []).append(item)
                 break
     return groups
+
+
+def _matched_group_name(match: re.Match[str]) -> str:
+    r"""Resolve the group name for a regex match.
+
+    Prefers the first capture group, falling back to the first group that
+    actually participated in the match and finally to the whole match. A
+    pattern such as ``(\d{4})|(.*)`` leaves the unused branch ``None``, and
+    calling ``.strip()`` on that ``None`` used to abort the whole sync.
+    """
+    if match.groups():
+        for group in match.groups():
+            if group is not None:
+                return group.strip()
+    return match.group(0).strip()
 
 
 def sync_groupings(
