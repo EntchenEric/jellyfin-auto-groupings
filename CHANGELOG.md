@@ -20,6 +20,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `sync_groupings` no longer sends unusable item IDs to Jellyfin. It built its
+  `Ids` list with `str(item["Id"]) for item in items if "Id" in item`, so an
+  item whose `Id` was present but `None` or `""` contributed the literal
+  strings `"None"` and `""`. Jellyfin rejects the whole `Ids` parameter when
+  one entry is invalid, so a single malformed item blocked collection creation
+  for every item in the group. Such items are now skipped, matching the guard
+  the prefix-grouping paths of `process_groupings` and `create_groupings`
+  already applied. `min_items` is now measured against usable IDs, so a group
+  that shrinks below the threshold after filtering is not created (previously
+  it was created with the remaining valid items only by luck of ordering).
+- `utils.helpers.parse_media_tags` no longer raises `AttributeError` on
+  non-string tag entries. Jellyfin returns `null` for empty tag lists and can
+  include non-string values, which `tag.strip()` rejected; those entries are
+  now skipped, which is what `rules.group_by_tag` and
+  `client.group_movies_by_tag` already did.
 - A malformed `config.json` section no longer crashes the app. Because
   `config.json` is user-editable and `POST /api/config` takes untrusted JSON,
   `"scheduler": null`, `"groups": "text"`, or a numeric cron value used to

@@ -174,13 +174,18 @@ def is_valid_uuid(uuid_str: str | None) -> bool:
     )
 
 
-def parse_media_tags(tags: list[str]) -> list[str]:
+def parse_media_tags(tags: list[Any]) -> list[str]:
     """Parse and normalize media tags.
 
     Strips whitespace, removes duplicates (case-insensitive), and filters empty tags.
 
+    Jellyfin sends ``null`` for empty tag lists and may include non-string
+    entries, so anything that is not a string is skipped instead of raising
+    the :class:`AttributeError` that ``.strip()`` on ``None`` would produce.
+    The same rule is applied by :func:`jellyfin_auto_groupings.rules.group_by_tag`.
+
     Args:
-        tags: List of tag strings.
+        tags: List of tag values; non-string entries are ignored.
 
     Returns:
         Unique normalized tags in first-seen order. Deduplication keeps the
@@ -190,6 +195,8 @@ def parse_media_tags(tags: list[str]) -> list[str]:
     result = []
 
     for tag in tags:
+        if not isinstance(tag, str):
+            continue
         stripped = tag.strip()
         if not stripped:
             continue
