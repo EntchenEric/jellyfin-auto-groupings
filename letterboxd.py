@@ -36,17 +36,46 @@ _REQUEST_HEADERS: dict[str, str] = {
 }
 
 
-# Ordered sequence of (regex, id_group_index) for extracting IDs from list-page HTML.
-# Higher-priority patterns (TMDb data attribute) are checked first so that
-# they take precedence over lower-priority ones (IMDb / TMDb href).
-_ID_LIST_PAGE_PATTERNS: list[tuple[str, int]] = [
+# Matches each film's slug marker in list-page HTML.
+_SLUG_PATTERN: str = r'data-film-slug="([^"]+)"'
+
+# Ordered ID patterns for a single film's HTML segment. Higher-priority
+# patterns (TMDb data attribute) are tried first; the first hit wins.
+# Each film's markup is scanned in isolation, so these must never reach
+# across a neighbouring film's block.
+_ID_SEGMENT_PATTERNS: list[str] = [
     # data-tmdb-id attribute directly on the film element (fastest, no href match)
-    (r'data-film-slug="([^"]+)".*?data-tmdb-id="(\d+)"', 2),
+    r'data-tmdb-id="(\d+)"',
     # IMDb URL in a link
-    (r'data-film-slug="([^"]+)".*?imdb\.com/title/(tt\d+)', 2),
+    r"imdb\.com/title/(tt\d+)",
     # TMDb URL in a link
-    (r'data-film-slug="([^"]+)".*?themoviedb\.org/movie/(\d+)', 2),
+    r"themoviedb\.org/movie/(\d+)",
 ]
+
+
+def _film_segments(html: str) -> list[tuple[str, str]]:
+    """Split list-page HTML into ``(slug, segment)`` pairs.
+
+    A film's segment runs from its slug marker up to the next film's slug
+    marker, which keeps the ID lookup inside that film's own markup. Slicing
+    rather than using a ``.*?`` regex matters because real Letterboxd markup
+    wraps a single film's attributes across several lines: non-DOTALL ``.*?``
+    never matched, and DOTALL alone would let a film without an ID borrow the
+    next film's ID.
+
+    Args:
+        html: The HTML content of the Letterboxd list page.
+
+    Returns:
+        Pairs of film slug and the HTML that belongs to that film.
+
+    """
+    markers = list(re.finditer(_SLUG_PATTERN, html))
+    segments: list[tuple[str, str]] = []
+    for index, marker in enumerate(markers):
+        end = markers[index + 1].start() if index + 1 < len(markers) else len(html)
+        segments.append((marker.group(1), html[marker.start() : end]))
+    return segments
 
 
 def _extract_ids_from_list_page(html: str) -> dict[str, str]:
@@ -61,11 +90,14 @@ def _extract_ids_from_list_page(html: str) -> dict[str, str]:
     """
     found: dict[str, str] = {}
 
-    for pattern, id_group in _ID_LIST_PAGE_PATTERNS:
-        for match in re.finditer(pattern, html):
-            slug = match.group(1)
-            if slug not in found:
-                found[slug] = match.group(id_group)
+    for slug, segment in _film_segments(html):
+        if slug in found:
+            continue
+        for pattern in _ID_SEGMENT_PATTERNS:
+            match = re.search(pattern, segment)
+            if match:
+                found[slug] = match.group(1)
+                break
 
     return found
 
