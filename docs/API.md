@@ -6,7 +6,7 @@ All `/api/*` routes return JSON unless noted. State-changing requests (`POST`, `
 X-Requested-With: XMLHttpRequest
 ```
 
-When `APP_PASSWORD` is set, most `/api/*` routes also require HTTP Basic Auth (password only; username is ignored). The main UI (`GET /`) and `/static/*` assets load without credentials; the SPA prompts for the password on the first `401` response.
+When `APP_PASSWORD` is set, most `/api/*` routes also require HTTP Basic Auth (password only; username is ignored). The password may be any UTF-8 text, including non-ASCII characters. The main UI (`GET /`) and `/static/*` assets load without credentials; the SPA prompts for the password on the first `401` response. `GET /api/health` is also unauthenticated so container healthchecks keep working.
 
 When `APP_PASSWORD` is **not** set, the web UI and API are unauthenticated. Do not expose the service to untrusted networks without setting `APP_PASSWORD` or placing it behind a reverse proxy with authentication.
 

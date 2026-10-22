@@ -1,7 +1,7 @@
 // path-picker.js – Folder path picker and auto-detect logic
 
 import { state } from '../core/state.js';
-import { autoDetectPaths as apiAutoDetect } from '../core/api.js';
+import { autoDetectPaths as apiAutoDetect, browsePath } from '../core/api.js';
 import { showModal, hideModal, showToast, showErrorDialog, getEl } from '../core/ui.js';
 
 /** @type {string|null} ID of the form input field being picked for */
@@ -50,22 +50,26 @@ export async function browseDir(path) {
         '<p style="padding:1.5rem; text-align:center; color:var(--text-secondary);">Loading...</p>';
     let result;
     try {
-        const url = new URL('/api/browse', window.location.origin);
-        url.searchParams.set('path', path);
-        const resp = await fetch(url.toString());
-        if (resp.ok === false) {
-            // Explicit non-2xx response (e.g. 500) — surface a readable message
-            // instead of letting resp.json() throw a confusing parse error.
-            bodyEl.innerHTML = `<p class="picker-empty">Could not load directory (HTTP ${resp.status})</p>`;
-            return;
-        }
-        result = await resp.json();
+        // Routed through the shared API client rather than a bare fetch() so
+        // the Basic-Auth header is attached when APP_PASSWORD is set. A raw
+        // fetch() sent no credentials, so the picker showed "HTTP 401" for
+        // every directory even though the rest of the SPA worked.
+        result = await browsePath(path);
     } catch (e) {
-        bodyEl.innerHTML = `<p class="picker-empty">Could not load directory: ${e.message}</p>`;
+        // ApiError carries the server's message ("Access to this path is not
+        // permitted", "Invalid path"); a transport failure has none, so fall
+        // back to the status code or a generic hint.
+        const detail = e && e.message ? e.message : 'directory could not be read';
+        const status = e && e.status ? ` (HTTP ${e.status})` : '';
+        bodyEl.innerHTML = `<p class="picker-empty">Could not load directory${status}: ${detail}</p>`;
         return;
     }
     if (result.status !== 'success') {
-        bodyEl.innerHTML = `<p class="picker-empty">${result.message}</p>`;
+        const p = document.createElement('p');
+        p.className = 'picker-empty';
+        p.textContent = result.message || 'Could not load directory';
+        bodyEl.innerHTML = '';
+        bodyEl.appendChild(p);
         return;
     }
     _pickerCurrentPath = result.current;

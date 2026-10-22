@@ -194,14 +194,36 @@ _AUTO_DETECT_JELLYFIN_TIMEOUT: int = 10
 _APP_PASSWORD: str = os.environ.get("APP_PASSWORD", "")
 
 
+def _passwords_match(supplied: str, expected: str) -> bool:
+    """Compare two passwords in constant time, tolerating non-ASCII text.
+
+    :func:`hmac.compare_digest` raises ``TypeError`` when either argument is
+    a ``str`` containing non-ASCII characters, so an operator who set a
+    password like ``"pässwort"`` made every authenticated request fail with
+    HTTP 500 instead of being rejected or accepted.  Both sides are encoded
+    to UTF-8 first, which keeps the comparison constant-time over bytes and
+    never raises.
+
+    Args:
+        supplied: The password sent by the client.
+        expected: The configured ``APP_PASSWORD``.
+
+    Returns:
+        ``True`` if the passwords are byte-identical, ``False`` otherwise.
+
+    """
+    return hmac.compare_digest(supplied.encode("utf-8"), expected.encode("utf-8"))
+
+
 @bp.before_request
 def _check_auth() -> ResponseReturnValue | None:
     """Require HTTP Basic Auth when APP_PASSWORD is set.
 
-    The password comparison uses :func:`hmac.compare_digest` so that a
-    timing side-channel cannot be used to enumerate the password character
-    by character (a plain ``==`` string comparison short-circuits on the
-    first mismatching byte).
+    The password comparison uses :func:`_passwords_match`, which wraps
+    :func:`hmac.compare_digest` so that a timing side-channel cannot be used
+    to enumerate the password character by character (a plain ``==`` string
+    comparison short-circuits on the first mismatching byte) while still
+    accepting non-ASCII passwords.
     """
     if not _APP_PASSWORD:
         return None
@@ -217,7 +239,7 @@ def _check_auth() -> ResponseReturnValue | None:
     if (
         auth
         and auth.password is not None
-        and hmac.compare_digest(auth.password, _APP_PASSWORD)
+        and _passwords_match(auth.password, _APP_PASSWORD)
     ):
         return None
 
