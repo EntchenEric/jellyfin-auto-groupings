@@ -294,11 +294,19 @@ def sync_groupings(
 ) -> dict[str, list[str]]:
     """Sync calculated groups with Jellyfin collections.
 
+    Items whose ``Id`` is missing, ``None`` or empty are skipped rather than
+    turned into the literal strings ``"None"``/``""``: Jellyfin rejects the
+    whole ``Ids`` parameter when it contains one, so a single malformed item
+    used to block the entire collection. Because skipped items also cannot be
+    added, ``min_items`` is applied to the number of usable ids, so a group
+    that loses too many items to unusable ids is not created at all.
+
     Args:
         client: The JellyfinClient instance.
         groups: Dictionary mapping group names to lists of items.
         dry_run: If True, log actions without applying them.
-        min_items: Minimum number of items required for a group to be processed.
+        min_items: Minimum number of usable item IDs required for a group to
+            be processed.
 
     Returns:
         A dictionary mapping group names to lists of item IDs.
@@ -313,8 +321,18 @@ def sync_groupings(
     for group_name, items in groups.items():
         if len(items) < min_items:
             continue
-        item_ids = [str(item["Id"]) for item in items if "Id" in item]
-        if not item_ids:
+        item_ids = [
+            str(item_id)
+            for item in items
+            if isinstance(item, dict) and (item_id := item.get("Id")) not in (None, "")
+        ]
+        if len(item_ids) < min_items:
+            logger.info(
+                "Skipping collection '%s': %d usable item id(s), below min_items=%d",
+                group_name,
+                len(item_ids),
+                min_items,
+            )
             continue
 
         summary[group_name] = item_ids
