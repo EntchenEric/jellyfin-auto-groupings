@@ -58,7 +58,20 @@ def _fetch_tmdb_page(
     except requests.exceptions.RequestException as exc:
         msg = f"Failed to fetch TMDb list page {page}: {exc}"
         raise RuntimeError(msg) from exc
-    return cast("dict[str, Any]", resp.json())
+    try:
+        data = resp.json()
+    except ValueError as exc:
+        msg = f"Invalid JSON response from TMDb API on page {page}: {exc}"
+        raise RuntimeError(msg) from exc
+    # ``fetch_tmdb_list`` reads ``items``/``total_pages`` off this value. A
+    # bare list or string body raised ``AttributeError``, which the sync
+    # layer does not catch, so one malformed page aborted the whole run.
+    # ``fetch_tmdb_list`` converts this ``TypeError`` to ``RuntimeError``,
+    # the type every caller handles.
+    if not isinstance(data, dict):
+        msg = f"expected a JSON object, got {type(data).__name__}"
+        raise TypeError(msg)
+    return cast("dict[str, Any]", data)
 
 
 def _collect_tmdb_ids_from_page(
@@ -132,7 +145,11 @@ def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
     page: int = 1
 
     while True:
-        data = _fetch_tmdb_page(list_id, api_key, page)
+        try:
+            data = _fetch_tmdb_page(list_id, api_key, page)
+        except TypeError as exc:
+            msg = f"Unexpected TMDb API response shape for list {list_id!r}: {exc}"
+            raise RuntimeError(msg) from exc
         _collect_tmdb_ids_from_page(data, ids, seen)
 
         items = data.get("items")
