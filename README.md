@@ -146,10 +146,13 @@ against your Jellyfin library by `ProviderIds`. Four behaviours are worth
 knowing before you build a group on a long list:
 
 - **Pagination is followed to the end of the list.** IMDb, Trakt and
-  Letterboxd lists all return more than one page; the fetchers walk every page
-  and stop at the first one without a usable next-page control. A list longer
-  than the safety cap (50 pages) is truncated at the cap and logged as a
-  warning, so a partial result is never mistaken for the whole list.
+  Letterboxd, TMDb, AniList and MyAnimeList lists all return more than one
+  page; the fetchers walk every page and stop at the first one without a usable
+  next-page control. A list longer than the safety cap (50 pages) is truncated
+  at the cap and logged as a warning, so a partial result is never mistaken for
+  the whole list. A next-page URL returned by an API is followed only when it
+  still points at that provider's own API host, so a malformed or tampered
+  response cannot redirect the request (with your API key) somewhere else.
 - **Items the library cannot match are skipped, not fatal.** A film with no
   IMDb or TMDb ID in Jellyfin simply does not appear in the group; the rest of
   the list still syncs. Duplicates (the same item matched through both ID
@@ -170,6 +173,10 @@ knowing before you build a group on a long list:
   Anything else is rejected with an error on that group instead of being
   trimmed into a different, valid-looking list — a typo such as `ls123abc`
   would otherwise silently sync the list `ls123`.
+
+  A MyAnimeList source names a username (optionally followed by `/status`);
+  the username must be letters, digits, `-` and `_`, because it is placed in
+  the request path.
 
 ## Development
 

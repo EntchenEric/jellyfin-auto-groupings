@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
+from urllib.parse import urlparse
 
 import requests
 
 import network
+from _common import DEFAULT_LIST_MAX_PAGES
 
 __all__ = ["fetch_mal_list"]
 
@@ -17,6 +20,26 @@ MAL_API_BASE_URL = "https://api.myanimelist.net/v2"
 
 # Request timeout (seconds)
 _REQUEST_TIMEOUT: int = 15
+
+#: Safety guard shared with the other list fetchers. This walker used to
+#: follow ``paging.next`` with no bound at all: an upstream that always
+#: returns a ``next`` URL (or repeats the same one) looped forever and the
+#: sync run never finished. The cap matches IMDb/Trakt/TMDb/Letterboxd so
+#: every source truncates at the same point and logs the same warning.
+_MAX_PAGES: int = DEFAULT_LIST_MAX_PAGES
+
+#: Host that must serve a ``paging.next`` URL. The next URL comes from the
+#: API response, but a malformed or tampered body could point it anywhere;
+#: following it blindly turned the fetcher into an open HTTP client for the
+#: attacker's host (a server-side request forgery primitive) and sent the
+#: user's MAL client ID there in a header.
+_MAL_API_HOST: str = "api.myanimelist.net"
+
+#: MAL usernames are alphanumeric plus ``-`` and ``_``. The previous code
+#: pasted the value straight into the request path, so a value such as
+#: ``"../../admin"`` produced ``/users/../../admin/animelist`` and the
+#: request escaped the ``/users/`` prefix instead of naming a user.
+_MAL_USERNAME_PATTERN: re.Pattern[str] = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
 _KNOWN_STATUSES: frozenset[str] = frozenset(
@@ -80,6 +103,13 @@ def fetch_mal_list(
         msg = "MyAnimeList Client ID is required."
         raise ValueError(msg)
 
+    if not isinstance(username, str) or not _MAL_USERNAME_PATTERN.match(username):
+        msg = (
+            f"Invalid MyAnimeList username: {username!r}. "
+            "Expected letters, digits, hyphens and underscores only."
+        )
+        raise ValueError(msg)
+
     normalized_status = _normalize_mal_status(status)
 
     url = f"{MAL_API_BASE_URL}/users/{username}/animelist"
@@ -95,6 +125,7 @@ def fetch_mal_list(
     }
 
     ids = []
+    page = 1
 
     while url:
         try:
@@ -141,9 +172,33 @@ def fetch_mal_list(
         # MAL pagination uses a 'next' URL in the 'paging' object
         paging = data.get("paging")
         next_url = paging.get("next") if isinstance(paging, dict) else None
-        if not isinstance(next_url, str) or not next_url:
+        if not isinstance(next_url, str) or not next_url.strip():
             break
+
+        # Only follow the next page on the MAL API itself. A URL that names
+        # another host, or that is not HTTP(S) at all, ends the walk instead
+        # of sending the client ID somewhere else.
+        parsed_next = urlparse(next_url)
+        next_host = (parsed_next.hostname or "").lower()
+        if parsed_next.scheme not in ("http", "https") or next_host != _MAL_API_HOST:
+            logger.warning(
+                "Ignoring MAL pagination URL on unexpected host %r for user %r",
+                next_host or next_url,
+                username,
+            )
+            break
+
+        if page >= _MAX_PAGES:
+            logger.warning(
+                "Stopping after %d pages (the safety limit) — the "
+                "MyAnimeList list for %r has more entries than were fetched",
+                _MAX_PAGES,
+                username,
+            )
+            break
+
         url = next_url
+        page += 1
         # Once we have the 'next' URL, params are already included in it by MAL
         params = {}
 

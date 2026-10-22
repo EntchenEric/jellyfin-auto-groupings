@@ -440,6 +440,72 @@ def test_trakt_total_pages_header_fallback():
     assert len(items) == 1
 
 
+def test_trakt_skips_unhashable_imdb_id():
+    """A non-string IMDb id raised ``TypeError: unhashable type`` out of the fetch.
+
+    ``imdb_id not in seen`` runs before any type check, so an object or a list
+    in ``ids.imdb`` propagated as ``TypeError``, which ``_fetch_and_resolve``
+    does not catch — one malformed entry aborted the entire sync run.
+    """
+    ids: list[str] = []
+    seen: set[str] = set()
+
+    trakt._extract_imdb_ids_from_page(
+        [
+            {"type": "movie", "movie": {"ids": {"imdb": {"bad": 1}}}},
+            {"type": "movie", "movie": {"ids": {"imdb": ["tt0"]}}},
+            {"type": "movie", "movie": {"ids": {"imdb": 12345}}},
+            {"type": "movie", "movie": {"ids": {"imdb": "  tt0111161  "}}},
+        ],
+        ids,
+        seen,
+    )
+
+    assert ids == ["tt0111161"]
+
+
+def test_trakt_unhashable_imdb_id_does_not_abort_group():
+    """The group reports no error, and the sync run continues."""
+    resp = MagicMock()
+    resp.raise_for_status.return_value = None
+    resp.headers = {}
+    resp.json.return_value = [
+        {"type": "movie", "movie": {"ids": {"imdb": {"bad": 1}}}},
+        {"type": "movie", "movie": {"ids": {"imdb": "tt1"}}},
+    ]
+
+    with (
+        patch("trakt.network.get", return_value=resp),
+        patch("sync._fetch_full_library", return_value=([], None, 200)),
+    ):
+        items, error, status = sync._fetch_items_for_trakt_group(
+            "g",
+            "https://trakt.tv/users/a/lists/b",
+            "SortName",
+            "http://jellyfin.invalid",
+            "key",
+            "client",
+        )
+
+    assert error is None
+    assert status == 200
+    assert items == []
+
+
+def test_tmdb_skips_object_and_list_ids():
+    """A non-scalar ``id`` must not become the provider id ``"{'a': 1}"``."""
+    ids: list[str] = []
+    seen: set[str] = set()
+
+    tmdb._collect_tmdb_ids_from_page(
+        {"items": [{"id": {"a": 1}}, {"id": [1]}, {"id": 7}, {"id": "8"}]},
+        ids,
+        seen,
+    )
+
+    assert ids == ["7", "8"]
+
+
 # --- imdb -----------------------------------------------------------------
 
 

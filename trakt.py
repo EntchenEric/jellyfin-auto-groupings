@@ -207,7 +207,17 @@ def _extract_imdb_ids_from_page(
         ids_obj: Any = media.get("ids", {})
         if not isinstance(ids_obj, dict):
             continue
-        imdb_id: str | None = ids_obj.get("imdb")
+        imdb_id: Any = ids_obj.get("imdb")
+        # Trakt normally sends a string (``"tt0111161"``) or ``None``, but a
+        # malformed or proxied response can put an object or a number here.
+        # ``imdb_id not in seen`` on an unhashable value raised
+        # ``TypeError: unhashable type: 'dict'``, which sync.py's handler does
+        # not catch, so one bad entry aborted the whole run. A number would
+        # also be matched against Jellyfin's string provider IDs and never
+        # match, so only non-empty strings are accepted.
+        if not isinstance(imdb_id, str):
+            continue
+        imdb_id = imdb_id.strip()
         if imdb_id and imdb_id not in seen:
             seen.add(imdb_id)
             ids.append(imdb_id)
