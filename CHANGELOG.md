@@ -30,9 +30,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   string to the `Ids` parameter and Jellyfin rejected the whole collection.
   Items without a usable id are skipped, and a group whose usable ids fall
   below the size threshold is no longer created.
-
-### Fixed
-
+- Mode 1 of `process_groupings`, which re-sorts items inside existing
+  collections, read each item's id with `item.get("Id")` without validating
+  it. An item missing `Id` therefore produced a write to `/Items/None`, which
+  Jellyfin rejects with a 404; the exception escaped `update_item_sort_name` and
+  aborted the sort pass for every item and collection after it. Such items are
+  now skipped while still consuming their position, so the following sort names
+  keep numbering without gaps. This matches the guard the prefix-grouping paths
+  already applied.
 - `config.load_config` returned a config whose nested containers aliased
   `DEFAULT_CONFIG`: the returned dict was a shallow copy, so the `scheduler`
   dict and the `groups` list were shared with the module-level defaults. Any
@@ -90,6 +95,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `tests/test_process_groupings_missing_ids.py`: regression tests proving mode
+  1 of `process_groupings` never writes a sort name for an item without a
+  usable `Id`, that skipped items still consume a position so later sort names
+  stay stable, and that a real server error still propagates.
 - `tests/test_config_backup_rotation.py`: cover backup retention (cap
   enforced, newest kept, `.corrupt*.bak` and unrelated files preserved, and a
   pruning failure not breaking the save).

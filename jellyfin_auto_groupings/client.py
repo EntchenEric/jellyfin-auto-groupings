@@ -532,12 +532,16 @@ def process_groupings(
             for idx, item in enumerate(sorted_items, start=1):
                 expected_sort_name = f"{col_name} {idx:02d}"
                 current_sort = item.get("ForcedSortName", "")
+                item_id = item.get("Id")
+                if not item_id:
+                    # An item without an ID cannot be re-sorted; posting to
+                    # ``/Items/None`` would fail and abort the remaining items.
+                    # The position still counts so later sort names stay stable.
+                    continue
                 if current_sort != expected_sort_name:
-                    changes.append(
-                        (item.get("Id"), item.get("Name"), expected_sort_name)
-                    )
+                    changes.append((item_id, item.get("Name"), expected_sort_name))
                     if not dry_run and hasattr(client, "update_item_sort_name"):
-                        client.update_item_sort_name(item.get("Id"), expected_sort_name)
+                        client.update_item_sort_name(item_id, expected_sort_name)
 
     # If a specific library was requested, fetch its items for prefix grouping.
     if items is None and isinstance(library_id, str) and library_id:
@@ -578,19 +582,24 @@ def create_groupings(
     """Create collections or grouping mapping for items matching criteria.
 
     Can be called in two ways:
-    1. create_groupings(items_list) -> Dict[str, List[Dict[str, Any]]]
-       Groups items by common name prefix and returns a mapping of group names to item lists.
-    2. create_groupings(client, library_id, items, min_group_size) -> List[Dict[str, Any]]
-       Creates collections in Jellyfin for groups of items.
+
+    1. ``create_groupings(items_list)`` returns a ``dict[str, list[dict]]`` of
+       preset groups: the "Marvel Cinematic Universe", "Star Wars Collection"
+       and "Sci-Fi Classics" query matches, plus one entry per release decade.
+       It builds no collections and does not read ``library_id``.
+    2. ``create_groupings(client, library_id, items, min_group_size)`` groups
+       items by the first word of ``Name`` and creates a collection per group
+       that reaches ``min_group_size``. Items without a usable ``Id`` are
+       skipped.
 
     Args:
         client_or_items: Either a JellyfinClient instance or a list of item dictionaries.
         library_id: Optional library ID (used when first arg is a client).
         items: Optional list of item dictionaries (used when first arg is a client).
-        min_group_size: Minimum number of items required to create a group/collection.
+        min_group_size: Minimum number of items required to create a collection.
 
     Returns:
-        For case 1: A dictionary mapping group names to lists of items.
+        For case 1: A dictionary mapping preset group names to lists of items.
         For case 2: A list of created collection metadata.
     """
     if isinstance(client_or_items, list) and library_id is None:

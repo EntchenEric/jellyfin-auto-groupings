@@ -33,6 +33,20 @@ GENRE_KEYWORDS = {
 
 
 def create_groupings(items: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    """Group items by the built-in franchise, genre, and decade rules.
+
+    Franchise and genre matches come from :data:`FRANCHISE_RULES` and
+    :data:`GENRE_KEYWORDS` and are searched case-insensitively in the title and
+    overview. Decade groups are appended afterwards, so an item can appear in
+    both a keyword group and its decade group.
+
+    Args:
+        items: Item dictionaries; missing ``Name`` or ``Overview`` values are
+            treated as empty strings.
+
+    Returns:
+        Mapping of group name to the items in it. Empty input yields ``{}``.
+    """
     if not items:
         return {}
 
@@ -92,6 +106,12 @@ def group_by_genre(
 def group_by_studio(
     items: list[dict[str, Any]], min_items: int = 2
 ) -> dict[str, list[dict[str, Any]]]:
+    """Group items by studio name, keeping groups with at least ``min_items``.
+
+    Jellyfin returns studios as ``{"Name": ...}`` dictionaries, but plain
+    strings and ``null`` also occur, so both shapes are accepted and anything
+    else is skipped.
+    """
     studio_groups: dict[str, list[dict[str, Any]]] = {}
     for item in items:
         studios = item.get("Studios") or []
@@ -124,6 +144,12 @@ def parse_grouping_rules(rules: dict[str, Any]) -> dict[str, Any]:
 
 
 def group_by_decade(items: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    """Group items by release decade, keyed like ``"1990s Movies"``.
+
+    The year comes from ``ProductionYear`` when it is a usable int or numeric
+    string, otherwise from the leading four digits of ``PremiereDate``.
+    ``bool`` values and years outside 1800-2100 are ignored.
+    """
     collections: dict[str, list[dict[str, Any]]] = {}
     for item in items:
         year = None
