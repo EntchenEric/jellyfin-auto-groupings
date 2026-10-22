@@ -23,6 +23,33 @@ DEFAULT_PATTERNS = [
 ]
 
 
+def _env_int(name, default):
+    """Read an integer environment variable, falling back to *default*.
+
+    A malformed value (e.g. ``MIN_GROUP_SIZE=abc``) used to raise
+    :class:`ValueError` while importing this module, which aborted the CLI
+    before it could print anything actionable. Logging a warning and using the
+    default keeps the run alive.
+
+    Args:
+        name: Environment variable name.
+        default: Value to use when the variable is unset or unparseable.
+
+    Returns:
+        The parsed integer, or *default*.
+    """
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        logger.warning(
+            "Invalid %s value %r, falling back to default %s", name, raw, default
+        )
+        return default
+
+
 def load_config(config_path="config.json"):
     """Load configuration from environment variables and JSON file.
 
@@ -36,7 +63,7 @@ def load_config(config_path="config.json"):
         "JELLYFIN_URL": os.environ.get("JELLYFIN_URL", "http://localhost:8096"),
         "JELLYFIN_API_KEY": os.environ.get("JELLYFIN_API_KEY", ""),
         "DRY_RUN": os.environ.get("DRY_RUN", "true").lower() in ("true", "1", "yes"),
-        "MIN_GROUP_SIZE": int(os.environ.get("MIN_GROUP_SIZE", "2")),
+        "MIN_GROUP_SIZE": _env_int("MIN_GROUP_SIZE", 2),
         "PATTERNS": DEFAULT_PATTERNS,
     }
 
@@ -49,6 +76,36 @@ def load_config(config_path="config.json"):
             logger.info(f"Loaded configuration from {config_path}")
         except Exception:
             logger.warning(f"Failed to load {config_path}", exc_info=True)
+
+    # The JSON file can override any key, so re-validate the values the rest of
+    # the module assumes are well-typed. A string "3" or a null MIN_GROUP_SIZE
+    # would otherwise blow up in group_items() with a TypeError.
+    try:
+        config["MIN_GROUP_SIZE"] = int(config.get("MIN_GROUP_SIZE", 2))
+    except (TypeError, ValueError):
+        logger.warning(
+            "Invalid MIN_GROUP_SIZE %r, falling back to 2",
+            config.get("MIN_GROUP_SIZE"),
+        )
+        config["MIN_GROUP_SIZE"] = 2
+    if config["MIN_GROUP_SIZE"] < 1:
+        logger.warning(
+            "MIN_GROUP_SIZE %s is below 1, using 1", config["MIN_GROUP_SIZE"]
+        )
+        config["MIN_GROUP_SIZE"] = 1
+
+    patterns = config.get("PATTERNS")
+    if not isinstance(patterns, list) or not all(isinstance(p, str) for p in patterns):
+        logger.warning("PATTERNS must be a list of strings, using defaults")
+        config["PATTERNS"] = DEFAULT_PATTERNS
+
+    # A JSON file may carry DRY_RUN as the string "false". Left alone, that
+    # string is truthy and silently keeps the run in dry-run mode.
+    dry_run = config.get("DRY_RUN")
+    if isinstance(dry_run, str):
+        config["DRY_RUN"] = dry_run.strip().lower() in ("true", "1", "yes", "on")
+    else:
+        config["DRY_RUN"] = bool(dry_run)
 
     return config
 
@@ -93,7 +150,14 @@ def extract_base_title(title, patterns):
         patterns: List of regex patterns to match against the title
 
     Returns:
-        Base title extracted from the movie title, or cleaned title if no pattern matches
+        Base title extracted from the movie title, or the cleaned title when no
+        pattern matches.
+
+    Patterns are user-supplied via the ``PATTERNS`` config key, so they are not
+    required to declare a capture group, and a declared group may not have
+    participated in the match (for example ``(\\d{4})|(.*)``). Both cases used
+    to raise and abort the entire run; the first participating group is used
+    now, falling back to the whole match.
     """
     if not title:
         return ""
@@ -102,10 +166,14 @@ def extract_base_title(title, patterns):
     for pattern in patterns:
         try:
             match = re.match(pattern, cleaned, re.IGNORECASE)
-            if match:
-                base = match.group(1).strip()
-                if base:
-                    return base
+            if not match:
+                continue
+            base = next(
+                (group for group in match.groups() if group is not None),
+                match.group(0),
+            ).strip()
+            if base:
+                return base
         except re.error as e:
             logger.warning(f"Invalid regex pattern '{pattern}': {e}")
             continue
@@ -174,8 +242,15 @@ def group_items(items, patterns, min_group_size=2):
     """
     groups = {}
     for item in items:
-        name = item.get("Name", "")
+        name = item.get("Name")
+        # Jellyfin returns ``null`` names for some corrupt entries; treating
+        # them as "" merged every such item into one bogus ``""`` group.
+        if not isinstance(name, str) or not name.strip():
+            logger.debug("Skipping item without a usable name: %r", item)
+            continue
         base = extract_base_title(name, patterns)
+        if not base:
+            continue
         if base not in groups:
             groups[base] = []
         groups[base].append(item)
@@ -196,6 +271,9 @@ def create_collection(url, api_key, collection_name, item_ids):
     Returns:
         Collection ID if successful, None on failure
     """
+    # Jellyfin rejects a request whose ``Ids`` list holds an unusable entry, so
+    # drop them here instead of sending a malformed query string.
+    item_ids = [str(i) for i in item_ids if isinstance(i, str) and i.strip()]
     if not item_ids:
         logger.error("Cannot create collection with empty item list")
         return None
@@ -210,7 +288,13 @@ def create_collection(url, api_key, collection_name, item_ids):
         logger.info(
             f"Successfully created collection: '{collection_name}' with {len(item_ids)} items."
         )
-        return res.json().get("Id")
+        try:
+            return res.json().get("Id")
+        except ValueError:
+            # Jellyfin can answer 200 with no body; the collection was still
+            # created, so do not report this as a failure.
+            logger.debug("Collection response had no JSON body: %s", collection_name)
+            return None
     except Exception:
         logger.exception(f"Error creating collection '{collection_name}':")
         return None
@@ -228,6 +312,7 @@ def add_to_collection(url, api_key, collection_id, item_ids):
     Returns:
         True if successful, False otherwise
     """
+    item_ids = [str(i) for i in item_ids if isinstance(i, str) and i.strip()]
     if not item_ids:
         logger.warning("No items to add to collection")
         return False
@@ -253,9 +338,13 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python -m jellyfin_auto_groupings.cli --config myconfig.json
-  python -m jellyfin_auto_groupings.cli --dry-run
-  JELLYFIN_API_KEY=xxx JELLYFIN_URL=http://jellyfin:8096 python -m jellyfin_auto_groupings.cli
+  python auto_group.py --config myconfig.json
+  python auto_group.py --dry-run --verbose
+  JELLYFIN_API_KEY=xxx JELLYFIN_URL=http://jellyfin:8096 python auto_group.py
+
+This script groups titles by pattern and creates one collection per group.
+For the pattern + capture-group CLI from the installed package use
+``python -m jellyfin_auto_groupings.cli --help`` instead.
         """,
     )
     parser.add_argument(
@@ -306,10 +395,17 @@ Examples:
         for group_name, group_items_list in groups.items():
             item_names = [i.get("Name") for i in group_items_list]
             item_ids = [i.get("Id") for i in group_items_list]
+            # Jellyfin rejects the entire collection when one ID is unusable.
+            item_ids = [i for i in item_ids if isinstance(i, str) and i.strip()]
             collection_title = f"{group_name} Collection"
 
             logger.info(f"Group '{collection_title}': {item_names}")
             if not config["DRY_RUN"]:
+                if not item_ids:
+                    logger.warning(
+                        "Skipping '%s': no usable item IDs", collection_title
+                    )
+                    continue
                 create_collection(
                     config["JELLYFIN_URL"],
                     config["JELLYFIN_API_KEY"],
