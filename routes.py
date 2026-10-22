@@ -452,7 +452,14 @@ def _validate_cron_expressions(new_config: dict[str, Any]) -> list[str]:
 
     """
     cron_errors: list[str] = []
-    sched_cfg = new_config.get("scheduler", {})
+    # ``new_config`` is untrusted client JSON, so every container can be
+    # missing or of the wrong type. Walk it defensively: a malformed payload
+    # must produce a 400 with validation errors, not an AttributeError/500.
+    sched_cfg = new_config.get("scheduler")
+    if not isinstance(sched_cfg, dict):
+        # Wrong-typed sections are reported by _validate_config_types(); there
+        # is nothing further to validate here.
+        sched_cfg = {}
     if sched_cfg.get("global_enabled"):
         global_sched = sched_cfg.get("global_schedule", "")
         err = validate_cron(global_sched)
@@ -463,7 +470,13 @@ def _validate_cron_expressions(new_config: dict[str, Any]) -> list[str]:
         err = validate_cron(cleanup_sched)
         if err:
             cron_errors.append(f"Cleanup schedule: {err}")
-    for group in new_config.get("groups", []):
+    groups = new_config.get("groups")
+    if not isinstance(groups, list):
+        groups = []
+    for group in groups:
+        if not isinstance(group, dict):
+            # Reported by _validate_group_types().
+            continue
         if group.get("schedule_enabled") and group.get("schedule"):
             err = validate_cron(group["schedule"])
             if err:
