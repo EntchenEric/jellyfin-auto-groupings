@@ -2164,6 +2164,73 @@ def _dispatch_list_source(
             return [], f"Unknown source type: {source_type}", 400
 
 
+def _optional_group_str(
+    group: dict[str, Any], key: str, default: str = ""
+) -> str | None:
+    """Read an optional string field from a group, treating ``null`` as empty.
+
+    ``config.json`` is user-editable, so a field that the web form always
+    writes as a string can hold a number, a list or an object.  The values
+    read here are used as dict keys and set memberships
+    (``source_type in _LIST_SOURCE_TYPES``, ``sort_order in SORT_MAP``), so an
+    unhashable list raised ``TypeError: unhashable type: 'list'`` and aborted
+    the whole sync run instead of failing that one group.
+
+    Args:
+        group: The group configuration dict.
+        key: The field name to read.
+        default: Value returned when the field is absent or JSON ``null``.
+
+    Returns:
+        The field value, or ``None`` when it holds a non-string type so the
+        caller can report a per-group error.
+
+    """
+    value = group.get(key)
+    if value is None:
+        return default
+    if not isinstance(value, str):
+        logger.warning(
+            "Ignoring group with non-string '%s' (expected string, got %s): %r",
+            key,
+            type(value).__name__,
+            value,
+        )
+        return None
+    return value
+
+
+def _group_display_name(group: dict[str, Any]) -> str | None:
+    """Return a group's trimmed name, or ``None`` when it is not a string.
+
+    ``config.json`` is user-editable, so ``groups[].name`` can hold a number,
+    a list or ``null`` even though the web form always writes a string.
+    Calling ``.strip()`` on such a value raised ``AttributeError``, which
+    aborted the whole ``run_sync`` loop and surfaced as an HTTP 500 for
+    ``POST /api/sync`` — one bad entry took down every other group.  Callers
+    turn ``None`` into a per-group error instead.
+
+    Args:
+        group: The group configuration dict.
+
+    Returns:
+        The stripped name (``""`` when absent or JSON ``null``), or ``None``
+        when the value has another type.
+
+    """
+    raw_name = group.get("name")
+    if raw_name is None:
+        return ""
+    if not isinstance(raw_name, str):
+        logger.warning(
+            "Ignoring group with non-string name (expected string, got %s): %r",
+            type(raw_name).__name__,
+            raw_name,
+        )
+        return None
+    return raw_name.strip()
+
+
 def _resolve_group_source(
     group: dict[str, Any],
     group_name: str,
@@ -2202,7 +2269,10 @@ def _resolve_group_source(
         A ``(items, error, status_code)`` tuple.
 
     """
-    item_type = str(group.get("item_type") or "").strip().lower()
+    item_type = _optional_group_str(group, "item_type")
+    if item_type is None:
+        item_type = ""
+    item_type = item_type.strip().lower()
 
     if source_type in _LIST_SOURCE_TYPES:
         items, error, code = _dispatch_list_source(
@@ -2312,7 +2382,9 @@ def _process_group(
         and ``"items"`` (the first 100 matches) if *dry_run* is True.
 
     """
-    group_name: str = (group.get("name") or "").strip()
+    group_name = _group_display_name(group)
+    if group_name is None:
+        return {"group": "(unnamed)", "links": 0, "error": "Invalid group name"}
     if not group_name:
         return {"group": "(unnamed)", "links": 0, "error": "Empty group name"}
 
@@ -2324,9 +2396,15 @@ def _process_group(
         return {"group": group_name, "links": 0, "error": "Invalid group name"}
 
     group_dir: str = str(Path(target_base).joinpath(*relpath.split("/")))
-    sort_order: str = group.get("sort_order", "") or ""
-    source_type: str | None = group.get("source_type")
-    source_value: str | None = group.get("source_value")
+    sort_order = _optional_group_str(group, "sort_order")
+    if sort_order is None:
+        return {"group": group_name, "links": 0, "error": "Invalid sort order"}
+    source_type = _optional_group_str(group, "source_type") or None
+    if source_type is None and group.get("source_type") is not None:
+        return {"group": group_name, "links": 0, "error": "Invalid source type"}
+    source_value = _optional_group_str(group, "source_value") or None
+    if source_value is None and group.get("source_value") is not None:
+        return {"group": group_name, "links": 0, "error": "Invalid source value"}
 
     logger.info(
         "Processing group: %r -> %s  (sort_order=%r)",
@@ -2346,7 +2424,9 @@ def _process_group(
         return {"group": group_name, "links": 0, "error": f"Directory error: {exc!s}"}
 
     # --- Resolve items ---
-    watch_state: str = group.get("watch_state", "")
+    watch_state = _optional_group_str(group, "watch_state")
+    if watch_state is None:
+        return {"group": group_name, "links": 0, "error": "Invalid watch state"}
     items, error, _status_code = _resolve_group_source(
         group,
         group_name,
@@ -2678,7 +2758,14 @@ def run_sync(
             logger.info("Skipping invalid group entry: %s", group)
             continue
 
-        name = (group.get("name") or "").strip()
+        name = _group_display_name(group)
+        if name is None:
+            # A non-string name is reported per group rather than raising,
+            # so one malformed entry cannot abort the whole sync run.
+            results.append(
+                {"group": "(unnamed)", "links": 0, "error": "Invalid group name"},
+            )
+            continue
         if group_names is not None and (not name or name not in group_names):
             continue
 

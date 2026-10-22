@@ -180,6 +180,50 @@ def _migrate_legacy_keys(cfg: dict[str, Any]) -> bool:
     return migrated
 
 
+def _coerce_list_sections(cfg: dict[str, Any]) -> None:
+    """Force list-valued top-level sections into the shape callers assume.
+
+    ``_fill_defaults`` only replaces a stored value when the *default* is a
+    dict, so a hand-edited ``"groups": null`` (or ``42``, or a list of bare
+    strings) survived loading and then crashed the callers that iterate it:
+    ``GET /api/health`` raised ``TypeError`` from ``len()`` and
+    ``GET /api/cleanup`` raised ``AttributeError`` from ``g.get(...)``, both
+    of which surfaced as HTTP 500 for the whole page.
+
+    A non-list value is replaced with a copy of the default, and ``groups``
+    drops entries that are not objects, because every consumer treats a group
+    as a dict.  Malformed entries are logged once rather than silently
+    disappearing, so an administrator can still find the bad line.
+
+    Args:
+        cfg: The configuration dict, modified in place.
+
+    """
+    for key, default_value in DEFAULT_CONFIG.items():
+        if not isinstance(default_value, list):
+            continue
+        current = cfg.get(key)
+        if not isinstance(current, list):
+            logger.warning(
+                "Ignoring malformed '%s' config (expected list, got %s);"
+                " using defaults",
+                key,
+                type(current).__name__,
+            )
+            cfg[key] = copy.deepcopy(default_value)
+
+    groups = cfg.get("groups")
+    if isinstance(groups, list):
+        valid = [group for group in groups if isinstance(group, dict)]
+        if len(valid) != len(groups):
+            logger.warning(
+                "Ignoring %d non-object entr%s in 'groups' config",
+                len(groups) - len(valid),
+                "y" if len(groups) - len(valid) == 1 else "ies",
+            )
+        cfg["groups"] = valid
+
+
 def _unused_backup_path(cfg_path: Path) -> Path:
     """Pick a quarantine path that does not exist yet.
 
@@ -285,6 +329,7 @@ def load_config() -> dict[str, Any]:
                 cfg = _default_config_copy()
             else:
                 _fill_defaults(cfg, DEFAULT_CONFIG)
+                _coerce_list_sections(cfg)
                 if _migrate_legacy_keys(cfg):
                     save_config(cfg)
         except json.JSONDecodeError:
