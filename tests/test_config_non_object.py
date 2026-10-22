@@ -100,3 +100,57 @@ def test_repeated_loads_after_quarantine_create_a_fresh_config(temp_config):
     # running normally after one broken startup.
     assert second["setup_done"] is False
     assert json.loads(temp_config.read_text(encoding="utf-8"))["groups"] == []
+
+
+def test_repeated_quarantine_never_overwrites_an_earlier_backup(
+    temp_config,
+    monkeypatch,
+):
+    """``rename`` replaces its destination, so the path must be unused.
+
+    Two broken configs quarantined inside the same clock tick used to resolve
+    to the same timestamped name, and the second rename silently destroyed the
+    first backup — losing the very file an administrator needs.
+    """
+
+    class _FrozenDatetime(config.datetime):
+        """``datetime`` whose ``now()`` is pinned to one instant."""
+
+        @classmethod
+        def now(cls, tz=None):
+            return cls(2026, 10, 22, 12, 0, 0, tzinfo=tz)
+
+    monkeypatch.setattr(config, "datetime", _FrozenDatetime)
+
+    temp_config.write_text('["first", "broken"]', encoding="utf-8")
+    first_bytes = temp_config.read_text(encoding="utf-8")
+    config.load_config()
+
+    temp_config.write_text("null", encoding="utf-8")
+    config.load_config()
+
+    backups = sorted(temp_config.parent.glob("config.json.corrupt*.bak"))
+    contents = {path.read_text(encoding="utf-8") for path in backups}
+
+    assert first_bytes in contents
+    assert "null" in contents
+    assert len(backups) == 2
+
+
+def test_quarantine_three_times_keeps_every_copy(temp_config, monkeypatch):
+    """The counter suffix must keep incrementing past the first collision."""
+
+    class _FrozenDatetime(config.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return cls(2026, 10, 22, 12, 0, 0, tzinfo=tz)
+
+    monkeypatch.setattr(config, "datetime", _FrozenDatetime)
+
+    payloads = ["[]", "null", "42"]
+    for payload in payloads:
+        temp_config.write_text(payload, encoding="utf-8")
+        config.load_config()
+
+    backups = sorted(temp_config.parent.glob("config.json.corrupt*.bak"))
+    assert {path.read_text(encoding="utf-8") for path in backups} == set(payloads)

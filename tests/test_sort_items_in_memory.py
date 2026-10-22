@@ -138,6 +138,28 @@ def test_empty_string_is_treated_as_missing():
     assert _names(_sort_items_in_memory(items, "SortName")) == ["real", "blank"]
 
 
+@pytest.mark.parametrize(
+    "bad", ["NaN", "nan", "inf", "-Infinity", float("nan"), float("inf")]
+)
+def test_non_finite_values_do_not_corrupt_the_order(bad):
+    """NaN compares False against everything, so it must not reach the comparator.
+
+    ``float("NaN")`` parses successfully, and then neither ``==`` nor ``<``
+    succeeds, so the comparator returned ``1`` regardless of direction and the
+    real values around the NaN came out in the wrong order.
+    """
+    items = [
+        {"Name": "low", "CommunityRating": 7.0},
+        {"Name": "poison", "CommunityRating": bad},
+        {"Name": "high", "CommunityRating": 9.0},
+        {"Name": "mid", "CommunityRating": 8.0},
+    ]
+
+    result = _names(_sort_items_in_memory(items, "CommunityRating"))
+
+    assert result == ["high", "mid", "low", "poison"]
+
+
 # ---------------------------------------------------------------------------
 # Direction handling and the "missing last" rule
 # ---------------------------------------------------------------------------

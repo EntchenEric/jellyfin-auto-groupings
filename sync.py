@@ -15,6 +15,7 @@ import calendar
 import contextlib
 import hashlib
 import logging
+import math
 import random
 import re
 import shutil
@@ -538,11 +539,28 @@ def _sort_items_in_memory(
         optional fields, and sorting those as the empty string would place
         them before every real value instead of after them.
 
+        Non-finite numbers count as missing too.  ``float("nan")`` and
+        ``float("inf")`` parse successfully, but NaN compares false against
+        everything, so a single NaN would make the comparator return ``1`` in
+        both directions and corrupt the ordering of every real value around it.
+
         Args:
             value: The raw field value.
 
         """
-        return value is None or (isinstance(value, str) and not value.strip())
+        if value is None:
+            return True
+        if isinstance(value, str):
+            text = value.strip()
+            if not text:
+                return True
+            try:
+                return not math.isfinite(float(text))
+            except ValueError:
+                return False
+        if isinstance(value, float):
+            return not math.isfinite(value)
+        return False
 
     def _comparable(value: Any) -> tuple[int, Any]:
         """Normalise a raw Jellyfin value into a mutually comparable pair.
@@ -554,6 +572,8 @@ def _sort_items_in_memory(
             ``(0, float)`` for numeric values (including numeric strings such
             as ``"2001.0"`` or ``"7.5"``), ``(1, str)`` for everything else.
             The leading integer keeps the two kinds from ever being compared.
+            Non-finite values never reach this function; :func:`_is_missing`
+            filters them out first.
 
         """
         if isinstance(value, bool):

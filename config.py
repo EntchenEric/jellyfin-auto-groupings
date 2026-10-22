@@ -180,13 +180,46 @@ def _migrate_legacy_keys(cfg: dict[str, Any]) -> bool:
     return migrated
 
 
+def _unused_backup_path(cfg_path: Path) -> Path:
+    """Pick a quarantine path that does not exist yet.
+
+    ``Path.rename`` silently replaces an existing destination on POSIX, so
+    reusing a fixed name would destroy the backup of an earlier broken
+    config.  The timestamped fallback has the same problem when two files are
+    quarantined inside one second (e.g. a route quarantining on each request),
+    so a counter is appended until the name is free.
+
+    Args:
+        cfg_path: The config file being quarantined.
+
+    Returns:
+        A path in the same directory that does not exist.
+
+    """
+    plain = cfg_path.with_name(cfg_path.name + ".corrupt.bak")
+    if not plain.exists():
+        return plain
+
+    # Names embed a zero-padded timestamp, so they stay sortable.
+    stamp = datetime.now(tz=UTC).strftime("%Y%m%d_%H%M%S")
+    candidate = cfg_path.with_name(cfg_path.name + f".corrupt.{stamp}.bak")
+    counter = 2
+    while candidate.exists():
+        candidate = cfg_path.with_name(
+            cfg_path.name + f".corrupt.{stamp}-{counter}.bak",
+        )
+        counter += 1
+    return candidate
+
+
 def _quarantine_broken_config(reason: str) -> None:
     """Move an unusable ``config.json`` aside so the original survives.
 
     The file is renamed to ``config.json.corrupt.bak`` (or a timestamped
-    variant when that name is taken).  Renaming is intentional: overwriting
-    it would destroy the only copy of a hand-edited configuration after a
-    typo, which is exactly the state an administrator needs to inspect.
+    variant when that name is taken).  Both are chosen to be unused, because
+    ``rename`` overwrites its destination: reusing a name would destroy the
+    only copy of an earlier hand-edited configuration, which is exactly the
+    state an administrator needs to inspect.
 
     Failure to move the file is logged but never raised — the caller is
     already on a recovery path and must still return usable defaults.
@@ -202,14 +235,8 @@ def _quarantine_broken_config(reason: str) -> None:
         CONFIG_FILE,
         reason,
     )
-    backup_path = cfg_path.with_name(cfg_path.name + ".corrupt.bak")
+    backup_path = _unused_backup_path(cfg_path)
     try:
-        if backup_path.exists():
-            # Avoid collision by appending a timestamp
-            timestamp = datetime.now(tz=UTC).strftime("%Y%m%d_%H%M%S")
-            backup_path = cfg_path.with_name(
-                cfg_path.name + f".corrupt.{timestamp}.bak",
-            )
         cfg_path.rename(backup_path)
         logger.info("Backed up corrupt config to %s", backup_path)
     except OSError:
