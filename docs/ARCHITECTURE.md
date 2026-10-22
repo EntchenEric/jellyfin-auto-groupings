@@ -87,7 +87,11 @@ Key helpers:
   (so same-year titles come out in name order), and shuffles for `Random`.
   Items missing the sort field always sort last, in either direction.
 - **`parse_complex_query`** — parses compound rules like
-  `Action AND NOT Comedy OR Drama` into structured rule dictionaries
+  `Action AND NOT Comedy OR Drama` into structured rule dictionaries.
+  Operators are only recognised as standalone words, so a value such as
+  `Andor` is never split. A leading or trailing operator is dropped instead of
+  becoming a filter value, stacked operators collapse to the one nearest the
+  operand, and stacked `NOT`s toggle (`NOT NOT Comedy` is just `Comedy`).
 - **`preview_group`** — dry-run preview for a single group
 - **`run_cleanup_broken_symlinks`** — scans for and removes broken symlinks
 

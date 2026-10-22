@@ -1,8 +1,50 @@
 """Formatting utilities for Jellyfin Groupings."""
 
+import math
+from typing import Any
 
-def format_duration(seconds: int | None) -> str:
+
+def _coerce_finite_number(value: Any) -> float | None:
+    """Coerce *value* to a finite float, or ``None`` when it is not usable.
+
+    Jellyfin does not guarantee a numeric type or a finite value for fields
+    that are conceptually numbers: ``RunTimeTicks``-derived durations arrive
+    as strings from some clients, and a corrupt or partially scanned item can
+    report ``NaN`` or ``Infinity``. Passing those straight into the format
+    helpers produced output like ``"1.0m 30.599999999999994s"`` or
+    ``"nan B"``, so every helper normalises its input first.
+
+    Args:
+        value: The raw value to coerce.
+
+    Returns:
+        The value as a finite ``float``, or ``None`` if it cannot be used.
+        ``bool`` is rejected because ``True`` is not a duration or a size.
+
+    """
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, str):
+        try:
+            value = float(value.strip())
+        except ValueError:
+            return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if not math.isfinite(number):
+        return None
+    return number
+
+
+def format_duration(seconds: float | None) -> str:
     """Format a duration in seconds to a human-readable string.
+
+    Fractional seconds are truncated rather than rounded, so ``90.6`` is
+    "1m 30s" — a duration shown in the UI never claims a second that has not
+    elapsed. Values that arrive as strings or as ``NaN`` / ``Infinity`` are
+    treated as unset.
 
     Args:
         seconds: Duration in seconds (or None).
@@ -10,9 +52,13 @@ def format_duration(seconds: int | None) -> str:
     Returns:
         Formatted duration string.
     """
-    if seconds is None or seconds == 0:
+    number = _coerce_finite_number(seconds)
+    if number is None or number <= 0:
         return "0m"
-    seconds = max(seconds, 0)
+    seconds = int(number)
+    if seconds == 0:
+        # Sub-second durations floor to zero; showing "0s" adds no information.
+        return "0m"
 
     hours = seconds // 3600
     minutes = (seconds % 3600) // 60
@@ -32,16 +78,20 @@ def format_duration(seconds: int | None) -> str:
 def format_file_size(size: float | None) -> str:
     """Format a file size in bytes to a human-readable string.
 
+    Non-finite and non-numeric values are treated as unset instead of being
+    rendered as ``"nan B"`` / ``"inf TB"``.
+
     Args:
         size: Size in bytes (or None).
 
     Returns:
         Formatted size string.
     """
-    if size is None or size <= 0:
+    number = _coerce_finite_number(size)
+    if number is None or number <= 0:
         return "0 B"
 
-    abs_size = abs(size)
+    abs_size = abs(number)
     if abs_size >= 1024**4:
         return f"{abs_size / (1024**4):.1f} TB"
     if abs_size >= 1024**3:
@@ -57,16 +107,19 @@ def format_file_size(size: float | None) -> str:
 def format_bitrate(bitrate: float | None) -> str:
     """Format a bitrate in bits per second to a human-readable string.
 
+    Non-finite and non-numeric values are treated as unset.
+
     Args:
         bitrate: Bitrate in bps (or None).
 
     Returns:
         Formatted bitrate string.
     """
-    if bitrate is None or bitrate <= 0:
+    number = _coerce_finite_number(bitrate)
+    if number is None or number <= 0:
         return "0 bps"
 
-    abs_br = abs(bitrate)
+    abs_br = abs(number)
     if abs_br >= 10**9:
         return f"{abs_br / 10**9:.1f} Gbps"
     if abs_br >= 10**6:
@@ -74,7 +127,7 @@ def format_bitrate(bitrate: float | None) -> str:
     if abs_br >= 10**3:
         return f"{abs_br / 10**3:.1f} Kbps"
 
-    return f"{abs_br} bps"
+    return f"{abs_br:.0f} bps"
 
 
 def format_resolution(width: int | None, height: int | None) -> str:
@@ -120,6 +173,10 @@ def format_resolution(width: int | None, height: int | None) -> str:
 def truncate_text(text: str | None, max_width: int, suffix: str = "...") -> str:
     """Truncate text to a maximum width, adding a suffix if truncated.
 
+    A non-positive *max_width* leaves no room for any text, so the result is
+    the empty string; slicing with a negative width would otherwise return a
+    large prefix of the input, which is the opposite of truncating.
+
     Args:
         text: The text to truncate (or None).
         max_width: Maximum width including suffix.
@@ -129,6 +186,8 @@ def truncate_text(text: str | None, max_width: int, suffix: str = "...") -> str:
         Truncated text string.
     """
     if text is None:
+        return ""
+    if max_width <= 0:
         return ""
     if len(text) <= max_width:
         return text

@@ -18,6 +18,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Complex-query parsing no longer turns operator typos into filter values that
+  silently match nothing. `parse_complex_query` split the query on
+  whitespace-delimited operators and treated whatever remained as a value, so
+  `AND Action` became the genre `"AND Action"`, `Action AND AND Comedy` became
+  the genre `"AND Comedy"`, and `Action AND NOT OR Comedy` became `"OR Comedy"`.
+  Each one previewed as zero results with no error, which read as "this group
+  matches nothing" rather than "your query is malformed". Operators are now
+  tokenised separately from values: a leading or trailing operator is dropped,
+  stacked operators collapse to the one nearest the operand (never dropping a
+  `NOT`, so the filter is not inverted), and stacked `NOT`s toggle so
+  `NOT NOT Comedy` is just `Comedy`. A query carrying no operand at all
+  (`NOT`, `genre:`, `AND`) returns no rules instead of an empty-valued rule.
+
+- The duration, file-size, and bitrate formatters no longer emit
+  `"1.0m 30.599999999999994s"`, `"nan B"`, or `"inf TB"`. They accepted
+  `int | float` and formatted with `//` and `%`, so a fractional second
+  survived into the string as floating-point noise, and `NaN` / `Infinity`
+  from a partially scanned item passed the `> 0` guard and were rendered
+  literally. Non-finite, non-numeric, and `bool` inputs now read as unset, and
+  fractional seconds are truncated so a duration never claims a second that
+  has not elapsed. `truncate_text` with a non-positive width also returned a
+  prefix of the input (a negative slice) instead of an empty string.
+
 - A non-ASCII `APP_PASSWORD` no longer makes every authenticated request
   fail with HTTP 500. `_check_auth` compared the supplied password with
   `hmac.compare_digest` directly, and that raises `TypeError: comparing
