@@ -80,7 +80,12 @@ Key helpers:
   full Jellyfin library index for O(1) lookups (supports IMDb, TMDb, etc.)
 - **`_fetch_full_library`** — double-checked locking cache to avoid redundant
   Jellyfin library fetches when multiple groups share the same server
-- **`_sort_items_in_memory`** — in-memory sort by Rating, Year, Name, etc.
+- **`_sort_items_in_memory`** — in-memory sort by Rating, Year, Name, etc. for
+  external-list sources, which Jellyfin cannot order server-side. It tolerates
+  the shapes Jellyfin actually returns (numeric or numeric-string years,
+  `null` ratings, missing fields), applies the tie-break key from `SORT_MAP`
+  (so same-year titles come out in name order), and shuffles for `Random`.
+  Items missing the sort field always sort last, in either direction.
 - **`parse_complex_query`** — parses compound rules like
   `Action AND NOT Comedy OR Drama` into structured rule dictionaries
 - **`preview_group`** — dry-run preview for a single group

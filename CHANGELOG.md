@@ -20,6 +20,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Groups sorted by `Random` now come out in a random order. `Random` is
+  offered in the UI sort dropdown, but `sync._sort_items_in_memory` looked it
+  up in `SORT_MAP` and then sorted on an item field named `Random`, which no
+  Jellyfin item has. Every item therefore took the "missing field" branch and
+  the input order was returned unchanged, so the option silently did nothing
+  for external-list groups (IMDb, Trakt, TMDb, AniList, MyAnimeList,
+  Letterboxd, recommendations). It now shuffles the resolved list.
+- In-memory sorting no longer raises on mixed value types. A Jellyfin response
+  can report the same field as a float for one item and a string for another
+  (`CommunityRating` of `8.1` versus `"7.5"`), and `sorted()` raised
+  `TypeError: '<' not supported between instances of 'float' and 'str'`,
+  which aborted the whole group instead of ordering it. Values are now
+  normalised before comparison: numeric strings sort numerically, text sorts
+  case-insensitively the way Jellyfin orders `SortName`, and items missing the
+  sort field always land at the end in both directions (previously a
+  descending sort on a mixed field could place unrated titles first).
+- In-memory sorting now applies the secondary key from `SORT_MAP`. Entries
+  such as `"ProductionYear,SortName"` only ever used `ProductionYear`, so
+  titles from the same year kept whatever order Jellyfin happened to page
+  them in. Ties now break in name order, and each key keeps its own direction
+  (`"Descending,Ascending"` means newest year first, names A-to-Z within a
+  year).
+- `config.load_config` no longer crashes when `config.json` is valid JSON but
+  not an object. A file containing `[]`, `"text"`, `null` or `42` parsed fine
+  and then raised `TypeError: list indices must be integers or slices, not
+  str` from `_fill_defaults`; only `json.JSONDecodeError` was handled, so the
+  failure escaped every endpoint that loads the config, including app startup
+  and the scheduler. Such a file is now quarantined to
+  `config.json.corrupt.bak` (unchanged, so the original stays inspectable)
+  and defaults are returned, matching the existing invalid-JSON recovery.
+  The backup logic is shared with that path via `_quarantine_broken_config`.
 - `sync_groupings` no longer sends unusable item IDs to Jellyfin. It built its
   `Ids` list with `str(item["Id"]) for item in items if "Id" in item`, so an
   item whose `Id` was present but `None` or `""` contributed the literal

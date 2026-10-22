@@ -15,11 +15,14 @@ import calendar
 import contextlib
 import hashlib
 import logging
+import math
+import random
 import re
 import shutil
 import threading
 import time
 from datetime import UTC, datetime
+from functools import cmp_to_key
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -485,6 +488,27 @@ def _sort_items_in_memory(
     Used for external-list sources (IMDb / Trakt) when a non-list-order sort
     is requested, because Jellyfin cannot sort them server-side.
 
+    Sorting is defensive because these dicts come straight from a Jellyfin
+    response, where a field can be missing, ``None``, a number, or a string
+    for the same logical attribute (``CommunityRating`` is a float for rated
+    titles and ``None`` otherwise; ``ProductionYear`` arrives as ``2001`` or
+    ``"2001.0"`` depending on the server version).  A raw ``sorted()`` on the
+    mixed values raises ``TypeError: '<' not supported between instances of
+    'float' and 'str'`` and aborts the whole group, so:
+
+    * ``Random`` shuffles instead of sorting — it is a documented sort option
+      and a key lookup on it used to return the list unchanged.
+    * values are normalised to a ``(kind, comparable)`` pair so numbers and
+      numeric strings sort numerically and are never compared to text.  When
+      a field holds both, the numeric values come first in *either*
+      direction; only the ordering inside each group is reversed.
+    * text compares case-insensitively, matching how Jellyfin orders
+      ``SortName`` (``Banana`` before ``apple``) instead of raw codepoints.
+    * items missing the field always sort last, in either direction.
+    * tie-break keys from ``SORT_MAP`` (``"ProductionYear,SortName"``) are
+      applied, so two titles from the same year come out in name order
+      instead of whatever order Jellyfin happened to page them in.
+
     Args:
         items: The matched Jellyfin items to sort.
         sort_order: One of the keys in :data:`jellyfin.SORT_MAP`.
@@ -496,33 +520,126 @@ def _sort_items_in_memory(
     if sort_order not in SORT_MAP:
         return items
 
+    if sort_order == "Random":
+        # ``SORT_MAP["Random"]`` is a Jellyfin server-side directive; there is
+        # no "random" key in an item dict, so the generic path below would sort
+        # on a missing field and hand back the input order unchanged.
+        shuffled = list(items)
+        random.shuffle(shuffled)
+        return shuffled
+
     sort_key_str, sort_dir_str = SORT_MAP[sort_order]
-    primary_key = sort_key_str.split(",")[0]
-    reverse = sort_dir_str.split(",")[0] == "Descending"
+    sort_keys = [key.strip() for key in sort_key_str.split(",") if key.strip()]
+    sort_dirs = [d.strip() for d in sort_dir_str.split(",")]
 
-    def _key(item: dict[str, Any]) -> tuple[int, Any]:
-        """Sorting key - pushes items missing the field to the end.
+    def _is_missing(value: Any) -> bool:
+        """Return whether *value* carries no usable sort information.
 
-        The *missing* component is set so that tuples for absent values are
-        always larger than tuples for present values, regardless of whether
-        the overall sort is ascending or descending.
+        ``None`` is the obvious case, but Jellyfin also emits empty strings for
+        optional fields, and sorting those as the empty string would place
+        them before every real value instead of after them.
+
+        Non-finite numbers count as missing too.  ``float("nan")`` and
+        ``float("inf")`` parse successfully, but NaN compares false against
+        everything, so a single NaN would make the comparator return ``1`` in
+        both directions and corrupt the ordering of every real value around it.
 
         Args:
-            item: The Jellyfin item dict.
-
-        Returns:
-            A ``(priority, value)`` tuple used for sorting.
+            value: The raw field value.
 
         """
-        value = item.get(primary_key)
         if value is None:
-            # Sentinel for items missing the sort field — always sorts to the end.
-            # reverse=False:  missing=(1, ""), present=(0, value)  → missing sorts last
-            # reverse=True:   missing=(0, ""), present=(1, value)  → missing sorts last
-            return (0, "") if reverse else (1, "")
-        return (1, value) if reverse else (0, value)
+            return True
+        if isinstance(value, str):
+            text = value.strip()
+            if not text:
+                return True
+            try:
+                return not math.isfinite(float(text))
+            except ValueError:
+                return False
+        if isinstance(value, float):
+            return not math.isfinite(value)
+        return False
 
-    return sorted(items, key=_key, reverse=reverse)
+    def _comparable(value: Any) -> tuple[int, Any]:
+        """Normalise a raw Jellyfin value into a mutually comparable pair.
+
+        Args:
+            value: The raw field value from the item dict.
+
+        Returns:
+            ``(0, float)`` for numeric values (including numeric strings such
+            as ``"2001.0"`` or ``"7.5"``), ``(1, str)`` for everything else.
+            The leading integer keeps the two kinds from ever being compared.
+            Non-finite values never reach this function; :func:`_is_missing`
+            filters them out first.
+
+        """
+        if isinstance(value, bool):
+            # ``bool`` is an ``int`` subclass; True/False are not ratings.
+            return (1, str(value).casefold())
+        if isinstance(value, (int, float)):
+            return (0, float(value))
+        text = str(value).strip()
+        try:
+            return (0, float(text))
+        except ValueError:
+            return (1, text.casefold())
+
+    def _make_cmp(key: str, descending: bool) -> Callable[[dict, dict], int]:
+        """Build a comparator for one entry of ``SORT_MAP``.
+
+        A comparator is used instead of a key function because the direction
+        must reverse the values but *not* the placement of items that are
+        missing the field — a key function combined with ``reverse=True``
+        would flip those to the front and bury the real entries.
+
+        Args:
+            key: The Jellyfin field name to compare on.
+            descending: Whether present values compare in reverse order.
+
+        Returns:
+            A ``cmp``-style callable for :func:`functools.cmp_to_key`.
+
+        """
+
+        def _compare(left: dict[str, Any], right: dict[str, Any]) -> int:
+            left_value = left.get(key)
+            right_value = right.get(key)
+            left_missing = _is_missing(left_value)
+            right_missing = _is_missing(right_value)
+            if left_missing or right_missing:
+                if left_missing and right_missing:
+                    return 0
+                # Missing values always sort last, in both directions.
+                return 1 if left_missing else -1
+
+            left_kind, left_cmp = _comparable(left_value)
+            right_kind, right_cmp = _comparable(right_value)
+            if left_kind != right_kind:
+                # Numeric values first; the kind order is not reversed so a
+                # descending sort cannot promote unratable text to the top.
+                return -1 if left_kind < right_kind else 1
+            if left_cmp == right_cmp:
+                return 0
+            result = -1 if left_cmp < right_cmp else 1
+            return -result if descending else result
+
+        return _compare
+
+    # Apply the least significant key first, then the next one; ``sorted`` is
+    # stable, so each pass preserves the order established by the previous
+    # one. Sorting on a combined tuple cannot do this, because the two keys
+    # may have opposite directions (year descending, name ascending).
+    result = list(items)
+    for index in range(len(sort_keys) - 1, -1, -1):
+        direction = sort_dirs[index] if index < len(sort_dirs) else sort_dirs[0]
+        result = sorted(
+            result,
+            key=cmp_to_key(_make_cmp(sort_keys[index], direction == "Descending")),
+        )
+    return result
 
 
 def _fetch_and_resolve(
