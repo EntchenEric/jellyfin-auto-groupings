@@ -20,6 +20,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A malformed `config.json` section no longer crashes the app. Because
+  `config.json` is user-editable and `POST /api/config` takes untrusted JSON,
+  `"scheduler": null`, `"groups": "text"`, or a numeric cron value used to
+  raise `AttributeError`/`TypeError` from `.get()`, `.strip()`, or iteration.
+  Through the API that surfaced as an HTTP 500 instead of the expected 400,
+  and on startup it aborted `update_scheduler_jobs()`, so the scheduler came
+  up with no jobs. `_validate_cron_expressions` now walks both sections
+  defensively and `validate_cron` reports non-string input as a validation
+  error; `update_scheduler_jobs` logs and skips wrong-typed sections, and a
+  non-list `global_exclude_ids` is normalised to an empty list instead of
+  being handed to the job.
 - `JellyfinClient.create_collection` turned an empty response body into
   `{"Id": "None"}`: `_post` returns `None` for a bodyless success, and the
   fallback wrapper stringified it. Jellyfin answers `POST /Collections` with no

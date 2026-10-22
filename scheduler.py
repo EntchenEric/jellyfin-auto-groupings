@@ -62,6 +62,15 @@ def _schedule_global_sync(
         return
     try:
         excluded_names = sched_cfg.get("global_exclude_ids", [])
+        # A hand-edited config.json may hold a non-list here; iterating it
+        # later inside the job would then fail at sync time instead of
+        # scheduling time, so normalise it now.
+        if not isinstance(excluded_names, list):
+            logger.warning(
+                "Ignoring scheduler.global_exclude_ids (expected list, got %s)",
+                type(excluded_names).__name__,
+            )
+            excluded_names = []
         scheduler.add_job(
             _run_global_sync_job,
             CronTrigger.from_crontab(cron_expr),
@@ -74,7 +83,10 @@ def _schedule_global_sync(
             cron_expr,
             excluded_names,
         )
-    except ValueError:
+    except (ValueError, TypeError, AttributeError):
+        # TypeError/AttributeError cover a hand-edited config.json whose cron
+        # value is not a string; APScheduler raises AttributeError from
+        # from_crontab() for those.
         logger.exception("Failed to schedule global sync (invalid cron: %s)", cron_expr)
 
 
@@ -149,7 +161,7 @@ def _schedule_group_syncs(scheduler: BackgroundScheduler, groups: list[Any]) -> 
                     replace_existing=False,
                 )
                 logger.info("Scheduled sync for group '%s': %s", group_name, cron_expr)
-            except ValueError:
+            except (ValueError, TypeError, AttributeError):
                 logger.exception(
                     "Failed to schedule sync for group '%s' (invalid cron: %s)",
                     group_name,
@@ -181,7 +193,7 @@ def _schedule_cleanup(
             name="Cleanup Broken Symlinks",
         )
         logger.info("Scheduled cleanup job: %s", cleanup_cron)
-    except ValueError:
+    except (ValueError, TypeError, AttributeError):
         logger.exception(
             "Failed to schedule cleanup job (invalid cron: %s)",
             cleanup_cron,
@@ -193,8 +205,25 @@ def update_scheduler_jobs() -> None:
     _scheduler.remove_all_jobs()
 
     config = load_config()
-    sched_cfg = config.get("scheduler", {})
-    groups = config.get("groups", [])
+    # config.json is user-editable, so these sections can be missing or of the
+    # wrong type. Fall back to empty containers rather than letting a
+    # malformed config crash app startup and every subsequent config save.
+    sched_cfg = config.get("scheduler")
+    if not isinstance(sched_cfg, dict):
+        if sched_cfg is not None:
+            logger.warning(
+                "Ignoring malformed 'scheduler' config (expected object, got %s)",
+                type(sched_cfg).__name__,
+            )
+        sched_cfg = {}
+    groups = config.get("groups")
+    if not isinstance(groups, list):
+        if groups is not None:
+            logger.warning(
+                "Ignoring malformed 'groups' config (expected list, got %s)",
+                type(groups).__name__,
+            )
+        groups = []
 
     _schedule_global_sync(_scheduler, sched_cfg)
     _schedule_group_syncs(_scheduler, groups)
@@ -280,16 +309,24 @@ def _run_cleanup_job() -> None:
         )
 
 
-def validate_cron(expr: str) -> str | None:
+def validate_cron(expr: Any) -> str | None:
     """Validate a cron expression.
 
     Args:
-        expr: A 5-field cron expression (e.g. ``"0 0 * * *"``).
+        expr: A 5-field cron expression (e.g. ``"0 0 * * *"``). Any other
+            type is reported as invalid rather than raising, because the
+            value usually comes straight from ``config.json``.
 
     Returns:
         ``None`` if valid, otherwise an error message string.
 
     """
+    # ``config.json`` is user-editable, so this value can be any JSON type
+    # (``null``, a number, a list). Report those as invalid instead of
+    # raising ``AttributeError`` from ``.strip()``, which would turn a bad
+    # config into an HTTP 500 rather than the expected 400.
+    if not isinstance(expr, str):
+        return f"Cron expression must be a string, got {type(expr).__name__}: {expr!r}"
     expr = expr.strip()
     if not expr:
         return "Cron expression must not be empty"
