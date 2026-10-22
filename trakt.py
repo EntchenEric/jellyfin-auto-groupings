@@ -187,11 +187,35 @@ def fetch_trakt_list(list_url: str, client_id: str) -> list[str]:
     page: int = 1
 
     while True:
-        items, total_pages = _fetch_trakt_page(username, list_slug, page, headers)
+        try:
+            items, total_pages = _fetch_trakt_page(
+                username,
+                list_slug,
+                page,
+                headers,
+            )
+        except TypeError as exc:
+            # ``_fetch_trakt_page`` reports a wrong response shape as
+            # ``TypeError``, but every caller of this function (sync.py)
+            # treats a fetch failure as ``RuntimeError``/``ValueError``. An
+            # uncaught ``TypeError`` escaped the group's error handling and
+            # aborted the whole sync run instead of failing one group.
+            msg = f"Unexpected Trakt API response for list {list_url!r}: {exc}"
+            raise RuntimeError(msg) from exc
         if not items:
             break
         _extract_imdb_ids_from_page(items, ids, seen)
-        if page >= total_pages or page >= _MAX_PAGES:
+        if page >= total_pages:
+            break
+        if page >= _MAX_PAGES:
+            # The README promises a warning when the cap truncates a list;
+            # stopping silently makes a partial result look complete.
+            logger.warning(
+                "Stopping after %d pages (the safety limit) — the Trakt list "
+                "%r has more entries than were fetched",
+                _MAX_PAGES,
+                list_url,
+            )
             break
         page += 1
 

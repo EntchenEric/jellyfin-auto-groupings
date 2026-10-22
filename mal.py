@@ -115,13 +115,35 @@ def fetch_mal_list(
             msg = f"Invalid JSON response from MAL API for user {username!r}: {exc}"
             raise RuntimeError(msg) from exc
 
-        for entry in data.get("data", []):
-            node = entry.get("node", {})
-            if node.get("id"):
-                ids.append(node["id"])
+        # A malformed payload (a bare list, a string where an object belongs,
+        # a non-dict entry) used to raise AttributeError out of the fetcher,
+        # which sync.py does not catch for every provider. Treat anything
+        # unexpected as "no more entries" instead of crashing the sync.
+        if not isinstance(data, dict):
+            logger.warning(
+                "Unexpected MAL response shape for user %r: expected an object",
+                username,
+            )
+            break
+
+        entries = data.get("data")
+        if isinstance(entries, list):
+            for entry in entries:
+                if not isinstance(entry, dict):
+                    continue
+                node = entry.get("node")
+                if not isinstance(node, dict):
+                    continue
+                media_id = node.get("id")
+                if isinstance(media_id, int) and not isinstance(media_id, bool):
+                    ids.append(media_id)
 
         # MAL pagination uses a 'next' URL in the 'paging' object
-        url = data.get("paging", {}).get("next")
+        paging = data.get("paging")
+        next_url = paging.get("next") if isinstance(paging, dict) else None
+        if not isinstance(next_url, str) or not next_url:
+            break
+        url = next_url
         # Once we have the 'next' URL, params are already included in it by MAL
         params = {}
 

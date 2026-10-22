@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `tests/test_provider_payload_robustness.py` pins the response shapes that
+  used to crash a sync. Every fetcher parses a body written by somebody else,
+  and the malformed shapes below emitted `AttributeError`/`TypeError`, which
+  were not in the `except` tuple at the sync layer, so one bad upstream
+  payload aborted the whole run instead of failing a single group.
+
 - Regression tests for the standalone `auto_group.py` helper moved into
   `tests/test_auto_group.py`. The previous suite lived in a root-level
   `test_auto_group.py`, but CI runs `pytest tests/`, so none of it ever
@@ -23,6 +29,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   spec covers modal lifecycle and the folder picker's auth path.
 
 ### Fixed
+
+- External list fetchers no longer crash on a malformed response body.
+  `tmdb.get_tmdb_recommendations` turned a result with no `id` into the
+  literal TMDb id `"None"` and passed it to Jellyfin; `tmdb.fetch_tmdb_list`
+  read `total_pages` without a type check, so a string ended pagination after
+  page 1, and non-object `items` raised `AttributeError`; `mal.fetch_mal_list`
+  raised `AttributeError` on a non-object payload or a non-dict entry and
+  requested a non-string `paging.next` as a URL; `anilist.fetch_anilist_list`
+  let a JSON decode error escape as `ValueError`; and `trakt.fetch_trakt_list`
+  let the page parser's `TypeError` escape as-is. All of these now skip the
+  unusable data or raise `RuntimeError`, the type the callers handle.
+
+- Boolean IDs are rejected in `anilist.py` and `tmdb.py`. `bool` subclasses
+  `int`, so `"mediaId": true` was collected as media ID 1 and `"id": true`
+  became TMDb id `"True"`.
+
+- `imdb.fetch_imdb_list` validates the list ID properly. The old
+  `startswith("ls")` check accepted `ls` and `lsabc`, and both were pasted
+  into the request URL only to come back empty or as an error page.
+
+- `imdb.fetch_imdb_list` uses the shared 50-page safety cap and logs a
+  warning when it truncates. It previously stopped at 20 pages silently —
+  about 2 000 films — while the README promised a 50-page cap for every list
+  source.
 
 - Letterboxd lists longer than one page are no longer silently truncated to
   their first 72 films. The page loop tested for the literal

@@ -13,14 +13,22 @@ import requests
 
 import network
 from _common import DEFAULT_LIST_FETCH_TIMEOUT as _REQUEST_TIMEOUT
+from _common import DEFAULT_LIST_MAX_PAGES
 from _common import DEFAULT_SCRAPING_HEADERS as _REQUEST_HEADERS
 
 __all__ = ["fetch_imdb_list"]
 
 logger = logging.getLogger(__name__)
 
-# Maximum number of pages to scrape (safety guard, ~2 000 items at 100/page)
-_MAX_PAGES: int = 20
+# Maximum number of pages to scrape (safety guard, ~5 000 items at 100/page).
+# Shared with the other list fetchers so every source truncates at the same
+# point, and so the README's "safety cap (50 pages)" is actually true here.
+_MAX_PAGES: int = DEFAULT_LIST_MAX_PAGES
+
+# IMDb list IDs are the literal ``ls`` prefix followed by digits. Anything
+# else (``ls``, ``lsabc``) would be pasted straight into the request URL and
+# fetched only to come back as an empty or error page.
+_LIST_ID_PATTERN: re.Pattern[str] = re.compile(r"^ls\d+$")
 
 
 def fetch_imdb_list(list_id: str) -> list[str]:
@@ -48,7 +56,7 @@ def fetch_imdb_list(list_id: str) -> list[str]:
     if url_match:
         list_id = url_match.group(0)
 
-    if not list_id.startswith("ls"):
+    if not _LIST_ID_PATTERN.match(list_id):
         msg = f"Invalid IMDb list ID: {list_id!r}. Expected format: ls000024390"
         raise ValueError(msg)
 
@@ -88,7 +96,17 @@ def fetch_imdb_list(list_id: str) -> list[str]:
             r'rel="next"',
             html,
         )
-        if not has_next or page >= _MAX_PAGES:
+        if not has_next:
+            break
+        if page >= _MAX_PAGES:
+            # Stopping silently would look like "the list ends here", so the
+            # user gets a truncated collection with no hint that more exists.
+            logger.warning(
+                "Stopping after %d pages (the safety limit) — the IMDb list "
+                "%s has more entries than were fetched",
+                _MAX_PAGES,
+                list_id,
+            )
             break
 
         page += 1

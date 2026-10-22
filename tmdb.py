@@ -74,13 +74,19 @@ def _collect_tmdb_ids_from_page(
         seen: Set of already-seen IDs for deduplication.
 
     """
-    for item in data.get("items", []):
+    items = data.get("items")
+    if not isinstance(items, list):
+        return
+    for item in items:
+        if not isinstance(item, dict):
+            continue
         tmdb_id = item.get("id")
-        if tmdb_id:
-            str_id = str(tmdb_id)
-            if str_id not in seen:
-                seen.add(str_id)
-                ids.append(str_id)
+        if tmdb_id is None or isinstance(tmdb_id, bool):
+            continue
+        str_id = str(tmdb_id)
+        if str_id not in seen:
+            seen.add(str_id)
+            ids.append(str_id)
 
 
 def _normalize_tmdb_list_id(list_id: str) -> str:
@@ -129,11 +135,27 @@ def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
         data = _fetch_tmdb_page(list_id, api_key, page)
         _collect_tmdb_ids_from_page(data, ids, seen)
 
-        if not data.get("items"):
+        items = data.get("items")
+        if not isinstance(items, list) or not items:
             break
 
-        total_pages: int = data.get("total_pages", 1)
-        if page >= total_pages or page >= _MAX_TMDB_PAGES:
+        total_pages = data.get("total_pages", 1)
+        # A malformed ``total_pages`` must not end the walk early, so a
+        # non-integer value is treated as "unknown" (keep paginating until an
+        # empty page) rather than as "this was the last page".
+        if not isinstance(total_pages, int) or isinstance(total_pages, bool):
+            total_pages = page + 1
+        if page >= total_pages:
+            break
+        if page >= _MAX_TMDB_PAGES:
+            # The README promises a warning when the cap truncates a list;
+            # stopping silently makes a partial result look complete.
+            logger.warning(
+                "Stopping after %d pages (the safety limit) — the TMDb list "
+                "%r has more entries than were fetched",
+                _MAX_TMDB_PAGES,
+                list_id,
+            )
             break
         page += 1
 
@@ -180,8 +202,21 @@ def get_tmdb_recommendations(
                 resp = network.get(url, params=params, timeout=10)
                 if resp.status_code == 200:
                     data = resp.json()
+                    if not isinstance(data, dict):
+                        logger.debug(
+                            "Skipping recommendation item with non-object payload",
+                        )
+                        break
                     for i, rec in enumerate(data.get("results", [])):
-                        rec_id = str(rec.get("id"))
+                        # A recommendation without an ``id`` used to become the
+                        # literal string ``"None"``, which then went to Jellyfin
+                        # as a TMDb provider id. Skip it instead.
+                        if not isinstance(rec, dict):
+                            continue
+                        raw_id = rec.get("id")
+                        if raw_id is None or isinstance(raw_id, bool):
+                            continue
+                        rec_id = str(raw_id)
                         score = 1.0 / (i + 1)  # Higher weight for top recommendations
                         recommendation_counts[rec_id] = (
                             recommendation_counts.get(rec_id, 0.0) + score

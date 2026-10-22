@@ -142,7 +142,7 @@ For the package CLI (`--url`, `--api-key`, `--pattern`) see
 ## External list sources
 
 Every `*_list` source resolves an ordered list of external IDs and matches them
-against your Jellyfin library by `ProviderIds`. Two behaviours are worth
+against your Jellyfin library by `ProviderIds`. Three behaviours are worth
 knowing before you build a group on a long list:
 
 - **Pagination is followed to the end of the list.** IMDb, Trakt and
@@ -154,6 +154,12 @@ knowing before you build a group on a long list:
   IMDb or TMDb ID in Jellyfin simply does not appear in the group; the rest of
   the list still syncs. Duplicates (the same item matched through both ID
   types) are collapsed so a file is never linked twice.
+- **A malformed upstream response fails one group, not the run.** Each
+  fetcher validates the shape of the payload it parses: entries that are not
+  objects, IDs that are missing or boolean, and pagination fields of the
+  wrong type are skipped rather than raising. A response that cannot be used
+  at all raises the error type the sync layer catches, so the group records a
+  fetch error and the remaining groups still sync.
 
 ## Development
 
