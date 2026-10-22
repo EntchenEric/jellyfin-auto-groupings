@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `jellyfin_auto_groupings.cli.main` now returns its exit code on every
+  failure path instead of calling `sys.exit(1)` in some branches and returning
+  `1` in others. The docstring already promised a return code, so callers that
+  invoked `main()` in-process had to handle both behaviours. `argparse` usage
+  errors are converted the same way, so a missing option value returns `2` and
+  `--help` returns `0` rather than raising `SystemExit`. The `python -m` guard
+  still forwards the code to `sys.exit`, so process exit statuses are
+  unchanged.
+
+### Fixed
+
+- `JellyfinClient.create_collection` turned an empty response body into
+  `{"Id": "None"}`: `_post` returns `None` for a bodyless success, and the
+  fallback wrapper stringified it. Jellyfin answers `POST /Collections` with no
+  body in some versions, so callers received a collection whose id was the
+  literal text `None`. A missing body now yields `{}`.
+- The prefix-grouping paths in `process_groupings` and `create_groupings`
+  collected `item.get("Id", "")`, so an item with no `Id` contributed an empty
+  string to the `Ids` parameter and Jellyfin rejected the whole collection.
+  Items without a usable id are skipped, and a group whose usable ids fall
+  below the size threshold is no longer created.
+
 ### Fixed
 
 - `config.load_config` returned a config whose nested containers aliased

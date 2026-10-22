@@ -21,14 +21,13 @@ def test_client_api_error_handling(mocker):
         client.get_items()
 
 
-def test_cli_error_exit(mocker, capsys):
+def test_cli_error_returns_nonzero(mocker, capsys):
     mocker.patch(
         "jellyfin_auto_groupings.cli.JellyfinClient",
         side_effect=JellyfinAPIError("Auth failed"),
     )
-    with pytest.raises(SystemExit) as exc_info:
-        main(["--server", "http://localhost:8096", "--api-key", "invalid"])
-    assert exc_info.value.code == 1
+    rc = main(["--server", "http://localhost:8096", "--api-key", "invalid"])
+    assert rc == 1
     captured = capsys.readouterr()
     assert "Error: Auth failed" in captured.err
 

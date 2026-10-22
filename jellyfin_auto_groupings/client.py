@@ -168,7 +168,13 @@ class JellyfinClient:
             "Ids": ",".join(item_ids),
         }
         res = self._post("/Collections", params=params)
-        return res if isinstance(res, dict) else {"Id": str(res)}
+        if isinstance(res, dict):
+            return res
+        if res is None:
+            # Jellyfin answers with an empty body on success; there is no ID
+            # to report, and ``str(None)`` would fabricate a ``"None"`` id.
+            return {}
+        return {"Id": str(res)}
 
     def add_to_collection(
         self, collection_id: str, item_ids: list[str]
@@ -545,7 +551,12 @@ def process_groupings(
         for item in items:
             name = item.get("Name", "")
             prefix = name.split()[0] if name else "Unknown"
-            groups.setdefault(prefix, []).append(item.get("Id", ""))
+            item_id = item.get("Id")
+            if not item_id:
+                # An item without an ID cannot be added to a collection;
+                # passing "" would make Jellyfin reject the whole request.
+                continue
+            groups.setdefault(prefix, []).append(str(item_id))
         if dry_run:
             # A dry run must never mutate the server.
             return changes
@@ -606,7 +617,12 @@ def create_groupings(
     for item in items:
         name = item.get("Name", "")
         prefix = name.split()[0] if name else "Unknown"
-        groups.setdefault(prefix, []).append(item.get("Id", ""))
+        item_id = item.get("Id")
+        if not item_id:
+            # An item without an ID cannot be added to a collection;
+            # passing "" would make Jellyfin reject the whole request.
+            continue
+        groups.setdefault(prefix, []).append(str(item_id))
 
     created = []
     for group_name, item_ids in groups.items():

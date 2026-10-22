@@ -52,7 +52,9 @@ python -m jellyfin_auto_groupings.cli --url http://localhost:8096 --dry-run
 ```
 
 Exit codes: `0` on success, `1` for a missing API key, an invalid `--pattern`
-regex, a connection/timeout failure, or a sync error.
+regex, a connection/timeout failure, or a sync error, and `2` for a malformed
+command line. `main()` returns the code instead of raising `SystemExit`, so it
+can be called in-process; the `python -m` entry point still exits with it.
 
 ## Configuration
 
@@ -79,7 +81,9 @@ client = JellyfinClient("http://localhost:8096", "api-key", user_id="optional-us
 - `get_collections()` - Get all collections (BoxSets)
 - `get_collection_items(collection_id)` - Get items in a collection
 - `get_movies()` - Get all movies
-- `create_collection(name, item_ids)` - Create a new collection
+- `create_collection(name, item_ids)` - Create a new collection. Returns the
+  response metadata, or `{}` when Jellyfin sends no body, or `{}` for an empty
+  `item_ids` list.
 - `add_to_collection(collection_id, item_ids)` - Add items to existing collection
 - `remove_from_collection(collection_id, item_ids)` - Remove items from collection
 - `update_item_sort_name(item_id, sort_name)` - Update an item's sort name
