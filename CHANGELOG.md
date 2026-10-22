@@ -24,6 +24,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Letterboxd lists longer than one page are no longer silently truncated to
+  their first 72 films. The page loop tested for the literal
+  `class="next"`, but Letterboxd renders the next-page control with a trailing
+  space (`class="next "`) and adds state classes to it
+  (`class="next  is-disabled"`), so the test never matched and every list
+  appeared to end on page 1. The check now splits the `class` value into
+  tokens, treats a disabled control as the real end of the list (so the last
+  page is not requested twice), and ignores lookalikes such as
+  `class="next-door"`. The page cap is shared with the other list fetchers
+  (50) instead of the previous 10 (about 720 films), and reaching it now logs
+  a warning, because the result is truncated rather than complete.
+
 - `auto_group.py` no longer crashes on the regex patterns it invites users to
   configure. `extract_base_title` called `match.group(1)` unconditionally, so a
   pattern without a capture group (`^Star Wars`) raised `IndexError`, and a

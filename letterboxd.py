@@ -15,7 +15,7 @@ from http import HTTPStatus
 import requests
 
 import network
-from _common import DEFAULT_SCRAPING_HEADERS
+from _common import DEFAULT_LIST_MAX_PAGES, DEFAULT_SCRAPING_HEADERS
 
 __all__ = ["fetch_letterboxd_list"]
 
@@ -27,7 +27,8 @@ _LIST_PAGE_TIMEOUT: int = 15
 
 _MAX_EMPTY_CONSECUTIVE: int = 3
 
-_MAX_PAGES: int = 10
+#: Safety guard shared with the other list fetchers (~72 films per page).
+_MAX_PAGES: int = DEFAULT_LIST_MAX_PAGES
 _MAX_WORKERS: int = 6
 
 _REQUEST_HEADERS: dict[str, str] = {
@@ -38,6 +39,15 @@ _REQUEST_HEADERS: dict[str, str] = {
 
 # Matches each film's slug marker in list-page HTML.
 _SLUG_PATTERN: str = r'data-film-slug="([^"]+)"'
+
+# Matches one ``class`` attribute value. Letterboxd renders the next-page link
+# as ``class="next "`` (trailing space) and marks the end of a list with
+# ``class="next  is-disabled"``, so the value has to be split into tokens
+# instead of compared against a literal string.
+_CLASS_ATTR_PATTERN: re.Pattern[str] = re.compile(r'class="([^"]*)"')
+
+# Token marker of a disabled next-page link.
+_DISABLED_CLASS: str = "is-disabled"
 
 # Ordered ID patterns for a single film's HTML segment. Higher-priority
 # patterns (TMDb data attribute) are tried first; the first hit wins.
@@ -138,6 +148,38 @@ def _fetch_ids_for_slugs(slugs: list[str]) -> dict[str, str | None]:
                 logger.debug("Unexpected error for '%s'", slug, exc_info=True)
                 results[slug] = None
     return results
+
+
+def _has_next_page(html: str) -> bool:
+    """Return whether *html* links to a further page of the list.
+
+    The check inspects the ``next`` token of every ``class`` attribute rather
+    than looking for the literal ``class="next"``. Real Letterboxd markup
+    writes ``class="next "`` with a trailing space, so the literal comparison
+    never matched and every list was silently truncated to its first page
+    (72 films). A disabled control marks the last page and must not paginate
+    further, otherwise the last page is requested twice.
+
+    Args:
+        html: The HTML content of a Letterboxd list page.
+
+    Returns:
+        ``True`` when a usable next-page link is present.
+
+    """
+    saw_next_token = False
+    for match in _CLASS_ATTR_PATTERN.finditer(html):
+        tokens = match.group(1).split()
+        if "next" not in tokens:
+            continue
+        if _DISABLED_CLASS in tokens:
+            # The control exists but marks the last page; a ``rel="next"``
+            # attribute elsewhere must not override that.
+            return False
+        saw_next_token = True
+    if saw_next_token:
+        return True
+    return 'rel="next"' in html
 
 
 def _merge_page_results(
@@ -286,7 +328,18 @@ def fetch_letterboxd_list(list_url: str) -> list[str]:
         slug_results = _fetch_ids_for_slugs(slugs_to_fetch)
         _merge_page_results(unique_slugs, ids_from_list, slug_results, ids, seen_ids)
 
-        if 'class="next"' not in html or page >= _MAX_PAGES:
+        if not _has_next_page(html):
+            break
+
+        if page >= _MAX_PAGES:
+            # Silently stopping here used to look like "the list is that
+            # short"; say so instead, because the user sees a truncated
+            # collection with no hint that more films exist.
+            logger.warning(
+                "Stopping after %d pages (the safety limit) — the list has "
+                "more entries than were fetched",
+                _MAX_PAGES,
+            )
             break
 
         page += 1
