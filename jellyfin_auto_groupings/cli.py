@@ -75,7 +75,15 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(args: Sequence[str] | None = None) -> int:
-    """CLI entry point. Returns an exit code (0 on success, 1 on failure)."""
+    """CLI entry point.
+
+    Returns:
+        An exit code: ``0`` on success, ``1`` on any failure. Every failure
+        path returns rather than raising ``SystemExit`` so that callers can
+        invoke :func:`main` in-process and inspect the code. The module guard
+        forwards the result to :func:`sys.exit`, so the process still exits
+        non-zero on failure.
+    """
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
     )
@@ -96,7 +104,7 @@ def main(args: Sequence[str] | None = None) -> int:
         re.compile(parsed.pattern)
     except re.error as exc:
         sys.stderr.write(f"Invalid --pattern regex: {exc}\n")
-        sys.exit(1)
+        return 1
 
     try:
         client = JellyfinClient(parsed.url, parsed.api_key)
@@ -107,20 +115,20 @@ def main(args: Sequence[str] | None = None) -> int:
             f"Could not connect to Jellyfin at {parsed.url}. "
             "Check that the server is running and the URL is correct.\n"
         )
-        sys.exit(1)
+        return 1
     except requests.Timeout:
         sys.stderr.write(
             f"Request to {parsed.url} timed out. The server may be busy.\n"
         )
-        sys.exit(1)
+        return 1
     except JellyfinAPIError as exc:
         msg = f"Error: {exc}"
         sys.stderr.write(msg + "\n")
-        sys.exit(1)
+        return 1
     except Exception as exc:  # noqa: BLE001 - CLI boundary, report and exit
         msg = f"Error: {exc}"
         sys.stderr.write(msg + "\n")
-        sys.exit(1)
+        return 1
 
     try:
         summary = sync_groupings(client, groups, dry_run=parsed.dry_run)
@@ -128,10 +136,10 @@ def main(args: Sequence[str] | None = None) -> int:
         sys.stderr.write(
             "Connection lost while syncing. Re-run with --dry-run first to preview.\n"
         )
-        sys.exit(1)
+        return 1
     except Exception as exc:  # noqa: BLE001 - CLI boundary, report and exit
         sys.stderr.write(f"Failed to sync groupings: {exc}\n")
-        sys.exit(1)
+        return 1
 
     n_groups = len(summary)
     if parsed.dry_run:

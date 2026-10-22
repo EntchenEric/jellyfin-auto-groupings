@@ -614,66 +614,48 @@ def test_cli_build_parser_defaults():
     assert args.pattern == r"^(.*)"
 
 
-def test_cli_invalid_pattern_regex_exits_nonzero(capsys):
-    with pytest.raises(SystemExit) as exc:
-        cli_main(["--api-key", "k", "--pattern", "(unclosed"])
-    assert exc.value.code == 1
+def test_cli_invalid_pattern_regex_returns_error(capsys):
+    assert cli_main(["--api-key", "k", "--pattern", "(unclosed"]) == 1
     err = capsys.readouterr().err
     assert "Invalid --pattern regex" in err
 
 
-def test_cli_connection_error_exit(capsys):
-    with (
-        patch(
-            "jellyfin_auto_groupings.cli.JellyfinClient",
-            side_effect=requests.ConnectionError("down"),
-        ),
-        pytest.raises(SystemExit) as exc,
+def test_cli_connection_error_returns_error(capsys):
+    with patch(
+        "jellyfin_auto_groupings.cli.JellyfinClient",
+        side_effect=requests.ConnectionError("down"),
     ):
-        cli_main(["--api-key", "k"])
-    assert exc.value.code == 1
+        assert cli_main(["--api-key", "k"]) == 1
     assert "Could not connect to Jellyfin" in capsys.readouterr().err
 
 
-def test_cli_timeout_error_exit(capsys):
-    with (
-        patch(
-            "jellyfin_auto_groupings.cli.JellyfinClient",
-            side_effect=requests.Timeout("slow"),
-        ),
-        pytest.raises(SystemExit) as exc,
+def test_cli_timeout_error_returns_error(capsys):
+    with patch(
+        "jellyfin_auto_groupings.cli.JellyfinClient",
+        side_effect=requests.Timeout("slow"),
     ):
-        cli_main(["--api-key", "k"])
-    assert exc.value.code == 1
+        assert cli_main(["--api-key", "k"]) == 1
     assert "timed out" in capsys.readouterr().err
 
 
-def test_cli_generic_error_exit(capsys):
-    with (
-        patch(
-            "jellyfin_auto_groupings.cli.JellyfinClient",
-            side_effect=RuntimeError("mystery"),
-        ),
-        pytest.raises(SystemExit) as exc,
+def test_cli_generic_error_returns_error(capsys):
+    with patch(
+        "jellyfin_auto_groupings.cli.JellyfinClient",
+        side_effect=RuntimeError("mystery"),
     ):
-        cli_main(["--api-key", "k"])
-    assert exc.value.code == 1
+        assert cli_main(["--api-key", "k"]) == 1
     assert "mystery" in capsys.readouterr().err
 
 
-def test_cli_api_error_exit(capsys):
+def test_cli_api_error_returns_error(capsys):
     client = MagicMock()
     client.get_all_items.side_effect = JellyfinAPIError("API exploded")
-    with (
-        patch("jellyfin_auto_groupings.cli.JellyfinClient", return_value=client),
-        pytest.raises(SystemExit) as exc,
-    ):
-        cli_main(["--api-key", "k"])
-    assert exc.value.code == 1
+    with patch("jellyfin_auto_groupings.cli.JellyfinClient", return_value=client):
+        assert cli_main(["--api-key", "k"]) == 1
     assert "API exploded" in capsys.readouterr().err
 
 
-def test_cli_sync_connection_lost_exit(capsys):
+def test_cli_sync_connection_lost_returns_error(capsys):
     client = MagicMock()
     client.get_all_items.return_value = [{"Id": "1", "Name": "A"}]
     with (
@@ -682,14 +664,12 @@ def test_cli_sync_connection_lost_exit(capsys):
             "jellyfin_auto_groupings.cli.sync_groupings",
             side_effect=requests.ConnectionError("dropped"),
         ),
-        pytest.raises(SystemExit) as exc,
     ):
-        cli_main(["--api-key", "k", "--dry-run"])
-    assert exc.value.code == 1
+        assert cli_main(["--api-key", "k", "--dry-run"]) == 1
     assert "Connection lost while syncing" in capsys.readouterr().err
 
 
-def test_cli_sync_generic_failure_exit(capsys):
+def test_cli_sync_generic_failure_returns_error(capsys):
     client = MagicMock()
     client.get_all_items.return_value = [{"Id": "1", "Name": "A"}]
     with (
@@ -698,10 +678,8 @@ def test_cli_sync_generic_failure_exit(capsys):
             "jellyfin_auto_groupings.cli.sync_groupings",
             side_effect=RuntimeError("boom"),
         ),
-        pytest.raises(SystemExit) as exc,
     ):
-        cli_main(["--api-key", "k", "--dry-run"])
-    assert exc.value.code == 1
+        assert cli_main(["--api-key", "k", "--dry-run"]) == 1
     assert "Failed to sync groupings: boom" in capsys.readouterr().err
 
 

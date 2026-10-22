@@ -110,6 +110,12 @@ def test_safe_get():
     assert safe_get(None, "a.b") is None
     assert safe_get(data, "") == data
     assert safe_get(data, "a.b.c.d", default="none") == "none"
+    # A non-numeric key against a list is a miss, not a TypeError.
+    assert safe_get(data, "a.items.x", default="missing") == "missing"
+    # Traversal past a scalar cannot continue.
+    assert safe_get(data, "a.b.c.d.e", default="missing") == "missing"
+    # Negative indexes are rejected rather than wrapping from the end.
+    assert safe_get(data, "a.items.-1", default="missing") == "missing"
 
 
 def test_chunk_list():
