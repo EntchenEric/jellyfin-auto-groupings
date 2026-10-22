@@ -154,7 +154,7 @@ Modular JavaScript (ES modules, no bundler):
 |--------|---------------|
 | `core/api.js` | AJAX/`fetch` wrappers for all backend endpoints |
 | `core/state.js` | Global application state and constants |
-| `core/ui.js` | DOM helpers, toast notifications, loading overlays, modal management |
+| `core/ui.js` | DOM helpers, toast notifications, loading overlays, modal lifecycle and the confirmation dialog |
 | `app.js` | Bootstrap, keyboard shortcuts, topbar buttons, form wiring |
 | `features/config.js` | Server settings, scheduler toggles, config CRUD |
 | `features/groupings.js` | Group CRUD, card rendering, search, global exclusion UI |
