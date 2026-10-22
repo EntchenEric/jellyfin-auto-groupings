@@ -30,6 +30,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `tmdb.fetch_tmdb_list` and `anilist.fetch_anilist_list` treat a response
+  body that is not a JSON object as a failed fetch instead of crashing. Both
+  called `.get()` on the decoded body, so a bare list or a string body from
+  the upstream API raised `AttributeError`, which the sync layer's per-group
+  handler does not catch; one malformed page aborted the whole run rather
+  than failing that single group. TMDb now reports the shape from
+  `_fetch_tmdb_page` as `TypeError` and converts it in `fetch_tmdb_list`;
+  AniList raises `RuntimeError` directly — the type every caller handles.
+  `tmdb._fetch_tmdb_page` also converts a JSON decode error to
+  `RuntimeError`, matching the other fetchers' error contract.
+
 - External list fetchers no longer crash on a malformed response body.
   `tmdb.get_tmdb_recommendations` turned a result with no `id` into the
   literal TMDb id `"None"` and passed it to Jellyfin; `tmdb.fetch_tmdb_list`

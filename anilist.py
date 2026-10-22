@@ -151,4 +151,15 @@ def fetch_anilist_list(
         msg = f"Invalid JSON response from AniList API for user {username!r}: {exc}"
         raise RuntimeError(msg) from exc
 
+    # ``_extract_media_ids`` reads ``data`` off this value. A body that is a
+    # bare list or a string raised ``AttributeError``, which the sync layer
+    # does not catch, so one malformed response aborted the whole run
+    # instead of failing this group.
+    if not isinstance(payload, dict):
+        msg = (
+            f"Unexpected AniList API response shape for user {username!r}: "
+            f"expected a JSON object, got {type(payload).__name__}"
+        )
+        raise RuntimeError(msg)  # noqa: TRY004 - callers handle RuntimeError
+
     return _extract_media_ids(payload)

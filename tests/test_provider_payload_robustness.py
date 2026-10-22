@@ -20,6 +20,7 @@ import requests
 import anilist
 import imdb
 import mal
+import sync
 import tmdb
 import trakt
 
@@ -124,6 +125,37 @@ def test_tmdb_list_keeps_paginating_on_non_integer_total_pages():
     assert mock_get.call_count == 3
 
 
+def test_tmdb_list_rejects_non_object_payload():
+    """A bare list body must not escape as ``AttributeError``.
+
+    ``sync.py`` catches ``RuntimeError``/``ValueError`` per group.  An
+    ``AttributeError`` from ``data.get`` escaped that handler and aborted the
+    whole run instead of failing this one group.
+    """
+    resp = MagicMock()
+    resp.status_code = 200
+    resp.raise_for_status.return_value = None
+    resp.json.return_value = [{"id": 1}]
+
+    with (
+        patch("tmdb.network.get", return_value=resp),
+        pytest.raises(RuntimeError, match="Unexpected TMDb API response shape"),
+    ):
+        tmdb.fetch_tmdb_list("123", "key")
+
+
+def test_tmdb_list_rejects_invalid_json():
+    resp = MagicMock()
+    resp.raise_for_status.return_value = None
+    resp.json.side_effect = ValueError("not json")
+
+    with (
+        patch("tmdb.network.get", return_value=resp),
+        pytest.raises(RuntimeError, match="Invalid JSON response from TMDb"),
+    ):
+        tmdb.fetch_tmdb_list("123", "key")
+
+
 # --- mal.fetch_mal_list ---------------------------------------------------
 
 
@@ -199,6 +231,60 @@ def test_anilist_tolerates_non_list_lists_field():
 def test_anilist_tolerates_non_object_data_and_collection():
     assert anilist._extract_media_ids({"data": "junk"}) == []
     assert anilist._extract_media_ids({"data": {"MediaListCollection": []}}) == []
+
+
+def test_anilist_rejects_non_object_payload():
+    """A bare list body must not escape as ``AttributeError``."""
+    resp = MagicMock()
+    resp.raise_for_status.return_value = None
+    resp.json.return_value = [{"mediaId": 1}]
+
+    with (
+        patch("anilist.network.post", return_value=resp),
+        pytest.raises(RuntimeError, match="Unexpected AniList API response shape"),
+    ):
+        anilist.fetch_anilist_list("user")
+
+
+def test_malformed_provider_body_fails_one_group_only(tmp_path):
+    """A bad TMDb body must not take the rest of the run down with it."""
+    config = {
+        "jellyfin_url": "http://jellyfin.invalid",
+        "api_key": "key",
+        "target_path": str(tmp_path / "virtual"),
+        "tmdb_api_key": "tmdb-key",
+        "groups": [
+            {
+                "name": "Broken",
+                "source_type": "tmdb_list",
+                "source_value": "1",
+                "sort_order": "SortName",
+            },
+            {
+                "name": "Empty",
+                "source_type": "tmdb_list",
+                "source_value": "2",
+                "sort_order": "SortName",
+            },
+        ],
+    }
+
+    with patch(
+        "sync.fetch_tmdb_list",
+        side_effect=[
+            RuntimeError(
+                "Unexpected TMDb API response shape for list '1': "
+                "expected a JSON object, got list"
+            ),
+            [],
+        ],
+    ):
+        results = sync.run_sync(config, dry_run=True)
+
+    assert results[0]["group"] == "Broken"
+    assert "Unexpected TMDb API response shape" in results[0]["error"]
+    assert results[1]["group"] == "Empty"
+    assert "error" not in results[1]
 
 
 def test_anilist_skips_non_dict_entries_and_lists():
