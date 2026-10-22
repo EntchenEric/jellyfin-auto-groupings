@@ -19,6 +19,7 @@ import requests
 
 import anilist
 import imdb
+import letterboxd
 import mal
 import sync
 import tmdb
@@ -445,3 +446,102 @@ def test_tmdb_page_cap_logs_warning(caplog):
 
     assert ids == ["1"]
     assert "safety limit" in caplog.text
+
+
+# --- user-supplied list identifiers ---------------------------------------
+# A list identifier comes from a group's ``value`` in ``config.json``. It is
+# pasted into a request URL, so it has to be recognised exactly: a fuzzy match
+# turns a typo into a request for some other list, and a substring host check
+# lets a non-Letterboxd host be fetched on the server's behalf.
+
+
+@pytest.mark.parametrize(
+    ("supplied", "expected"),
+    [
+        ("ls000024390", "ls000024390"),
+        ("  ls000024390  ", "ls000024390"),
+        ("https://www.imdb.com/list/ls000024390/", "ls000024390"),
+        ("https://www.imdb.com/list/ls000024390/?sort=list_order,asc", "ls000024390"),
+        ("imdb.com/list/ls000024390", "ls000024390"),
+    ],
+)
+def test_imdb_accepts_real_list_ids(supplied, expected):
+    """Bare IDs and genuine IMDb list URLs resolve to the bare ID."""
+    assert imdb._normalize_list_id(supplied) == expected
+
+
+@pytest.mark.parametrize(
+    "supplied",
+    [
+        "ls123abc",  # trailing junk would be truncated to ls123
+        "garbage-ls123",  # an unanchored search found ls123 anywhere
+        "https://evil.example/list/ls999/",  # ID on a non-IMDb host
+        "ls",
+        "",
+    ],
+)
+def test_imdb_rejects_ids_it_would_have_guessed(supplied):
+    """Anything that is not an exact ID or IMDb URL is refused.
+
+    The old parsing searched the whole input for ``ls\\d+``, so ``"ls123abc"``
+    became ``ls123`` and the sync fetched a *different* list than the one the
+    user named.
+    """
+    with pytest.raises(ValueError, match="Invalid IMDb list ID"):
+        imdb._normalize_list_id(supplied)
+
+
+def test_imdb_rejects_mangled_id_before_any_request():
+    """A rejected ID must not reach the network."""
+    with (
+        patch("imdb.network.get") as mock_get,
+        pytest.raises(ValueError, match="Invalid IMDb list ID"),
+    ):
+        imdb.fetch_imdb_list("garbage-ls123")
+
+    assert mock_get.call_count == 0
+
+
+@pytest.mark.parametrize(
+    "supplied",
+    [
+        "https://evil.example/?r=letterboxd.com",  # substring match passed before
+        "https://letterboxd.com.evil.tld/u/list/x/",  # lookalike host
+        "letterboxd.comevil/u/list/x",  # suffix without a dot boundary
+        "/u/list/x",
+        "",
+    ],
+)
+def test_letterboxd_rejects_non_letterboxd_hosts(supplied):
+    """Only a real Letterboxd host may be fetched.
+
+    The old check was ``"letterboxd.com" in list_url``, so a URL on any host
+    that merely mentioned Letterboxd in its query string was requested by the
+    server — a request-forgery primitive driven by config.
+    """
+    with pytest.raises(ValueError, match="Invalid Letterboxd URL"):
+        letterboxd._validate_list_url(supplied)
+
+
+def test_letterboxd_rejects_foreign_host_before_any_request():
+    """A foreign host must be refused without a single HTTP call."""
+    with (
+        patch("letterboxd.network.get") as mock_get,
+        pytest.raises(ValueError, match="Invalid Letterboxd URL"),
+    ):
+        letterboxd.fetch_letterboxd_list("https://evil.example/?next=letterboxd.com")
+
+    assert mock_get.call_count == 0
+
+
+@pytest.mark.parametrize(
+    ("supplied", "expected"),
+    [
+        ("https://letterboxd.com/u/list/x/", "https://letterboxd.com/u/list/x"),
+        ("https://www.letterboxd.com/u/list/x", "https://www.letterboxd.com/u/list/x"),
+        ("letterboxd.com/u/list/x", "https://letterboxd.com/u/list/x"),
+    ],
+)
+def test_letterboxd_accepts_real_list_urls(supplied, expected):
+    """Real Letterboxd URLs and scheme-less input keep working."""
+    assert letterboxd._validate_list_url(supplied) == expected

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import re
+from urllib.parse import urlparse
 
 import requests
 
@@ -30,6 +31,52 @@ _MAX_PAGES: int = DEFAULT_LIST_MAX_PAGES
 # fetched only to come back as an empty or error page.
 _LIST_ID_PATTERN: re.Pattern[str] = re.compile(r"^ls\d+$")
 
+#: Hosts that may serve an IMDb list page. A URL is only accepted when its
+#: host is one of these; the ID is then taken from the trimmed path rather
+#: than from an unanchored ``ls\d+`` search.
+_IMDB_HOSTS: frozenset[str] = frozenset({"imdb.com", "www.imdb.com", "m.imdb.com"})
+
+# Matches the list-ID segment of an IMDb list path, e.g. ``/list/ls000024390/``.
+_LIST_PATH_PATTERN: re.Pattern[str] = re.compile(r"/list/(ls\d+)(?:/|$)")
+
+
+def _normalize_list_id(list_id: str) -> str:
+    """Reduce *list_id* to a bare ``ls\\d+`` value or raise :exc:`ValueError`.
+
+    A full IMDb list URL is accepted only when it points at an IMDb host, and
+    its ID is read from the path. The previous unanchored ``ls\\d+`` search ran
+    over the whole input, so ``"ls123abc"`` and ``"garbage-ls123"`` were
+    silently truncated to a *different*, valid-looking ID and fetched as if the
+    user had asked for it. Anything that is neither a bare ID nor a genuine
+    IMDb list URL is rejected instead of being guessed at.
+
+    Args:
+        list_id: A bare ``ls\\d+`` list ID or a full IMDb list URL.
+
+    Returns:
+        The bare list ID.
+
+    Raises:
+        ValueError: If *list_id* cannot be resolved to an IMDb list ID.
+
+    """
+    candidate = list_id.strip()
+    if _LIST_ID_PATTERN.match(candidate):
+        return candidate
+
+    # Tolerate a scheme-less input such as ``imdb.com/list/ls123``; without a
+    # scheme ``urlparse`` reports an empty ``hostname`` and the URL would be
+    # rejected even though it names a real IMDb list.
+    parsed = urlparse(candidate if "//" in candidate else f"https://{candidate}")
+    host = (parsed.hostname or "").lower()
+    if parsed.scheme in ("http", "https") and host in _IMDB_HOSTS:
+        path_match = _LIST_PATH_PATTERN.search(parsed.path)
+        if path_match:
+            return path_match.group(1)
+
+    msg = f"Invalid IMDb list ID: {list_id!r}. Expected format: ls000024390"
+    raise ValueError(msg)
+
 
 def fetch_imdb_list(list_id: str) -> list[str]:
     r"""Fetch an IMDb list and return its IMDb title IDs in list order.
@@ -49,16 +96,7 @@ def fetch_imdb_list(list_id: str) -> list[str]:
         RuntimeError: If an HTTP error occurs while fetching a page.
 
     """
-    list_id = list_id.strip()
-
-    # Accept full URLs - extract just the ls-ID
-    url_match = re.search(r"ls\d+", list_id)
-    if url_match:
-        list_id = url_match.group(0)
-
-    if not _LIST_ID_PATTERN.match(list_id):
-        msg = f"Invalid IMDb list ID: {list_id!r}. Expected format: ls000024390"
-        raise ValueError(msg)
+    list_id = _normalize_list_id(list_id)
 
     ids: list[str] = []
     seen: set[str] = set()
