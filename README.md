@@ -119,6 +119,10 @@ pip install -e ".[dev]"
 # Run tests
 python -m pytest
 
+# Frontend tests (vitest, jsdom) + node smoke test
+npm install
+npm test
+
 # Lint
 python -m ruff check .
 python -m ruff format --check .

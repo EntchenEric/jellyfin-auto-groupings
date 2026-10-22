@@ -70,12 +70,14 @@ When adding a new external source, follow the existing pattern:
 
 ### Running Tests and Coverage
 
-- Tests live in the `tests/` directory and use `pytest`.
+- Tests live in the `tests/` directory and use `pytest`; frontend tests live
+  in `tests/frontend/` and use vitest with jsdom.
 - Run tests before opening a PR:
   ```bash
   pytest
+  npm test   # vitest + node smoke test
   ```
-- The CI coverage gate is a ratchet baseline (currently `--cov-fail-under=44`). New features must include tests; raise the baseline in `.github/workflows/test.yml` and `.pre-commit-config.yaml` as coverage improves — never lower it.
+- The CI coverage gate is a ratchet baseline (currently `--cov-fail-under=46`). New features must include tests; raise the baseline in `.github/workflows/test.yml` and `.pre-commit-config.yaml` as coverage improves — never lower it.
 - Run individual test files during development:
   ```bash
   pytest tests/test_sync.py -v

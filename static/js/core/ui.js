@@ -186,10 +186,12 @@ document.addEventListener('click', (e) => {
     if (closeBtn) {
         const modal = closeBtn.closest('.modal');
         if (modal) {
-            modal.style.display = 'none';
-            // Return focus to the element that triggered the modal
-            const trigger = document.querySelector(`[data-modal="${modal.id}"], [onclick*="${modal.id}"]`);
-            if (trigger) trigger.focus();
+            // Delegate to hideModal instead of only flipping display: it also
+            // sets aria-hidden, restores focus to the trigger, and drops
+            // body.modal-open. Setting display alone left the page stuck
+            // scroll-locked (body { position: fixed }) and left the closed
+            // dialog exposed to assistive technology.
+            hideModal(modal.id);
         }
     }
 });

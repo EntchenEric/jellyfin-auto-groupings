@@ -7,7 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A vitest suite for the SPA (`tests/frontend/`), and `npm test` now runs it
+  before the node smoke test. `vitest.config.js` already pointed at
+  `tests/frontend/**/*.test.js`, but that directory did not exist, so
+  `npx vitest run` exited 1 with "No test files found" and the CI
+  `frontend-test` job only ever ran a `1 + 1 === 2` placeholder. The first
+  spec covers modal lifecycle and the folder picker's auth path.
+
 ### Fixed
+
+- A non-ASCII `APP_PASSWORD` no longer makes every authenticated request
+  fail with HTTP 500. `_check_auth` compared the supplied password with
+  `hmac.compare_digest` directly, and that raises `TypeError: comparing
+  strings with non-ASCII characters is not supported` for `str` arguments
+  outside ASCII. An operator who set `APP_PASSWORD=pässwort` locked
+  themselves out of the entire UI. Both sides are now UTF-8 encoded first,
+  which keeps the comparison constant-time and byte-exact.
+
+- The folder picker no longer shows "HTTP 401" for every directory when
+  `APP_PASSWORD` is set. `browseDir` used a bare `fetch()`, which omits the
+  Basic-Auth header the shared API client attaches, so the one control that
+  needs credentials to be useful was the only one that never sent them. It
+  now goes through `browsePath`/`apiGetSilent`, and reports the server's
+  message (`403 Access to this path is not permitted`) inline instead of
+  stacking an error dialog over the picker.
+
+- Closing a dialog with its `×`/Cancel button no longer leaves the page
+  scroll-locked. The `.close-modal-btn` handler set `display: none` directly
+  instead of calling `hideModal()`, so `body.modal-open` — which applies
+  `position: fixed` below the mobile breakpoint — was never removed and the
+  page could not be scrolled until reload. The closed dialog also kept
+  `aria-hidden` unset, leaving it exposed to screen readers.
 
 - Letterboxd list imports no longer fall back to one HTTP request per film.
   `_extract_ids_from_list_page` matched a film's slug and its TMDb/IMDb ID
