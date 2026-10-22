@@ -11,7 +11,7 @@ import logging
 import mimetypes
 from http import HTTPStatus
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, NoReturn, cast
+from typing import TYPE_CHECKING, Any, NoReturn
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -255,6 +255,45 @@ def _get_json_list(
     return [entry for entry in data if isinstance(entry, dict)]
 
 
+def _coerce_items_list(body: dict[str, Any], url: str) -> list[dict[str, Any]]:
+    """Return the ``Items`` array from *body*, dropping unusable entries.
+
+    ``body.get("Items", [])`` returns the default only when the key is
+    *absent*: Jellyfin sends ``"Items": null`` for an empty result set and a
+    proxy can rewrite the array into a string or an object.  The ``None``
+    then travelled to the caller, which had promised a ``list`` and failed on
+    the first ``len()``, iteration, or ``item.get(...)`` — usually deep inside
+    a sync run, so the whole group aborted instead of yielding no items.
+
+    A missing key is still "no items" and yields ``[]``.  A key holding
+    anything other than a list is reported as a ``RuntimeError`` in the same
+    shape as the other container guards, because the server is answering in a
+    way this caller cannot interpret.  Entries inside the list that are not
+    objects are dropped, matching :func:`_get_json_list`.
+
+    Args:
+        body: The parsed JSON object returned by Jellyfin.
+        url: The requested URL, used in the error message.
+
+    Returns:
+        The usable item dictionaries, in server order.
+
+    Raises:
+        RuntimeError: If ``Items`` is present but is not a list.
+
+    """
+    items = body.get("Items")
+    if items is None:
+        return []
+    if not isinstance(items, list):
+        msg = (
+            f"Expected 'Items' to be a JSON array from {url}, "
+            f"got {type(items).__name__}"
+        )
+        raise RuntimeError(msg)  # noqa: TRY004 - callers handle RuntimeError
+    return [entry for entry in items if isinstance(entry, dict)]
+
+
 def _request_or_raise(
     method: str,
     url: str,
@@ -457,14 +496,15 @@ def fetch_jellyfin_items(
     if extra_params:
         params.update(extra_params)
 
-    return cast(
-        "list[dict[str, Any]]",
+    url = f"{base_url}/Items"
+    return _coerce_items_list(
         _get_json_object(
-            f"{base_url}/Items",
+            url,
             headers=headers,
             params=params,
             timeout=timeout,
-        ).get("Items", []),
+        ),
+        url,
     )
 
 
@@ -581,17 +621,28 @@ def _paginate_jellyfin(
             params=page_params,
             timeout=timeout,
         )
-        page_items = data.get("Items", [])
-        if not isinstance(page_items, list):
+        raw_items = data.get("Items")
+        if raw_items is None:
+            # ``"Items": null`` is how Jellyfin reports an empty result set.
+            # Treating it as a malformed body logged a spurious warning on
+            # every empty page of an otherwise healthy walk. It also marks the
+            # end of the walk, so there is nothing to yield.
+            break
+        elif not isinstance(raw_items, list):
             # A malformed body used to reach the caller as a non-list and
             # fail later with an unrelated error; treat it as the end of the
             # walk instead of yielding something unusable.
             logger.warning(
                 "Stopping %s walk: 'Items' is not a list (got %s)",
                 endpoint,
-                type(page_items).__name__,
+                type(raw_items).__name__,
             )
             break
+        else:
+            # Non-object entries (``null`` placeholders from a partial
+            # response) cannot identify an item and crashed callers such as
+            # ``_filter_by_item_type`` with ``AttributeError`` on ``.get``.
+            page_items = [entry for entry in raw_items if isinstance(entry, dict)]
 
         signature = _page_signature(page_items)
         if signature is not None and signature == previous_signature:
@@ -696,14 +747,15 @@ def get_user_recent_items(
         "Limit": str(limit),
         "Fields": "ProviderIds",
     }
-    return cast(
-        "list[dict[str, Any]]",
+    url = f"{base_url}/Users/{user_id}/Items"
+    return _coerce_items_list(
         _get_json_object(
-            f"{base_url}/Users/{user_id}/Items",
+            url,
             headers=_auth_headers(api_key),
             params=params,
             timeout=timeout,
-        ).get("Items", []),
+        ),
+        url,
     )
 
 

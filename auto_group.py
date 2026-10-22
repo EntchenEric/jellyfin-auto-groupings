@@ -8,6 +8,8 @@ from pathlib import Path
 
 import requests
 
+from utils.helpers import items_from_body
+
 logger = logging.getLogger(__name__)
 
 logging.basicConfig(
@@ -194,7 +196,7 @@ def get_libraries(url, api_key):
     try:
         res = requests.get(endpoint, headers=get_headers(api_key), timeout=10)
         res.raise_for_status()
-        return res.json().get("Items", [])
+        return items_from_body(res.json())
     except Exception:
         logger.exception("Error fetching libraries:")
         return []
@@ -223,7 +225,7 @@ def get_library_items(url, api_key, parent_id):
             endpoint, headers=get_headers(api_key), params=params, timeout=15
         )
         res.raise_for_status()
-        return res.json().get("Items", [])
+        return items_from_body(res.json())
     except Exception:
         logger.exception(f"Error fetching library items for parent {parent_id}:")
         return []

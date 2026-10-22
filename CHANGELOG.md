@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- An `Items` container that is present but `null` no longer returns `None`.
+  `body.get("Items", [])` falls back to the default only when the key is
+  *absent*, but Jellyfin sends `"Items": null` for an empty result set. That
+  `None` reached callers documented and annotated as returning
+  `list[dict[str, Any]]`, so the first `len()` or iteration raised `TypeError`
+  far from the request that produced it — the whole group aborted instead of
+  yielding no items. Entries inside the array that are not objects are now
+  dropped as well: a `null` placeholder made `_filter_by_item_type` and every
+  `item.get(...)` in the grouping pass raise `AttributeError`. The same
+  coercion now covers both package clients, `JellyfinAPI`,
+  `jellyfin.fetch_jellyfin_items`, `get_user_recent_items`, the paged library
+  walk, `jellyfin_groupings`, `main`, `auto_group`, and `jellyfin_groupings.main`.
+
+- The paged Jellyfin walk treats `"Items": null` as the end of the result set
+  instead of logging a "not a list" warning on every empty page. A key holding
+  a string or an object is still reported as malformed and stops the walk.
+
+- `get_users()` on both package clients returns `[]` for a body that is not an
+  array. A `null` body previously came back as `None` despite the `list`
+  annotation, and `get_first_admin_user_id()` raised `TypeError` while
+  iterating it instead of reporting that no users were found.
+
 - A Jellyfin field that is present but `null` no longer aborts a sync run.
   `dict.get(key, {})` returns the default only when the key is *absent*, so
   `item.get("ProviderIds", {}).get("Imdb")` raised `AttributeError` for the
