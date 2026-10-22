@@ -4,6 +4,8 @@ from typing import Any
 
 import requests
 
+from utils.helpers import items_from_body
+
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
@@ -47,7 +49,7 @@ class JellyfinGroupings:
             )
             response.raise_for_status()
             data = response.json()
-            return data.get("Items", [])
+            return items_from_body(data)
         except requests.RequestException:
             logger.exception("Failed to fetch collections")
             raise
@@ -64,7 +66,7 @@ class JellyfinGroupings:
             )
             response.raise_for_status()
             data = response.json()
-            return data.get("Items", [])
+            return items_from_body(data)
         except requests.RequestException:
             logger.exception("Failed to fetch movies")
             raise

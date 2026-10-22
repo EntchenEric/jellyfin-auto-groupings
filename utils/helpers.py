@@ -49,6 +49,31 @@ def safe_get(data: dict | None, key: str, default=None):
     return current
 
 
+def items_from_body(body: Any) -> list[dict]:
+    """Return the item dictionaries in a Jellyfin response body.
+
+    Jellyfin reports an empty result set as ``"Items": null`` rather than an
+    absent key or an empty array, so ``body.get("Items", [])`` returns
+    ``None`` and the caller fails later on ``len()`` or iteration.  A proxy
+    or an error page served with status 200 can also put a string or an
+    object where the array belongs, and a partial response can contain
+    ``null`` placeholders, which make each ``item.get(...)`` raise
+    ``AttributeError``.
+
+    Args:
+        body: The parsed JSON body, expected to be an object.
+
+    Returns:
+        The usable item dictionaries, or ``[]`` when there are none.
+    """
+    if not isinstance(body, dict):
+        return []
+    items = body.get("Items")
+    if not isinstance(items, list):
+        return []
+    return [entry for entry in items if isinstance(entry, dict)]
+
+
 def chunk_list(lst: list, size: int) -> list:
     """Split a list into chunks of a given size.
 

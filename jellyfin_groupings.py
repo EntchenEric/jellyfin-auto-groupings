@@ -5,6 +5,8 @@ from typing import Any
 
 import requests
 
+from utils.helpers import items_from_body
+
 logger = logging.getLogger(__name__)
 
 
@@ -45,7 +47,12 @@ class JellyfinClient:
         except requests.RequestException:
             logger.exception("Failed to get users")
             return []
-        return resp.json()
+        # ``/Users`` answers with a bare array; ``null`` or an object here
+        # would otherwise be returned despite the ``list`` annotation.
+        body = resp.json()
+        if not isinstance(body, list):
+            return []
+        return [entry for entry in body if isinstance(entry, dict)]
 
     def get_first_admin_user_id(self) -> str | None:
         """Get the first administrator user ID.
@@ -82,7 +89,7 @@ class JellyfinClient:
             logger.exception("Failed to get collections")
             return []
         data = resp.json()
-        return data.get("Items", [])
+        return items_from_body(data)
 
     def get_collection_items(self, collection_id: str) -> list[dict[str, Any]]:
         """Get all items in a specific collection.
@@ -101,7 +108,7 @@ class JellyfinClient:
             logger.exception(f"Failed to get collection items for {collection_id}")
             return []
         data = resp.json()
-        return data.get("Items", [])
+        return items_from_body(data)
 
     def get_movies(self) -> list[dict[str, Any]]:
         """Get all movies from Jellyfin.
@@ -123,7 +130,7 @@ class JellyfinClient:
             logger.exception("Failed to get movies")
             return []
         data = resp.json()
-        return data.get("Items", [])
+        return items_from_body(data)
 
     def get_items(self, library_id: str | None = None) -> list[dict[str, Any]]:
         """Get items from a specific library or all movies if library_id not provided.
@@ -140,7 +147,7 @@ class JellyfinClient:
                 resp = self.session.get(url, timeout=30)
                 resp.raise_for_status()
                 data = resp.json()
-                return data.get("Items", [])
+                return items_from_body(data)
             except requests.RequestException:
                 logger.exception(f"Failed to get items from library {library_id}:")
                 return []

@@ -11,6 +11,35 @@ class JellyfinAPIError(Exception):
     """Exception raised for Jellyfin API errors."""
 
 
+def _items_from_body(body: Any) -> list[dict[str, Any]]:
+    """Return the ``Items`` array from a Jellyfin response body.
+
+    ``body.get("Items", [])`` returns the default only when the key is
+    *absent*: Jellyfin sends ``"Items": null`` for an empty result set, and a
+    proxy or an error page served with status 200 can put a string or an
+    object where the array belongs.  The value used to be passed straight
+    through, so a caller promised a ``list`` received ``None`` and raised
+    ``TypeError`` from its first ``len()`` or iteration — far from the request
+    that produced it.  Non-object entries inside the array are dropped for the
+    same reason: they make every ``item.get(...)`` in the grouping pass raise
+    ``AttributeError``.
+
+    Args:
+        body: Parsed JSON body.  ``get_all_items`` documents an object; any
+            other shape is tolerated as "no items".
+
+    Returns:
+        The usable item dictionaries, or ``[]`` when there are none.
+
+    """
+    if not isinstance(body, dict):
+        return []
+    items = body.get("Items")
+    if not isinstance(items, list):
+        return []
+    return [entry for entry in items if isinstance(entry, dict)]
+
+
 class JellyfinClient:
     def __init__(self, server_url: str, api_key: str, user_id: str | None = None):
         self.server_url = server_url.rstrip("/")
@@ -75,7 +104,18 @@ class JellyfinClient:
 
     def get_users(self) -> list[dict[str, Any]]:
         """Fetch the list of users from the Jellyfin server."""
-        return self._get("/Users")
+        body = self._get("/Users")
+        # ``/Users`` answers with a bare array.  ``None`` or an object here
+        # used to be returned as-is despite the ``list`` annotation, and
+        # ``get_first_admin_user_id`` then raised ``TypeError`` on iteration.
+        if not isinstance(body, list):
+            if body is not None:
+                logger.warning(
+                    "Unexpected /Users body (expected array, got %s)",
+                    type(body).__name__,
+                )
+            return []
+        return [entry for entry in body if isinstance(entry, dict)]
 
     def get_first_admin_user_id(self) -> str:
         """Return the ID of the first administrator user.
@@ -123,7 +163,7 @@ class JellyfinClient:
         if parent_id:
             params["ParentId"] = parent_id
         data = self._get(f"/Users/{self.user_id}/Items", params=params)
-        return data.get("Items", [])
+        return _items_from_body(data)
 
     def get_items(self, library_id: str | None = None) -> list[dict[str, Any]]:
         """Fetch all items, optionally limited to a specific library.
@@ -145,7 +185,7 @@ class JellyfinClient:
                 params["ParentId"] = library_id
             endpoint = f"/Users/{self.user_id}/Items"
             data = self._get(endpoint, params=params)
-            return data.get("Items", [])
+            return _items_from_body(data)
         except Exception as e:
             msg = f"API request GET /Items failed: {e}"
             raise JellyfinAPIError(msg) from e

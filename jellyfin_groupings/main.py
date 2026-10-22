@@ -4,6 +4,8 @@ from typing import Any
 
 import requests
 
+from utils.helpers import items_from_body
+
 
 class JellyfinGroupings:
     """Client for managing Jellyfin collection groupings automatically."""
@@ -23,7 +25,7 @@ class JellyfinGroupings:
         response = requests.get(endpoint, headers=self.headers, params=params)
         response.raise_for_status()
         data: dict[str, Any] = response.json()
-        return data.get("Items", [])
+        return items_from_body(data)
 
     def get_movies(self) -> list[dict[str, Any]]:
         """Retrieve all movies with ProviderIds from Jellyfin."""
@@ -36,7 +38,7 @@ class JellyfinGroupings:
         response = requests.get(endpoint, headers=self.headers, params=params)
         response.raise_for_status()
         data: dict[str, Any] = response.json()
-        return data.get("Items", [])
+        return items_from_body(data)
 
     def create_collection(self, name: str, item_ids: list[str]) -> dict[str, Any]:
         """Create a new collection with specified item IDs."""

@@ -2,6 +2,8 @@ from typing import Any
 
 import requests
 
+from jellyfin_auto_groupings.client import _items_from_body
+
 
 class JellyfinAPI:
     """Wrapper client for Jellyfin REST API."""
@@ -29,7 +31,7 @@ class JellyfinAPI:
         )
         res.raise_for_status()
         data = res.json()
-        return data.get("Items", [])
+        return _items_from_body(data)
 
     def get_collection_items(self, collection_id: str) -> list[dict[str, Any]]:
         """Fetch items belonging to a given collection."""
@@ -43,4 +45,4 @@ class JellyfinAPI:
         )
         res.raise_for_status()
         data = res.json()
-        return data.get("Items", [])
+        return _items_from_body(data)
