@@ -68,14 +68,17 @@ __all__ = [
     "run_sync",
 ]
 
-# Pre-compiled regex for splitting complex query logical operators.
-_COMPLEX_QUERY_RE = re.compile(r"\s+(AND NOT|OR NOT|AND|OR)\s+", re.IGNORECASE)
-
-# A logical operator left dangling at the end of a query (``"Action AND"``).
-# Splitting on it would fold the operator into the previous value, so it is
-# stripped up front.  Requires the operator to be preceded by whitespace so a
-# genre genuinely named e.g. ``"Rock"`` is never truncated.
-_DANGLING_OPERATOR_RE = re.compile(r"\s+(?:AND NOT|OR NOT|AND|OR)\s*$", re.IGNORECASE)
+# Pre-compiled regex for detecting and locating complex query logical
+# operators.  Both lookarounds require whitespace (or a string boundary) on
+# each side, so a genre such as ``"Andor"`` is never split on its ``and``.
+# The two-word forms come first so ``"AND NOT"`` is tokenised as one operator
+# instead of an ``AND`` followed by a bare ``NOT``.  A bare ``NOT`` is *not*
+# an operator here: tags such as ``"Not Safe For Work"`` are real values, and
+# only a leading ``NOT`` (handled by :func:`parse_complex_query`) is a negation.
+_COMPLEX_QUERY_RE = re.compile(
+    r"(?<!\S)(AND NOT|OR NOT|AND|OR)(?!\S)",
+    re.IGNORECASE,
+)
 
 # ``sort_order`` values that mean "keep the order from the external list"
 # rather than applying a Jellyfin / in-memory sort.
@@ -1467,6 +1470,79 @@ def _fetch_items_for_metadata_group(
         return items, None, 200
 
 
+def _split_complex_query(text: str) -> list[tuple[bool, str]]:
+    """Split *text* into ``(is_operator, value)`` tokens.
+
+    Only standalone operator words are recognised, so a value that merely
+    contains one (``"Andor"``, ``"Coronation"``) is never split.
+
+    Args:
+        text: The stripped query string.
+
+    Returns:
+        A list of tokens in source order. Operator tokens carry the
+        upper-cased operator name; text tokens carry the stripped fragment.
+
+    """
+    tokens: list[tuple[bool, str]] = []
+    position = 0
+    for match in _COMPLEX_QUERY_RE.finditer(text):
+        fragment = text[position : match.start()].strip()
+        if fragment:
+            tokens.append((False, fragment))
+        tokens.append((True, match.group(1).upper()))
+        position = match.end()
+    tail = text[position:].strip()
+    if tail:
+        tokens.append((False, tail))
+    return tokens
+
+
+def _merge_operators(pending: str, new: str) -> str:
+    """Resolve two operators written back to back with no operand between them.
+
+    ``"Action AND AND Comedy"`` and ``"Action AND NOT OR Comedy"`` are typos
+    rather than meaningful expressions. The operator nearest the following
+    condition wins, because that is the one the user wrote last for it — except
+    that a ``NOT`` is never discarded, since dropping it would invert the
+    filter the user asked for.
+
+    Args:
+        pending: The operator seen first.
+        new: The operator seen immediately after it.
+
+    Returns:
+        The operator to apply to the next condition.
+
+    """
+    logger.debug("Collapsing stacked operators %r and %r", pending, new)
+    if new.endswith("NOT"):
+        return new
+    if pending.endswith("NOT"):
+        # "NOT OR" is the user's way of writing "OR NOT".
+        return f"{new} NOT"
+    return new
+
+
+def _detect_bare_not(val: str) -> tuple[bool, str]:
+    """Check whether *val* starts with a bare ``NOT`` word.
+
+    Args:
+        val: The text fragment to inspect.
+
+    Returns:
+        An ``(is_not, remainder)`` tuple. *remainder* is the text after the
+        ``NOT `` prefix, or an empty string when *val* is just ``"NOT"``.
+
+    """
+    upper_val = val.upper()
+    if upper_val == "NOT":
+        return True, ""
+    if upper_val.startswith("NOT "):
+        return True, val[3:].strip()
+    return False, val
+
+
 def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
     """Parse a complex textual rule query into a list of structured rules.
 
@@ -1477,6 +1553,13 @@ def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
     A bare ``NOT`` (or ``AND NOT``) at position 0 is treated as a negation
     of the first condition (e.g. ``NOT Comedy`` negates ``genre:Comedy``).
 
+    Only standalone operator words are recognised, so ``"Andor"`` stays a
+    single value. A leading, dangling, or stacked operator never becomes a
+    filter value of its own: a dangling operator is dropped, and stacked
+    operators collapse to the one nearest the following condition. Rules with
+    an empty value are never emitted, because they would match nothing while
+    looking like a real filter in the UI.
+
     Args:
         query: The textual query string (e.g., "Action AND NOT Comedy").
         default_type: The metadata type to apply to each value (e.g., "genre").
@@ -1486,21 +1569,12 @@ def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
         An empty or whitespace-only query returns an empty list.
 
     """
+    if not isinstance(query, str):
+        return []
+
     stripped = query.strip()
     if not stripped:
         return []
-
-    # A trailing operator has nothing to combine with. Splitting on it would
-    # otherwise turn it into a literal filter value (``"Action AND NOT"``
-    # became a ``"not"`` genre that never matches), so drop the dangling
-    # operator before splitting instead of silently filtering everything out.
-    stripped = _DANGLING_OPERATOR_RE.sub("", stripped).strip()
-    if not stripped:
-        return []
-
-    parts = _COMPLEX_QUERY_RE.split(stripped)
-
-    rules: list[dict[str, Any]] = []
 
     def _parse_item(item_str: str) -> tuple[str, str]:
         """Parse a single query fragment into ``(type, value)``.
@@ -1519,48 +1593,46 @@ def parse_complex_query(query: str, default_type: str) -> list[dict[str, Any]]:
                 return t, v.strip()
         return default_type, item_str.strip()
 
-    def _detect_bare_not(val: str) -> tuple[bool, str]:
-        """Check if *val* starts with a bare NOT operator.
+    rules: list[dict[str, Any]] = []
+    pending: str | None = None
+    negate_next = False
+    for is_operator, token in _split_complex_query(stripped):
+        if is_operator:
+            pending = token if pending is None else _merge_operators(pending, token)
+            # "AND NOT" / "OR NOT" negate their operand; keep the base
+            # operator aside so the negation is applied exactly once.
+            negate_next = pending.endswith("NOT")
+            if negate_next:
+                pending = pending.split()[0]
+            continue
 
-        Args:
-            val: The value to check.
+        base = pending or "AND"
+        pending = None
 
-        Returns:
-            A ``(is_not, remainder)`` tuple where *remainder* is the text
-            after the "NOT " prefix (or empty if just "NOT").
+        # "NOT Comedy" negates its operand, and stacked NOTs cancel out, so
+        # "NOT NOT Comedy" is simply Comedy.
+        negated = negate_next
+        negate_next = False
+        value = token
+        while True:
+            is_not, remainder = _detect_bare_not(value)
+            if not is_not:
+                break
+            negated = not negated
+            value = remainder
+        if not value:
+            # A lone or trailing NOT negates the *next* condition.
+            negate_next = negated
+            continue
 
-        """
-        upper_val = val.upper()
-        if upper_val == "NOT":
-            return True, ""
-        if upper_val.startswith("NOT "):
-            return True, val[3:].strip()
-        return False, val
-
-    is_bare_not, remainder = _detect_bare_not(parts[0])
-    first_op = "AND NOT" if is_bare_not else "AND"
-
-    first_item = (
-        remainder if is_bare_not and remainder else ("" if is_bare_not else parts[0])
-    )
-
-    t0, v0 = _parse_item(first_item)
-    rules.append(
-        {
-            "operator": first_op,
-            "type": t0,
-            "value": v0,
-        },
-    )
-
-    for i in range(1, len(parts), 2):
-        op = " ".join(parts[i].upper().split())
-        ti, vi = _parse_item(parts[i + 1])
+        item_type, item_value = _parse_item(value)
+        if not item_value:
+            continue
         rules.append(
             {
-                "operator": op,
-                "type": ti,
-                "value": vi,
+                "operator": f"{base} NOT" if negated else base,
+                "type": item_type,
+                "value": item_value,
             },
         )
 

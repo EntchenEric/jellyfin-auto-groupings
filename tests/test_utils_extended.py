@@ -1,3 +1,5 @@
+import pytest
+
 from utils.formatting import (
     format_bitrate,
     format_duration,
@@ -78,6 +80,43 @@ def test_truncate_text():
     assert truncate_text("hello", 2, suffix="...") == "he"
     # max_width exactly equal to the suffix length leaves no room for text.
     assert truncate_text("hello", 3, suffix="...") == "hel"
+
+
+def test_format_duration_truncates_fractional_seconds():
+    """A duration must never claim a second that has not elapsed."""
+    assert format_duration(90.6) == "1m 30s"
+    assert format_duration(1.999) == "1s"
+    assert format_duration(3600.5) == "1h"
+    # Below one second there is nothing worth showing.
+    assert format_duration(0.4) == "0m"
+
+
+def test_format_duration_accepts_numeric_strings():
+    """Some clients serialise durations as strings."""
+    assert format_duration("3665") == "1h 1m 5s"
+
+
+@pytest.mark.parametrize(
+    "value",
+    [float("nan"), float("inf"), float("-inf"), "not-a-number"],
+)
+def test_format_helpers_reject_non_finite_values(value):
+    """A corrupt item must not render as "nan B" or "inf TB"."""
+    assert format_duration(value) == "0m"
+    assert format_file_size(value) == "0 B"
+    assert format_bitrate(value) == "0 bps"
+
+
+def test_format_helpers_treat_bool_as_unset():
+    """``True`` is an ``int`` subclass but never a real duration or size."""
+    assert format_duration(True) == "0m"
+    assert format_file_size(True) == "0 B"
+
+
+def test_truncate_text_rejects_non_positive_width():
+    """A negative width used to slice off the tail instead of truncating."""
+    assert truncate_text("hello world", -1) == ""
+    assert truncate_text("hello world", 0) == ""
 
 
 def test_slugify():

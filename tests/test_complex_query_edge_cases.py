@@ -63,6 +63,81 @@ def test_titles_resembling_operators_are_preserved(value):
     assert rules == [{"operator": "AND", "type": "genre", "value": value}]
 
 
+@pytest.mark.parametrize(
+    ("query", "expected"),
+    [
+        ("AND Action", [("AND", "Action")]),
+        ("OR Action", [("OR", "Action")]),
+        ("AND NOT Comedy", [("AND NOT", "Comedy")]),
+        ("OR NOT Comedy", [("OR NOT", "Comedy")]),
+        ("  AND  Action", [("AND", "Action")]),
+    ],
+)
+def test_leading_operator_is_dropped_without_becoming_a_value(query, expected):
+    """A leading operator has no left operand, so it must not be a filter value.
+
+    Before this, ``"AND Action"`` became the genre ``"AND Action"``, which
+    matched nothing while looking like a valid rule in the UI.
+    """
+    rules = sync.parse_complex_query(query, "genre")
+
+    assert [(r["operator"], r["value"]) for r in rules] == expected
+
+
+@pytest.mark.parametrize(
+    "query",
+    ["Action AND AND Comedy", "Action AND NOT OR Comedy", "Action AND  AND  Comedy"],
+)
+def test_stacked_operators_collapse_to_the_one_nearest_the_operand(query):
+    """Two operators with no operand between them must not make a bogus value."""
+    rules = sync.parse_complex_query(query, "genre")
+
+    assert [r["value"] for r in rules] == ["Action", "Comedy"]
+    assert all(not r["value"].upper().startswith(("AND", "OR")) for r in rules)
+
+
+def test_dangling_not_negates_the_preceding_condition_only():
+    """``"Action AND NOT"`` has no operand for the NOT, so the NOT is dropped."""
+    rules = sync.parse_complex_query("Action AND NOT", "genre")
+
+    assert rules == [{"operator": "AND", "type": "genre", "value": "Action"}]
+
+
+@pytest.mark.parametrize(
+    ("query", "expected_operator"),
+    [
+        ("NOT NOT Comedy", "AND"),
+        ("NOT NOT NOT Comedy", "AND NOT"),
+    ],
+)
+def test_stacked_not_toggles(query, expected_operator):
+    """Two negations cancel; three leave the condition negated."""
+    rules = sync.parse_complex_query(query, "genre")
+
+    assert rules == [
+        {"operator": expected_operator, "type": "genre", "value": "Comedy"},
+    ]
+
+
+@pytest.mark.parametrize("query", ["NOT", "genre:", "AND", "AND NOT", "   OR   "])
+def test_operator_only_queries_produce_no_rules(query):
+    """A query carrying no operand must not emit an empty filter value."""
+    assert sync.parse_complex_query(query, "genre") == []
+
+
+@pytest.mark.parametrize("value", ["Andor", "Coronation", "Rock and Roll"])
+def test_values_containing_operator_substrings_are_not_split(value):
+    """``"and"`` inside a word, or an ``and`` in a title, is not an operator."""
+    rules = sync.parse_complex_query(value, "genre")
+
+    if " and " in value:
+        # A standalone lowercase "and" *is* the operator, matching the
+        # case-insensitive behaviour the UI documents.
+        assert [r["value"] for r in rules] == ["Rock", "Roll"]
+    else:
+        assert rules == [{"operator": "AND", "type": "genre", "value": value}]
+
+
 def test_parse_complex_query_honours_default_type():
     rules = sync.parse_complex_query("Action AND studio:A24", "genre")
 
