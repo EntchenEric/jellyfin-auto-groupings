@@ -6,6 +6,8 @@ other modules, reducing duplication and centralising common definitions.
 
 from __future__ import annotations
 
+import calendar
+import re
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -98,6 +100,48 @@ DEFAULT_LIST_PAGE_LIMIT: int = 1_000
 # ---------------------------------------------------------------------------
 # Group names / nested folder paths
 # ---------------------------------------------------------------------------
+
+
+#: Shape of a seasonal ``MM-DD`` value, checked before the day is validated
+#: against the month. February is allowed 29 days so a leap-year rule is not
+#: rejected in non-leap years.
+_MMDD_RE: re.Pattern[str] = re.compile(r"^(\d{2})-(\d{2})$")
+
+
+def is_valid_mmdd(value: object) -> bool:
+    """Return whether *value* is an ``MM-DD`` date that exists on a calendar.
+
+    A shape-only check accepts ``"02-31"``, ``"04-31"``, and ``"02-30"``.
+    Those are not real dates: :func:`sync._parse_mmdd` rejects them, and
+    :func:`sync._is_in_season` then treats a malformed window as "always in
+    season", so a seasonal group whose dates were never validated can never
+    be cleaned up at the end of its season. Validating the month/day
+    combination here catches the typo while the user is still on the form.
+
+    February 29 is accepted unconditionally; the seasonal check compares only
+    month and day, so a Feb-29 boundary is meaningful without knowing the
+    year.
+
+    Args:
+        value: The candidate value, usually straight from ``config.json`` or a
+            request body, so any JSON type may arrive.
+
+    Returns:
+        ``True`` only for a string of the form ``MM-DD`` naming a day that
+        exists in that month.
+
+    """
+    if not isinstance(value, str):
+        return False
+    match = _MMDD_RE.match(value.strip())
+    if match is None:
+        return False
+    month, day = int(match.group(1)), int(match.group(2))
+    if not 1 <= month <= 12:
+        return False
+    # Leap year so February 29 is valid regardless of the current year.
+    _, days_in_month = calendar.monthrange(2024, month)
+    return 1 <= day <= days_in_month
 
 
 def normalize_group_relpath(name: str) -> str | None:

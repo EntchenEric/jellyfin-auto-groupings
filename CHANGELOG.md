@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `tests/test_seasonal_dates.py` and
+  `tests/frontend/seasonal-dates.test.js` cover the seasonal date pickers and
+  the config-save validation that guards them.
+
+- `_common.is_valid_mmdd()` validates a seasonal `MM-DD` value against a real
+  calendar. It is shared by the request validation and the tests, so the
+  save-time check and the sync-time parser cannot drift apart again.
+
+### Fixed
+
+- A seasonal group's dates are validated as real calendar days instead of
+  merely matching the `MM-DD` shape. `POST /api/config` accepted `02-31`,
+  `02-30`, and `04-31`, which `sync._parse_mmdd` rejects at sync time; because
+  `sync._is_in_season` treats an unparseable window as "always in season",
+  such a group was synced forever and its folder was never removed at the end
+  of the season. February 29 is still accepted, since the window compares only
+  month and day.
+
+- The seasonal day selectors in the group form list only the days that exist
+  in the selected month. Both selects previously offered 1-31 regardless of
+  the month, so picking the 31st while February was selected produced a
+  `02-31` config the backend could not parse. The day list now follows the
+  month, clamps a now-invalid selection to the last day of the month, and
+  `editGroup()` restores a stored date through `setSeasonalDate()` so an
+  existing `12-01` value survives the round trip.
+
 - `tests/test_provider_payload_robustness.py` pins the response shapes that
   used to crash a sync. Every fetcher parses a body written by somebody else,
   and the malformed shapes below emitted `AttributeError`/`TypeError`, which

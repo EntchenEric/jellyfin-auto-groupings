@@ -153,16 +153,11 @@ export function editGroup(index) {
     const isSeasonal = !!(group.seasonal_enabled);
     getEl('seasonal_enabled').checked = isSeasonal;
     getEl('seasonal_panel').style.display = isSeasonal ? 'block' : 'none';
-    if (group.seasonal_start) {
-        const [sm, sd] = group.seasonal_start.split('-');
-        getEl('seasonal_start_month').value = sm;
-        getEl('seasonal_start_day').value = sd;
-    }
-    if (group.seasonal_end) {
-        const [em, ed] = group.seasonal_end.split('-');
-        getEl('seasonal_end_month').value = em;
-        getEl('seasonal_end_day').value = ed;
-    }
+    // Rebuild the day lists for the stored months before selecting a day:
+    // the form's day select only offers the days that exist in the month, so
+    // assigning "31" to a February group would otherwise be a silent no-op.
+    setSeasonalDate('seasonal_start', group.seasonal_start);
+    setSeasonalDate('seasonal_end', group.seasonal_end);
     getEl('watch_state').value = group.watch_state || '';
     getEl('item_type').value = group.item_type || '';
     getEl('create_as_collection').checked = !!group.create_as_collection;
@@ -195,6 +190,9 @@ export function resetFormUI() {
     getEl('watch_state').value = '';
     getEl('item_type').value = '';
     getEl('create_as_collection').checked = false;
+    // The day lists belong to the months that were last selected; re-sync
+    // them so the cleared form cannot offer "31" while February is shown.
+    syncSeasonalDayLists();
     updateSourceTypeOptions();
 }
 
@@ -267,17 +265,117 @@ export function toggleGroupScheduler(cb) {
     if (panel) panel.style.display = cb.checked ? 'block' : 'none';
 }
 
+/**
+ * Number of days in *month* (``"01"``.."12"``), assuming a leap year.
+ *
+ * February gets 29 so a Feb-29 boundary stays selectable; the backend
+ * validates with the same leap-year assumption.
+ *
+ * @param {string} month  Two-digit month string.
+ * @returns {number} Day count for that month, or 31 for an unknown month.
+ */
+function daysInMonth(month) {
+    const monthNumber = parseInt(month, 10);
+    if (!Number.isFinite(monthNumber) || monthNumber < 1 || monthNumber > 12) {
+        return 31;
+    }
+    // Day 0 of the next month is the last day of this one.
+    return new Date(2024, monthNumber, 0).getDate();
+}
+
+/**
+ * Fill a seasonal day select with only the days that exist in *month*.
+ *
+ * The previous implementation always offered 1-31 for every month, so
+ * picking "31" for February produced ``02-31``. That shape passes a
+ * month/day range check but is not a real date, and the backend used to
+ * accept it and then treat the whole window as "always in season" — the
+ * group was never cleaned up when its season ended.
+ *
+ * The previously selected day is preserved when it still exists, otherwise
+ * it is clamped to the last valid day. An empty select starts at day 01, so a
+ * brand-new form never defaults to a month-end boundary the user did not
+ * choose.
+ *
+ * @param {HTMLSelectElement} select  The day select to rebuild.
+ * @param {string} month  Two-digit month string.
+ * @returns {void}
+ */
+function fillSeasonalDays(select, month) {
+    if (!select) return;
+    const previous = select.value;
+    const maxDay = daysInMonth(month);
+    select.innerHTML = '';
+    for (let i = 1; i <= maxDay; i++) {
+        const opt = document.createElement('option');
+        opt.value = i.toString().padStart(2, '0');
+        opt.textContent = i;
+        select.appendChild(opt);
+    }
+    if (!previous) {
+        select.value = '01';
+        return;
+    }
+    const keep = parseInt(previous, 10);
+    select.value = keep >= 1 && keep <= maxDay
+        ? previous
+        : maxDay.toString().padStart(2, '0');
+}
+
+/**
+ * Set a seasonal date pair from an ``MM-DD`` string stored in the config.
+ *
+ * A stored value from before the validation fix can name a day that does not
+ * exist in its month (``02-31``). Assigning that value to the rebuilt select
+ * leaves it empty, and the form then saved ``02-`` — which the API rejects.
+ * Such a legacy day is clamped to the last day of the month it belongs to.
+ *
+ * @param {string} prefix  ``"seasonal_start"`` or ``"seasonal_end"``.
+ * @param {string|undefined} value  Stored ``MM-DD`` value.
+ * @returns {void}
+ */
+export function setSeasonalDate(prefix, value) {
+    if (typeof value !== 'string') return;
+    const [month, day] = value.split('-');
+    if (!month || !day) return;
+    const monthSelect = getEl(`${prefix}_month`);
+    const daySelect = getEl(`${prefix}_day`);
+    if (!monthSelect || !daySelect) return;
+    monthSelect.value = month;
+    fillSeasonalDays(daySelect, month);
+    const maxDay = daysInMonth(month);
+    const wanted = parseInt(day, 10);
+    daySelect.value = wanted >= 1 && wanted <= maxDay
+        ? day.padStart(2, '0')
+        : maxDay.toString().padStart(2, '0');
+}
+
+/**
+ * Rebuild every seasonal day select from its currently selected month.
+ *
+ * @returns {void}
+ */
+export function syncSeasonalDayLists() {
+    ['seasonal_start', 'seasonal_end'].forEach(prefix => {
+        const monthSelect = getEl(`${prefix}_month`);
+        const daySelect = getEl(`${prefix}_day`);
+        if (!monthSelect || !daySelect) return;
+        fillSeasonalDays(daySelect, monthSelect.value);
+    });
+}
+
+/**
+ * Populate both seasonal day selects and keep them in step with their months.
+ *
+ * @returns {void}
+ */
 export function populateSeasonalDays() {
-    const startDaySelect = getEl('seasonal_start_day');
-    const endDaySelect = getEl('seasonal_end_day');
-    [startDaySelect, endDaySelect].forEach(select => {
-        select.innerHTML = '';
-        for (let i = 1; i <= 31; i++) {
-            const opt = document.createElement('option');
-            opt.value = i.toString().padStart(2, '0');
-            opt.textContent = i;
-            select.appendChild(opt);
-        }
+    ['seasonal_start', 'seasonal_end'].forEach(prefix => {
+        const monthSelect = getEl(`${prefix}_month`);
+        const daySelect = getEl(`${prefix}_day`);
+        if (!monthSelect || !daySelect) return;
+        fillSeasonalDays(daySelect, monthSelect.value);
+        monthSelect.onchange = () => fillSeasonalDays(daySelect, monthSelect.value);
     });
 }
 
