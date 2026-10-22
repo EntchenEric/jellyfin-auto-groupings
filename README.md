@@ -110,6 +110,35 @@ planned sort-name changes and creates no collections. Items without a usable
 `Id` are skipped in both modes, because Jellyfin would reject the request for
 the whole collection rather than just that item.
 
+## Standalone `auto_group.py` script
+
+The repository also ships `auto_group.py`, a self-contained script that walks
+every Jellyfin library, derives base titles with regex patterns, and creates one
+collection per group. It predates the package and is independent of it.
+
+```bash
+python auto_group.py --config myconfig.json --dry-run --verbose
+```
+
+Options:
+- `--config` - Path to a JSON config file (default: `config.json`)
+- `--dry-run` - Print the groups without creating collections
+- `--verbose` - Enable debug logging
+
+Environment variables override nothing in the file but supply defaults:
+`JELLYFIN_URL`, `JELLYFIN_API_KEY`, `DRY_RUN`, and `MIN_GROUP_SIZE` (default 2).
+A JSON file may set any of these plus `PATTERNS`, a list of regex strings.
+
+Patterns are user-supplied, so they are not required to declare a capture group.
+The first group that participated in the match is the collection name; a pattern
+with no groups falls back to the whole match, and an invalid regex is logged and
+skipped. Items with a `null` or blank `Name` never form a group. A malformed
+`MIN_GROUP_SIZE` or non-list `PATTERNS` logs a warning and falls back to the
+default instead of aborting the run.
+
+For the package CLI (`--url`, `--api-key`, `--pattern`) see
+[CLI Usage](#cli-usage) above.
+
 ## Development
 
 ```bash

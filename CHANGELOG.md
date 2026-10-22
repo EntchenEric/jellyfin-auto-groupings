@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Regression tests for the standalone `auto_group.py` helper moved into
+  `tests/test_auto_group.py`. The previous suite lived in a root-level
+  `test_auto_group.py`, but CI runs `pytest tests/`, so none of it ever
+  executed; `auto_group.py` sat at 49% coverage while looking tested. The
+  module is now at 79% and its config, grouping, and HTTP paths are asserted.
+
 - A vitest suite for the SPA (`tests/frontend/`), and `npm test` now runs it
   before the node smoke test. `vitest.config.js` already pointed at
   `tests/frontend/**/*.test.js`, but that directory did not exist, so
@@ -17,6 +23,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   spec covers modal lifecycle and the folder picker's auth path.
 
 ### Fixed
+
+- `auto_group.py` no longer crashes on the regex patterns it invites users to
+  configure. `extract_base_title` called `match.group(1)` unconditionally, so a
+  pattern without a capture group (`^Star Wars`) raised `IndexError`, and a
+  pattern whose first branch did not match (`^(\d{4})|(.*)$`) raised
+  `AttributeError` on the resulting `None`. One bad entry in the `PATTERNS` list
+  aborted the whole run. The first participating group is used now, falling
+  back to the whole match, matching how
+  `jellyfin_auto_groupings.client._matched_group_name` already behaved.
+
+- `auto_group.py` config values are validated after the JSON file is merged.
+  `MIN_GROUP_SIZE=abc` raised `ValueError` during import, before the CLI could
+  print anything; a `MIN_GROUP_SIZE` below 1 made every item its own group; and
+  `"DRY_RUN": "false"` in a config file stayed truthy because a non-empty
+  string is truthy, silently keeping a run in dry-run mode. Non-numeric values
+  fall back with a warning, values below 1 clamp to 1, `DRY_RUN` is parsed as a
+  boolean, and a non-list `PATTERNS` falls back to the defaults.
+
+- `auto_group.py` skips items whose `Name` is `null` or blank instead of
+  merging them all into one unnamed `""` collection, and drops unusable item
+  IDs before building a request. Jellyfin rejects an entire collection when one
+  ID in the `Ids` list is unusable, so a run that contained a single corrupt
+  entry used to fail the whole group.
+
+- The `auto_group.py` `--help` epilog no longer advertises
+  `python -m jellyfin_auto_groupings.cli --config myconfig.json`: that module
+  has no `--config` flag (the flag belongs to `auto_group.py` itself), so
+  following the documented example failed with an argparse error.
 
 - Complex-query parsing no longer turns operator typos into filter values that
   silently match nothing. `parse_complex_query` split the query on
