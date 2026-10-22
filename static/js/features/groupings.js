@@ -293,7 +293,9 @@ function daysInMonth(month) {
  * group was never cleaned up when its season ended.
  *
  * The previously selected day is preserved when it still exists, otherwise
- * it is clamped to the last valid day.
+ * it is clamped to the last valid day. An empty select starts at day 01, so a
+ * brand-new form never defaults to a month-end boundary the user did not
+ * choose.
  *
  * @param {HTMLSelectElement} select  The day select to rebuild.
  * @param {string} month  Two-digit month string.
@@ -310,6 +312,10 @@ function fillSeasonalDays(select, month) {
         opt.textContent = i;
         select.appendChild(opt);
     }
+    if (!previous) {
+        select.value = '01';
+        return;
+    }
     const keep = parseInt(previous, 10);
     select.value = keep >= 1 && keep <= maxDay
         ? previous
@@ -318,6 +324,11 @@ function fillSeasonalDays(select, month) {
 
 /**
  * Set a seasonal date pair from an ``MM-DD`` string stored in the config.
+ *
+ * A stored value from before the validation fix can name a day that does not
+ * exist in its month (``02-31``). Assigning that value to the rebuilt select
+ * leaves it empty, and the form then saved ``02-`` — which the API rejects.
+ * Such a legacy day is clamped to the last day of the month it belongs to.
  *
  * @param {string} prefix  ``"seasonal_start"`` or ``"seasonal_end"``.
  * @param {string|undefined} value  Stored ``MM-DD`` value.
@@ -332,7 +343,11 @@ export function setSeasonalDate(prefix, value) {
     if (!monthSelect || !daySelect) return;
     monthSelect.value = month;
     fillSeasonalDays(daySelect, month);
-    daySelect.value = day;
+    const maxDay = daysInMonth(month);
+    const wanted = parseInt(day, 10);
+    daySelect.value = wanted >= 1 && wanted <= maxDay
+        ? day.padStart(2, '0')
+        : maxDay.toString().padStart(2, '0');
 }
 
 /**

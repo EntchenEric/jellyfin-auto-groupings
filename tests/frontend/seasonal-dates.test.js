@@ -68,6 +68,17 @@ describe('seasonal day selects', () => {
         expect(dayOptions('seasonal_start_day')).not.toContain('31');
     });
 
+    it('defaults a fresh form to day 01, not the month end', async () => {
+        const { populateSeasonalDays } = await mount();
+        populateSeasonalDays();
+
+        // Nothing was selected before, so the form must not silently start at
+        // January 31 — a user who only picks the month would otherwise save a
+        // month-end boundary they never chose.
+        expect(document.getElementById('seasonal_start_day').value).toBe('01');
+        expect(document.getElementById('seasonal_end_day').value).toBe('01');
+    });
+
     it('gives April 30 days and January 31', async () => {
         const { populateSeasonalDays } = await mount();
         populateSeasonalDays();
@@ -163,6 +174,19 @@ describe('seasonal day selects', () => {
 
         expect(dayOptions('seasonal_start_day')).toHaveLength(29);
         expect(dayOptions('seasonal_end_day')).toHaveLength(30);
+    });
+
+    it('clamps a legacy stored day that no longer exists', async () => {
+        const { populateSeasonalDays, setSeasonalDate } = await mount();
+        populateSeasonalDays();
+
+        // A config saved before the validation fix can hold 02-31. Assigning
+        // it unchanged would leave the select empty and the form would POST
+        // "02-", so it is clamped to the last real day of February.
+        setSeasonalDate('seasonal_start', '02-31');
+
+        expect(document.getElementById('seasonal_start_month').value).toBe('02');
+        expect(document.getElementById('seasonal_start_day').value).toBe('29');
     });
 
     it('never yields a date the backend rejects', async () => {
