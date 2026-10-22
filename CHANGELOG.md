@@ -50,9 +50,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `utils.helpers.sanitize_filename` no longer reshuffles `./` prefixes in a
   way that could drop a leading `../../`, and the implementation is a single
   documented pass instead of dead intermediate steps.
+- `config.save_config` rotated a timestamped `.bak` file on every save and
+  never removed old ones, so a running instance accumulated one backup per
+  configuration save (a development checkout had reached 774 backups /
+  3.1 MB). The newest `config._BACKUP_KEEP` (5) rotation backups are now
+  retained; `.corrupt*.bak` files are left untouched.
+- `sync.parse_complex_query` folded a dangling logical operator into the last
+  filter value, so `"Action AND NOT"` became a `"not"` genre rule that matched
+  nothing and the group silently linked no media. A trailing `AND`/`OR`/
+  `AND NOT`/`OR NOT` is now dropped before the query is split.
+- `sync._match_year` raised `AttributeError` when a rule's year value was
+  `None`, which aborted the entire sync instead of skipping one malformed
+  rule. A missing expression now means "no match", and non-string scalars are
+  compared by their string form so a numeric rule value still matches.
 
 ### Added
 
+- `tests/test_config_backup_rotation.py`: cover backup retention (cap
+  enforced, newest kept, `.corrupt*.bak` and unrelated files preserved, and a
+  pruning failure not breaking the save).
+- `tests/test_complex_query_edge_cases.py`: cover complex-query parsing
+  (operators, negation, typed prefixes, dangling operators, operator-like
+  words such as "Rock" or "Thunder") and `_match_year` on malformed input.
 - `tests/test_config_defaults_isolation.py`: regression tests proving
   `load_config` never aliases `DEFAULT_CONFIG` on the first-run, repeated-load,
   and corrupt-file paths, and that mutations to a returned config do not leak
