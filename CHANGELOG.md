@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A hand-edited `groups` value of the wrong type no longer crashes the web UI
+  or silently disables every scheduled sync. `_fill_defaults` only replaces a
+  stored value when the *default* is a dict, so `"groups": null` (or `42`,
+  `"text"`, `true`, `{}`) survived loading untouched and then failed in the
+  callers that iterate it. `GET /api/health` raised `TypeError: object of type
+  'NoneType' has no len()` from `len(config.get("groups", []))`, and
+  `GET /api/cleanup` raised `AttributeError: 'NoneType' object has no
+  attribute 'get'` from `g.get("name")`. Both surfaced as HTTP 500 for the
+  whole page even though the rest of the config was valid. `load_config` now
+  coerces list-valued top-level sections back to their defaults and drops
+  `groups` entries that are not objects, logging a warning with the count so
+  the bad line stays findable. The file on disk is left unchanged, matching the
+  existing repair-on-read behaviour for missing keys.
+
 ### Changed
 
 - `jellyfin_auto_groupings.cli.main` now returns its exit code on every
