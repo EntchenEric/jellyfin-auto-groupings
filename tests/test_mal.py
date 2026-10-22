@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import requests
 
+import mal
 from mal import _normalize_mal_status, fetch_mal_list
 
 
@@ -42,7 +43,7 @@ def test_fetch_mal_list_success(mock_get):
             {"node": {"id": 102, "title": "Anime Two"}},
         ],
         "paging": {
-            "next": "[https://api.myanimelist.net/v2/users/testuser/animelist?offset=2](https://api.myanimelist.net/v2/users/testuser/animelist?offset=2)"
+            "next": "https://api.myanimelist.net/v2/users/testuser/animelist?offset=2"
         },
     }
 
@@ -63,6 +64,56 @@ def test_fetch_mal_list_success(mock_get):
 
     assert ids == [101, 102, 103]
     assert mock_get.call_count == 2
+    # The second request must hit the next-page URL without adding params.
+    assert mock_get.call_args_list[1].args[0] == (
+        "https://api.myanimelist.net/v2/users/testuser/animelist?offset=2"
+    )
+
+
+@pytest.mark.parametrize(
+    "username",
+    ["../../admin", "user/name", "", "user name", "user?x=1"],
+)
+def test_fetch_mal_list_rejects_unsafe_username(username):
+    """A username is pasted into the request path and must not escape it."""
+    with pytest.raises(ValueError, match="Invalid MyAnimeList username"):
+        fetch_mal_list(username=username, client_id="dummy_client_id")
+
+
+@patch("network.get")
+def test_fetch_mal_list_does_not_follow_foreign_pagination_host(mock_get):
+    """A ``paging.next`` on another host must not be requested."""
+    mock_response = MagicMock()
+    mock_response.raise_for_status.return_value = None
+    mock_response.json.return_value = {
+        "data": [{"node": {"id": 101}}],
+        "paging": {"next": "https://evil.example/steal"},
+    }
+    mock_get.return_value = mock_response
+
+    ids = fetch_mal_list(username="testuser", client_id="dummy_client_id")
+
+    assert ids == [101]
+    assert mock_get.call_count == 1
+
+
+@patch("network.get")
+def test_fetch_mal_list_stops_at_page_cap(mock_get):
+    """A self-referencing ``paging.next`` must not loop forever."""
+    mock_response = MagicMock()
+    mock_response.raise_for_status.return_value = None
+    mock_response.json.return_value = {
+        "data": [{"node": {"id": 101}}],
+        "paging": {
+            "next": "https://api.myanimelist.net/v2/users/testuser/animelist?offset=0"
+        },
+    }
+    mock_get.return_value = mock_response
+
+    ids = fetch_mal_list(username="testuser", client_id="dummy_client_id")
+
+    assert len(ids) == mal._MAX_PAGES
+    assert mock_get.call_count == mal._MAX_PAGES
 
 
 @patch("network.get")

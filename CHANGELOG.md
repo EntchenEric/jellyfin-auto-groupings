@@ -56,6 +56,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `trakt._extract_imdb_ids_from_page` accepts only non-empty strings as an
+  IMDb ID. The deduplication check `imdb_id not in seen` ran before any type
+  check, so an object or a list in `ids.imdb` raised
+  `TypeError: unhashable type: 'dict'`. That exception is not in the sync layer's per-group
+  `except` tuple, so a single malformed Trakt entry aborted the entire run
+  instead of failing one group. A numeric value is now skipped too: it would
+  never match Jellyfin's string provider IDs. Surrounding whitespace is
+  trimmed so `" tt0111161 "` still matches.
+
+- `tmdb._collect_tmdb_ids_from_page` skips a non-scalar `id`. A malformed item
+  carrying an object or a list became the provider id `"{'a': 1}"` via
+  `str()`, which was then looked up in the library (never matching) and
+  written into the group's stored ID list.
+
+- `mal.fetch_mal_list` bounds its pagination and refuses to follow a foreign
+  next-page URL. The walker followed `paging.next` with no page cap, so an
+  upstream that kept returning a next URL looped forever and the sync run
+  never finished. It now stops at the shared 50-page safety cap with a
+  warning that matches the other fetchers. A next URL is followed only when
+  it is HTTP(S) on `api.myanimelist.net`; previously any host was requested
+  with the user's MAL client ID in a header, which turned a malformed or
+  tampered body into a request-forgery primitive.
+
+- `mal.fetch_mal_list` validates the username before building the request
+  URL. Mal names are letters, digits, `-` and `_`. The value was pasted
+  straight into the path, so `"../../admin"` produced
+  `/users/../../admin/animelist` and escaped the `/users/` prefix.
+
 - `tmdb._normalize_tmdb_list_id` reads the list ID from the correct path
   segment. A real TMDb list URL is rendered as
   `https://www.themoviedb.org/list/8204231/my-list-name`, and the previous

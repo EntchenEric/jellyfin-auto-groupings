@@ -106,9 +106,15 @@ def _collect_tmdb_ids_from_page(
         if not isinstance(item, dict):
             continue
         tmdb_id = item.get("id")
-        if tmdb_id is None or isinstance(tmdb_id, bool):
+        # TMDb sends a number, but a malformed item can carry an object or a
+        # list. ``str(tmdb_id)`` then produced a garbage provider id such as
+        # ``"{'a': 1}"`` that was looked up in the library and, worse, written
+        # into the group's stored id list. Only numbers and strings are IDs.
+        if isinstance(tmdb_id, bool) or not isinstance(tmdb_id, (int, str)):
             continue
-        str_id = str(tmdb_id)
+        str_id = str(tmdb_id).strip()
+        if not str_id:
+            continue
         if str_id not in seen:
             seen.add(str_id)
             ids.append(str_id)
