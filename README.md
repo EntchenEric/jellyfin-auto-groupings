@@ -142,7 +142,7 @@ For the package CLI (`--url`, `--api-key`, `--pattern`) see
 ## External list sources
 
 Every `*_list` source resolves an ordered list of external IDs and matches them
-against your Jellyfin library by `ProviderIds`. Three behaviours are worth
+against your Jellyfin library by `ProviderIds`. Four behaviours are worth
 knowing before you build a group on a long list:
 
 - **Pagination is followed to the end of the list.** IMDb, Trakt and
@@ -160,6 +160,12 @@ knowing before you build a group on a long list:
   wrong type are skipped rather than raising. A response that cannot be used
   at all raises the error type the sync layer catches, so the group records a
   fetch error and the remaining groups still sync.
+- **A list identifier must match its source exactly.** The IMDb source accepts
+  a bare `ls000024390` ID or an `imdb.com` URL containing `/list/ls000024390`;
+  the Letterboxd source accepts an HTTP(S) URL on `letterboxd.com` (a missing
+  scheme is filled in). Anything else is rejected with an error on that group
+  instead of being trimmed into a different, valid-looking list — a typo such
+  as `ls123abc` would otherwise silently sync the list `ls123`.
 
 ## Development
 

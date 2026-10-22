@@ -30,6 +30,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- List identifiers supplied through a group's `value` are now validated as a
+  whole instead of being pattern-matched anywhere inside the string.
+  `imdb.fetch_imdb_list` searched the entire input for `ls\d+`, so a typo such
+  as `ls123abc` or `garbage-ls123` was silently truncated to `ls123` and the
+  sync fetched a *different* list than the one the user named, with no error
+  to show for it. A bare `ls\d+` ID or a URL whose host is `imdb.com` /
+  `www.imdb.com` / `m.imdb.com` and whose path contains `/list/ls\d+` is
+  accepted; everything else raises `ValueError` before any request is made.
+
+- `letterboxd.fetch_letterboxd_list` validates the list host properly. The
+  check was `"letterboxd.com" in list_url`, so
+  `https://evil.example/?r=letterboxd.com` and
+  `https://letterboxd.com.evil.tld/...` were accepted and the server then
+  fetched pages from that host — a request-forgery primitive driven by
+  `config.json`. The URL must now be HTTP(S) on `letterboxd.com` or a
+  subdomain of it. Scheme-less input such as `letterboxd.com/user/list/x`
+  still works and gets `https://` prepended.
+
 - `tmdb.fetch_tmdb_list` and `anilist.fetch_anilist_list` treat a response
   body that is not a JSON object as a failed fetch instead of crashing. Both
   called `.get()` on the decoded body, so a bare list or a string body from

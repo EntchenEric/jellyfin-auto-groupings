@@ -11,6 +11,7 @@ import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from http import HTTPStatus
+from urllib.parse import urlparse
 
 import requests
 
@@ -48,6 +49,41 @@ _CLASS_ATTR_PATTERN: re.Pattern[str] = re.compile(r'class="([^"]*)"')
 
 # Token marker of a disabled next-page link.
 _DISABLED_CLASS: str = "is-disabled"
+
+#: Host that must serve a Letterboxd list URL. The previous check was a
+#: substring test on the raw input, so ``https://evil.example/?r=letterboxd.com``
+#: passed and the fetcher then requested pages from the attacker's host — a
+#: server-side request forgery primitive reachable from a group's ``value``.
+_LETTERBOXD_HOST: str = "letterboxd.com"
+
+
+def _validate_list_url(list_url: str) -> str:
+    """Return *list_url* without a trailing slash, or raise :exc:`ValueError`.
+
+    Args:
+        list_url: The candidate Letterboxd list URL.
+
+    Returns:
+        The cleaned URL.
+
+    Raises:
+        ValueError: If *list_url* is not an HTTP(S) URL on ``letterboxd.com``.
+
+    """
+    cleaned = list_url.strip().rstrip("/")
+    # Tolerate a scheme-less input such as ``letterboxd.com/user/list/x``,
+    # which the old substring check accepted; requests needs a scheme.
+    if cleaned and "//" not in cleaned:
+        cleaned = f"https://{cleaned}"
+    parsed = urlparse(cleaned)
+    host = (parsed.hostname or "").lower()
+    if parsed.scheme not in ("http", "https") or not (
+        host == _LETTERBOXD_HOST or host.endswith("." + _LETTERBOXD_HOST)
+    ):
+        msg = f"Invalid Letterboxd URL: {list_url!r}"
+        raise ValueError(msg)
+    return cleaned
+
 
 # Ordered ID patterns for a single film's HTML segment. Higher-priority
 # patterns (TMDb data attribute) are tried first; the first hit wins.
@@ -266,10 +302,7 @@ def fetch_letterboxd_list(list_url: str) -> list[str]:
         RuntimeError: If an HTTP error occurs while fetching a list page.
 
     """
-    list_url = list_url.rstrip("/")
-    if "letterboxd.com" not in list_url:
-        msg = f"Invalid Letterboxd URL: {list_url!r}"
-        raise ValueError(msg)
+    list_url = _validate_list_url(list_url)
 
     ids: list[str] = []
     seen_ids: set[str] = set()
