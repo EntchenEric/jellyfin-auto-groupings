@@ -87,7 +87,13 @@ def main(args: Sequence[str] | None = None) -> int:
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
     )
-    parsed = build_parser().parse_args(args)
+    try:
+        parsed = build_parser().parse_args(args)
+    except SystemExit as exc:
+        # argparse exits for usage errors (code 2) and for --help (code 0).
+        # Convert both so this function honours its "returns a code" contract;
+        # the module guard passes the value straight to sys.exit().
+        return exc.code if isinstance(exc.code, int) else 1
 
     if not parsed.api_key:
         sys.stderr.write(

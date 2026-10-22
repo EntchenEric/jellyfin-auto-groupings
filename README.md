@@ -52,9 +52,9 @@ python -m jellyfin_auto_groupings.cli --url http://localhost:8096 --dry-run
 ```
 
 Exit codes: `0` on success, `1` for a missing API key, an invalid `--pattern`
-regex, a connection/timeout failure, or a sync error. `main()` returns that
-code instead of raising `SystemExit`, so it can be called in-process; the
-`python -m` entry point still exits with it.
+regex, a connection/timeout failure, or a sync error, and `2` for a malformed
+command line. `main()` returns the code instead of raising `SystemExit`, so it
+can be called in-process; the `python -m` entry point still exits with it.
 
 ## Configuration
 

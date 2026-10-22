@@ -112,3 +112,26 @@ def test_process_groupings_mode2_treats_falsy_ids_as_missing(bad_id):
     ):
         process_groupings(client, items=items, dry_run=False)
     mock_create.assert_not_called()
+
+
+def test_cli_main_returns_code_for_usage_error(capsys):
+    """argparse failures must not escape main() as SystemExit."""
+    from jellyfin_auto_groupings.cli import main as cli_main
+
+    rc = cli_main(["--api-key", "k", "--pattern"])
+    assert rc == 2
+    assert "expected one argument" in capsys.readouterr().err
+
+
+def test_cli_main_unknown_flag_returns_usage_code(capsys):
+    from jellyfin_auto_groupings.cli import main as cli_main
+
+    assert cli_main(["--not-a-flag"]) == 2
+    assert "unrecognized arguments" in capsys.readouterr().err
+
+
+def test_cli_main_help_returns_zero(capsys):
+    from jellyfin_auto_groupings.cli import main as cli_main
+
+    assert cli_main(["--help"]) == 0
+    assert "--api-key" in capsys.readouterr().out
