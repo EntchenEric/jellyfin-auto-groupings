@@ -82,7 +82,10 @@ def _extract_media_ids(data: dict[str, Any]) -> list[int]:
         return []
 
     ids: list[int] = []
-    for user_list in collection.get("lists") or []:
+    lists = collection.get("lists")
+    if not isinstance(lists, list):
+        return ids
+    for user_list in lists:
         if not isinstance(user_list, dict):
             continue
         entries = user_list.get("entries")
@@ -92,7 +95,9 @@ def _extract_media_ids(data: dict[str, Any]) -> list[int]:
             if not isinstance(entry, dict):
                 continue
             media_id = entry.get("mediaId")
-            if isinstance(media_id, int):
+            # ``bool`` is an ``int`` subclass, so ``True`` would otherwise be
+            # collected as media ID 1.
+            if isinstance(media_id, int) and not isinstance(media_id, bool):
                 ids.append(media_id)
     return ids
 
@@ -140,4 +145,10 @@ def fetch_anilist_list(
         msg = f"Failed to fetch AniList list for user {username!r}: {exc}"
         raise RuntimeError(msg) from exc
 
-    return _extract_media_ids(response.json())
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        msg = f"Invalid JSON response from AniList API for user {username!r}: {exc}"
+        raise RuntimeError(msg) from exc
+
+    return _extract_media_ids(payload)
