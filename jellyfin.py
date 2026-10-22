@@ -60,6 +60,16 @@ ITEM_TYPE_FILTERS: dict[str, str] = {
 # String boolean values expected by the Jellyfin query API.
 RECURSIVE_TRUE = "true"
 
+#: Safety cap on the number of pages a single item walk may request.
+#: Both walkers below advance ``StartIndex`` and trust the server to honour
+#: it. A reverse proxy that strips the parameter, or a Jellyfin build that
+#: ignores it for a particular query, answers every request with the same
+#: page and the walk never terminates — the sync run then hangs while
+#: ``all_items`` grows without bound. The cap turns that hang into a
+#: truncated result plus a warning, matching the list fetchers'
+#: ``DEFAULT_LIST_MAX_PAGES`` behaviour.
+_MAX_ITEM_PAGES: int = 1_000
+
 # Default HTTP request timeout (seconds) used by all Jellyfin API helpers.
 _DEFAULT_TIMEOUT: int = 30
 
@@ -323,6 +333,30 @@ def _delete_or_raise(
 # ---------------------------------------------------------------------------
 
 
+def _page_signature(page: list[dict[str, Any]]) -> tuple[str, ...] | None:
+    """Return a comparable identity for *page*, or ``None`` when it has none.
+
+    A paginated walk assumes each request returns new items. When the server
+    ignores ``StartIndex`` it returns the same items again, so the walk sees
+    an unchanged signature and can stop instead of looping forever.
+
+    Items without an ``Id`` cannot identify a page, so they are skipped; a
+    page with no usable ID at all yields ``None`` and never trips the guard.
+    That keeps an ID-less fixture from being mistaken for a repeated page.
+
+    Args:
+        page: One page of items as returned by the Jellyfin ``/Items``.
+
+    Returns:
+        A tuple of item IDs, or ``None`` if no item carries an ``Id``.
+
+    """
+    ids = tuple(
+        str(item["Id"]) for item in page if isinstance(item, dict) and item.get("Id")
+    )
+    return ids or None
+
+
 def fetch_jellyfin_items(
     base_url: str,
     api_key: str,
@@ -394,6 +428,8 @@ def fetch_all_jellyfin_items(
     fetch_page = _fetch_page or fetch_jellyfin_items
     all_items: list[dict[str, Any]] = []
     start_index = 0
+    pages_fetched = 0
+    previous_signature: tuple[str, ...] | None = None
 
     while True:
         params: dict[str, str] = {
@@ -403,8 +439,31 @@ def fetch_all_jellyfin_items(
         if extra_params:
             params.update(extra_params)
         page = fetch_page(base_url, api_key, params, timeout=timeout)
+
+        signature = _page_signature(page)
+        if signature is not None and signature == previous_signature:
+            # The server returned the page we just asked for. Advancing
+            # ``start_index`` again would repeat this forever, so stop and
+            # report the truncation instead of hanging the sync run.
+            logger.warning(
+                "Jellyfin returned the same page again at StartIndex %d — "
+                "stopping the item walk, which may be incomplete",
+                start_index,
+            )
+            break
+        previous_signature = signature
+
         all_items.extend(page)
+        pages_fetched += 1
+
         if len(page) < limit:
+            break
+        if pages_fetched >= _MAX_ITEM_PAGES:
+            logger.warning(
+                "Stopping after %d pages (the safety limit) — the Jellyfin "
+                "item walk requested more entries than were fetched",
+                _MAX_ITEM_PAGES,
+            )
             break
         start_index += limit
 
@@ -437,6 +496,8 @@ def _paginate_jellyfin(
 
     """
     start_index = 0
+    pages_fetched = 0
+    previous_signature: tuple[str, ...] | None = None
     headers = _auth_headers(api_key)
 
     while True:
@@ -454,13 +515,46 @@ def _paginate_jellyfin(
             timeout=timeout,
         )
         page_items = data.get("Items", [])
+        if not isinstance(page_items, list):
+            # A malformed body used to reach the caller as a non-list and
+            # fail later with an unrelated error; treat it as the end of the
+            # walk instead of yielding something unusable.
+            logger.warning(
+                "Stopping %s walk: 'Items' is not a list (got %s)",
+                endpoint,
+                type(page_items).__name__,
+            )
+            break
+
+        signature = _page_signature(page_items)
+        if signature is not None and signature == previous_signature:
+            # ``StartIndex`` is being ignored (stripped by a proxy, or not
+            # honoured for this query), so this page is the previous one.
+            logger.warning(
+                "%s returned the same page again at StartIndex %d — "
+                "stopping the walk, which may be incomplete",
+                endpoint,
+                start_index,
+            )
+            break
+        previous_signature = signature
+
         yield page_items
 
         total = data.get("TotalRecordCount", 0)
         start_index += len(page_items)
+        pages_fetched += 1
         if not page_items:
             break
         if total and start_index >= total:
+            break
+        if pages_fetched >= _MAX_ITEM_PAGES:
+            logger.warning(
+                "Stopping %s walk after %d pages (the safety limit) — the "
+                "result may be incomplete",
+                endpoint,
+                _MAX_ITEM_PAGES,
+            )
             break
 
 
