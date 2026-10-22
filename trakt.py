@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import re
 from typing import Any
+from urllib.parse import urlparse
 
 import requests  # keep for exception type references
 
@@ -27,12 +28,48 @@ _PAGE_LIMIT: int = 1_000
 
 _TRAKT_API_BASE: str = "https://api.trakt.tv"
 
+#: Hosts that may serve a Trakt list page. The previous parse searched the
+#: whole input for ``trakt.tv/users/<name>/lists/<slug>``, so a URL on any
+#: host that merely *mentioned* that path (in a query string, say) supplied
+#: the username and slug that were then fetched from the Trakt API.
+_TRAKT_HOSTS: frozenset[str] = frozenset({"trakt.tv", "www.trakt.tv"})
+
+# List path of a Trakt list URL, e.g. ``/users/jane/lists/my-list``.
+_TRAKT_LIST_PATH_PATTERN: re.Pattern[str] = re.compile(
+    r"/users/([^/]+)/lists/([^/?#]+)",
+)
+
+# A shorthand segment is a username or a slug: no scheme, no whitespace,
+# no path separators. Usernames may contain a dot, so a first segment is only
+# treated as a hostname when it actually is a Trakt host.
+_TRAKT_SHORTHAND_SEGMENT: re.Pattern[str] = re.compile(r"^[A-Za-z0-9_.@-]+$")
+
+
+def _trakt_error(list_url: str) -> ValueError:
+    """Build the shared "unparseable Trakt reference" error."""
+    return ValueError(
+        f"Invalid Trakt list URL: {list_url!r}. "
+        "Expected format: https://trakt.tv/users/username/lists/list-slug",
+    )
+
 
 def _parse_trakt_list_url(list_url: str) -> tuple[str, str]:
     """Parse username and list slug from a Trakt URL or shorthand.
 
+    A full URL is accepted only when it points at a Trakt host, and the
+    username and slug are read from its path. The previous implementation
+    searched the raw input for the list path anywhere in the string, so
+    ``https://evil.example/?u=trakt.tv/users/jane/lists/my-list`` was accepted
+    and the sync then queried the Trakt API for ``jane``'s list instead of
+    rejecting input that names no Trakt list at all.
+
+    Two conveniences are preserved: a URL wrapped in Markdown link syntax
+    (``[text](url)``, as pasted from a chat client) and a scheme-less
+    ``trakt.tv/users/...`` URL. The shorthand ``username/list-slug`` form is
+    still accepted.
+
     Args:
-        list_url: The Trakt list URL.
+        list_url: The Trakt list URL, scheme-less URL, or ``user/slug``.
 
     Returns:
         A (username, list_slug) tuple.
@@ -41,20 +78,44 @@ def _parse_trakt_list_url(list_url: str) -> tuple[str, str]:
         ValueError: If the URL cannot be parsed.
 
     """
-    full_url_match = re.search(
-        r"trakt\.tv/users/([^/]+)/lists/([^/?#]+)",
-        list_url,
-    )
-    if full_url_match:
-        return full_url_match.group(1), full_url_match.group(2)
-    if "/" in list_url and not list_url.startswith("http"):
-        parts = list_url.split("/", 1)
-        return parts[0], parts[1]
-    msg = (
-        f"Invalid Trakt list URL: {list_url!r}. "
-        "Expected format: https://trakt.tv/users/username/lists/list-slug"
-    )
-    raise ValueError(msg)
+    candidate = list_url.strip()
+    if not candidate:
+        raise _trakt_error(list_url)
+
+    # Pull the URL out of Markdown link syntax before looking at it, so the
+    # host check sees the URL and not the surrounding punctuation.
+    markdown_url = re.search(r"https?://[^\s)\]]+", candidate)
+    if markdown_url:
+        candidate = markdown_url.group(0)
+
+    if "//" in candidate or candidate.lower().startswith("http"):
+        parsed = urlparse(candidate)
+        host = (parsed.hostname or "").lower()
+        if parsed.scheme not in ("http", "https") or host not in _TRAKT_HOSTS:
+            raise _trakt_error(list_url)
+        path_match = _TRAKT_LIST_PATH_PATTERN.search(parsed.path)
+        if not path_match:
+            raise _trakt_error(list_url)
+        return path_match.group(1), path_match.group(2)
+
+    if "/" not in candidate:
+        raise _trakt_error(list_url)
+
+    username, _, rest = candidate.partition("/")
+    # A scheme-less URL such as ``trakt.tv/users/jane/lists/my-list`` has the
+    # Trakt host in its first segment; validate it like a full URL instead of
+    # treating ``trakt.tv`` as a username. Any other segment is a username,
+    # which may itself contain a dot.
+    if username.lower() in _TRAKT_HOSTS:
+        return _parse_trakt_list_url(f"https://{candidate}")
+
+    slug = rest.split("?", 1)[0].split("#", 1)[0].strip("/")
+    if not (
+        _TRAKT_SHORTHAND_SEGMENT.match(username)
+        and _TRAKT_SHORTHAND_SEGMENT.match(slug)
+    ):
+        raise _trakt_error(list_url)
+    return username, slug
 
 
 def _build_trakt_headers(client_id: str) -> dict[str, str]:

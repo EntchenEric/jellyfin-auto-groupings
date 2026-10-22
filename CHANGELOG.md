@@ -30,6 +30,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `tmdb._normalize_tmdb_list_id` reads the list ID from the correct path
+  segment. A real TMDb list URL is rendered as
+  `https://www.themoviedb.org/list/8204231/my-list-name`, and the previous
+  implementation took the *last* segment, so a correctly pasted URL sent the
+  human-readable slug to `api.themoviedb.org/3/list/<slug>` and the group
+  failed with a 404. The URL's host is now checked against `themoviedb.org`
+  and its subdomains instead of a substring test on the raw input, so
+  `https://evil.example/themoviedb.org/list/123` is rejected rather than
+  fetched. A bare numeric ID and a scheme-less `themoviedb.org/list/<id>`
+  still work; a whitespace-only value is reported as a missing ID instead of
+  being requested as `/list/`.
+
+- `trakt._parse_trakt_list_url` resolves a URL by its host and path instead
+  of searching the whole input. The old regex matched
+  `trakt\.tv/users/([^/]+)/lists/([^/?#]+)` anywhere in the string, so
+  `https://evil.example/?u=trakt.tv/users/jane/lists/my-list` was accepted
+  and the sync queried the Trakt API for `jane`'s list. Only `trakt.tv` and
+  `www.trakt.tv` are accepted now, with the username and slug read from the
+  path. The Markdown-link form (`[text](url)`, as pasted from a chat client),
+  the scheme-less `trakt.tv/users/...` form, and the `username/list-slug`
+  shorthand — including usernames containing a dot — keep working.
+
 - List identifiers supplied through a group's `value` are now validated as a
   whole instead of being pattern-matched anywhere inside the string.
   `imdb.fetch_imdb_list` searched the entire input for `ls\d+`, so a typo such

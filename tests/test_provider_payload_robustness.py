@@ -157,6 +157,79 @@ def test_tmdb_list_rejects_invalid_json():
         tmdb.fetch_tmdb_list("123", "key")
 
 
+@pytest.mark.parametrize(
+    ("supplied", "expected"),
+    [
+        ("8204231", "8204231"),
+        ("  8204231  ", "8204231"),
+        # Real TMDb list URLs render the name after the ID, so the ID is the
+        # segment right after ``/list/`` and not the last one.
+        ("https://www.themoviedb.org/list/8204231", "8204231"),
+        ("https://www.themoviedb.org/list/8204231/my-list-name", "8204231"),
+        ("http://themoviedb.org/list/8204231/", "8204231"),
+        ("themoviedb.org/list/8204231", "8204231"),
+    ],
+)
+def test_tmdb_normalizes_real_list_ids(supplied, expected):
+    """Bare IDs and genuine TMDb list URLs resolve to the numeric ID."""
+    assert tmdb._normalize_tmdb_list_id(supplied) == expected
+
+
+def test_tmdb_url_with_slug_uses_the_id_not_the_slug():
+    """A pasted ``/list/<id>/<slug>`` URL must not send the slug as the ID.
+
+    Taking the last path segment turned every real TMDb list URL into a
+    request for a list named after the human-readable slug, which the API
+    answers with 404 — so a correctly configured group failed to sync.
+    """
+    with patch(
+        "tmdb._fetch_tmdb_page", return_value={"items": [], "total_pages": 1}
+    ) as fetch:
+        tmdb.fetch_tmdb_list(
+            "https://www.themoviedb.org/list/8204231/my-list-name", "key"
+        )
+
+    assert fetch.call_args.args[0] == "8204231"
+
+
+@pytest.mark.parametrize(
+    "supplied",
+    [
+        "https://evil.example/themoviedb.org/list/123",  # foreign host, path mention
+        "https://themoviedb.org.evil.tld/list/1",  # lookalike host
+        "https://www.themoviedb.org/list/",  # no ID at all
+        "not a list id",
+    ],
+)
+def test_tmdb_rejects_non_tmdb_list_urls(supplied):
+    """Only a real TMDb host with a numeric list ID is accepted."""
+    with pytest.raises(ValueError, match="Invalid TMDb list"):
+        tmdb._normalize_tmdb_list_id(supplied)
+
+
+@pytest.mark.parametrize("supplied", ["", "   "])
+def test_tmdb_blank_list_id_is_reported_as_missing(supplied):
+    """A blank ID is "missing", not a URL error; it must not reach the API."""
+    with (
+        patch("tmdb.network.get") as mock_get,
+        pytest.raises(ValueError, match="A TMDb List ID is required"),
+    ):
+        tmdb.fetch_tmdb_list(supplied, "key")
+
+    assert mock_get.call_count == 0
+
+
+def test_tmdb_rejected_url_fails_before_any_request():
+    """A rejected URL must not reach the network."""
+    with (
+        patch("tmdb.network.get") as mock_get,
+        pytest.raises(ValueError, match="Invalid TMDb list URL"),
+    ):
+        tmdb.fetch_tmdb_list("https://evil.example/themoviedb.org/list/123", "key")
+
+    assert mock_get.call_count == 0
+
+
 # --- mal.fetch_mal_list ---------------------------------------------------
 
 
@@ -545,3 +618,67 @@ def test_letterboxd_rejects_foreign_host_before_any_request():
 def test_letterboxd_accepts_real_list_urls(supplied, expected):
     """Real Letterboxd URLs and scheme-less input keep working."""
     assert letterboxd._validate_list_url(supplied) == expected
+
+
+# --- Trakt list identifiers ----------------------------------------------
+# The Trakt parse searched the raw input for ``trakt.tv/users/…``, so a URL
+# on an unrelated host that merely mentioned that path (in a query string)
+# was accepted and its username/slug were then fetched from the Trakt API.
+
+
+@pytest.mark.parametrize(
+    ("supplied", "expected"),
+    [
+        (
+            "https://trakt.tv/users/jane/lists/my-list",
+            ("jane", "my-list"),
+        ),
+        (
+            "https://www.trakt.tv/users/jane/lists/my-list/",
+            ("jane", "my-list"),
+        ),
+        # Pasted from a chat client as Markdown link syntax.
+        (
+            "[my list](https://trakt.tv/users/jane/lists/my-list)",
+            ("jane", "my-list"),
+        ),
+        # Scheme-less URL keeps working.
+        ("trakt.tv/users/jane/lists/my-list", ("jane", "my-list")),
+        # Shorthand, including a username with a dot.
+        ("jane/my-list", ("jane", "my-list")),
+        ("jane.doe/my-list", ("jane.doe", "my-list")),
+    ],
+)
+def test_trakt_accepts_real_list_references(supplied, expected):
+    assert trakt._parse_trakt_list_url(supplied) == expected
+
+
+@pytest.mark.parametrize(
+    "supplied",
+    [
+        "https://evil.example/?u=trakt.tv/users/jane/lists/my-list",
+        "https://trakt.tv.evil.tld/users/jane/lists/my-list",
+        "not-trakt.tv/users/jane/lists/my-list",
+        "https://trakt.tv/users/jane/lists/",
+        "",
+        "invalid-url",
+    ],
+)
+def test_trakt_rejects_references_that_name_no_trakt_list(supplied):
+    """A non-Trakt host or a path-less URL is refused, not guessed at."""
+    with pytest.raises(ValueError, match="Invalid Trakt list URL"):
+        trakt._parse_trakt_list_url(supplied)
+
+
+def test_trakt_rejected_reference_fails_before_any_request():
+    """A rejected reference must not reach the network."""
+    with (
+        patch("trakt.network.get") as mock_get,
+        pytest.raises(ValueError, match="Invalid Trakt list URL"),
+    ):
+        trakt.fetch_trakt_list(
+            "https://evil.example/?u=trakt.tv/users/jane/lists/my-list",
+            "client_id",
+        )
+
+    assert mock_get.call_count == 0
