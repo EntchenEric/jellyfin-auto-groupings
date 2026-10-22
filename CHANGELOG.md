@@ -9,6 +9,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A Jellyfin field that is present but `null` no longer aborts a sync run.
+  `dict.get(key, {})` returns the default only when the key is *absent*, so
+  `item.get("ProviderIds", {}).get("Imdb")` raised `AttributeError` for the
+  `"ProviderIds": null` Jellyfin sends for items it never matched to a
+  provider. One such item failed the whole group: IMDb, Trakt, TMDb, AniList,
+  MyAnimeList and Letterboxd list groups all resolve matches through that
+  lookup, and the recommendations source uses the same pattern on recent
+  items. Non-object values such as a string or a list are skipped the same
+  way instead of being treated as a mapping.
+
+- `get_first_admin_user_id()` tolerates a user whose `Policy` is `null`.
+  The chained `u.get("Policy", {}).get("IsAdministrator")` raised
+  `AttributeError` on `"Policy": null`, which aborted the call rather than
+  moving on to the next user. Both the package client and the standalone
+  `jellyfin_groupings` client now skip such a user and fall back to the first
+  user that has an `Id`.
+
+- `group_movies_by_tag()` and `group_movies_by_genre()` in the standalone
+  `jellyfin_groupings` module skip `null` tag/genre lists and non-string
+  entries. `Tags: null` raised `TypeError: 'NoneType' object is not iterable`
+  and aborted the grouping pass for the entire library, while a non-string
+  entry would have produced an unusable group key.
+
+- Jellyfin responses whose body is valid JSON but not the expected container
+  raise a normal Jellyfin error instead of `AttributeError`/`TypeError`.
+  An error page served with status 200, or a proxy in front of the server,
+  can return a list, a string, or `null` where an object or an array is
+  expected. `fetch_jellyfin_items`, `get_user_recent_items`, and the paged
+  library walk now report `Expected a JSON object ...`; `get_libraries`,
+  `get_users`, and `get_library_id` report `Expected a JSON array ...`, and
+  drop array entries that are not objects rather than failing on them.
+
 - The confirmation dialog settles its promise on every close path.
   `showConfirmDialog()` attached click handlers only to its Confirm and
   Cancel buttons, while `hideModal()` also closes the dialog for the Escape

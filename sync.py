@@ -459,7 +459,14 @@ def _match_jellyfin_items_by_provider(
     # Index by provider ID for O(1) lookup
     jf_by_provider: dict[str, dict[str, Any]] = {}
     for item in raw_items:
-        val = item.get("ProviderIds", {}).get(provider_key)
+        # ``ProviderIds`` is ``null`` for items Jellyfin never matched to a
+        # provider, so ``.get(key, {})`` returns ``None`` (the default only
+        # applies when the key is absent) and the chained ``.get`` raised
+        # AttributeError, failing the whole group.
+        provider_ids = item.get("ProviderIds")
+        if not isinstance(provider_ids, dict):
+            continue
+        val = provider_ids.get(provider_key)
         if val:
             key = str(val).lower() if case_insensitive else str(val)
             jf_by_provider[key] = item
@@ -987,7 +994,11 @@ def _fetch_items_for_letterboxd_group(
     items_by_imdb: dict[str, dict[str, Any]] = {}
     items_by_tmdb: dict[str, dict[str, Any]] = {}
     for item in raw_items:
-        pids = item.get("ProviderIds", {})
+        # Items Jellyfin never matched carry ``ProviderIds: null``; a chained
+        # ``.get`` on that raised AttributeError and failed the whole group.
+        pids = item.get("ProviderIds")
+        if not isinstance(pids, dict):
+            continue
         imdb_v = pids.get("Imdb")
         if imdb_v:
             items_by_imdb[str(imdb_v).lower()] = item
@@ -1080,7 +1091,13 @@ def _fetch_items_for_recommendations_group(
         # Extract TMDb IDs and Media Type
         tmdb_requests = []
         for item in recent_items:
-            tmdb_id = item.get("ProviderIds", {}).get("Tmdb")
+            # ``ProviderIds`` is ``null`` for unmatched items, so the default
+            # in ``.get(key, {})`` never applied and the chained ``.get``
+            # raised AttributeError, aborting the recommendations group.
+            provider_ids = item.get("ProviderIds")
+            if not isinstance(provider_ids, dict):
+                continue
+            tmdb_id = provider_ids.get("Tmdb")
             item_type = item.get("Type")
             if tmdb_id and item_type in ("Movie", "Series"):
                 media_type = "movie" if item_type == "Movie" else "tv"

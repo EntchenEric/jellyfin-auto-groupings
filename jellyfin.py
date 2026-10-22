@@ -188,6 +188,73 @@ def _get_json(
     return _parse_json(response)
 
 
+def _get_json_object(
+    url: str,
+    *,
+    headers: dict[str, str] | None = None,
+    params: dict[str, Any] | None = None,
+    timeout: int = _DEFAULT_TIMEOUT,
+) -> dict[str, Any]:
+    """GET *url* and return the parsed JSON body, which must be an object.
+
+    Several endpoints read a field (``Items``) off the parsed body with
+    ``.get()``.  A Jellyfin build, an error page served with status 200, or a
+    proxy in front of the server can return valid JSON that is a list, a
+    string, or ``null`` instead of an object.  Calling ``.get()`` on those
+    raised ``AttributeError`` from deep inside a sync run, so the failure
+    surfaced as an unhandled crash rather than a normal Jellyfin error.
+
+    Args:
+        url: The URL to request.
+        headers: Optional HTTP headers to include.
+        params: Optional query-string parameters.
+        timeout: Request timeout in seconds (default ``_DEFAULT_TIMEOUT``).
+
+    Raises:
+        RuntimeError: If the request fails, the body is not valid JSON, or
+            the body is valid JSON but not an object.
+
+    """
+    data = _get_json(url, headers=headers, params=params, timeout=timeout)
+    if not isinstance(data, dict):
+        msg = f"Expected a JSON object from {url}, got {type(data).__name__}"
+        raise RuntimeError(msg)  # noqa: TRY004 - callers handle RuntimeError
+    return data
+
+
+def _get_json_list(
+    url: str,
+    *,
+    headers: dict[str, str] | None = None,
+    params: dict[str, Any] | None = None,
+    timeout: int = _DEFAULT_TIMEOUT,
+) -> list[dict[str, Any]]:
+    """GET *url* and return the parsed JSON body as a list of objects.
+
+    Endpoints such as ``/Library/VirtualFolders`` and ``/Users`` answer with a
+    bare JSON array, and callers iterate it expecting objects.  A body of
+    ``null``, a bare object, or a list holding non-object entries broke those
+    loops with ``TypeError``/``AttributeError``; entries that are not objects
+    are dropped instead.
+
+    Args:
+        url: The URL to request.
+        headers: Optional HTTP headers to include.
+        params: Optional query-string parameters.
+        timeout: Request timeout in seconds (default ``_DEFAULT_TIMEOUT``).
+
+    Raises:
+        RuntimeError: If the request fails, the body is not valid JSON, or
+            the body is not a JSON array.
+
+    """
+    data = _get_json(url, headers=headers, params=params, timeout=timeout)
+    if not isinstance(data, list):
+        msg = f"Expected a JSON array from {url}, got {type(data).__name__}"
+        raise RuntimeError(msg)  # noqa: TRY004 - callers handle RuntimeError
+    return [entry for entry in data if isinstance(entry, dict)]
+
+
 def _request_or_raise(
     method: str,
     url: str,
@@ -392,7 +459,7 @@ def fetch_jellyfin_items(
 
     return cast(
         "list[dict[str, Any]]",
-        _get_json(
+        _get_json_object(
             f"{base_url}/Items",
             headers=headers,
             params=params,
@@ -508,7 +575,7 @@ def _paginate_jellyfin(
         if params:
             page_params.update(params)
 
-        data = _get_json(
+        data = _get_json_object(
             f"{base_url}/{endpoint}",
             headers=headers,
             params=page_params,
@@ -572,7 +639,7 @@ def get_libraries(base_url: str, api_key: str, timeout: int = 30) -> list[str]:
     """
     return [
         name
-        for folder in _get_json(
+        for folder in _get_json_list(
             f"{base_url}/Library/VirtualFolders",
             headers=_auth_headers(api_key),
             timeout=timeout,
@@ -593,13 +660,10 @@ def get_users(base_url: str, api_key: str, timeout: int = 30) -> list[dict[str, 
         A list of user dictionaries.
 
     """
-    return cast(
-        "list[dict[str, Any]]",
-        _get_json(
-            f"{base_url}/Users",
-            headers=_auth_headers(api_key),
-            timeout=timeout,
-        ),
+    return _get_json_list(
+        f"{base_url}/Users",
+        headers=_auth_headers(api_key),
+        timeout=timeout,
     )
 
 
@@ -634,7 +698,7 @@ def get_user_recent_items(
     }
     return cast(
         "list[dict[str, Any]]",
-        _get_json(
+        _get_json_object(
             f"{base_url}/Users/{user_id}/Items",
             headers=_auth_headers(api_key),
             params=params,
@@ -765,7 +829,7 @@ def get_library_id(
         The string ItemId of the library if found, else None.
 
     """
-    for folder in _get_json(
+    for folder in _get_json_list(
         f"{base_url}/Library/VirtualFolders",
         headers=_auth_headers(api_key),
         timeout=timeout,
