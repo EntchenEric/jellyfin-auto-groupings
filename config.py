@@ -180,6 +180,46 @@ def _migrate_legacy_keys(cfg: dict[str, Any]) -> bool:
     return migrated
 
 
+def _quarantine_broken_config(reason: str) -> None:
+    """Move an unusable ``config.json`` aside so the original survives.
+
+    The file is renamed to ``config.json.corrupt.bak`` (or a timestamped
+    variant when that name is taken).  Renaming is intentional: overwriting
+    it would destroy the only copy of a hand-edited configuration after a
+    typo, which is exactly the state an administrator needs to inspect.
+
+    Failure to move the file is logged but never raised — the caller is
+    already on a recovery path and must still return usable defaults.
+
+    Args:
+        reason: Human-readable description of what was wrong with the file,
+            included in the log message.
+
+    """
+    cfg_path = Path(CONFIG_FILE)
+    logger.warning(
+        "Config file %s %s. Falling back to defaults.",
+        CONFIG_FILE,
+        reason,
+    )
+    backup_path = cfg_path.with_name(cfg_path.name + ".corrupt.bak")
+    try:
+        if backup_path.exists():
+            # Avoid collision by appending a timestamp
+            timestamp = datetime.now(tz=UTC).strftime("%Y%m%d_%H%M%S")
+            backup_path = cfg_path.with_name(
+                cfg_path.name + f".corrupt.{timestamp}.bak",
+            )
+        cfg_path.rename(backup_path)
+        logger.info("Backed up corrupt config to %s", backup_path)
+    except OSError:
+        logger.exception(
+            "Failed to backup corrupt config to %s (backup existed: %s)",
+            backup_path,
+            backup_path.exists(),
+        )
+
+
 def load_config() -> dict[str, Any]:
     """Load configuration from disk.
 
@@ -205,32 +245,24 @@ def load_config() -> dict[str, Any]:
         try:
             with Path(CONFIG_FILE).open("r", encoding="utf-8") as fh:
                 cfg = json.load(fh)
-            _fill_defaults(cfg, DEFAULT_CONFIG)
-            if _migrate_legacy_keys(cfg):
-                save_config(cfg)
+            if not isinstance(cfg, dict):
+                # A syntactically valid but non-object document (``[]``,
+                # ``"text"``, ``null``, ``42``) parses fine, then explodes in
+                # _fill_defaults with ``TypeError: list indices must be
+                # integers``. Catch it here so recovery matches the invalid
+                # JSON path instead of crashing every endpoint that loads
+                # the config.
+                _quarantine_broken_config(
+                    f"is valid JSON but not an object ({type(cfg).__name__})",
+                )
+                cfg = _default_config_copy()
+            else:
+                _fill_defaults(cfg, DEFAULT_CONFIG)
+                if _migrate_legacy_keys(cfg):
+                    save_config(cfg)
         except json.JSONDecodeError:
             # If the file is corrupt, backup and fall back to safe defaults
-            cfg_path = Path(CONFIG_FILE)
-            logger.warning(
-                "Config file %s contains invalid JSON. Falling back to defaults.",
-                CONFIG_FILE,
-            )
-            backup_path = cfg_path.with_name(cfg_path.name + ".corrupt.bak")
-            try:
-                if backup_path.exists():
-                    # Avoid collision by appending a timestamp
-                    timestamp = datetime.now(tz=UTC).strftime("%Y%m%d_%H%M%S")
-                    backup_path = cfg_path.with_name(
-                        cfg_path.name + f".corrupt.{timestamp}.bak",
-                    )
-                cfg_path.rename(backup_path)
-                logger.info("Backed up corrupt config to %s", backup_path)
-            except OSError:
-                logger.exception(
-                    "Failed to backup corrupt config to %s (backup existed: %s)",
-                    backup_path,
-                    backup_path.exists(),
-                )
+            _quarantine_broken_config("contains invalid JSON")
             cfg = _default_config_copy()
         except OSError:
             # If the file is unreadable, fall back to safe defaults
