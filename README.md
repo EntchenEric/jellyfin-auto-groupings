@@ -106,7 +106,9 @@ and items without a `PremiereDate`. Such items are skipped rather than
 aborting the sync.
 
 `process_groupings(..., dry_run=True)` never mutates the server: it reports the
-planned sort-name changes and creates no collections.
+planned sort-name changes and creates no collections. Items without a usable
+`Id` are skipped in both modes, because Jellyfin would reject the request for
+the whole collection rather than just that item.
 
 ## Development
 
