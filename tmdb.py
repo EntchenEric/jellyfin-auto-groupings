@@ -7,6 +7,7 @@ TMDb v3 list.
 from __future__ import annotations
 
 import logging
+import re
 import time
 from typing import Any, cast
 from urllib.parse import urlparse
@@ -28,6 +29,17 @@ _MAX_TMDB_PAGES: int = 50
 # bounded retry loop prevents a rate-limited item's recommendations from
 # being silently dropped while still bounding the total wait time.
 _MAX_RECOMMENDATION_RETRIES: int = 3
+
+#: Hosts that may serve a TMDb list page. The previous check was a substring
+#: test on the raw input, so any host mentioning ``themoviedb.org`` was
+#: accepted and its trailing path segment was used as the list ID.
+_TMDB_HOSTS: frozenset[str] = frozenset({"themoviedb.org", "www.themoviedb.org"})
+
+# Matches the list-ID segment of a TMDb list path, e.g. ``/list/8204231``.
+_TMDB_LIST_PATH_PATTERN: re.Pattern[str] = re.compile(r"/list/(\d+)(?:/|$)")
+
+# A bare list ID is passed through to the API as a single path segment.
+_TMDB_LIST_ID_PATTERN: re.Pattern[str] = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
 def _fetch_tmdb_page(
@@ -103,17 +115,54 @@ def _collect_tmdb_ids_from_page(
 
 
 def _normalize_tmdb_list_id(list_id: str) -> str:
-    """Normalize *list_id*: strip whitespace, extract from URL if needed.
+    """Normalize *list_id*: strip whitespace, extract the ID from a URL.
+
+    A pasted TMDb list URL carries the ID in the *first* path segment after
+    ``/list/``: real URLs are rendered as ``/list/8204231/my-list-name``. The
+    previous implementation took the last path segment, so a correct URL sent
+    the list's *slug* to the API and the group failed with a 404 (or, for a
+    slug that happens to be numeric, fetched an unrelated list).
+
+    A URL is accepted only when it points at a TMDb host, and the ID is read
+    from the path rather than from the whole input, so a lookalike host or a
+    stray mention of ``themoviedb.org`` cannot select a list.
 
     Args:
-        list_id: The TMDb list ID.
+        list_id: A bare list ID or a full TMDb list URL.
+
+    Returns:
+        The bare list ID, or the empty string when *list_id* is blank.
+
+    Raises:
+        ValueError: If *list_id* is neither a bare ID nor a genuine TMDb list
+            URL naming a numeric list.
 
     """
-    list_id = list_id.strip()
-    if "themoviedb.org/list/" in list_id:
-        parsed = urlparse(list_id)
-        list_id = parsed.path.strip("/").split("/")[-1]
-    return list_id
+    candidate = list_id.strip()
+    if not candidate:
+        return ""
+
+    if "themoviedb.org" in candidate:
+        # Tolerate a scheme-less input such as ``themoviedb.org/list/123``;
+        # without a scheme ``urlparse`` reports an empty hostname.
+        parsed = urlparse(candidate if "//" in candidate else f"https://{candidate}")
+        host = (parsed.hostname or "").lower()
+        if parsed.scheme in ("http", "https") and (
+            host in _TMDB_HOSTS or host.endswith(".themoviedb.org")
+        ):
+            path_match = _TMDB_LIST_PATH_PATTERN.search(parsed.path)
+            if path_match:
+                return path_match.group(1)
+        msg = (
+            f"Invalid TMDb list URL: {list_id!r}. "
+            "Expected format: https://www.themoviedb.org/list/8204231"
+        )
+        raise ValueError(msg)
+
+    if not _TMDB_LIST_ID_PATTERN.match(candidate):
+        msg = f"Invalid TMDb list ID: {list_id!r}. Expected a numeric list ID."
+        raise ValueError(msg)
+    return candidate
 
 
 def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
@@ -134,11 +183,13 @@ def fetch_tmdb_list(list_id: str, api_key: str) -> list[str]:
     if not api_key:
         msg = "A TMDb API Key is required to fetch TMDb lists."
         raise ValueError(msg)
+
+    # Normalise before the emptiness check so a whitespace-only value is
+    # rejected instead of being sent to the API as ``/list/``.
+    list_id = _normalize_tmdb_list_id(list_id)
     if not list_id:
         msg = "A TMDb List ID is required."
         raise ValueError(msg)
-
-    list_id = _normalize_tmdb_list_id(list_id)
 
     ids: list[str] = []
     seen: set[str] = set()
