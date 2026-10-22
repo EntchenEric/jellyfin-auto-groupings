@@ -128,3 +128,66 @@ def test_letterboxd_fetch_list():
             "https://letterboxd.com/user/list/test-list/"
         )
         assert res == ["12345"]
+
+
+# Real Letterboxd markup wraps a film's attributes over several lines, and each
+# film block is preceded by attributes of its own. Non-DOTALL patterns silently
+# found nothing there, so every film fell back to an extra HTTP request.
+_MULTILINE_LIST_HTML = """
+<ul>
+  <li class="poster-container">
+    <div class="film-poster" data-film-slug="the-godfather"
+         data-film-id="1">
+      <a href="https://www.themoviedb.org/movie/238/">x</a>
+    </div>
+  </li>
+  <li class="poster-container">
+    <div class="film-poster" data-film-slug="parasite-2019"
+         data-tmdb-id="496243"></div>
+  </li>
+  <li class="poster-container">
+    <div class="film-poster" data-film-slug="imdb-only">
+      <a href="https://www.imdb.com/title/tt0111161/">x</a>
+    </div>
+  </li>
+</ul>
+"""
+
+
+def test_letterboxd_extract_ids_multiline_markup():
+    found = letterboxd._extract_ids_from_list_page(_MULTILINE_LIST_HTML)
+    assert found == {
+        "the-godfather": "238",
+        "parasite-2019": "496243",
+        "imdb-only": "tt0111161",
+    }
+
+
+def test_letterboxd_extract_ids_does_not_bleed_between_films():
+    html = (
+        '<div data-film-slug="no-id-film"></div>'
+        '<div data-film-slug="later-film" data-tmdb-id="999"></div>'
+    )
+    found = letterboxd._extract_ids_from_list_page(html)
+    assert "no-id-film" not in found
+    assert found == {"later-film": "999"}
+
+
+def test_letterboxd_extract_ids_prefers_tmdb_attribute_over_links():
+    html = (
+        '<div data-film-slug="both" data-tmdb-id="555">'
+        '<a href="https://www.imdb.com/title/tt0000001/">x</a></div>'
+    )
+    assert letterboxd._extract_ids_from_list_page(html) == {"both": "555"}
+
+
+def test_letterboxd_list_page_ids_skip_per_film_fetch():
+    with patch("letterboxd.network.get") as mock_get:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.text = _MULTILINE_LIST_HTML
+        mock_get.return_value = mock_resp
+        ids = letterboxd.fetch_letterboxd_list("https://letterboxd.com/u/list/x/")
+
+    assert ids == ["238", "496243", "tt0111161"]
+    assert mock_get.call_count == 1, "list-page IDs must not trigger film fetches"

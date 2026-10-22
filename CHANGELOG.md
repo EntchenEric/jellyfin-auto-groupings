@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Letterboxd list imports no longer fall back to one HTTP request per film.
+  `_extract_ids_from_list_page` matched a film's slug and its TMDb/IMDb ID
+  with a non-DOTALL `.*?` across the whole page. Real Letterboxd markup wraps
+  a single film's attributes over several lines, so those patterns never
+  matched and every film was re-fetched from its detail page, making a list
+  import N+1 requests and prone to rate limiting. The page is now split into
+  per-film segments and each segment is scanned on its own, which also stops a
+  film without an ID from inheriting the next film's ID.
+
 - A malformed entry inside `groups` no longer aborts the whole sync run.
   `run_sync` called `.strip()` on `groups[].name` and used `sort_order` and
   `source_type` directly as dict keys and set members, so `"name": 42` raised
