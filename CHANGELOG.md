@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The confirmation dialog settles its promise on every close path.
+  `showConfirmDialog()` attached click handlers only to its Confirm and
+  Cancel buttons, while `hideModal()` also closes the dialog for the Escape
+  key, a backdrop click, and the × button. Those three paths removed the
+  dialog but never resolved the returned promise, so a caller awaiting the
+  answer hung forever: after pressing Escape on **Delete Grouping** or
+  **Clear All Groupings**, neither the deletion nor the cancellation ran and
+  the button appeared to do nothing. A new `onModalHide()` hook settles the
+  pending promise exactly once whenever the dialog is hidden, with `false`
+  unless the Confirm button was the trigger.
+
+- `hideModal()` notifies hide listeners only on a real open-to-closed
+  transition, so a redundant close of an already-hidden dialog cannot settle
+  a later, unrelated dialog.
+
+- A second `showConfirmDialog()` call while one is still open settles the
+  earlier promise as cancelled. Both calls share the same dialog element, so
+  the first caller would otherwise wait forever for an answer that the
+  replaced dialog can no longer deliver.
+
 - The Jellyfin item walk stops when the server repeats a page.
   `fetch_all_jellyfin_items` and `_paginate_jellyfin` advance `StartIndex`
   and trust the server to honour it. A reverse proxy that strips the
@@ -32,6 +52,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   normal multi-page walk.
 
 ### Added
+
+- `tests/frontend/confirm-dialog.test.js` covers all five close paths of the
+  confirmation dialog (Confirm, Cancel, Escape, backdrop, ×), the outcome of
+  each, and that a dismissal never leaks into the next dialog.
 
 - `tests/test_seasonal_dates.py` and
   `tests/frontend/seasonal-dates.test.js` cover the seasonal date pickers and

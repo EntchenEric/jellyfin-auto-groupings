@@ -101,6 +101,45 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+// Callbacks fired whenever a modal is hidden, keyed by modal id. A dialog that
+// owns a pending promise (see showConfirmDialog) registers here so every close
+// path — Escape, backdrop click, the × button — settles it. Without this the
+// promise stayed pending forever and the caller's `await` never resumed.
+const _hideListeners = new Map();
+
+//: Settles the confirmation dialog that is currently open, if any. A second
+//: call to showConfirmDialog() replaces the dialog contents, so the previous
+//: promise would otherwise stay pending forever.
+let _abandonPendingConfirm = null;
+
+/**
+ * Register *fn* to run when the modal with *id* is hidden.
+ * @param {string} id - Modal element id
+ * @param {Function} fn - Callback, invoked once per hide
+ * @returns {Function} Unregister function
+ */
+export function onModalHide(id, fn) {
+    if (!_hideListeners.has(id)) {
+        _hideListeners.set(id, new Set());
+    }
+    _hideListeners.get(id).add(fn);
+    return () => {
+        const listeners = _hideListeners.get(id);
+        if (!listeners) return;
+        listeners.delete(fn);
+        if (listeners.size === 0) _hideListeners.delete(id);
+    };
+}
+
+function _notifyModalHidden(id) {
+    const listeners = _hideListeners.get(id);
+    if (!listeners) return;
+    // Copy so a listener that unregisters itself does not disturb iteration.
+    for (const fn of Array.from(listeners)) {
+        fn();
+    }
+}
+
 export function showModal(id) {
     const el = document.getElementById(id);
     if (el) {
@@ -126,6 +165,7 @@ export function showModal(id) {
 export function hideModal(id) {
     const el = document.getElementById(id);
     if (el) {
+        const wasOpen = el.style.display !== 'none';
         el.style.display = 'none';
         // Hide modal from assistive technology when not visible
         el.setAttribute('aria-hidden', 'true');
@@ -148,6 +188,9 @@ export function hideModal(id) {
         if (!hasVisible) {
             document.body.classList.remove('modal-open');
         }
+        // Only report a real transition, so a redundant hideModal() call on an
+        // already-closed dialog cannot settle a fresh pending promise.
+        if (wasOpen) _notifyModalHidden(id);
     }
 }
 
@@ -228,6 +271,12 @@ export function showErrorDialog(msg) {
  * @returns {Promise<boolean>} Resolves to true if confirmed, false if cancelled
  */
 export function showConfirmDialog(title, message, confirmText = 'Confirm', cancelText = 'Cancel') {
+    if (_abandonPendingConfirm) {
+        const abandon = _abandonPendingConfirm;
+        _abandonPendingConfirm = null;
+        abandon();
+    }
+
     return new Promise((resolve) => {
         const modal = getEl('confirm-dialog-modal');
         const titleEl = getEl('confirm-dialog-title');
@@ -245,6 +294,26 @@ export function showConfirmDialog(title, message, confirmText = 'Confirm', cance
         okBtn.textContent = confirmText;
         cancelBtn.textContent = cancelText;
 
+        // ``outcome`` holds the answer for the current close. A close that did
+        // not come from the confirm button (Escape, backdrop, ×) keeps the
+        // default ``false``, which is the documented cancel behaviour.
+        let outcome = false;
+        let settled = false;
+        let unregisterHide = null;
+
+        const settle = (value) => {
+            if (settled) return;
+            settled = true;
+            if (_abandonPendingConfirm === cancelPending) _abandonPendingConfirm = null;
+            if (unregisterHide) unregisterHide();
+            unregisterHide = null;
+            cleanup();
+            resolve(value);
+        };
+
+        const cancelPending = () => settle(false);
+        _abandonPendingConfirm = cancelPending;
+
         const cleanup = () => {
             okBtn.removeEventListener('click', onConfirm);
             cancelBtn.removeEventListener('click', onCancel);
@@ -254,15 +323,15 @@ export function showConfirmDialog(title, message, confirmText = 'Confirm', cance
         };
 
         const onConfirm = () => {
+            outcome = true;
             hideModal('confirm-dialog-modal');
-            cleanup();
-            resolve(true);
+            settle(true);
         };
 
         const onCancel = () => {
+            outcome = false;
             hideModal('confirm-dialog-modal');
-            cleanup();
-            resolve(false);
+            settle(false);
         };
 
         okBtn.addEventListener('click', onConfirm);
@@ -270,6 +339,11 @@ export function showConfirmDialog(title, message, confirmText = 'Confirm', cance
         // Also close on backdrop click or X button
         const closeBtns = modal.querySelectorAll('.close-modal-btn');
         closeBtns.forEach(btn => btn.addEventListener('click', onCancel));
+
+        // Escape, backdrop click, and the × button call hideModal() directly
+        // and never reached the handlers above, leaving the promise pending
+        // forever — a caller awaiting the answer then hung silently.
+        unregisterHide = onModalHide('confirm-dialog-modal', () => settle(outcome));
 
         showModal('confirm-dialog-modal');
     });
