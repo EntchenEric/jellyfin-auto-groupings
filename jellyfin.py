@@ -644,6 +644,13 @@ def _paginate_jellyfin(
             # ``_filter_by_item_type`` with ``AttributeError`` on ``.get``.
             page_items = [entry for entry in raw_items if isinstance(entry, dict)]
 
+        # ``StartIndex`` counts the entries the *server* returned, so
+        # pagination must advance by the raw length. Advancing by the filtered
+        # length would re-request the discarded entries on the next page, and
+        # a page whose entries were all discarded would look empty and end the
+        # walk while valid items remained on later pages.
+        raw_count = len(raw_items)
+
         signature = _page_signature(page_items)
         if signature is not None and signature == previous_signature:
             # ``StartIndex`` is being ignored (stripped by a proxy, or not
@@ -660,9 +667,9 @@ def _paginate_jellyfin(
         yield page_items
 
         total = data.get("TotalRecordCount", 0)
-        start_index += len(page_items)
+        start_index += raw_count
         pages_fetched += 1
-        if not page_items:
+        if not raw_count:
             break
         if total and start_index >= total:
             break

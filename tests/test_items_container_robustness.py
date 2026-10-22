@@ -133,6 +133,46 @@ def test_paginated_walk_drops_non_object_entries():
     assert pages == [[{"Id": "a"}]]
 
 
+def test_paginated_walk_advances_by_raw_page_length():
+    """``StartIndex`` counts server entries, so it must skip discarded ones.
+
+    Advancing by the *filtered* length would re-request the entries dropped
+    from this page, duplicating every item that followed them.
+    """
+    pages_by_start = {
+        0: {"Items": [{"Id": "a"}, None, "junk"], "TotalRecordCount": 4},
+        3: {"Items": [{"Id": "b"}], "TotalRecordCount": 4},
+    }
+    starts: list[int] = []
+
+    def _fake_get(url, **kwargs):
+        start = kwargs["params"]["StartIndex"]
+        starts.append(start)
+        return _json_response(pages_by_start[start])
+
+    with patch("jellyfin.network.get", side_effect=_fake_get):
+        pages = list(jellyfin._paginate_jellyfin("http://jf", "key", "Items"))
+
+    assert starts == [0, 3]
+    assert pages == [[{"Id": "a"}], [{"Id": "b"}]]
+
+
+def test_paginated_walk_continues_when_a_page_is_fully_discarded():
+    """A page of only unusable entries must not end the walk."""
+    pages_by_start = {
+        0: {"Items": [None, "junk"], "TotalRecordCount": 3},
+        2: {"Items": [{"Id": "b"}], "TotalRecordCount": 3},
+    }
+
+    def _fake_get(url, **kwargs):
+        return _json_response(pages_by_start[kwargs["params"]["StartIndex"]])
+
+    with patch("jellyfin.network.get", side_effect=_fake_get):
+        pages = list(jellyfin._paginate_jellyfin("http://jf", "key", "Items"))
+
+    assert pages == [[], [{"Id": "b"}]]
+
+
 # ---------------------------------------------------------------------------
 # Package client
 # ---------------------------------------------------------------------------

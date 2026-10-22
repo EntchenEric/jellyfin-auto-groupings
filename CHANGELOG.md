@@ -25,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The paged Jellyfin walk treats `"Items": null` as the end of the result set
   instead of logging a "not a list" warning on every empty page. A key holding
   a string or an object is still reported as malformed and stops the walk.
+  `StartIndex` now advances by the raw page length rather than the filtered
+  one: advancing by the filtered length re-requested the discarded entries and
+  duplicated every item that followed them, and a page whose entries were all
+  discarded ended the walk while valid items remained.
 
 - `get_users()` on both package clients returns `[]` for a body that is not an
   array. A `null` body previously came back as `None` despite the `list`
