@@ -88,9 +88,20 @@ class JellyfinClient:
             msg = "No users found on the Jellyfin server."
             raise RuntimeError(msg)
         for u in users:
-            if u.get("Policy", {}).get("IsAdministrator"):
-                return u["Id"]
-        return users[0]["Id"]
+            # ``Policy`` is ``null`` for a user Jellyfin has not fully
+            # configured; the default in ``.get(key, {})`` does not apply to a
+            # present-but-null value, so the chained ``.get`` raised
+            # AttributeError instead of falling through to the next user.
+            policy = u.get("Policy")
+            if isinstance(policy, dict) and policy.get("IsAdministrator"):
+                admin_id: str | None = u.get("Id")
+                if admin_id:
+                    return admin_id
+        first_id: str | None = users[0].get("Id")
+        if not first_id:
+            msg = "No users found on the Jellyfin server."
+            raise RuntimeError(msg)
+        return first_id
 
     def get_all_items(
         self, item_types: list[str] | None = None, parent_id: str | None = None

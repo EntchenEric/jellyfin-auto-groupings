@@ -105,6 +105,15 @@ All grouping helpers tolerate the shapes Jellyfin actually returns: a `null`
 and items without a `PremiereDate`. Such items are skipped rather than
 aborting the sync.
 
+The same applies to the fields the sync engine reads to *match* items. Jellyfin
+sends `"ProviderIds": null` for an item it never matched to a provider, and
+`"Policy": null` for a user it has not fully configured; a `null` there is
+treated as "no data" rather than as a mapping, so one such item cannot fail a
+whole group. A Jellyfin response whose body is valid JSON but not the expected
+shape (an object for item pages, an array for `/Users` and
+`/Library/VirtualFolders`) is reported as a Jellyfin error naming the type that
+arrived, instead of surfacing as an `AttributeError` mid-sync.
+
 `process_groupings(..., dry_run=True)` never mutates the server: it reports the
 planned sort-name changes and creates no collections. Items without a usable
 `Id` are skipped in both modes, because Jellyfin would reject the request for

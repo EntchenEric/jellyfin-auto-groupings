@@ -57,8 +57,15 @@ class JellyfinClient:
         if not users:
             return None
         for u in users:
-            if u.get("Policy", {}).get("IsAdministrator"):
-                return u.get("Id")
+            # ``Policy`` is ``null`` for a user Jellyfin has not fully
+            # configured; the default in ``.get(key, {})`` does not apply to a
+            # present-but-null value, so the chained ``.get`` raised
+            # AttributeError instead of falling through to the next user.
+            policy = u.get("Policy")
+            if isinstance(policy, dict) and policy.get("IsAdministrator"):
+                admin_id = u.get("Id")
+                if admin_id:
+                    return admin_id
         return users[0].get("Id")
 
     def get_collections(self) -> list[dict[str, Any]]:
@@ -204,8 +211,11 @@ def group_movies_by_tag(
         item_id = movie.get("Id")
         if not item_id:
             continue
-        for tag in movie.get("Tags", []):
-            if tag.startswith(tag_prefix):
+        # Jellyfin serialises an empty tag list as ``null``, and a tag entry
+        # can be a non-string; both used to raise from ``startswith`` and
+        # abort the grouping pass for the whole library.
+        for tag in movie.get("Tags") or []:
+            if isinstance(tag, str) and tag.startswith(tag_prefix):
                 group_name = tag[len(tag_prefix) :].strip()
                 if group_name:
                     groups.setdefault(group_name, []).append(item_id)
@@ -229,8 +239,11 @@ def group_movies_by_genre(
         item_id = movie.get("Id")
         if not item_id:
             continue
-        for genre in movie.get("Genres", []):
-            groups.setdefault(genre, []).append(item_id)
+        # ``null`` genres and non-string entries would create unusable group
+        # keys, so they are skipped.
+        for genre in movie.get("Genres") or []:
+            if isinstance(genre, str) and genre:
+                groups.setdefault(genre, []).append(item_id)
     return {g: ids for g, ids in groups.items() if len(ids) >= min_count}
 
 
