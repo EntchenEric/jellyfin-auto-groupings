@@ -73,6 +73,11 @@ Replace the entire configuration with the JSON request body.
 
 - `groups` must be a list (max 200), unique non-empty names, valid `source_type` values.
 - Cron expressions in `scheduler` and per-group schedules are validated.
+- `seasonal_start` / `seasonal_end` must be `MM-DD` dates that exist in that
+  month (`02-31` and `04-31` are rejected; `02-29` is accepted, since the
+  window compares month and day only). An unparseable window is treated as
+  "always in season" at sync time, so an unvalidated date would silently
+  disable a seasonal group's cleanup.
 
 **Response `200`:**
 

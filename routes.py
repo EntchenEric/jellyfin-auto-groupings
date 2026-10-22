@@ -15,7 +15,6 @@ import hmac
 import logging
 import math
 import os
-import re
 import shutil
 import time
 import urllib.parse
@@ -40,7 +39,7 @@ from werkzeug.exceptions import HTTPException
 import network
 from _common import DEFAULT_SEARCH_ROOTS as _DEFAULT_SEARCH_ROOTS
 from _common import SOURCE_TYPES as _ALLOWED_PREVIEW_TYPES
-from _common import normalize_group_relpath
+from _common import is_valid_mmdd, normalize_group_relpath
 from config import (
     _active_env_overrides,
     load_config,
@@ -656,16 +655,10 @@ def _validate_group_types(
         val = group.get(date_field)
         if val is not None and not isinstance(val, str):
             errors.append(f"{prefix}.{date_field} must be a string")
-        elif (
-            isinstance(val, str)
-            and val
-            and not re.match(
-                r"^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$",
-                val,
-            )
-        ):
+        elif isinstance(val, str) and val and not is_valid_mmdd(val):
             errors.append(
-                f"{prefix}.{date_field} must be in MM-DD format (e.g. 10-31)",
+                f"{prefix}.{date_field} must be an existing MM-DD date"
+                f" (e.g. 10-31, 02-29), got {val!r}",
             )
 
     # Validate rules field (complex query rules)

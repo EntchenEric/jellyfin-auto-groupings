@@ -192,6 +192,12 @@ The single source of truth is `config/config.json`, a JSON file with:
 
 - **Server settings** — Jellyfin URL, API key, path mappings
 - **Groups** — array of group definitions (source, sort, schedule, seasonality)
+
+A seasonal group is bounded by `seasonal_start` / `seasonal_end` in `MM-DD`
+form. The window is inclusive of the start and exclusive of the end, and may
+cross a year boundary (`12-01` to `01-01`). Dates are validated against a
+real calendar when the config is saved: an unparseable window is treated as
+"always in season", so it would never be cleaned up.
 - **Scheduler** — global schedule, cleanup schedule, exclusion list
 
 Environment variables can override sensitive values at runtime without
