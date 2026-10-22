@@ -178,6 +178,11 @@ Run a full sync for all configured groups (creates symlinks, libraries, collecti
 }
 ```
 
+A group whose own configuration is malformed (non-string `name`, `sort_order`,
+`source_type`, `source_value`, or `watch_state`) does not fail the request. It
+contributes an entry with `links: 0` and an `error` describing the bad field,
+and the remaining groups still sync.
+
 **Errors:** `400` validation errors; `429` rate limit (wait before retrying); `500` sync failure.
 
 ---
@@ -203,6 +208,7 @@ Preview items matched by a single grouping rule.
 | `type` | string | yes | `genre`, `studio`, `tag`, `year`, `actor`, `general`, or `complex` |
 | `value` | string | yes | Filter value or complex query string |
 | `watch_state` | string | no | `unwatched` or `watched` |
+| `item_type` | string | no | `movies` or `series` |
 
 **Response `200`:**
 
@@ -215,6 +221,11 @@ Preview items matched by a single grouping rule.
 ```
 
 Returns up to 15 preview titles.
+
+**Errors:** `400` when `type` is missing, unknown, or empty; when `value` is
+missing, empty, or not a string; or when `watch_state` / `item_type` is
+present with a non-string type. `watch_state` and `item_type` are trimmed and
+lower-cased before use, and an absent or `null` value means "no filter".
 
 ---
 

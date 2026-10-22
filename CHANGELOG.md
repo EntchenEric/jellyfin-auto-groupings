@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A malformed entry inside `groups` no longer aborts the whole sync run.
+  `run_sync` called `.strip()` on `groups[].name` and used `sort_order` and
+  `source_type` directly as dict keys and set members, so `"name": 42` raised
+  `AttributeError` and `"sort_order": ["SortName"]` raised
+  `TypeError: unhashable type: 'list'`. Either one turned `POST /api/sync` and
+  every scheduled sync into an HTTP 500 (or a silently dead background job) for
+  *all* groups, not just the broken one. Those fields now yield a per-group
+  result with an `error` for the offending entry while the remaining groups
+  still sync. `null` and absent values keep their previous defaults.
+- `POST /api/grouping/preview` returns `400` instead of `500` when
+  `watch_state` or `item_type` is not a string. Both were read straight from
+  the JSON body and `.strip()`ed, so `{"watch_state": 42}` raised
+  `AttributeError` and the whole preview failed. A non-string
+  `anilist_api_url` in a hand-edited `config.json` is now ignored with a
+  warning rather than crashing the same route.
 - A hand-edited `groups` value of the wrong type no longer crashes the web UI
   or silently disables every scheduled sync. `_fill_defaults` only replaces a
   stored value when the *default* is a dict, so `"groups": null` (or `42`,

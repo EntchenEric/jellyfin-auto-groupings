@@ -124,6 +124,13 @@ python -m ruff check .
 python -m ruff format --check .
 ```
 
+## Documentation
+
+- [docs/API.md](docs/API.md) - every HTTP endpoint, its request fields, and
+  its error responses
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - module responsibilities and
+  the sync pipeline
+
 ## License
 
 MIT

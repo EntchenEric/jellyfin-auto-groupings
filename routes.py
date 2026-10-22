@@ -484,6 +484,34 @@ def _validate_cron_expressions(new_config: dict[str, Any]) -> list[str]:
     return cron_errors
 
 
+def _optional_lower_str(data: dict[str, Any], key: str) -> str | None:
+    """Read an optional string field from a JSON body, trimmed and lower-cased.
+
+    ``/api/grouping/preview`` is called from JavaScript with values taken out
+    of ``<select>`` elements, but the body is client-controlled: a caller can
+    send a number, a list or an object for any field.  Those types used to
+    reach ``.strip()`` and raise ``AttributeError``, which surfaced as an HTTP
+    500 instead of a validation error.
+
+    Args:
+        data: The decoded JSON request body.
+        key: The field name to read.
+
+    Returns:
+        The trimmed, lower-cased value; ``""`` when the field is absent or
+        JSON ``null``; ``None`` when it holds any other non-string type, so
+        the caller can answer 400 instead of silently ignoring a filter the
+        user asked for.
+
+    """
+    value = data.get(key)
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        return None
+    return value.strip().lower()
+
+
 def _check_type(val: Any, expected_type: type, path: str, errors: list[str]) -> None:
     """Append an error to *errors* if *val* is not None and not of *expected_type*.
 
@@ -1133,15 +1161,27 @@ def preview_grouping() -> ResponseReturnValue:
     if not val:
         return _error("Value cannot be empty", 400)
 
-    watch_state = (data.get("watch_state") or "").strip().lower()
-    item_type = (data.get("item_type") or "").strip().lower()
+    watch_state = _optional_lower_str(data, "watch_state")
+    if watch_state is None:
+        return _error("'watch_state' must be a string", 400)
+    item_type = _optional_lower_str(data, "item_type")
+    if item_type is None:
+        return _error("'item_type' must be a string", 400)
 
     # Load config for external list API keys
     config = load_config()
     trakt_client_id = str(config.get("trakt_client_id") or "").strip()
     tmdb_api_key = str(config.get("tmdb_api_key") or "").strip()
     mal_client_id = str(config.get("mal_client_id") or "").strip()
-    raw_url = config.get("anilist_api_url") or None
+    # A hand-edited config.json can hold a non-string here; treat it as unset
+    # rather than letting .strip() turn the whole preview into a 500.
+    raw_url = config.get("anilist_api_url")
+    if raw_url is not None and not isinstance(raw_url, str):
+        logger.warning(
+            "Ignoring malformed 'anilist_api_url' config (expected string, got %s)",
+            type(raw_url).__name__,
+        )
+        raw_url = None
     anilist_api_url = raw_url.strip() if raw_url else None
 
     try:
