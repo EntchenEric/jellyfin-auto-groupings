@@ -139,6 +139,22 @@ default instead of aborting the run.
 For the package CLI (`--url`, `--api-key`, `--pattern`) see
 [CLI Usage](#cli-usage) above.
 
+## External list sources
+
+Every `*_list` source resolves an ordered list of external IDs and matches them
+against your Jellyfin library by `ProviderIds`. Two behaviours are worth
+knowing before you build a group on a long list:
+
+- **Pagination is followed to the end of the list.** IMDb, Trakt and
+  Letterboxd lists all return more than one page; the fetchers walk every page
+  and stop at the first one without a usable next-page control. A list longer
+  than the safety cap (50 pages) is truncated at the cap and logged as a
+  warning, so a partial result is never mistaken for the whole list.
+- **Items the library cannot match are skipped, not fatal.** A film with no
+  IMDb or TMDb ID in Jellyfin simply does not appear in the group; the rest of
+  the list still syncs. Duplicates (the same item matched through both ID
+  types) are collapsed so a file is never linked twice.
+
 ## Development
 
 ```bash
