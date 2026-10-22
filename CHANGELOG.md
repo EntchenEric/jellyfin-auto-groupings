@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The Jellyfin item walk stops when the server repeats a page.
+  `fetch_all_jellyfin_items` and `_paginate_jellyfin` advance `StartIndex`
+  and trust the server to honour it. A reverse proxy that strips the
+  parameter, or a Jellyfin build that ignores it for a particular query,
+  answered every request with the same page: the sync run hung while the
+  accumulated item list grew without bound. Both walkers now compare each
+  page's item IDs with the previous page and end the walk with a warning
+  instead of appending the same entries forever.
+
+- The item walk is capped at 1000 pages (`_MAX_ITEM_PAGES`). A server that
+  keeps returning fresh full pages is truncated at the cap and logged as a
+  warning, matching the external list fetchers, so a partial result is never
+  mistaken for the whole library.
+
+- `_paginate_jellyfin` ends the walk when `Items` is not an array instead of
+  handing an unusable value to the caller (which then failed later with an
+  unrelated error).
+
+- `tests/test_item_pagination_guards.py` covers both guards: the repeated
+  page, the page cap, non-array `Items`, a missing `TotalRecordCount`, and the
+  normal multi-page walk.
+
 ### Added
 
 - `tests/test_seasonal_dates.py` and

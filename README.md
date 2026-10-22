@@ -178,6 +178,20 @@ knowing before you build a group on a long list:
   the username must be letters, digits, `-` and `_`, because it is placed in
   the request path.
 
+## Library pagination
+
+The Jellyfin item walk requests pages with `StartIndex` / `Limit` and stops as
+soon as a page comes back shorter than the requested limit. Two guards keep a
+misbehaving server from hanging a sync run:
+
+- **A repeated page ends the walk.** If a proxy strips `StartIndex`, or the
+  server ignores it for a query, every request returns the same items. The
+  walk compares each page's item IDs with the previous page and stops with a
+  warning instead of appending the same items forever.
+- **The walk is capped at 1000 pages.** A server that keeps returning fresh
+  full pages is truncated at the cap, again with a warning, so a partial
+  result is never mistaken for the whole library.
+
 ## Development
 
 ```bash
