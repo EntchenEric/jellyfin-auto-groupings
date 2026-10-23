@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A non-integer `TotalRecordCount` no longer aborts a Jellyfin item walk.
+  The walk compared the running `StartIndex` directly against that value, so
+  a proxy or server that sent it as a string (`"250"`) or replaced it with an
+  object raised `TypeError: '>=' not supported between instances of 'int' and
+  'str'` **after** the first page had been yielded. The caller collected part
+  of the result and then lost the whole run, instead of receiving a short but
+  usable list. The count is now normalised by `_total_record_count()`: a
+  numeric string is converted (a `"250"` total still ends the walk as soon as
+  it is reached), while an object, list, float, bool, or non-numeric string is
+  logged as unusable and treated as "unknown". With no usable total the walk
+  falls back to the page-length rule, which is exactly how the TMDb list
+  walker already treats a malformed `total_pages`. Both
+  `_paginate_jellyfin` and `fetch_all_jellyfin_items` path through the same
+  comparison.
+
 - An `Items` container that is present but `null` no longer returns `None`.
   `body.get("Items", [])` falls back to the default only when the key is
   *absent*, but Jellyfin sends `"Items": null` for an empty result set. That

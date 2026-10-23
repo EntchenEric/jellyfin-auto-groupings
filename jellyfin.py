@@ -463,6 +463,55 @@ def _page_signature(page: list[dict[str, Any]]) -> tuple[str, ...] | None:
     return ids or None
 
 
+def _total_record_count(body: dict[str, Any]) -> int | None:
+    """Return ``TotalRecordCount`` from *body* as an ``int``, or ``None``.
+
+    The walk compares the running ``StartIndex`` against this value to decide
+    whether the result set is exhausted. Jellyfin sends a number, but a proxy
+    or a differently-versioned server can send it as a string
+    (``"TotalRecordCount": "250"``) or replace it with an object. Comparing
+    ``int >= str`` raises ``TypeError`` *after* the page was already yielded,
+    so the caller collected part of the result and then died mid-walk instead
+    of receiving a short but usable list.
+
+    A numeric string is still a usable hint, so it is converted. Anything
+    else — an object, a list, ``null``, or a bool — is treated as "unknown"
+    and reported as ``None``, which leaves the short-page rule and the page
+    cap in charge of ending the walk. This mirrors how the TMDb list walker
+    treats a malformed ``total_pages``.
+
+    Args:
+        body: The parsed JSON object returned by Jellyfin.
+
+    Returns:
+        The total as an ``int``, or ``None`` when it is missing/unusable.
+
+    """
+    raw = body.get("TotalRecordCount")
+    if isinstance(raw, bool):
+        # ``bool`` is an ``int`` subclass; ``True`` is not a meaningful count.
+        return None
+    if isinstance(raw, int):
+        return raw
+    if isinstance(raw, str):
+        try:
+            return int(raw.strip())
+        except ValueError:
+            logger.warning(
+                "Ignoring non-numeric TotalRecordCount %r — falling back to "
+                "page-length pagination",
+                raw,
+            )
+            return None
+    if raw is not None:
+        logger.warning(
+            "Ignoring malformed TotalRecordCount (expected number, got %s) — "
+            "falling back to page-length pagination",
+            type(raw).__name__,
+        )
+    return None
+
+
 def fetch_jellyfin_items(
     base_url: str,
     api_key: str,
@@ -666,12 +715,12 @@ def _paginate_jellyfin(
 
         yield page_items
 
-        total = data.get("TotalRecordCount", 0)
+        total = _total_record_count(data)
         start_index += raw_count
         pages_fetched += 1
         if not raw_count:
             break
-        if total and start_index >= total:
+        if total is not None and total > 0 and start_index >= total:
             break
         if pages_fetched >= _MAX_ITEM_PAGES:
             logger.warning(
