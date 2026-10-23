@@ -17,6 +17,7 @@ from jellyfin import (
     _MAX_ITEM_PAGES,
     _page_signature,
     _paginate_jellyfin,
+    _total_record_count,
     fetch_all_jellyfin_items,
 )
 
@@ -217,3 +218,107 @@ def test_paginate_tolerates_missing_total(monkeypatch, total):
     pages = list(_paginate_jellyfin("http://jf", "key", "Genres", limit=2))
 
     assert [[item["Id"] for item in page] for page in pages] == [["a", "b"], []]
+
+
+# ---------------------------------------------------------------------------
+# _total_record_count
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        (5, 5),
+        (0, 0),
+        ("5", 5),
+        (" 5 ", 5),
+        # Not usable as a count: the walk falls back to page length instead of
+        # raising ``TypeError: '>=' not supported`` after yielding a page.
+        ("", None),
+        ("many", None),
+        ({"count": 5}, None),
+        ([5], None),
+        (2.5, None),
+        # ``bool`` is an ``int`` subclass; ``True`` is not a meaningful count.
+        (True, None),
+        (False, None),
+    ],
+)
+def test_total_record_count_normalises_values(raw, expected):
+    assert _total_record_count({"TotalRecordCount": raw}) == expected
+
+
+def test_total_record_count_missing_key_is_none():
+    assert _total_record_count({}) is None
+
+
+def test_total_record_count_null_is_none():
+    assert _total_record_count({"TotalRecordCount": None}) is None
+
+
+@pytest.mark.parametrize("total", [{"count": 2}, [2], 2.0])
+def test_paginate_survives_malformed_total(monkeypatch, total):
+    """A non-integer total must not abort the walk after the first page.
+
+    ``start_index >= total`` raised ``TypeError`` for a string or object
+    total, so the caller kept the page it had already yielded and then lost
+    the run — the opposite of the graceful truncation the guards promise.
+    """
+    responses = {
+        0: {"Items": _items("a", "b"), "TotalRecordCount": total},
+        2: {"Items": [], "TotalRecordCount": total},
+    }
+    _patch_get_json(monkeypatch, responses)
+
+    pages = list(_paginate_jellyfin("http://jf", "key", "Genres", limit=2))
+
+    assert [[item["Id"] for item in page] for page in pages] == [["a", "b"], []]
+
+
+def test_paginate_honours_string_total(monkeypatch, caplog):
+    """A numeric string total still ends the walk without a spurious request."""
+    responses = {
+        0: {"Items": _items("a", "b"), "TotalRecordCount": "3"},
+        2: {"Items": _items("c"), "TotalRecordCount": "3"},
+    }
+    seen = _patch_get_json(monkeypatch, responses)
+
+    with caplog.at_level(logging.WARNING):
+        pages = list(_paginate_jellyfin("http://jf", "key", "Genres", limit=2))
+
+    assert [[item["Id"] for item in page] for page in pages] == [["a", "b"], ["c"]]
+    # Two pages cover the total of 3, so the walk stops instead of asking again.
+    assert seen == [0, 2]
+    assert "TotalRecordCount" not in caplog.text
+
+
+@pytest.mark.parametrize("total", [{"count": 2}, [2], "many"])
+def test_paginate_warns_once_for_unusable_total(monkeypatch, caplog, total):
+    """An unusable total is reported so a broken proxy is visible in the log."""
+    # ``_paginate_jellyfin`` has no short-page rule, so the walk needs an
+    # explicit empty page to stop: without a usable total only that (or the
+    # page cap) ends it.
+    responses = {
+        0: {"Items": _items("a", "b"), "TotalRecordCount": total},
+        2: {"Items": [], "TotalRecordCount": total},
+    }
+    _patch_get_json(monkeypatch, responses)
+
+    with caplog.at_level(logging.WARNING):
+        list(_paginate_jellyfin("http://jf", "key", "Genres", limit=2))
+
+    assert "TotalRecordCount" in caplog.text
+
+
+def test_paginate_still_ends_on_total_when_larger_than_page_count(monkeypatch):
+    """A valid total larger than the items seen keeps the walk going."""
+    responses = {
+        0: {"Items": _items("a", "b"), "TotalRecordCount": 4},
+        2: {"Items": _items("c", "d"), "TotalRecordCount": 4},
+    }
+    seen = _patch_get_json(monkeypatch, responses)
+
+    pages = list(_paginate_jellyfin("http://jf", "key", "Genres", limit=2))
+
+    assert [item["Id"] for page in pages for item in page] == ["a", "b", "c", "d"]
+    assert seen == [0, 2]
