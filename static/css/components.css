@@ -1680,6 +1680,11 @@ pre {
 .error-dialog-message {
     font-size: 0.95rem;
     line-height: 1.5;
+    /* Validation errors arrive as a summary with one bullet per field, joined
+       by newlines. The dialog sets textContent, so without this the bullets
+       would run together on one line. */
+    white-space: pre-line;
+    overflow-wrap: anywhere;
 }
 
 /* ── JavaScript-disabled warning ──────────────────────────── */

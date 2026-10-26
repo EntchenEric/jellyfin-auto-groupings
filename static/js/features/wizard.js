@@ -4,7 +4,6 @@ import { state } from '../core/state.js';
 import { apiPost, autoDetectPaths } from '../core/api.js';
 import { testConnection } from './test-connection.js';
 import { showToast, showErrorDialog, setLoading, showModal, hideModal, getEl } from '../core/ui.js';
-import { saveAllConfig } from './config.js';
 
 let wizardStep = 1;
 let isWizardServerConnected = false;

@@ -481,6 +481,15 @@ async function bootstrap() {
 
         if (!state.currentConfig.groups) state.currentConfig.groups = [];
 
+        // Remember what the in-memory list looked like so a rejected save can
+        // be undone. The server validates the whole config (unique non-empty
+        // names, per-group cron, ...), so a save can fail even though the
+        // form itself is filled in. Leaving the rejected entry in memory used
+        // to reintroduce the same error on the *next* save from anywhere else
+        // in the UI, with nothing pointing at the offending group.
+        const previousGroups = state.currentConfig.groups.slice();
+        const previousEditingIndex = state.editingIndex;
+
         if (state.editingIndex >= 0) {
             state.currentConfig.groups[state.editingIndex] = groupData;
             state.editingIndex = -1;
@@ -488,7 +497,15 @@ async function bootstrap() {
             state.currentConfig.groups.push(groupData);
         }
 
-        await saveAllConfig();
+        const saved = await saveAllConfig();
+        if (!saved) {
+            // Keep the form contents so the user can correct the name instead
+            // of retyping the whole grouping.
+            state.currentConfig.groups = previousGroups;
+            state.editingIndex = previousEditingIndex;
+            renderGroups();
+            return;
+        }
         groupForm.reset();
         resetFormUI();
     });

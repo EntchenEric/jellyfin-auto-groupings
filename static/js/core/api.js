@@ -6,11 +6,44 @@ const DEFAULT_TIMEOUT_MS = 60000;
 const AUTH_STORAGE_KEY = 'jfg_app_password';
 
 class ApiError extends Error {
-    constructor(status, message) {
+    /**
+     * @param {number} status HTTP status code
+     * @param {string} message Message to display
+     * @param {string[]} [details] Per-field errors from the server, if any
+     */
+    constructor(status, message, details = []) {
         super(message);
         this.status = status;
+        this.details = details;
         this.name = 'ApiError';
     }
+}
+
+/**
+ * Build the message shown for a failed request from its JSON body.
+ *
+ * Validation failures answer with a generic top-level message plus an
+ * `errors` array (e.g. "groups[1].name duplicates groups[0].name"). Showing
+ * only "Invalid config field type(s)" tells the user nothing about which
+ * field to fix, so the first few details are appended.
+ *
+ * @param {object} body Parsed response body (may be empty)
+ * @returns {string} Message suitable for a dialog
+ */
+function errorMessageFrom(body) {
+    const base =
+        (body && typeof body.message === 'string' && body.message) ||
+        'Request failed';
+    const details = Array.isArray(body && body.errors)
+        ? body.errors.filter(e => typeof e === 'string' && e)
+        : [];
+    if (details.length === 0) return base;
+
+    const MAX_DETAILS = 3;
+    const shown = details.slice(0, MAX_DETAILS);
+    const remaining = details.length - shown.length;
+    const suffix = remaining > 0 ? ` (+${remaining} more)` : '';
+    return `${base}\n\n${shown.map(d => `• ${d}`).join('\n')}${suffix}`;
 }
 
 export function setAppPassword(password) {
@@ -71,7 +104,10 @@ async function apiRequest(url, options = {}, timeoutMs = DEFAULT_TIMEOUT_MS) {
         }
         if (!res.ok) {
             const body = await res.json().catch(() => ({}));
-            throw new ApiError(res.status, body.message || 'Request failed');
+            const details = Array.isArray(body && body.errors)
+                ? body.errors.filter(e => typeof e === 'string')
+                : [];
+            throw new ApiError(res.status, errorMessageFrom(body), details);
         }
         return res.json();
     } catch (err) {

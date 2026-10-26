@@ -71,13 +71,25 @@ Replace the entire configuration with the JSON request body.
 
 **Validation:**
 
-- `groups` must be a list (max 200), unique non-empty names, valid `source_type` values.
+- `groups` must be a list of at most 200 entries, each with a `name` that is
+  non-empty after trimming and unique across the list (comparison ignores
+  surrounding whitespace, since that is stripped when the target folder is
+  created; case is significant). Two groups sharing a name write into the
+  same directory and the per-group scheduler registers one job per name, so
+  the duplicate would silently never run.
 - Cron expressions in `scheduler` and per-group schedules are validated.
 - `seasonal_start` / `seasonal_end` must be `MM-DD` dates that exist in that
   month (`02-31` and `04-31` are rejected; `02-29` is accepted, since the
   window compares month and day only). An unparseable window is treated as
   "always in season" at sync time, so an unvalidated date would silently
   disable a seasonal group's cleanup.
+- `target_path` and `media_path_on_host`, when non-empty, must name a path
+  that exists with the expected type (directory) and access (writable / 
+  readable respectively). A path the OS refuses to inspect is reported as a
+  validation error rather than a server error.
+
+Every validation failure returns the reasons in an `errors` array; the SPA
+shows the first few of them in its error dialog.
 
 **Response `200`:**
 
@@ -293,6 +305,12 @@ Delete selected folders from the target path. When `auto_create_libraries` is en
 
 **Response `207`:** Partial success with `{ "status": "partial_success", "deleted": N, "errors": [...] }`
 
+A folder name the OS refuses to inspect (for example a component longer than
+`NAME_MAX`, or an I/O error on a damaged entry) fails only that entry: it is
+reported in `errors` and the remaining folders in the same request are still
+deleted. An unavailable `target_path` answers `404` with an empty `deleted`
+count rather than a server error.
+
 ---
 
 ## `GET /api/browse`
@@ -316,7 +334,7 @@ Browse host directories for the path picker. Restricted to whitelisted roots (ho
 }
 ```
 
-**Errors:** `400` path cannot be resolved (e.g. symlink loop or malformed path); `403` path outside allowed roots.
+**Errors:** `400` path cannot be resolved or inspected (e.g. symlink loop, malformed path, or a component the OS rejects); `403` path outside allowed roots.
 
 Only immediate subdirectories are returned. Hidden (dot) entries and symbolic
 links are never listed: a link is not navigable in the picker because it may

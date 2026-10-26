@@ -73,6 +73,15 @@ function validateCronField(expr) {
     return null; // Deeper validation done server-side
 }
 
+/**
+ * Push the current in-memory config to the server.
+ *
+ * Client-side cron validation runs first so an obviously broken schedule does
+ * not need a round trip. Every early return is a failure, matching the
+ * ``false`` returned when the request itself fails.
+ *
+ * @returns {Promise<boolean>} ``true`` only when the server accepted the config.
+ */
 export async function saveAllConfig() {
     if (!state.currentConfig.scheduler) state.currentConfig.scheduler = {};
     state.currentConfig.scheduler.global_enabled = getEl('global_scheduler_enabled').checked;
@@ -83,27 +92,38 @@ export async function saveAllConfig() {
     // Client-side cron validation
     if (state.currentConfig.scheduler.global_enabled) {
         const err = validateCronField(state.currentConfig.scheduler.global_schedule);
-        if (err) { showErrorDialog(`Global schedule: ${err}`); return; }
+        if (err) { showErrorDialog(`Global schedule: ${err}`); return false; }
     }
     if (state.currentConfig.scheduler.cleanup_enabled) {
         const err = validateCronField(state.currentConfig.scheduler.cleanup_schedule);
-        if (err) { showErrorDialog(`Cleanup schedule: ${err}`); return; }
+        if (err) { showErrorDialog(`Cleanup schedule: ${err}`); return false; }
     }
     for (const g of state.currentConfig.groups) {
         if (g.schedule_enabled && g.schedule) {
             const err = validateCronField(g.schedule);
-            if (err) { showErrorDialog(`Group '${g.name}': ${err}`); return; }
+            if (err) { showErrorDialog(`Group '${g.name}': ${err}`); return false; }
         }
     }
 
     try {
         await apiSaveConfig(state.currentConfig);
-        showToast('Settings saved', 'success');
+    } catch (err) {
+        // Error already shown by api.js
+        return false;
+    }
+
+    // The server accepted the config, so this is a success regardless of what
+    // the UI refresh below does. Letting a refresh error fall through to the
+    // failure path would report a saved config as failed and make the caller
+    // roll back an entry the server already stored.
+    showToast('Settings saved', 'success');
+    try {
         renderGroups();
         updateSourceTypeOptions();
     } catch (err) {
-        // Error already shown by api.js
+        console.error('[Config] Post-save UI refresh failed:', err);
     }
+    return true;
 }
 
 export async function performSilentTest() {

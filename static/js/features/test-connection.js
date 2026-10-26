@@ -70,6 +70,9 @@ export async function testConnectionFromSidebar() {
         state.currentConfig.jellyfin_url = url;
         state.currentConfig.api_key = apiKey;
         state.currentConfig.target_path = getEl('target_path').value;
+        // A rejected save (the config now validates group names and paths) is
+        // reported by saveAllConfig itself; the metadata refresh below still
+        // runs because the server settings were accepted independently.
         await saveAllConfig();
         await refreshMetadata();
         await autoDetectIfEmpty();
