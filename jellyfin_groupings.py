@@ -270,8 +270,8 @@ def process_groupings(client: JellyfinClient, dry_run: bool = True) -> list[tupl
     changes = []
 
     for col in collections:
-        col_name = col.get("Name", "Collection")
-        collection_id = col.get("Id", "")
+        col_name = col.get("Name") or "Collection"
+        collection_id = col.get("Id") or ""
         if not collection_id:
             continue
 
@@ -279,12 +279,26 @@ def process_groupings(client: JellyfinClient, dry_run: bool = True) -> list[tupl
         if not items:
             continue
 
-        # Sort items by PremiereDate (oldest first), fallback to Name if date missing
-        def get_sort_key(item: dict[str, Any]) -> str:
-            premiere_date = item.get("PremiereDate", "")
-            if premiere_date:
-                return premiere_date
-            return item.get("Name", "").lower()
+        # Sort items by PremiereDate (oldest first), fallback to Name if date
+        # missing. The key must be a single comparable type: Jellyfin sends
+        # PremiereDate as a string normally but as a number in some payloads,
+        # and mixing the two raised ``TypeError: '<' not supported between
+        # instances of 'str' and 'int'`` and aborted the whole pass. A missing
+        # or non-string Name likewise raised ``AttributeError`` from
+        # ``.lower()``.
+        def get_sort_key(item: dict[str, Any]) -> tuple[int, str]:
+            premiere_date = item.get("PremiereDate")
+            if isinstance(premiere_date, str) and premiere_date:
+                return (0, premiere_date)
+            if isinstance(premiere_date, (int, float)) and not isinstance(
+                premiere_date, bool
+            ):
+                # A numeric year sorts as that year's first day, so it still
+                # interleaves with the ISO strings instead of landing after
+                # every one of them.
+                return (0, f"{int(premiere_date):04d}-01-01")
+            name = item.get("Name")
+            return (1, name.lower() if isinstance(name, str) else "")
 
         sorted_items = sorted(items, key=get_sort_key)
 
@@ -295,7 +309,7 @@ def process_groupings(client: JellyfinClient, dry_run: bool = True) -> list[tupl
 
             if item_id and current_sort != expected_sort_name:
                 changes.append(
-                    (item_id, item.get("Name", "Unknown"), expected_sort_name)
+                    (item_id, item.get("Name") or "Unknown", expected_sort_name)
                 )
                 if not dry_run:
                     success = client.update_item_sort_name(item_id, expected_sort_name)
