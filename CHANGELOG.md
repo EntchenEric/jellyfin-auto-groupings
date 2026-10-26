@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `GET /api/browse` no longer blanks the folder picker when one entry in the
+  directory cannot be inspected. The listing was built in a single
+  comprehension whose `entry.is_dir()` call *raises* for an entry it cannot
+  classify — a stale handle on a dropped mount, an I/O error — so the
+  comprehension aborted and the handler answered `400`, losing every sibling
+  directory the user could browse. Each entry is now classified on its own; an
+  unstatable one is logged and skipped. `403` for a path outside the browse
+  roots and the empty listing for an unreadable directory are unchanged.
+
 - `GET /api/cleanup` no longer returns HTTP 500 (and no items) when a single
   directory in the target tree cannot be read. The listing walk called
   `directory.iterdir()` unguarded inside an `except OSError` that covered the

@@ -318,6 +318,13 @@ Browse host directories for the path picker. Restricted to whitelisted roots (ho
 
 **Errors:** `400` path cannot be resolved (e.g. symlink loop or malformed path); `403` path outside allowed roots.
 
+Only immediate subdirectories are returned. Hidden (dot) entries and symbolic
+links are never listed: a link is not navigable in the picker because it may
+point outside the allowed roots. An entry that cannot be inspected (a stale
+handle on a dropped mount, an I/O error) is logged and skipped, so the sibling
+directories are still returned. An unreadable directory answers `200` with an
+empty `dirs` list rather than an error.
+
 ---
 
 ## `GET /api/test/results`
