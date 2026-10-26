@@ -148,13 +148,14 @@ def sanitize_filename(filename: str) -> str:
     silently collapsing into a plain name.
 
     Args:
-        filename: The filename to sanitize.
+        filename: The filename to sanitize. Non-string values are treated as
+            unusable rather than raising ``AttributeError`` from ``.strip()``.
 
     Returns:
         A single path segment safe for use as a file name, or ``"unnamed"``
         when nothing usable remains.
     """
-    if not filename or not filename.strip():
+    if not isinstance(filename, str) or not filename.strip():
         return "unnamed"
 
     name = filename.strip()
@@ -291,13 +292,15 @@ def normalize_title(title: str | None, remove_articles: bool = True) -> str:
     """Normalize a title by lowercasing and optionally removing leading articles.
 
     Args:
-        title: The title to normalize (or None).
+        title: The title to normalize (or None). Non-string values are treated
+            as missing rather than raising ``TypeError`` out of ``re.sub``.
         remove_articles: Whether to remove leading articles like "The", "A", "An".
 
     Returns:
-        Normalized title string in lowercase.
+        Normalized title string in lowercase, or ``""`` when *title* is not
+        usable text.
     """
-    if title is None or title == "":
+    if not isinstance(title, str) or not title:
         return ""
 
     # Replace punctuation characters with spaces or remove
@@ -338,12 +341,14 @@ def extract_year_from_title(title: str | None) -> tuple[str, int | None]:
     Looks for year in parentheses [YYYY] or (YYYY) at the end of the title.
 
     Args:
-        title: The title string (or None).
+        title: The title string (or None). Non-string values are treated as
+            missing rather than raising ``TypeError`` out of ``re.search``.
 
     Returns:
-        A tuple of (title_without_year, extracted_year_or_None).
+        A tuple of (title_without_year, extracted_year_or_None). A non-string
+        *title* yields ``("", None)``.
     """
-    if title is None or title == "":
+    if not isinstance(title, str) or not title:
         return ("", None)
 
     # Try to find year in parentheses/brackets at end: ... (2023) or ... [2023]

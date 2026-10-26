@@ -1,6 +1,8 @@
 """Formatting utilities for Jellyfin Groupings."""
 
 import math
+import re
+import unicodedata
 from typing import Any
 
 
@@ -36,6 +38,64 @@ def _coerce_finite_number(value: Any) -> float | None:
     if not math.isfinite(number):
         return None
     return number
+
+
+def _coerce_text(value: Any) -> str | None:
+    """Coerce *value* to a string, or ``None`` when it is not text.
+
+    Item fields are typed loosely in Jellyfin payloads and in stored config, so
+    a helper that declares ``str`` can still receive an ``int``, a ``list``, or
+    an object. Calling ``.strip()`` or ``re.match`` on those raised
+    ``AttributeError``/``TypeError`` from deep inside a formatting call, which
+    surfaced as a 500 instead of a blank cell.
+
+    Only real strings are accepted; a number is *not* valid text here, because
+    silently rendering a corrupt ``ProductionYear`` of ``20240101`` as a
+    date-looking string would hide the bad value rather than drop it.
+
+    Args:
+        value: The raw value to coerce.
+
+    Returns:
+        The value when it is a ``str``, otherwise ``None``.
+
+    """
+    if not isinstance(value, str):
+        return None
+    return value
+
+
+def _coerce_dimension(value: Any) -> int | None:
+    """Coerce *value* to a positive pixel dimension, or ``None``.
+
+    Width and height reach these helpers as ``int`` in normal payloads, but a
+    string from a hand-edited config or a partially scanned item must not be
+    rendered as ``"1920x1080.0"``. ``bool`` is rejected because ``True`` is not
+    a width — ``format_resolution(True, 1080)`` previously returned
+    ``"Truex1080"``.
+
+    Args:
+        value: The raw dimension to coerce.
+
+    Returns:
+        The dimension as a positive ``int``, or ``None`` if it cannot be used.
+
+    """
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value if value > 0 else None
+    if isinstance(value, float):
+        if not math.isfinite(value) or value <= 0 or not value.is_integer():
+            return None
+        return int(value)
+    if isinstance(value, str):
+        text = value.strip()
+        if not text.isdigit():
+            return None
+        parsed = int(text)
+        return parsed if parsed > 0 else None
+    return None
 
 
 def format_duration(seconds: float | None) -> str:
@@ -138,8 +198,11 @@ def format_resolution(width: int | None, height: int | None) -> str:
         height: Height in pixels (or None).
 
     Returns:
-        Formatted resolution string.
+        Formatted resolution string, or ``"Unknown"`` when either dimension
+        is missing or unusable.
     """
+    width = _coerce_dimension(width)
+    height = _coerce_dimension(height)
     if width is None or height is None:
         return "Unknown"
 
@@ -183,8 +246,10 @@ def truncate_text(text: str | None, max_width: int, suffix: str = "...") -> str:
         suffix: Suffix to append when truncating (default "...").
 
     Returns:
-        Truncated text string.
+        Truncated text string. Non-string *text* yields ``""`` so the declared
+        return type always holds; a list or dict used to be returned unchanged.
     """
+    text = _coerce_text(text)
     if text is None:
         return ""
     if max_width <= 0:
@@ -209,8 +274,10 @@ def slugify(text: str | None) -> str:
         text: The text to convert (or None).
 
     Returns:
-        A lowercase slug with hyphens separating words.
+        A lowercase slug with hyphens separating words, or ``""`` when *text*
+        is missing or not a string.
     """
+    text = _coerce_text(text)
     if text is None:
         return ""
 
@@ -223,13 +290,9 @@ def slugify(text: str | None) -> str:
     text = text.lower()
 
     # Normalize unicode to ASCII (e.g., café -> cafe)
-    import unicodedata
-
     text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
 
     # Replace any sequence of non-alphanumeric (except spaces) with a single hyphen
-    import re
-
     text = re.sub(r"[^a-z0-9 ]+", "-", text)
 
     # Replace multiple spaces with a single hyphen
@@ -255,12 +318,12 @@ def format_release_date(date_str: str | None) -> str:
         date_str: ISO format date string or similar (or None).
 
     Returns:
-        Date portion in YYYY-MM-DD format, or empty string.
+        Date portion in YYYY-MM-DD format, or empty string when the value is
+        missing, empty, or not a string.
     """
-    if date_str is None or date_str == "":
+    date_str = _coerce_text(date_str)
+    if not date_str:
         return ""
-
-    import re
 
     # Try to extract YYYY-MM-DD from ISO format
     match = re.match(r"(\d{4}-\d{2}-\d{2})", date_str)
