@@ -233,3 +233,25 @@ coverage improves).  A virtual Jellyfin mock server
 a real Jellyfin instance.
 
 For detailed test descriptions and how to run them, see [CONTRIBUTING.md](../CONTRIBUTING.md).
+
+## Accessibility
+
+The dashboard is server-rendered from Jinja partials in `templates/`, so a
+control without an accessible name still renders and still passes every
+behavioural test — the regression is invisible until someone uses a screen
+reader. `tests/test_template_accessibility.py` parses the partials directly
+and fails when:
+
+- an `<input>` / `<select>` / `<textarea>` has no accessible name. Give it a
+  wrapping `<label>`, a `<label for="...">`, or an `aria-label` (the last is
+  correct for a control whose visible context already names it, such as the
+  file picker behind a styled button).
+- an inline `<svg>` icon is not marked `aria-hidden="true"`. Icons next to a
+  text label are decorative; leaving them exposed makes a screen reader
+  announce an unnamed graphic before every button label.
+- a `<label for="...">` points at an id that no longer exists, in which case
+  the label is silently dropped from the accessibility tree.
+
+Labels that only exist for assistive technology use the `.sr-only` class from
+`static/css/components.css` rather than being omitted; a visually implied
+label (the day dropdown beside a month dropdown) still needs a name.

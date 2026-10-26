@@ -1369,6 +1369,22 @@ pre {
     top: 0;
 }
 
+/* Visually hidden but still announced by screen readers. Used for labels
+   whose visible text is implied by surrounding controls (e.g. the day
+   dropdown beside a month dropdown) so the control keeps an accessible name. */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
 /* ── Sync preview cards ────────────────────────────────── */
 .sync-preview-card {
     background: rgba(0, 0, 0, 0.2);

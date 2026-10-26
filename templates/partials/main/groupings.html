@@ -108,6 +108,7 @@
                 <span>Custom Sort Order <span class="badge-optional">(optional)</span></span>
             </label>
             <div id="sort_order_panel" class="toggle-panel">
+                <label class="sr-only" for="sort_order">Sort order</label>
                 <select id="sort_order">
                     <option value="">None (filesystem order)</option>
                     <option value="imdb_list_order">IMDb List Order</option>
@@ -144,6 +145,7 @@
                 <span>Individual Sync Schedule <span class="badge-optional">(optional)</span></span>
             </label>
             <div id="group_scheduler_panel" class="toggle-panel">
+                <label class="sr-only" for="group_schedule">Sync schedule (cron)</label>
                 <input type="text" id="group_schedule" placeholder="0 12 * * * (Every day at noon)">
                 <small>Leave empty to use only the global schedule.</small>
             </div>
@@ -166,6 +168,7 @@
                                 <option value="07">Jul</option><option value="08">Aug</option><option value="09">Sep</option>
                                 <option value="10">Oct</option><option value="11">Nov</option><option value="12">Dec</option>
                             </select>
+                            <label class="sr-only" for="seasonal_start_day">Start day</label>
                             <select id="seasonal_start_day" class="select-sm"></select>
                         </div>
                     </div>
@@ -179,6 +182,7 @@
                                 <option value="07">Jul</option><option value="08">Aug</option><option value="09">Sep</option>
                                 <option value="10">Oct</option><option value="11">Nov</option><option value="12">Dec</option>
                             </select>
+                            <label class="sr-only" for="seasonal_end_day">End day</label>
                             <select id="seasonal_end_day" class="select-sm"></select>
                         </div>
                     </div>
