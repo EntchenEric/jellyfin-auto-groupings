@@ -173,3 +173,94 @@ def test_validator_reports_every_problem():
     )
 
     assert len(errors) == 3, errors
+
+
+# ---------------------------------------------------------------------------
+# Normalised duplicates
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("first", "second"),
+    [
+        ("Anime/Action", "Anime//Action"),
+        ("Anime/Action", "Anime / Action "),
+        ("Action", "Action/"),
+        ("A\\B", "A/B"),
+    ],
+)
+def test_names_resolving_to_one_directory_are_duplicates(client, first, second):
+    """The comparison must use the folder path, not the trimmed name.
+
+    ``"Anime//Action"`` trims to itself and differs from ``"Anime/Action"``,
+    yet both create ``<target>/Anime/Action``, so the second overwrote the
+    first while the trimmed-name check reported no problem.
+    """
+    response = _post(client, [_group(first), _group(second)])
+
+    assert response.status_code == 400, response.get_json()
+    assert any("duplicates" in error for error in response.get_json()["errors"])
+
+
+def test_duplicate_error_names_the_original_index_after_normalisation():
+    """The reported index must point at the group that claimed the path."""
+    errors = routes._validate_group_names(
+        [{"name": "Anime/Action"}, {"name": "Other"}, {"name": "Anime//Action"}],
+    )
+
+    assert len(errors) == 1, errors
+    assert "groups[2]" in errors[0]
+    assert "groups[0]" in errors[0]
+
+
+# ---------------------------------------------------------------------------
+# Names the sync would always reject
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "name",
+    ["..", ".", "Anime/../etc", "C:/windows", "a\x00b"],
+)
+def test_unusable_folder_names_are_rejected_at_save_time(client, name):
+    """A save must not accept a name every sync will reject.
+
+    ``normalize_group_relpath`` refuses these so the group directory stays
+    inside the target path. Saving them anyway meant each sync answered
+    "Invalid group name" with nothing tying it to the configuration.
+    """
+    response = _post(client, [_group(name)])
+
+    assert response.status_code == 400, response.get_json()
+    assert any("not a usable folder name" in e for e in response.get_json()["errors"])
+
+
+def test_name_with_an_oversized_segment_is_rejected(client):
+    """A 256-byte component cannot be created on ext4; fail at save time."""
+    response = _post(client, [_group("A" * 256)])
+
+    assert response.status_code == 400, response.get_json()
+    assert any("255 bytes" in error for error in response.get_json()["errors"])
+
+
+def test_leading_slash_names_a_nested_folder_inside_the_target(client):
+    """A leading slash is dropped, not rejected: it is a nested folder name."""
+    response = _post(client, [_group("/etc/passwd")])
+
+    assert response.status_code == 200, response.get_json()
+
+
+def test_name_with_a_255_byte_segment_is_accepted(client):
+    """The limit is the filesystem's, so exactly 255 bytes stays usable."""
+    response = _post(client, [_group("A" * 255)])
+
+    assert response.status_code == 200, response.get_json()
+
+
+def test_long_rejected_name_is_elided_in_the_error(client):
+    """A multi-kilobyte name must not be echoed back in full."""
+    response = _post(client, [_group("../" + "A" * 5000)])
+
+    errors = response.get_json()["errors"]
+    assert any("not a usable folder name" in error for error in errors)
+    assert all(len(error) < 400 for error in errors), [len(e) for e in errors]

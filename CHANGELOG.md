@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `POST /api/config` accepted group names that every sync then refused. A
+  name with a `.`/`..` segment, an embedded NUL byte, a Windows drive path,
+  or a path segment longer than 255 bytes saved without complaint, and each
+  sync of that group answered `Invalid group name` — or, for the oversized
+  segment, failed with `ENAMETOOLONG` while creating the directory. Nothing in
+  the message connected the failure to the name, so the group looked broken
+  for no reason. These names are now rejected at save time with a message
+  naming the rule that was broken.
+
+- Duplicate group names were compared after trimming only, so
+  `Anime/Action` and `Anime//Action` — or `Anime/Action` and `Anime / Action`
+  — passed validation and then wrote into the same directory, with the second
+  group overwriting the first and its scheduler job never running. The
+  comparison now uses the same folder-path normalisation as the sync, while
+  staying case-sensitive.
+
+- `normalize_group_relpath` documented that absolute paths are rejected, but
+  a leading `/` is stripped like any other empty segment, so `/etc/passwd`
+  became the nested folder `etc/passwd`. That is the safe behaviour; the
+  docstring was corrected to describe it instead of promising a rejection.
+
 - Two overlapping sync runs corrupted each other's group directories. Each
   run clears a group's directory and then refills it one symlink at a time, so
   a second run entering the same group deleted links the first had just

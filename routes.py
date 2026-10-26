@@ -773,9 +773,19 @@ def _validate_group_names(groups: list[Any]) -> list[str]:
     of them never runs. An empty or whitespace-only name has no directory to
     write to at all, and the group fails at sync time instead of at save time.
 
-    Names are compared after stripping surrounding whitespace, mirroring the
-    normalisation used when creating the folder, so ``"Action "`` and
-    ``"Action"`` count as duplicates.
+    Duplicate detection compares the *normalised folder path* rather than the
+    trimmed name, because that is what the sync actually writes to. Names that
+    differ only in redundant separators or padding — ``"Anime/Action"`` and
+    ``"Anime//Action"`` or ``"Anime / Action"`` — resolve to one directory and
+    overwrote each other while passing a trimmed-name comparison.
+
+    A name that :func:`_common.normalize_group_relpath` rejects (``".."``,
+    an absolute path, a Windows drive path, an embedded NUL) is also rejected
+    here. Otherwise the save succeeded and every sync of that group failed
+    with "Invalid group name", so the user had no way to connect the failure
+    to the name they typed. The same applies to a path segment longer than the
+    filesystem's 255-byte name limit: the directory creation raised
+    ``ENAMETOOLONG`` on every run.
 
     Args:
         groups: The ``groups`` list from the request body. Entries are not
@@ -801,13 +811,35 @@ def _validate_group_names(groups: list[Any]) -> list[str]:
         if not stripped:
             errors.append(f"groups[{i}].name must not be empty")
             continue
-        if stripped in seen:
+
+        relpath = normalize_group_relpath(stripped)
+        if relpath is None:
             errors.append(
-                f"groups[{i}].name duplicates groups[{seen[stripped]}].name "
-                f"({stripped!r})",
+                f"groups[{i}].name ({_short(stripped)!r}) is not a usable "
+                "folder name; it must stay inside the target directory and "
+                "must not be absolute, contain '..' segments, or contain a "
+                "NUL byte",
             )
             continue
-        seen[stripped] = i
+
+        oversized = next(
+            (seg for seg in relpath.split("/") if len(seg.encode("utf-8")) > 255),
+            None,
+        )
+        if oversized is not None:
+            errors.append(
+                f"groups[{i}].name has a path segment longer than 255 bytes, "
+                "which the filesystem cannot create",
+            )
+            continue
+
+        if relpath in seen:
+            errors.append(
+                f"groups[{i}].name duplicates groups[{seen[relpath]}].name "
+                f"({_short(stripped)!r})",
+            )
+            continue
+        seen[relpath] = i
 
     return errors
 
