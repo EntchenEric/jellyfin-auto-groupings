@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `GET /api/cleanup` no longer returns HTTP 500 (and no items) when a single
+  directory in the target tree cannot be read. The listing walk called
+  `directory.iterdir()` unguarded inside an `except OSError` that covered the
+  whole traversal, so one inaccessible folder — a root-owned library
+  directory, a mount that dropped away, a stale NFS handle — discarded every
+  other deletable folder the user did want to see. An unreadable subtree is
+  now logged and skipped, and an entry whose `stat` fails (dangling link,
+  symlink loop, permission error) is not offered for deletion because it
+  cannot be classified. An unreadable target root yields an empty list rather
+  than an error page.
+
 - A non-integer `TotalRecordCount` no longer aborts a Jellyfin item walk.
   The walk compared the running `StartIndex` directly against that value, so
   a proxy or server that sent it as a string (`"250"`) or replaced it with an
