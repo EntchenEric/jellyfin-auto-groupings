@@ -258,6 +258,16 @@ Only these four types are accepted; unsupported types return a `400` error.
 
 List folders in the configured target path.
 
+Only immediate children are listed, except for the parents of nested group
+names (`Anime` for a configured `Anime/Action`): those are structural and are
+descended into instead of being offered for deletion. Symbolic links and
+dot-directories are never listed.
+
+A directory that cannot be read (permissions, a dropped mount, a stale network
+handle) is logged and skipped, so the rest of the listing is still returned.
+The endpoint answers `200` with an empty `items` list when the target path
+itself cannot be read.
+
 **Response `200`:**
 
 ```json

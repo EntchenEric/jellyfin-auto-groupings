@@ -1259,11 +1259,32 @@ def get_cleanup_items() -> ResponseReturnValue:
 
     def _walk(directory: Path, prefix: str, depth: int) -> list[dict[str, Any]]:
         found: list[dict[str, Any]] = []
-        for entry in directory.iterdir():
+        # A directory this process may not read (a root-owned library folder, a
+        # mount that dropped away mid-walk) raised out of ``iterdir()`` and the
+        # caller's single ``except OSError`` turned the *whole* listing into a
+        # 500 — the user lost every other deletable folder because of one
+        # unreadable one. Skip just that subtree and keep listing.
+        try:
+            children = list(directory.iterdir())
+        except OSError as exc:
+            logger.warning("cleanup: cannot read %s: %s", directory, exc)
+            return found
+        for entry in children:
             # is_dir() follows symlinks, so exclude links explicitly — a
             # symlink pointing outside the target must never be offered as a
             # deletable cleanup item (mirrors the browse endpoint).
-            if entry.is_symlink() or not entry.is_dir() or entry.name.startswith("."):
+            try:
+                if (
+                    entry.is_symlink()
+                    or not entry.is_dir()
+                    or entry.name.startswith(".")
+                ):
+                    continue
+            except OSError as exc:
+                # ``stat`` failed (dangling link, symlink loop, permission):
+                # the entry cannot be classified, so it is not safe to offer it
+                # for deletion.
+                logger.warning("cleanup: cannot stat %s: %s", entry, exc)
                 continue
             rel = f"{prefix}/{entry.name}" if prefix else entry.name
             if rel in parent_dirs and depth < max_depth:
@@ -1273,11 +1294,12 @@ def get_cleanup_items() -> ResponseReturnValue:
                 found.append({"name": rel, "is_configured": rel in configured_groups})
         return found
 
-    try:
-        entries = _walk(Path(target_base), "", 1)
-        return _success("", items=sorted(entries, key=lambda x: str(x["name"])))
-    except OSError as exc:
-        return _error(str(exc), 500)
+    # ``_walk`` is total: every filesystem call it makes is guarded, so an
+    # unreadable subtree is logged and skipped rather than raised here. The
+    # previous single ``except OSError`` around the whole walk is what turned
+    # one inaccessible folder into a 500 for the entire listing.
+    entries = _walk(Path(target_base), "", 1)
+    return _success("", items=sorted(entries, key=lambda x: str(x["name"])))
 
 
 def _delete_folder(
