@@ -1675,17 +1675,31 @@ def browse_directory() -> ResponseReturnValue:
         return _error("Access to this path is not permitted", 403)
 
     try:
-        entries: list[str] = sorted(
-            entry.name
-            for entry in Path(path).iterdir()
-            if not entry.name.startswith(".")
-            and entry.is_dir()
-            and not entry.is_symlink()
-        )
+        candidates = list(Path(path).iterdir())
     except PermissionError:
-        entries = []
+        candidates = []
     except OSError as exc:
         return _error(str(exc), 400)
+
+    # ``is_dir()`` follows a ``stat`` and raises for an entry it cannot
+    # classify (a stale handle on a dropped mount, an I/O error). Letting that
+    # escape the comprehension discarded every sibling the user could browse,
+    # so each entry is judged on its own and a bad one is skipped.
+    entries: list[str] = []
+    for entry in candidates:
+        if entry.name.startswith("."):
+            continue
+        try:
+            # is_dir() follows symlinks, so exclude links explicitly — a link
+            # pointing outside the browse roots must never be navigable.
+            if entry.is_symlink() or not entry.is_dir():
+                continue
+        except OSError as exc:
+            logger.warning("browse: cannot stat %s: %s", entry, exc)
+            continue
+        entries.append(entry.name)
+
+    entries.sort()
 
     parent: str | None = str(Path(path).parent) if path != os.sep else None
 
