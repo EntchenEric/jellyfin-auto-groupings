@@ -1,8 +1,11 @@
 """Tests for external metadata providers (Anilist, Trakt, Mal, TMDB, Letterboxd, IMDB)."""
 
+from http import HTTPStatus
 from unittest.mock import MagicMock, patch
+from urllib.parse import urlparse
 
 import pytest
+import requests
 
 import _common
 import anilist
@@ -173,6 +176,16 @@ def test_letterboxd_extract_ids_does_not_bleed_between_films():
     assert found == {"later-film": "999"}
 
 
+def test_letterboxd_extract_ids_keeps_first_block_for_a_repeated_slug():
+    """A slug that appears twice keeps the ID from its first block."""
+    html = (
+        '<div data-film-slug="dup" data-tmdb-id="111"></div>'
+        '<div data-film-slug="dup" data-tmdb-id="222"></div>'
+    )
+
+    assert letterboxd._extract_ids_from_list_page(html) == {"dup": "111"}
+
+
 def test_letterboxd_extract_ids_prefers_tmdb_attribute_over_links():
     html = (
         '<div data-film-slug="both" data-tmdb-id="555">'
@@ -302,3 +315,247 @@ def test_letterboxd_disabled_control_beats_rel_next():
     )
 
     assert letterboxd._has_next_page(html) is False
+
+
+# --- Letterboxd URL canonicalisation --------------------------------------
+# A URL pasted from a browser carries a query string, a fragment, or an
+# explicit ``/page/N/`` segment. Only the path identifies the list, and the
+# page walk appends ``/page/<n>/`` to whatever ``_validate_list_url`` returns,
+# so the query string ended up in front of the page segment:
+# ``…/x?utm_source=tw/page/2/`` resolved back to page 1. The walk then
+# re-read page 1 until the 50-page cap and returned only its films.
+
+
+@pytest.mark.parametrize(
+    "supplied",
+    [
+        "https://letterboxd.com/u/list/x/?page=2",
+        "https://letterboxd.com/u/list/x?utm_source=tw",
+        "https://letterboxd.com/u/list/x/#comments",
+        "https://letterboxd.com/u/list/x/page/3/",
+        "https://letterboxd.com/u/list/x/page/3",
+        "https://letterboxd.com/u/list/x/",
+    ],
+)
+def test_letterboxd_url_normalises_to_page_one(supplied):
+    """Every spelling of a list URL yields the same page-one base URL."""
+    assert letterboxd._validate_list_url(supplied) == "https://letterboxd.com/u/list/x"
+
+
+def test_letterboxd_scheme_less_url_gets_https():
+    """A pasted host-and-path is completed with ``https://``."""
+    assert (
+        letterboxd._validate_list_url("letterboxd.com/u/list/x")
+        == "https://letterboxd.com/u/list/x"
+    )
+
+
+@pytest.mark.parametrize("supplied", ["ftp://letterboxd.com/u/list/x", "https://"])
+def test_letterboxd_rejects_unsupported_scheme(supplied):
+    """Only http(s) URLs on Letterboxd may be fetched."""
+    with pytest.raises(ValueError, match="Invalid Letterboxd URL"):
+        letterboxd._validate_list_url(supplied)
+
+
+def test_letterboxd_query_string_does_not_break_pagination():
+    """A tracking query must not turn page 2 into a second read of page 1.
+
+    The fake server routes on the URL *path* the way Letterboxd does, so a
+    page segment that lands after ``?utm_source=tw`` is not seen as a page.
+    """
+    seen_urls: list[str] = []
+
+    def serve(url: str, **_kwargs: object) -> MagicMock:
+        seen_urls.append(url)
+        path = urlparse(url).path
+        page = int(path.rstrip("/").rsplit("/", 1)[1]) if "/page/" in path else 1
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.text = _letterboxd_page(page)
+        if page == 1:
+            resp.text += '<a class="next " href="/page/2/">Next</a>'
+        return resp
+
+    with (
+        patch("letterboxd.network.get", side_effect=serve),
+        patch("letterboxd.time.sleep"),
+    ):
+        ids = letterboxd.fetch_letterboxd_list(
+            "https://letterboxd.com/u/list/x?utm_source=tw",
+        )
+
+    assert ids == ["1", "2"]
+    assert seen_urls == [
+        "https://letterboxd.com/u/list/x/",
+        "https://letterboxd.com/u/list/x/page/2/",
+    ]
+
+
+# --- Letterboxd per-film detail pages -------------------------------------
+# List-page HTML does not always embed an ID, so the slug is resolved from
+# the film's own page. Each fallback order and each failure mode was
+# previously untested, leaving the whole per-film path uncovered.
+
+
+@pytest.mark.parametrize(
+    ("html", "expected"),
+    [
+        # An IMDb link wins over a TMDb link on the same page.
+        (
+            (
+                '<a href="https://www.imdb.com/title/tt0111161/">i</a>'
+                '<a href="https://www.themoviedb.org/movie/278/">t</a>'
+            ),
+            "tt0111161",
+        ),
+        # A TMDb link is used when no IMDb link is present.
+        ('<a href="https://www.themoviedb.org/movie/278/">t</a>', "278"),
+        # The data attribute is the last resort.
+        ('<div data-tmdb-id="496243"></div>', "496243"),
+        # A page with no recognisable ID yields None rather than raising.
+        ("<html><body>nothing here</body></html>", None),
+    ],
+)
+def test_letterboxd_film_page_id_extraction(html, expected):
+    """A film page resolves to the best available ID."""
+    resp = MagicMock()
+    resp.status_code = 200
+    resp.text = html
+
+    with patch("letterboxd.network.get", return_value=resp):
+        assert letterboxd._fetch_id_for_slug("some-film") == expected
+
+
+def test_letterboxd_film_page_http_error_returns_none(caplog):
+    """One unreachable film page skips that film instead of failing the list."""
+    resp = MagicMock()
+    resp.raise_for_status.side_effect = requests.HTTPError("500 Server Error")
+
+    with (
+        patch("letterboxd.network.get", return_value=resp),
+        caplog.at_level("WARNING", logger="letterboxd"),
+    ):
+        assert letterboxd._fetch_id_for_slug("some-film") is None
+
+    assert "some-film" in caplog.text
+
+
+def test_letterboxd_film_fetch_error_does_not_abort_list():
+    """A failing per-film fetch leaves the other films' IDs intact."""
+
+    def serve(url: str, **_kwargs: object) -> MagicMock:
+        resp = MagicMock()
+        if url.endswith("/film/broken/"):
+            resp.raise_for_status.side_effect = requests.ConnectionError("boom")
+            return resp
+        resp.status_code = 200
+        resp.text = '<a href="https://www.imdb.com/title/tt0000001/">i</a>'
+        return resp
+
+    list_page = '<div data-film-slug="good"></div><div data-film-slug="broken"></div>'
+
+    def route(url: str, **kwargs: object) -> MagicMock:
+        if "/film/" in url:
+            return serve(url, **kwargs)
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.text = list_page
+        return resp
+
+    with (
+        patch("letterboxd.network.get", side_effect=route),
+        patch("letterboxd.time.sleep"),
+    ):
+        ids = letterboxd.fetch_letterboxd_list("https://letterboxd.com/u/list/x/")
+
+    assert ids == ["tt0000001"]
+
+
+def test_letterboxd_film_results_tolerate_executor_errors():
+    """An unexpected worker failure records None instead of propagating."""
+    with patch.object(
+        letterboxd,
+        "_fetch_id_for_slug",
+        side_effect=RuntimeError("worker died"),
+    ):
+        results = letterboxd._fetch_ids_for_slugs(["a", "b"])
+
+    assert results == {"a": None, "b": None}
+
+
+def test_letterboxd_fetch_ids_for_slugs_empty_input():
+    """No slugs means no thread pool and an empty mapping."""
+    with patch.object(letterboxd, "ThreadPoolExecutor") as executor:
+        assert letterboxd._fetch_ids_for_slugs([]) == {}
+
+    executor.assert_not_called()
+
+
+# --- Letterboxd list-page failures ---------------------------------------
+
+
+def test_letterboxd_list_page_http_error_raises_runtime_error():
+    """An HTTP error on a list page names the page and the cause."""
+    resp = MagicMock()
+    resp.status_code = 500
+    resp.raise_for_status.side_effect = requests.HTTPError("500 Server Error")
+
+    with (
+        patch("letterboxd.network.get", return_value=resp),
+        pytest.raises(RuntimeError, match="page 1"),
+    ):
+        letterboxd.fetch_letterboxd_list("https://letterboxd.com/u/list/x/")
+
+
+def test_letterboxd_missing_later_page_ends_list():
+    """A 404 on page 2 is the end of the list, not an error."""
+    page_one = MagicMock()
+    page_one.status_code = 200
+    page_one.text = _letterboxd_page(1, '<a class="next " href="/page/2/">n</a>')
+    page_two = MagicMock()
+    page_two.status_code = HTTPStatus.NOT_FOUND
+
+    with (
+        patch("letterboxd.network.get", side_effect=[page_one, page_two]),
+        patch("letterboxd.time.sleep"),
+    ):
+        ids = letterboxd.fetch_letterboxd_list("https://letterboxd.com/u/list/x/")
+
+    assert ids == ["1"]
+
+
+def test_letterboxd_falls_back_to_film_href_slugs():
+    """Markup without ``data-film-slug`` still yields the film hrefs."""
+    resp = MagicMock()
+    resp.status_code = 200
+    resp.text = '<a href="/film/parasite-2019/">x</a>'
+
+    with (
+        patch("letterboxd.network.get", return_value=resp),
+        patch.object(
+            letterboxd,
+            "_fetch_ids_for_slugs",
+            return_value={"parasite-2019": "496243"},
+        ) as fetch_slugs,
+    ):
+        ids = letterboxd.fetch_letterboxd_list("https://letterboxd.com/u/list/x/")
+
+    assert ids == ["496243"]
+    fetch_slugs.assert_called_once_with(["parasite-2019"])
+
+
+def test_letterboxd_empty_pages_stop_at_the_guard(caplog):
+    """Three consecutive slug-less pages stop the walk instead of walking on."""
+    empty_page = MagicMock()
+    empty_page.status_code = 200
+    empty_page.text = "<html>no films</html>"
+
+    with (
+        patch("letterboxd.network.get", return_value=empty_page),
+        patch("letterboxd.time.sleep"),
+        caplog.at_level("INFO", logger="letterboxd"),
+    ):
+        ids = letterboxd.fetch_letterboxd_list("https://letterboxd.com/u/list/x/")
+
+    assert ids == []
+    assert "empty consecutive pages" in caplog.text

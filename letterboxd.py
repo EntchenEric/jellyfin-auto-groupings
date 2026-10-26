@@ -50,6 +50,9 @@ _CLASS_ATTR_PATTERN: re.Pattern[str] = re.compile(r'class="([^"]*)"')
 # Token marker of a disabled next-page link.
 _DISABLED_CLASS: str = "is-disabled"
 
+# Matches a trailing ``/page/<n>`` segment on a list URL.
+_PAGE_SEGMENT_PATTERN: re.Pattern[str] = re.compile(r"/page/\d+/?$")
+
 #: Host that must serve a Letterboxd list URL. The previous check was a
 #: substring test on the raw input, so ``https://evil.example/?r=letterboxd.com``
 #: passed and the fetcher then requested pages from the attacker's host — a
@@ -58,7 +61,11 @@ _LETTERBOXD_HOST: str = "letterboxd.com"
 
 
 def _validate_list_url(list_url: str) -> str:
-    """Return *list_url* without a trailing slash, or raise :exc:`ValueError`.
+    """Return the list's canonical URL, or raise :exc:`ValueError`.
+
+    The returned URL always addresses page 1 of the list and carries no
+    query string, no fragment and no trailing slash, so the caller can build
+    ``<url>/page/<n>/`` for later pages.
 
     Args:
         list_url: The candidate Letterboxd list URL.
@@ -70,7 +77,7 @@ def _validate_list_url(list_url: str) -> str:
         ValueError: If *list_url* is not an HTTP(S) URL on ``letterboxd.com``.
 
     """
-    cleaned = list_url.strip().rstrip("/")
+    cleaned = list_url.strip()
     # Tolerate a scheme-less input such as ``letterboxd.com/user/list/x``,
     # which the old substring check accepted; requests needs a scheme.
     if cleaned and "//" not in cleaned:
@@ -82,7 +89,16 @@ def _validate_list_url(list_url: str) -> str:
     ):
         msg = f"Invalid Letterboxd URL: {list_url!r}"
         raise ValueError(msg)
-    return cleaned
+
+    # A pasted browser URL routinely carries a tracking query string or a
+    # fragment, and may already point at ``/page/3/``. Only the path names the
+    # list, so the page walk has to start from a URL built purely from
+    # scheme, host and path: appending ``/page/2/`` to
+    # ``…/x?utm_source=tw`` produced ``…/x?utm_source=tw/page/2/``, which the
+    # server resolved back to page 1. The walk then re-fetched page 1 until
+    # the page cap and silently returned just the first page's films.
+    path = _PAGE_SEGMENT_PATTERN.sub("", parsed.path).rstrip("/")
+    return f"{parsed.scheme}://{parsed.netloc}{path}"
 
 
 # Ordered ID patterns for a single film's HTML segment. Higher-priority
