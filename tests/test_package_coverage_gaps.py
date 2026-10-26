@@ -754,9 +754,11 @@ def test_legacy_client_get_items_library_success():
         items = client.get_items("lib1")
         assert items == [{"Id": "i1", "Name": "Movie"}]
         mock_movies.assert_not_called()
-    assert mock_get.call_args.args[0] == (
-        "http://localhost:8096/Items?ParentId=lib1&Recursive=true"
-    )
+    assert mock_get.call_args.args[0] == "http://localhost:8096/Items"
+    assert mock_get.call_args.kwargs["params"] == {
+        "ParentId": "lib1",
+        "Recursive": "true",
+    }
 
 
 def test_legacy_client_get_items_library_error_returns_empty():

@@ -42,10 +42,11 @@ class JellyfinGroupings:
         if not self.server_url:
             err_msg = "Server URL is missing."
             raise ValueError(err_msg)
-        url = f"{self.server_url}/Items?IncludeItemTypes=BoxSet&Recursive=true"
+        url = f"{self.server_url}/Items"
+        params = {"IncludeItemTypes": "BoxSet", "Recursive": "true"}
         try:
             response = self.session.get(
-                url, headers=self._get_headers(), timeout=self.timeout
+                url, headers=self._get_headers(), params=params, timeout=self.timeout
             )
             response.raise_for_status()
             data = response.json()
@@ -59,10 +60,11 @@ class JellyfinGroupings:
         if not self.server_url:
             err_msg = "Server URL is missing."
             raise ValueError(err_msg)
-        url = f"{self.server_url}/Items?IncludeItemTypes=Movie&Recursive=true"
+        url = f"{self.server_url}/Items"
+        params = {"IncludeItemTypes": "Movie", "Recursive": "true"}
         try:
             response = self.session.get(
-                url, headers=self._get_headers(), timeout=self.timeout
+                url, headers=self._get_headers(), params=params, timeout=self.timeout
             )
             response.raise_for_status()
             data = response.json()
@@ -76,10 +78,15 @@ class JellyfinGroupings:
         if not self.server_url:
             err_msg = "Server URL is missing."
             raise ValueError(err_msg)
-        url = f"{self.server_url}/Collections?Name={name}"
+        url = f"{self.server_url}/Collections"
+        # ``name`` comes from a Jellyfin ``CollectionName`` field, so it can
+        # contain characters that mean something in a query string. Built as
+        # an f-string, an ``&`` truncated the name and a ``#`` dropped the
+        # rest of the URL; ``params`` escapes it properly.
+        params = {"Name": name}
         try:
             response = self.session.post(
-                url, headers=self._get_headers(), timeout=self.timeout
+                url, headers=self._get_headers(), params=params, timeout=self.timeout
             )
             response.raise_for_status()
             return response.json()
@@ -95,10 +102,11 @@ class JellyfinGroupings:
         if not item_ids:
             return
         ids_param = ",".join(item_ids)
-        url = f"{self.server_url}/Collections/{collection_id}/Items?Ids={ids_param}"
+        url = f"{self.server_url}/Collections/{collection_id}/Items"
+        params = {"Ids": ids_param}
         try:
             response = self.session.post(
-                url, headers=self._get_headers(), timeout=self.timeout
+                url, headers=self._get_headers(), params=params, timeout=self.timeout
             )
             response.raise_for_status()
         except requests.RequestException:

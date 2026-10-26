@@ -87,9 +87,10 @@ class JellyfinClient:
         Returns:
             List of collection dictionaries, empty list on error
         """
-        url = f"{self.server_url}/Items?IncludeItemTypes=BoxSet&Recursive=true"
+        url = f"{self.server_url}/Items"
+        params = {"IncludeItemTypes": "BoxSet", "Recursive": "true"}
         try:
-            resp = self.session.get(url, timeout=30)
+            resp = self.session.get(url, params=params, timeout=30)
             resp.raise_for_status()
         except requests.RequestException:
             logger.exception("Failed to get collections")
@@ -106,9 +107,10 @@ class JellyfinClient:
         Returns:
             List of item dictionaries in the collection, empty list on error
         """
-        url = f"{self.server_url}/Items?ParentId={collection_id}&Recursive=true"
+        url = f"{self.server_url}/Items"
+        params = {"ParentId": collection_id, "Recursive": "true"}
         try:
-            resp = self.session.get(url, timeout=30)
+            resp = self.session.get(url, params=params, timeout=30)
             resp.raise_for_status()
         except requests.RequestException:
             logger.exception(f"Failed to get collection items for {collection_id}")
@@ -126,11 +128,10 @@ class JellyfinClient:
         if not uid:
             logger.warning("No user ID available for getting movies")
             return []
-        url = (
-            f"{self.server_url}/Users/{uid}/Items?IncludeItemTypes=Movie&Recursive=true"
-        )
+        url = f"{self.server_url}/Users/{uid}/Items"
+        params = {"IncludeItemTypes": "Movie", "Recursive": "true"}
         try:
-            resp = self.session.get(url, timeout=30)
+            resp = self.session.get(url, params=params, timeout=30)
             resp.raise_for_status()
         except requests.RequestException:
             logger.exception("Failed to get movies")
@@ -148,9 +149,10 @@ class JellyfinClient:
             List of item dictionaries
         """
         if library_id:
-            url = f"{self.server_url}/Items?ParentId={library_id}&Recursive=true"
+            url = f"{self.server_url}/Items"
+            params = {"ParentId": library_id, "Recursive": "true"}
             try:
-                resp = self.session.get(url, timeout=30)
+                resp = self.session.get(url, params=params, timeout=30)
                 resp.raise_for_status()
                 data = resp.json()
                 return items_from_body(data)
@@ -175,9 +177,16 @@ class JellyfinClient:
             logger.warning("Cannot create collection with empty item list")
             return None
         ids_str = ",".join(item_ids)
-        url = f"{self.server_url}/Collections?Name={name}&Ids={ids_str}"
+        url = f"{self.server_url}/Collections"
+        # ``name`` is user-supplied (a group name or a tag), so it has to go
+        # through ``params`` rather than an f-string. Pasted into the query
+        # directly, an ``&`` split the name and dropped everything after it,
+        # a ``+`` became a space, and a ``#`` truncated the URL before
+        # ``Ids`` was ever sent — so "Best of 2024 #1" created an empty
+        # collection instead of failing loudly.
+        params = {"Name": name, "Ids": ids_str}
         try:
-            resp = self.session.post(url, timeout=30)
+            resp = self.session.post(url, params=params, timeout=30)
             resp.raise_for_status()
         except requests.RequestException:
             logger.exception(f"Failed to create collection '{name}'")

@@ -54,8 +54,9 @@ def test_root_jellyfin_groupings_get_collections():
         assert len(cols) == 1
         assert cols[0]["Name"] == "Test Collection"
         mock_get.assert_called_once_with(
-            "http://localhost:8096/Items?IncludeItemTypes=BoxSet&Recursive=true",
+            "http://localhost:8096/Items",
             headers=client._get_headers(),
+            params={"IncludeItemTypes": "BoxSet", "Recursive": "true"},
             timeout=10,
         )
 
@@ -75,8 +76,9 @@ def test_root_jellyfin_groupings_get_movies():
         assert len(movies) == 1
         assert movies[0]["Id"] == "mov1"
         mock_get.assert_called_once_with(
-            "http://localhost:8096/Items?IncludeItemTypes=Movie&Recursive=true",
+            "http://localhost:8096/Items",
             headers=client._get_headers(),
+            params={"IncludeItemTypes": "Movie", "Recursive": "true"},
             timeout=10,
         )
 
@@ -93,8 +95,9 @@ def test_root_jellyfin_groupings_create_collection():
         res = client.create_collection("Action Set")
         assert res["Id"] == "new_col"
         mock_post.assert_called_once_with(
-            "http://localhost:8096/Collections?Name=Action Set",
+            "http://localhost:8096/Collections",
             headers=client._get_headers(),
+            params={"Name": "Action Set"},
             timeout=10,
         )
 
@@ -109,8 +112,9 @@ def test_root_jellyfin_groupings_add_to_collection():
     with patch.object(client.session, "post", return_value=mock_resp) as mock_post:
         client.add_to_collection("col1", ["item1", "item2"])
         mock_post.assert_called_once_with(
-            "http://localhost:8096/Collections/col1/Items?Ids=item1,item2",
+            "http://localhost:8096/Collections/col1/Items",
             headers=client._get_headers(),
+            params={"Ids": "item1,item2"},
             timeout=10,
         )
 

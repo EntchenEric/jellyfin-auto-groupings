@@ -78,7 +78,8 @@ class TestJellyfinGroupings(unittest.TestCase):
         self.assertEqual(len(collections), 1)
         self.assertEqual(collections[0]["Name"], "Collection 1")
         mock_session_get.assert_called_once_with(
-            "http://localhost:8096/Items?IncludeItemTypes=BoxSet&Recursive=true",
+            "http://localhost:8096/Items",
+            params={"IncludeItemTypes": "BoxSet", "Recursive": "true"},
             timeout=30,
         )
 
