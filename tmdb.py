@@ -283,16 +283,39 @@ def get_tmdb_recommendations(
                             "Skipping recommendation item with non-object payload",
                         )
                         break
-                    for i, rec in enumerate(data.get("results", [])):
+                    # TMDb omits ``results`` for an item with no
+                    # recommendations, but a proxy or an error body can also
+                    # send ``"results": null`` (or a non-list). Iterating
+                    # that raised ``TypeError: 'NoneType' object is not
+                    # iterable``, which the caller's
+                    # ``except (RequestException, RuntimeError, ValueError)``
+                    # does not catch, so one such item aborted the whole sync
+                    # run instead of skipping that item.
+                    results = data.get("results")
+                    if not isinstance(results, list):
+                        logger.debug(
+                            "Skipping recommendation item with non-list 'results'",
+                        )
+                        break
+                    for i, rec in enumerate(results):
                         # A recommendation without an ``id`` used to become the
                         # literal string ``"None"``, which then went to Jellyfin
                         # as a TMDb provider id. Skip it instead.
                         if not isinstance(rec, dict):
                             continue
                         raw_id = rec.get("id")
-                        if raw_id is None or isinstance(raw_id, bool):
+                        # Only numbers and strings are real TMDb IDs: a
+                        # nested object or list would stringify into a
+                        # garbage provider id such as ``"{'a': 1}"`` and be
+                        # stored in the group's id list.
+                        if isinstance(raw_id, bool) or not isinstance(
+                            raw_id,
+                            (int, str),
+                        ):
                             continue
-                        rec_id = str(raw_id)
+                        rec_id = str(raw_id).strip()
+                        if not rec_id:
+                            continue
                         score = 1.0 / (i + 1)  # Higher weight for top recommendations
                         recommendation_counts[rec_id] = (
                             recommendation_counts.get(rec_id, 0.0) + score

@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `tmdb.get_tmdb_recommendations()` aborted the entire sync run when TMDb
+  answered `"results": null` for an item with no recommendations. The looped
+  value was iterated unguarded, so the `TypeError` escaped the caller's
+  `except (RequestException, RuntimeError, ValueError)` and one such item
+  killed the run instead of skipping that item. A non-list `results` is now
+  skipped, and a recommendation `id` that is an object or a list is dropped
+  instead of being stringified into a provider id such as `"{'a': 1}"`.
+
+- The `auto_group.py` request helpers (`get_libraries`, `get_library_items`,
+  `create_collection`, `add_to_collection`) raised `AttributeError` instead of
+  returning their documented empty list / `None` / `False` when
+  `JELLYFIN_URL` was not a string. `url.rstrip("/")` ran before the `try`
+  block, so a hand-edited `config.json` holding a number, `null`, or a list
+  killed the CLI on the first library. The URL is now validated by a shared
+  `_base_url()` helper, which also trims surrounding whitespace.
+
 - `jellyfin_groupings.process_groupings` aborted the whole collection pass when
   one item carried a numeric `PremiereDate` next to items with ISO strings
   (`TypeError: '<' not supported between instances of 'str' and 'int'`). The

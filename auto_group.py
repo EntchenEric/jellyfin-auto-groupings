@@ -182,6 +182,29 @@ def extract_base_title(title, patterns):
     return cleaned
 
 
+def _base_url(url):
+    """Return *url* without a trailing slash, or ``None`` when it is unusable.
+
+    Each request helper below promises to return an empty list or ``None`` on
+    error, but ``url.rstrip("/")`` ran *before* the ``try`` block. A
+    hand-edited ``config.json`` holding a number, ``null``, or a list in
+    ``JELLYFIN_URL`` therefore raised ``AttributeError`` out of the helper
+    instead of taking the documented error path, and the CLI died on the
+    first library instead of reporting that the server URL is unusable.
+
+    Args:
+        url: The configured Jellyfin base URL, which may be any JSON type.
+
+    Returns:
+        The URL without a trailing slash, or ``None`` when it is not a
+        non-empty string.
+    """
+    if not isinstance(url, str) or not url.strip():
+        logger.error("Jellyfin URL is not a usable string: %r", url)
+        return None
+    return url.strip().rstrip("/")
+
+
 def get_libraries(url, api_key):
     """Get all libraries from Jellyfin server.
 
@@ -192,7 +215,10 @@ def get_libraries(url, api_key):
     Returns:
         List of library dictionaries, empty list on error
     """
-    endpoint = f"{url.rstrip('/')}/Views"
+    base = _base_url(url)
+    if base is None:
+        return []
+    endpoint = f"{base}/Views"
     try:
         res = requests.get(endpoint, headers=get_headers(api_key), timeout=10)
         res.raise_for_status()
@@ -213,7 +239,10 @@ def get_library_items(url, api_key, parent_id):
     Returns:
         List of item dictionaries from the library, empty list on error
     """
-    endpoint = f"{url.rstrip('/')}/Items"
+    base = _base_url(url)
+    if base is None:
+        return []
+    endpoint = f"{base}/Items"
     params = {
         "ParentId": parent_id,
         "Recursive": "true",
@@ -280,7 +309,10 @@ def create_collection(url, api_key, collection_name, item_ids):
         logger.error("Cannot create collection with empty item list")
         return None
 
-    endpoint = f"{url.rstrip('/')}/Collections"
+    base = _base_url(url)
+    if base is None:
+        return None
+    endpoint = f"{base}/Collections"
     params = {"Name": collection_name, "Ids": ",".join(item_ids)}
     try:
         res = requests.post(
@@ -319,7 +351,10 @@ def add_to_collection(url, api_key, collection_id, item_ids):
         logger.warning("No items to add to collection")
         return False
 
-    endpoint = f"{url.rstrip('/')}/Collections/{collection_id}/Items"
+    base = _base_url(url)
+    if base is None:
+        return False
+    endpoint = f"{base}/Collections/{collection_id}/Items"
     params = {"Ids": ",".join(item_ids)}
     try:
         res = requests.post(

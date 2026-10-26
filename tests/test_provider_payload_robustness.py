@@ -75,6 +75,66 @@ def test_recommendation_non_object_entry_is_skipped():
     assert recs == ["8"]
 
 
+@pytest.mark.parametrize("results", [None, "junk", {"id": 1}, 0])
+def test_recommendation_non_list_results_is_skipped(results):
+    """``"results": null`` must not raise ``TypeError`` out of the fetcher.
+
+    TMDb omits the key for an item with no recommendations, but a proxy or an
+    error body can send ``null`` or another non-list. Iterating that raised
+    ``TypeError``, which the sync layer's
+    ``except (RequestException, RuntimeError, ValueError)`` does not catch, so
+    one such item aborted the whole sync run.
+    """
+    resp = MagicMock()
+    resp.status_code = 200
+    resp.json.return_value = {"results": results}
+
+    with patch("tmdb.network.get", return_value=resp):
+        recs = tmdb.get_tmdb_recommendations([("1", "movie")], "key")
+
+    assert recs == []
+
+
+def test_recommendation_continues_after_item_with_null_results():
+    """One item with ``null`` results must not drop the other items."""
+    payloads = [{"results": None}, {"results": [{"id": 42}]}]
+
+    with patch("tmdb.network.get") as mock_get:
+        responses = []
+        for payload in payloads:
+            resp = MagicMock()
+            resp.status_code = 200
+            resp.json.return_value = payload
+            responses.append(resp)
+        mock_get.side_effect = responses
+
+        recs = tmdb.get_tmdb_recommendations(
+            [("1", "movie"), ("2", "movie")],
+            "key",
+        )
+
+    assert recs == ["42"]
+
+
+def test_recommendation_skips_unusable_id_types():
+    """A nested object/list id must not stringify into a provider id."""
+    resp = MagicMock()
+    resp.status_code = 200
+    resp.json.return_value = {
+        "results": [
+            {"id": {"a": 1}},
+            {"id": [1, 2]},
+            {"id": "   "},
+            {"id": "12"},
+        ],
+    }
+
+    with patch("tmdb.network.get", return_value=resp):
+        recs = tmdb.get_tmdb_recommendations([("1", "movie")], "key")
+
+    assert recs == ["12"]
+
+
 # --- tmdb.fetch_tmdb_list -------------------------------------------------
 
 
