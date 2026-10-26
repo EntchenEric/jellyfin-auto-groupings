@@ -4,6 +4,8 @@ from typing import Any
 
 import requests
 
+from utils.helpers import string_list
+
 logger = logging.getLogger(__name__)
 
 
@@ -495,8 +497,8 @@ def get_movies_by_query(
         overview = str(item.get("Overview") or "").lower()
         # Jellyfin sends ``null`` for empty tag lists and may include non-string
         # entries; normalise before matching so a single bad item cannot abort
-        # the whole scan.
-        item_tags = [str(t).lower() for t in (item.get("Tags") or [])]
+        # the whole scan. A bare string is one tag, not one tag per character.
+        item_tags = [t.lower() for t in string_list(item.get("Tags"))]
         if query_lower in name or query_lower in overview:
             if tags:
                 if all(t.lower() in item_tags for t in tags):
@@ -520,9 +522,10 @@ def group_movies_by_tag(
     """
     tag_groups: dict[str, list[dict[str, Any]]] = {}
     for item in items:
-        for tag in item.get("Tags") or []:
-            # Skip empty or non-string tag values instead of raising.
-            if isinstance(tag, str) and tag:
+        for tag in string_list(item.get("Tags")):
+            # Skip empty values instead of raising; non-string entries never
+            # reach this loop, and a bare string stays one tag.
+            if tag:
                 tag_groups.setdefault(tag, []).append(item)
     return {tag: val for tag, val in tag_groups.items() if len(val) >= min_group_size}
 
@@ -541,9 +544,10 @@ def group_movies_by_genre(
     """
     genre_groups: dict[str, list[dict[str, Any]]] = {}
     for item in items:
-        for genre in item.get("Genres") or []:
-            # Skip empty or non-string genre values instead of raising.
-            if isinstance(genre, str) and genre:
+        for genre in string_list(item.get("Genres")):
+            # Skip empty values instead of raising; non-string entries never
+            # reach this loop, and a bare string stays one genre.
+            if genre:
                 genre_groups.setdefault(genre, []).append(item)
     return {
         genre: val for genre, val in genre_groups.items() if len(val) >= min_group_size

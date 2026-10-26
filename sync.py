@@ -56,6 +56,7 @@ from letterboxd import fetch_letterboxd_list
 from mal import fetch_mal_list
 from tmdb import fetch_tmdb_list, get_tmdb_recommendations
 from trakt import fetch_trakt_list
+from utils.helpers import string_list, studio_names
 
 logger = logging.getLogger(__name__)
 
@@ -1282,7 +1283,7 @@ def _match_condition(item: dict[str, Any], r_type: str, r_val: str) -> bool:
     try:
         if r_type == "genre":
             return any(
-                r_val == str(g).strip().lower() for g in (item.get("Genres") or [])
+                r_val == g.strip().lower() for g in string_list(item.get("Genres"))
             )
         if r_type == "actor":
             return any(
@@ -1292,13 +1293,12 @@ def _match_condition(item: dict[str, Any], r_type: str, r_val: str) -> bool:
             )
         if r_type == "studio":
             return any(
-                r_val == str(s.get("Name", "")).strip().lower()
-                for s in (item.get("Studios") or [])
-                if isinstance(s, dict)
+                r_val == name.strip().lower()
+                for name in studio_names(item.get("Studios"))
             )
         if r_type == "tag":
             return any(
-                r_val == str(t).strip().lower() for t in (item.get("Tags") or [])
+                r_val == t.strip().lower() for t in string_list(item.get("Tags"))
             )
         if r_type == "year":
             return _match_year(item.get("ProductionYear"), r_val)

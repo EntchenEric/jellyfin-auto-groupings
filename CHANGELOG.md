@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A bare string in `Tags`, `Genres`, or `Studios` is now read as one value
+  instead of being iterated character by character. Jellyfin normally sends
+  these fields as arrays, but a hand-edited payload, a proxy, or an older
+  server can put a plain string there, and iterating that string turned a
+  single tag `"action"` into six groups named `a`, `c`, `t`, `i`, `o`, `n`.
+  The same bug made a studio rule unable to match at all, because
+  `_match_condition` compared each letter against the rule value. All eight
+  affected call sites (`group_movies_by_tag`, `group_movies_by_genre`,
+  `group_by_tag`, `group_by_genre`, `group_by_studio`, `get_movies_by_query`,
+  plus the legacy `jellyfin_groupings` variants and `sync._match_condition`)
+  now share `utils.helpers.string_list` / `utils.helpers.studio_names`, so
+  one rule covers every caller.
+
 - `POST /api/config` now enforces the group-name rules `docs/API.md`
   documented but nothing checked: names must be non-empty after trimming and
   unique, and the list is capped at 200 entries. Duplicate names were the
