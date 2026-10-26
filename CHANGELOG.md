@@ -9,6 +9,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `POST /api/config` now enforces the group-name rules `docs/API.md`
+  documented but nothing checked: names must be non-empty after trimming and
+  unique, and the list is capped at 200 entries. Duplicate names were the
+  harmful case — both groups resolve to the same target directory, so the
+  second silently overwrote the first, and the per-group scheduler registers
+  jobs as `group_sync_<name>` so the later duplicate never ran at all. An
+  empty or whitespace-only name had no directory to write to and failed at
+  sync time instead of at save time. Comparison ignores surrounding
+  whitespace (stripped when the folder is created) and is case-sensitive.
+
+- A path the OS refuses to `stat` no longer turns into an HTTP 500.
+  `Path.exists()` / `Path.is_dir()` only swallow the "not there" errors, so a
+  single component longer than `NAME_MAX` (or an `EIO` on a damaged entry)
+  raised straight out of the handler:
+  `GET /api/browse?path=<4000 chars>` answered 500 instead of the `400` that
+  every other malformed path gets; `POST /api/cleanup` failed the *whole*
+  request — discarding the folders in the same body that could be deleted;
+  and `GET`/`POST /api/cleanup` raised in the guard that is supposed to
+  answer "nothing to list" / "target path not found". Those checks now go
+  through `routes._safe_exists` / `routes._safe_is_dir`, which treat an
+  unstattable path as absent; a rejected cleanup folder is reported in the
+  `errors` array of the `207` response while the rest proceed. Error messages
+  and log lines elide the offending name and quote only the OS reason, so a
+  multi-kilobyte name no longer floods either.
+
+- The SPA's error dialog now shows the reasons from a validation failure
+  instead of only the generic summary. `POST /api/config` answers with
+  `"Invalid config field type(s)"` plus an `errors` array naming each bad
+  field; the client kept only `message`, so the user was told something was
+  wrong with no clue which field to fix. Up to three details are listed with
+  a count of the rest, and `.error-dialog-message` preserves the line breaks.
+
+- A rejected save no longer looks like a successful one in the group form.
+  `saveAllConfig()` swallowed every failure, so the form cleared itself and
+  the rejected entry stayed in memory — reintroducing the same error on the
+  next save from anywhere in the UI, with nothing pointing at the offending
+  group. It now resolves `true` only when the server accepted the config; the
+  form keeps the typed values and rolls the in-memory change back on failure.
+  A post-save UI refresh error no longer counts as a failed save.
+
 - `GET /api/browse` no longer blanks the folder picker when one entry in the
   directory cannot be inspected. The listing was built in a single
   comprehension whose `entry.is_dir()` call *raises* for an entry it cannot

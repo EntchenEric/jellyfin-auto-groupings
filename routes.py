@@ -352,6 +352,91 @@ def _path_is_allowed(path: str) -> bool:
     return any(real == root or real.startswith(root + os.sep) for root in _BROWSE_ROOTS)
 
 
+def _short(value: object, limit: int = 80) -> str:
+    """Return a bounded, quotable rendering of *value* for logs and errors.
+
+    A rejected folder name or path can be thousands of characters long (a
+    client is free to POST one). Interpolating it verbatim buries the rest of
+    the message and floods the log, so the middle is elided once the value is
+    longer than *limit*.
+
+    Args:
+        value: The value to render.
+        limit: Maximum number of characters to keep before eliding.
+
+    Returns:
+        The rendered value, truncated with an explicit remainder marker.
+
+    """
+    text = str(value)
+    if len(text) <= limit:
+        return text
+    return f"{text[:limit]}… ({len(text) - limit} more chars)"
+
+
+def _os_error_reason(exc: BaseException) -> str:
+    """Return a bounded reason for *exc* without repeating the offending path.
+
+    ``OSError.__str__`` appends the failing path, and ``filename2`` for a
+    rename-style error. A rejected long path therefore produced a message
+    thousands of characters long, both in the log and in the HTTP response.
+    ``strerror`` carries the reason alone.
+
+    Args:
+        exc: The exception to describe.
+
+    Returns:
+        The OS reason, falling back to the exception type name.
+
+    """
+    strerror = getattr(exc, "strerror", None)
+    return str(strerror) if strerror else type(exc).__name__
+
+
+def _safe_exists(path: str | os.PathLike[str]) -> bool:
+    """Return whether *path* exists, treating an unstattable path as absent.
+
+    ``Path.exists()`` runs ``stat`` and only swallows ``ENOENT``-class errors;
+    it *raises* for a name the kernel rejects outright. A path component
+    longer than ``NAME_MAX`` therefore raises ``OSError(ENAMETOOLONG)`` from
+    every ``exists()`` / ``is_dir()`` call, and a config or request carrying
+    such a path used to abort the handler with an unhandled 500 instead of a
+    normal "not found" answer.
+
+    Args:
+        path: The filesystem path to test.
+
+    Returns:
+        ``True`` only when the path can be inspected and exists.
+
+    """
+    try:
+        return Path(path).exists()
+    except (OSError, ValueError) as exc:
+        logger.warning("Cannot stat %s: %s", _short(path), _os_error_reason(exc))
+        return False
+
+
+def _safe_is_dir(path: str | os.PathLike[str]) -> bool:
+    """Return whether *path* is a directory, treating an unstattable one as not.
+
+    Companion to :func:`_safe_exists` for callers that only need the directory
+    check; see there for why the underlying ``stat`` can raise.
+
+    Args:
+        path: The filesystem path to test.
+
+    Returns:
+        ``True`` only when the path can be inspected and is a directory.
+
+    """
+    try:
+        return Path(path).is_dir()
+    except (OSError, ValueError) as exc:
+        logger.warning("Cannot stat %s: %s", _short(path), _os_error_reason(exc))
+        return False
+
+
 def _get_jellyfin_config(
     missing_msg: str = "Server settings not configured",
 ) -> tuple[str, str]:
@@ -669,6 +754,62 @@ def _validate_group_types(
         _validate_group_rules(rules, prefix, errors)
 
 
+#: Maximum number of groupings accepted in one configuration.
+#: Documented in ``docs/API.md`` ("groups must be a list (max 200)"); the
+#: limit exists so one save cannot queue an unbounded amount of sync work.
+_MAX_GROUPS: int = 200
+
+
+def _validate_group_names(groups: list[Any]) -> list[str]:
+    """Validate the name of every group in *groups*.
+
+    ``docs/API.md`` promises that ``POST /api/config`` enforces "unique
+    non-empty names", but only the *type* of ``name`` was checked. Two groups
+    sharing a name are indistinguishable downstream: they write into the same
+    target directory, the second silently overwrites the first, and the
+    per-group scheduler registers the job under ``group_sync_<name>`` so one
+    of them never runs. An empty or whitespace-only name has no directory to
+    write to at all, and the group fails at sync time instead of at save time.
+
+    Names are compared after stripping surrounding whitespace, mirroring the
+    normalisation used when creating the folder, so ``"Action "`` and
+    ``"Action"`` count as duplicates.
+
+    Args:
+        groups: The ``groups`` list from the request body. Entries are not
+            assumed to be dicts; non-dicts are ignored here because
+            :func:`_validate_group_types` already reports them.
+
+    Returns:
+        A list of error messages; empty when every name is usable.
+
+    """
+    errors: list[str] = []
+    seen: dict[str, int] = {}
+
+    for i, group in enumerate(groups):
+        if not isinstance(group, dict):
+            continue
+        name = group.get("name")
+        if not isinstance(name, str):
+            # Type errors and the missing-name case are reported elsewhere;
+            # a ``null`` name is treated as absent, not as a duplicate.
+            continue
+        stripped = name.strip()
+        if not stripped:
+            errors.append(f"groups[{i}].name must not be empty")
+            continue
+        if stripped in seen:
+            errors.append(
+                f"groups[{i}].name duplicates groups[{seen[stripped]}].name "
+                f"({stripped!r})",
+            )
+            continue
+        seen[stripped] = i
+
+    return errors
+
+
 def _validate_config_types(new_config: dict[str, Any]) -> list[str]:
     """Validate basic types in *new_config*, returning a list of errors.
 
@@ -712,8 +853,14 @@ def _validate_config_types(new_config: dict[str, Any]) -> list[str]:
     # Groups
     groups = new_config.get("groups")
     if isinstance(groups, list):
+        if len(groups) > _MAX_GROUPS:
+            errors.append(
+                f"'groups' may contain at most {_MAX_GROUPS} entries, "
+                f"got {len(groups)}",
+            )
         for i, group in enumerate(groups):
             _validate_group_types(group, f"groups[{i}]", errors)
+        errors.extend(_validate_group_names(groups))
 
     # Validate jellyfin_url format when provided
     jellyfin_url = new_config.get("jellyfin_url")
@@ -737,13 +884,21 @@ def _validate_config_types(new_config: dict[str, Any]) -> list[str]:
         try:
             tp = Path(target_path_val)
             if not tp.exists():
-                errors.append(f"'target_path' path does not exist: {target_path_val}")
+                errors.append(
+                    f"'target_path' path does not exist: {_short(target_path_val)}",
+                )
             elif not tp.is_dir():
-                errors.append(f"'target_path' is not a directory: {target_path_val}")
+                errors.append(
+                    f"'target_path' is not a directory: {_short(target_path_val)}",
+                )
             elif not os.access(str(tp), os.W_OK | os.X_OK):
-                errors.append(f"'target_path' is not writable: {target_path_val}")
+                errors.append(
+                    f"'target_path' is not writable: {_short(target_path_val)}",
+                )
         except (OSError, ValueError) as exc:
-            errors.append(f"'target_path' validation error: {exc!s}")
+            errors.append(
+                f"'target_path' validation error: {_os_error_reason(exc)}",
+            )
 
     # Validate media_path_on_host is readable when provided
     media_path_val = new_config.get("media_path_on_host")
@@ -752,16 +907,22 @@ def _validate_config_types(new_config: dict[str, Any]) -> list[str]:
             mp = Path(media_path_val)
             if not mp.exists():
                 errors.append(
-                    f"'media_path_on_host' path does not exist: {media_path_val}",
+                    "'media_path_on_host' path does not exist: "
+                    f"{_short(media_path_val)}",
                 )
             elif not mp.is_dir():
                 errors.append(
-                    f"'media_path_on_host' is not a directory: {media_path_val}",
+                    f"'media_path_on_host' is not a directory: "
+                    f"{_short(media_path_val)}",
                 )
             elif not os.access(str(mp), os.R_OK | os.X_OK):
-                errors.append(f"'media_path_on_host' is not readable: {media_path_val}")
+                errors.append(
+                    f"'media_path_on_host' is not readable: {_short(media_path_val)}",
+                )
         except (OSError, ValueError) as exc:
-            errors.append(f"'media_path_on_host' validation error: {exc!s}")
+            errors.append(
+                f"'media_path_on_host' validation error: {_os_error_reason(exc)}",
+            )
 
     return errors
 
@@ -1239,7 +1400,7 @@ def get_cleanup_items() -> ResponseReturnValue:
     """Return a list of logical folders in the target directory."""
     config: dict[str, Any] = load_config()
     target_base: str = str(config.get("target_path") or "")
-    if not target_base or not Path(target_base).exists():
+    if not target_base or not _safe_exists(target_base):
         return _success("", items=[])
 
     configured_groups: set[str] = set()
@@ -1344,7 +1505,22 @@ def _delete_folder(
         resolved.relative_to(base_resolved)
     except ValueError:
         return False, f"Path traversal detected for: {name}"
-    if not path.exists() or not path.is_dir():
+    try:
+        exists_and_is_dir = path.exists() and path.is_dir()
+    except OSError as exc:
+        # ``exists()``/``is_dir()`` run ``stat`` and raise for a name the
+        # kernel rejects — ``ENAMETOOLONG`` for a component past ``NAME_MAX``,
+        # or ``EIO``/``ELOOP`` for a damaged entry. The caller expects
+        # ``(deleted, error)`` and turns an unhandled ``OSError`` into an
+        # HTTP 500 for the whole request, so report it as this folder's
+        # failure instead.
+        # ``OSError``'s own message repeats the offending path verbatim, which
+        # for a rejected long name is thousands of characters. Report only the
+        # reason and the already-elided name.
+        reason = exc.strerror or type(exc).__name__
+        logger.warning("cleanup: cannot stat %s: %s", _short(name), reason)
+        return False, f"Failed to inspect {_short(name)}: {reason}"
+    if not exists_and_is_dir:
         return False, None
     # Reject symlinks explicitly. ``path.is_dir()`` follows symlinks, so a
     # symlink pointing at a directory would otherwise pass the check above
@@ -1419,7 +1595,7 @@ def perform_cleanup() -> ResponseReturnValue:
 
     config: dict[str, Any] = load_config()
     target_base: str = str(config.get("target_path") or "")
-    if not target_base or not Path(target_base).exists():
+    if not target_base or not _safe_exists(target_base):
         return _error("Target path not found", 404)
 
     auto_create_libraries: bool = bool(config.get("auto_create_libraries"))
@@ -1667,8 +1843,22 @@ def browse_directory() -> ResponseReturnValue:
     except (OSError, RuntimeError, ValueError):
         return _error("Invalid path", 400)
 
-    # Fall back to parent if the supplied path resolves to a file
-    if not Path(path).is_dir():
+    # Fall back to parent if the supplied path resolves to a file.
+    #
+    # ``is_dir()`` runs ``stat``, which raises ``OSError`` for a path the
+    # kernel refuses outright — most visibly ``ENAMETOOLONG`` for a component
+    # over ``NAME_MAX``. ``resolve()`` above does not catch that case because
+    # it only resolves the parts that exist, so a long ``?path=`` aborted the
+    # handler with an unhandled 500 instead of the 400 that every other
+    # malformed path gets.
+    try:
+        is_dir = Path(path).is_dir()
+    except OSError as exc:
+        logger.warning(
+            "browse: cannot stat %s: %s", _short(path), _os_error_reason(exc)
+        )
+        return _error("Invalid path", 400)
+    if not is_dir:
         path = str(Path(path).parent)
 
     if not _path_is_allowed(path):
