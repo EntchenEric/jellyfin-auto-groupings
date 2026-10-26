@@ -334,3 +334,51 @@ def test_add_to_collection_no_usable_ids_sends_no_request(mock_post):
 def test_add_to_collection_returns_false_on_http_error(mock_post):
     mock_post.side_effect = OSError("boom")
     assert add_to_collection("http://u", "k", "coll1", ["abc"]) is False
+
+
+# ---------------------------------------------------------------------------
+# Unusable JELLYFIN_URL values
+# ---------------------------------------------------------------------------
+# ``config.json`` is user-editable, so JELLYFIN_URL can be any JSON type.
+# ``url.rstrip("/")`` used to run before the ``try`` block, so a number, null,
+# or a list raised ``AttributeError`` out of helpers that document an
+# empty-list/None return and killed the CLI on the first library.
+
+
+@pytest.mark.parametrize("url", [None, 5, ["http://x"], {"u": 1}, ""])
+@patch("requests.get")
+def test_get_libraries_tolerates_unusable_url(mock_get, url):
+    assert get_libraries(url, "key") == []
+    mock_get.assert_not_called()
+
+
+@pytest.mark.parametrize("url", [None, 5, ["http://x"], {"u": 1}, ""])
+@patch("requests.get")
+def test_get_library_items_tolerates_unusable_url(mock_get, url):
+    assert get_library_items(url, "key", "lib1") == []
+    mock_get.assert_not_called()
+
+
+@pytest.mark.parametrize("url", [None, 5, ["http://x"], {"u": 1}, ""])
+@patch("requests.post")
+def test_create_collection_tolerates_unusable_url(mock_post, url):
+    assert create_collection(url, "key", "Name", ["1"]) is None
+    mock_post.assert_not_called()
+
+
+@pytest.mark.parametrize("url", [None, 5, ["http://x"], {"u": 1}, ""])
+@patch("requests.post")
+def test_add_to_collection_tolerates_unusable_url(mock_post, url):
+    assert add_to_collection(url, "key", "coll", ["1"]) is False
+    mock_post.assert_not_called()
+
+
+@patch("requests.get")
+def test_get_libraries_trims_padded_url(mock_get):
+    response = MagicMock()
+    response.json.return_value = {"Items": [{"Name": "Movies", "Id": "lib1"}]}
+    mock_get.return_value = response
+
+    get_libraries("  http://localhost:8096/  ", "key")
+
+    assert mock_get.call_args.args[0] == "http://localhost:8096/Views"
