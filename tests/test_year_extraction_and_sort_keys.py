@@ -78,6 +78,20 @@ def test_unclosed_bracket_leaves_no_stray_punctuation():
     assert extract_year_from_title("Movie (2023") == ("Movie", 2023)
 
 
+def test_a_period_that_ends_the_name_is_preserved():
+    # Trimming every trailing punctuation character turned "Dr. (2023)" into
+    # "Dr"; the period belongs to the name, not to the year separator.
+    assert extract_year_from_title("Dr. (2023)") == ("Dr.", 2023)
+    assert extract_year_from_title("Mr. Nobody 2009") == ("Mr. Nobody", 2009)
+
+
+def test_separator_punctuation_is_trimmed():
+    assert extract_year_from_title("Movie.2023") == ("Movie", 2023)
+    assert extract_year_from_title("Movie-2023") == ("Movie", 2023)
+    assert extract_year_from_title("Movie: 2023") == ("Movie", 2023)
+    assert extract_year_from_title("Movie - 2023") == ("Movie", 2023)
+
+
 def test_year_in_the_middle_is_left_alone():
     assert extract_year_from_title("Movie (2023) Extended") == (
         "Movie (2023) Extended",
@@ -132,3 +146,39 @@ def test_collection_with_null_name_falls_back_to_a_label():
     client = _SortKeyClient([{"Id": "a", "Name": "Movie"}], collection_name=None)
     changes = process_groupings(client, dry_run=True)
     assert changes == [("a", "Movie", "Collection 01")]
+
+
+def test_unparseable_premiere_date_falls_back_to_the_title():
+    # ``items_from_body`` accepts any item dict, so a placeholder string can
+    # reach the sort key. Ranking it as a date pushed it ahead of undated items
+    # and shifted every later sort name in the collection.
+    client = _SortKeyClient(
+        [
+            {"Id": "garbage", "PremiereDate": "not-a-date", "Name": "zzz"},
+            {"Id": "named", "Name": "aaa"},
+        ]
+    )
+    changes = process_groupings(client, dry_run=True)
+    assert [item_id for item_id, _, _ in changes] == ["named", "garbage"]
+
+
+def test_out_of_range_numeric_premiere_date_is_not_a_date():
+    client = _SortKeyClient(
+        [
+            {"Id": "bogus", "PremiereDate": 99999, "Name": "zzz"},
+            {"Id": "named", "Name": "aaa"},
+        ]
+    )
+    changes = process_groupings(client, dry_run=True)
+    assert [item_id for item_id, _, _ in changes] == ["named", "bogus"]
+
+
+def test_real_dates_still_outrank_titles():
+    client = _SortKeyClient(
+        [
+            {"Id": "named", "Name": "aaa"},
+            {"Id": "dated", "PremiereDate": "1999-05-01", "Name": "zzz"},
+        ]
+    )
+    changes = process_groupings(client, dry_run=True)
+    assert [item_id for item_id, _, _ in changes] == ["dated", "named"]

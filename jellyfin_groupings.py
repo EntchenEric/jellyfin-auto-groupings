@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import sys
 from typing import Any
 
@@ -8,6 +9,11 @@ import requests
 from utils.helpers import items_from_body, string_list
 
 logger = logging.getLogger(__name__)
+
+#: A leading ``YYYY-MM-DD`` date, optionally followed by a time. Used to decide
+#: whether a ``PremiereDate`` value is a real date before it is allowed to take
+#: priority over the title in a sort key.
+_LEADING_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}")
 
 
 class JellyfinAPIError(Exception):
@@ -286,17 +292,25 @@ def process_groupings(client: JellyfinClient, dry_run: bool = True) -> list[tupl
         # instances of 'str' and 'int'`` and aborted the whole pass. A missing
         # or non-string Name likewise raised ``AttributeError`` from
         # ``.lower()``.
+        #
+        # A string only ranks as a date when it actually starts with one. A
+        # placeholder such as ``"not-a-date"`` used to win the date rank and
+        # sort ahead of a genuinely dated item, shifting every later sort name.
         def get_sort_key(item: dict[str, Any]) -> tuple[int, str]:
             premiere_date = item.get("PremiereDate")
-            if isinstance(premiere_date, str) and premiere_date:
-                return (0, premiere_date)
-            if isinstance(premiere_date, (int, float)) and not isinstance(
+            if isinstance(premiere_date, str):
+                if _LEADING_DATE.match(premiere_date.strip()):
+                    return (0, premiere_date.strip())
+            elif isinstance(premiere_date, (int, float)) and not isinstance(
                 premiere_date, bool
             ):
                 # A numeric year sorts as that year's first day, so it still
                 # interleaves with the ISO strings instead of landing after
-                # every one of them.
-                return (0, f"{int(premiere_date):04d}-01-01")
+                # every one of them. Values outside a plausible year range are
+                # not dates either.
+                year = int(premiere_date)
+                if 1 <= year <= 9999:
+                    return (0, f"{year:04d}-01-01")
             name = item.get("Name")
             return (1, name.lower() if isinstance(name, str) else "")
 

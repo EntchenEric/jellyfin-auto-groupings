@@ -353,7 +353,8 @@ _YEAR_MIN = 1800
 _YEAR_MAX = 2100
 
 #: Trailing punctuation left behind once a year is split off the title.
-_TITLE_TRAILING_JUNK = " \t:;,-_.(["
+_SEPARATOR_CHARS = " \t:;,-_([|."
+
 
 #: A year wrapped in brackets or parentheses at the end of a title.
 _TRAILING_BRACKETED_YEAR = re.compile(r"[\[(]\s*(\d{4})\s*[)\]]$")
@@ -369,6 +370,30 @@ def _plausible_year(text: str) -> int | None:
     if _YEAR_MIN <= year <= _YEAR_MAX:
         return year
     return None
+
+
+def _trim_title_separator(text: str, *, joined: bool) -> str:
+    """Strip the separator punctuation that used to join the title to its year.
+
+    Characters that are pure separators (a hyphen, a colon, an opening bracket)
+    are always removed, as is any punctuation that was glued straight onto the
+    year (``"Movie.2023"``). A period that ends a word is kept, because it can
+    belong to the name: ``"Dr. (2023)"`` must not become ``"Dr"``.
+
+    Args:
+        text: The title text preceding the year.
+        joined: Whether the year touched *text* directly, with no whitespace.
+
+    Returns:
+        The title with only separator punctuation removed.
+    """
+    text = text.rstrip()
+    while text and text[-1] in _SEPARATOR_CHARS:
+        if text[-1] == "." and not joined and len(text) > 1 and not text[-2].isspace():
+            break
+        text = text[:-1].rstrip()
+        joined = False
+    return text
 
 
 def extract_year_from_title(title: str | None) -> tuple[str, int | None]:
@@ -404,14 +429,20 @@ def extract_year_from_title(title: str | None) -> tuple[str, int | None]:
     if match:
         year = _plausible_year(match.group(1))
         if year is not None:
-            before = stripped[: match.start()].rstrip(_TITLE_TRAILING_JUNK)
+            before = _trim_title_separator(
+                stripped[: match.start()],
+                joined=match.start() > 0 and not stripped[match.start() - 1].isspace(),
+            )
             return (before, year)
 
     match = _TRAILING_BARE_YEAR.search(stripped)
     if match:
         year = _plausible_year(match.group(1))
         if year is not None:
-            before = stripped[: match.start()].rstrip(_TITLE_TRAILING_JUNK)
+            before = _trim_title_separator(
+                stripped[: match.start()],
+                joined=match.start() > 0 and not stripped[match.start() - 1].isspace(),
+            )
             # A bare year is only split off when something precedes it. A
             # title that is itself a year (the film "1917") must keep its
             # text instead of becoming an empty name with a bogus year.
