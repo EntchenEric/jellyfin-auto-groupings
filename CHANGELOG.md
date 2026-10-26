@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `utils/formatting.py` documented that every helper normalises its input
+  before formatting, but four of them did not: `slugify()` and
+  `format_release_date()` raised `AttributeError`/`TypeError` from an inner
+  `.strip()`/`re.match` when a field arrived as a number or a list, and
+  `truncate_text()` returned that list or dict unchanged despite declaring
+  `-> str`. A corrupt item could therefore turn a blank table cell into a 500.
+  All four now return their documented empty result for unusable input.
+
+- `format_resolution()` rendered booleans and junk as a resolution:
+  `format_resolution(True, 1080)` returned `"Truex1080"` because `bool` is an
+  `int` subclass. Pixel dimensions are now coerced through a dedicated helper
+  that rejects booleans, non-integral values, `NaN`/`Infinity`, and
+  non-positive numbers, accepting numeric strings (`"1920"`) and integral
+  floats (`1920.0`) so existing payload shapes keep working.
+
+- `sanitize_filename()`, `normalize_title()`, and `extract_year_from_title()`
+  raised `AttributeError`/`TypeError` on a non-string argument instead of
+  reporting it as unusable, contradicting the same tolerance the rest of the
+  helpers provide. They now return `"unnamed"`, `""`, and `("", None)`
+  respectively, so a malformed title cannot abort a grouping run.
+
 - `POST /api/config` accepted group names that every sync then refused. A
   name with a `.`/`..` segment, an embedded NUL byte, a Windows drive path,
   or a path segment longer than 255 bytes saved without complaint, and each
