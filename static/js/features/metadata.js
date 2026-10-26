@@ -184,6 +184,15 @@ export function updateSourceValueUI(preValue = null) {
     const userSelect = getEl('source_value_user_select');
     if (userSelect) userSelect.style.display = 'none';
 
+    // The grouping form is the only place these controls exist, but this
+    // function is also called after a config save and from the wizard, which
+    // can run against a partial document. A missing element used to throw
+    // here and abort the whole refresh, leaving every control that *is*
+    // present in its previous state.
+    if (!sourceValueInput || !sourceValueHelp || !container || !addBtn) {
+        return;
+    }
+
     sourceValueInput.style.display = 'block';
     sourceValueInput.required = true;
     sourceValueInput.disabled = false;

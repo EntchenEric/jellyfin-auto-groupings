@@ -852,6 +852,36 @@ def _fetch_items_for_tmdb_group(
     )
 
 
+def _split_account_and_status(source_value: str) -> tuple[str, str | None]:
+    """Split an ``account`` / ``account/status`` list source value.
+
+    AniList and MyAnimeList groups name an account, optionally followed by
+    ``/status``.  The value is typed by hand in the grouping form, so it
+    routinely arrives padded — ``"jane / completed"`` or ``"jane/ completed"``.
+    Splitting on the raw value passed those spaces straight to the provider
+    validator, which rejected ``" completed"`` as an unknown status even
+    though the user had named a valid one; the leading space in the account
+    half failed the username check the same way.  Only surrounding whitespace
+    is trimmed here; the status token is otherwise passed through verbatim so
+    the provider's own validator can still report an unrecognised value
+    together with its list of valid ones.
+
+    Args:
+        source_value: The raw ``source_value`` of a list-backed group.
+
+    Returns:
+        A ``(account, status)`` tuple.  *status* is ``None`` when the value
+        names no status, or names an empty one.
+
+    """
+    account, separator, status = source_value.partition("/")
+    account = account.strip()
+    if not separator:
+        return account, None
+    status = status.strip()
+    return account, status or None
+
+
 def _fetch_items_for_anilist_group(
     group_name: str,
     source_value: str,
@@ -876,10 +906,7 @@ def _fetch_items_for_anilist_group(
         A ``(items, error, status_code)`` tuple.
 
     """
-    username = source_value
-    status = None
-    if "/" in source_value:
-        username, status = source_value.split("/", 1)
+    username, status = _split_account_and_status(source_value)
 
     return _fetch_and_resolve(
         group_name,
@@ -926,10 +953,7 @@ def _fetch_items_for_mal_group(
         logger.info("No MAL Client ID configured for group %r", group_name)
         return [], msg, 400
 
-    username = source_value
-    status = None
-    if "/" in source_value:
-        username, status = source_value.split("/", 1)
+    username, status = _split_account_and_status(source_value)
 
     return _fetch_and_resolve(
         group_name,

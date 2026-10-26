@@ -82,12 +82,14 @@ def chunk_list(lst: list, size: int) -> list:
         size: Size of each chunk.
 
     Returns:
-        List of chunks.
+        List of chunks.  An empty input yields no chunks at all, whatever the
+        chunk size — ``chunk_list([], 0)`` used to return ``[[]]``, a single
+        empty chunk that made callers treat "nothing to do" as one work item.
     """
-    if size <= 0:
-        return [lst]
     if not lst:
         return []
+    if size <= 0:
+        return [lst]
 
     return [lst[i : i + size] for i in range(0, len(lst), size)]
 
@@ -381,15 +383,22 @@ def group_by_key(items: list[dict], key: str) -> dict:
         key: The dictionary key to group by.
 
     Returns:
-        Dictionary mapping key values to lists of items.
+        Dictionary mapping key values to lists of items.  Items whose value is
+        missing or cannot be a dictionary key are skipped: a Jellyfin field
+        such as ``Genres`` holds a list, and using it as a key raised
+        ``TypeError: unhashable type: 'list'`` instead of leaving that item
+        out of the grouping.
     """
     result: dict[Any, list[dict]] = {}
 
     for item in items:
         value = item.get(key)
-        if value is not None:
-            if value not in result:
-                result[value] = []
-            result[value].append(item)
+        if value is None:
+            continue
+        try:
+            hash(value)
+        except TypeError:
+            continue
+        result.setdefault(value, []).append(item)
 
     return result
