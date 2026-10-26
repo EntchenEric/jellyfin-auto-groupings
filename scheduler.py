@@ -7,18 +7,16 @@ to either a global schedule (with exclusions) or per-group schedules.
 from __future__ import annotations
 
 import logging
-import threading
 from typing import Any
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from config import load_config
-from sync import run_cleanup_broken_symlinks, run_sync
+from sync import SyncBusyError, run_cleanup_broken_symlinks, run_sync
 
 # Initialize the scheduler
 _scheduler: BackgroundScheduler = BackgroundScheduler()
-sync_lock = threading.Lock()
 logger = logging.getLogger(__name__)
 
 __all__ = [
@@ -250,16 +248,22 @@ def _run_global_sync_job(exclude_names: list[str]) -> None:
 
     if sync_names:
         logger.info("Background global sync starting for groups: %s", sync_names)
-        with sync_lock:
-            try:
-                run_sync(config, group_names=sync_names)
-            except Exception:
-                # Catch broadly so an unexpected error (e.g. a KeyError from a
-                # malformed config, or a requests exception from a fetcher)
-                # never silently kills the background job — it is always logged.
-                logger.exception(
-                    "Background global sync failed",
-                )
+        try:
+            # run_sync() takes the cross-process run lock itself, so a UI sync
+            # or another worker cannot overlap this one.
+            run_sync(config, group_names=sync_names)
+        except SyncBusyError as exc:
+            # Another run is in progress. Skipping this tick is the point of
+            # the lock — waiting would queue unbounded runs behind one long
+            # sync, and retrying immediately would only spin.
+            logger.warning("Background global sync skipped: %s", exc)
+        except Exception:
+            # Catch broadly so an unexpected error (e.g. a KeyError from a
+            # malformed config, or a requests exception from a fetcher)
+            # never silently kills the background job — it is always logged.
+            logger.exception(
+                "Background global sync failed",
+            )
     else:
         logger.info(
             "Background global sync skipped: no groups to sync after exclusions",
@@ -275,38 +279,45 @@ def _run_group_sync_job(group_name: str) -> None:
     """
     config = load_config()
     logger.info("Background sync starting for group: %s", group_name)
-    with sync_lock:
-        try:
-            run_sync(config, group_names=[group_name])
-        except Exception:
-            # Catch broadly so an unexpected error never silently kills the
-            # background job — it is always logged.
-            logger.exception(
-                "Background sync failed for group '%s'",
-                group_name,
-            )
+    try:
+        run_sync(config, group_names=[group_name])
+    except SyncBusyError as exc:
+        logger.warning(
+            "Background sync skipped for group '%s': %s",
+            group_name,
+            exc,
+        )
+    except Exception:
+        # Catch broadly so an unexpected error never silently kills the
+        # background job — it is always logged.
+        logger.exception(
+            "Background sync failed for group '%s'",
+            group_name,
+        )
 
 
 def _run_cleanup_job() -> None:
     """Job handler for cleaning up broken symlinks."""
     config = load_config()
     logger.info("Background cleanup job starting")
-    with sync_lock:
-        try:
-            deleted = run_cleanup_broken_symlinks(config)
-        except Exception:
-            # Catch broadly so an unexpected error (e.g. a KeyError from a
-            # malformed config, or an OSError from a filesystem issue) never
-            # silently kills the background job — it is always logged. This
-            # mirrors the resilience of the global/group sync job handlers.
-            logger.exception(
-                "Background cleanup job failed",
-            )
-            return
-        logger.info(
-            "Background cleanup job finished: deleted %s broken symlinks",
-            deleted,
+    try:
+        deleted = run_cleanup_broken_symlinks(config)
+    except SyncBusyError as exc:
+        logger.warning("Background cleanup job skipped: %s", exc)
+        return
+    except Exception:
+        # Catch broadly so an unexpected error (e.g. a KeyError from a
+        # malformed config, or an OSError from a filesystem issue) never
+        # silently kills the background job — it is always logged. This
+        # mirrors the resilience of the global/group sync job handlers.
+        logger.exception(
+            "Background cleanup job failed",
         )
+        return
+    logger.info(
+        "Background cleanup job finished: deleted %s broken symlinks",
+        deleted,
+    )
 
 
 def validate_cron(expr: Any) -> str | None:

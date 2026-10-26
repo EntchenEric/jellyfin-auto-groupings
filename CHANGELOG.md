@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Two overlapping sync runs corrupted each other's group directories. Each
+  run clears a group's directory and then refills it one symlink at a time, so
+  a second run entering the same group deleted links the first had just
+  created. A scheduled sync firing during a `POST /api/sync` from the UI left
+  the directory holding an arbitrary mix of both, and the reported link count
+  described neither. Reproduced with two runs creating 50 links each: the
+  directory ended with 91 entries (41 from one run, 50 from the other).
+
+  `scheduler.sync_lock` never protected this. It was a `threading.Lock` taken
+  only by the three scheduler job handlers, so the HTTP sync and cleanup routes
+  never touched it — and because the Docker image runs gunicorn with several
+  worker processes, each worker had its own unrelated copy anyway.
+
+  Runs that write to the target directory now hold `sync.sync_run_guard()`: an
+  in-process lock plus an exclusive `flock` on `<config dir>/sync.lock`, so
+  scheduled runs, UI runs, and runs in other workers are all serialised. A
+  conflicting `POST /api/sync` or `POST /api/cleanup` answers `409` without
+  changing anything, and a scheduled job logs that it skipped instead of
+  queueing a run behind a long sync. Dry runs take no lock, so previews stay
+  available while a sync is running.
+
 - A refused connection or a failed DNS lookup was reported as
   "Connection timed out.", discarding the host, the URL and the underlying
   `errno`. `urllib3.exceptions.NewConnectionError` subclasses

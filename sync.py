@@ -27,7 +27,17 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterator
+
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - Windows
+    fcntl = None  # type: ignore[assignment]
+
+try:
+    import msvcrt
+except ImportError:  # pragma: no cover - POSIX
+    msvcrt = None  # type: ignore[assignment]
 
 import requests
 
@@ -35,6 +45,7 @@ from _common import COMPLEX_QUERY_SOURCE_TYPES as _COMPLEX_QUERY_SOURCE_TYPES
 from _common import LIST_SOURCE_TYPES as _LIST_SOURCE_TYPES
 from _common import normalize_group_relpath
 from anilist import fetch_anilist_list
+from config import CONFIG_DIR
 from imdb import fetch_imdb_list
 from jellyfin import (
     DEFAULT_ITEM_TYPES,
@@ -2801,6 +2812,145 @@ def _maybe_handle_seasonal(
     return {"group": name or "(unnamed)", "links": 0, "status": "out_of_season"}
 
 
+# ---------------------------------------------------------------------------
+# Run serialisation
+# ---------------------------------------------------------------------------
+
+#: Guard that serialises sync/cleanup runs *within one process*.
+#: ``flock``/``msvcrt`` locks are per file-descriptor and the descriptor is
+#: opened per acquisition, so two threads of the same process can both pass
+#: the OS-level check.  This lock closes that hole.
+_RUN_LOCK = threading.Lock()
+
+#: How long :func:`sync_run_guard` waits for a competing run to finish before
+#: giving up, in seconds.
+SYNC_LOCK_TIMEOUT: float = 5.0
+
+
+class SyncBusyError(RuntimeError):
+    """Raised when another sync/cleanup run already holds the run lock.
+
+    A second run must not start: :func:`_prepare_group_directory` clears the
+    group directory and :func:`_create_group_symlinks` then refills it link by
+    link, so an overlapping run deletes links the other one just created and
+    leaves the directory holding a mix of both.  The lock is advisory across
+    processes because gunicorn runs several workers and the scheduler runs in
+    all of them.
+    """
+
+
+def _lock_file_path() -> str:
+    """Return the path of the cross-process run-lock file.
+
+    Next to ``config.json`` rather than in the target directory: the target
+    directory is user-supplied and may be read-only or not yet created, while
+    the config directory always exists and is writable (the config file lives
+    there).
+    """
+    return str(Path(CONFIG_DIR) / "sync.lock")
+
+
+def _try_flock(handle: Any) -> bool:
+    """Take a non-blocking exclusive OS lock on *handle*.
+
+    Returns:
+        ``True`` when the lock was acquired, ``False`` when another process
+        holds it.  Platforms without ``fcntl``/``msvcrt`` report success so a
+        sync is never blocked by a missing lock primitive.
+    """
+    if fcntl is not None:
+        try:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            return False
+        return True
+    if msvcrt is not None:  # pragma: no cover - Windows
+        try:
+            handle.seek(0)
+            msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+        except OSError:
+            return False
+        return True
+    return True  # pragma: no cover - no locking primitive available
+
+
+def _unlock_flock(handle: Any) -> None:
+    """Release the OS lock taken by :func:`_try_flock`."""
+    if fcntl is not None:
+        with contextlib.suppress(OSError):
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+    elif msvcrt is not None:  # pragma: no cover - Windows
+        with contextlib.suppress(OSError):
+            handle.seek(0)
+            msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+
+
+@contextlib.contextmanager
+def sync_run_guard(timeout: float | None = None) -> Iterator[None]:
+    """Serialise a sync or cleanup run against every other run in the app.
+
+    Takes an in-process :class:`threading.Lock` and an exclusive ``flock`` on
+    ``<config dir>/sync.lock``, so a scheduled run, a ``POST /api/sync`` from
+    the UI, and a run in another gunicorn worker cannot overlap.
+
+    Overlap is not benign.  Each group's directory is cleared and then
+    refilled one symlink at a time, so a second run entering the same group
+    deletes the first run's links mid-flight.  The directory is left holding
+    an arbitrary mix of both runs, and the count the first run reports does
+    not describe what is on disk.
+
+    Args:
+        timeout: Seconds to wait for a competing run.  Defaults to
+            :data:`SYNC_LOCK_TIMEOUT`; ``0`` fails immediately.
+
+    Raises:
+        SyncBusyError: If the lock could not be taken within *timeout*.
+
+    """
+    wait_for = SYNC_LOCK_TIMEOUT if timeout is None else max(0.0, timeout)
+    # One deadline for both waits, so the caller's timeout bounds the whole
+    # acquisition instead of being spent twice (in-process, then cross-process).
+    deadline = time.monotonic() + wait_for
+    if not _RUN_LOCK.acquire(timeout=wait_for):
+        msg = (
+            "Another sync is already running in this process. "
+            "Wait for it to finish and try again."
+        )
+        raise SyncBusyError(msg)
+    handle = None
+    try:
+        try:
+            # Held open across the run; closing it releases the OS lock.
+            handle = Path(_lock_file_path()).open("a+", encoding="utf-8")  # noqa: SIM115
+        except OSError:
+            # The config directory vanished or is read-only. The in-process
+            # lock is still held, so fall back to it rather than refusing a
+            # run the user asked for.
+            logger.warning(
+                "Cannot open sync lock file %s; serialising within this process only",
+                _lock_file_path(),
+            )
+            yield
+            return
+        while not _try_flock(handle):
+            if time.monotonic() >= deadline:
+                msg = (
+                    "Another sync or cleanup run is already in progress. "
+                    "Wait for it to finish and try again."
+                )
+                raise SyncBusyError(msg)
+            time.sleep(0.05)
+        try:
+            yield
+        finally:
+            _unlock_flock(handle)
+    finally:
+        if handle is not None:
+            with contextlib.suppress(OSError):
+                handle.close()
+        _RUN_LOCK.release()
+
+
 def run_sync(
     config: dict[str, Any],
     dry_run: bool = False,
@@ -2812,6 +2962,12 @@ def run_sync(
     If *group_names* is provided, only groups with matching names are synced.
     Results are collected and returned for the caller (typically a Flask route
     handler) to serialise.
+
+    A real run holds :func:`sync_run_guard` for its whole duration, so a
+    scheduled run, a run from the UI, and a run in another gunicorn worker
+    cannot clear and refill the same group directory at the same time.  A
+    *dry_run* does not write, so it takes no lock and stays usable while a
+    sync is in progress.
 
     Args:
         config: The application configuration dict as returned by
@@ -2826,8 +2982,31 @@ def run_sync(
         and ``"items"`` (in dry run).
 
     Raises:
+        SyncBusyError: If another real run holds the lock.
         ValueError: If the required config keys are missing or the target
             directory cannot be created.
+
+    """
+    if dry_run:
+        return _run_sync_unlocked(config, dry_run=True, group_names=group_names)
+    with sync_run_guard():
+        return _run_sync_unlocked(config, dry_run=False, group_names=group_names)
+
+
+def _run_sync_unlocked(
+    config: dict[str, Any],
+    dry_run: bool,
+    group_names: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    """Implement :func:`run_sync`; the caller owns the run lock.
+
+    Args:
+        config: The application configuration dict.
+        dry_run: Whether to perform a dry run.
+        group_names: Optional list of group names to include.
+
+    Returns:
+        A list of per-group result dicts.
 
     """
     url: str = str(config.get("jellyfin_url") or "").rstrip("/")
@@ -2935,6 +3114,28 @@ def run_cleanup_broken_symlinks(config: dict[str, Any]) -> int:
     Uses ``pathlib.Path.rglob`` to traverse all entries regardless of
     symlink target validity, which catches broken directory symlinks
     that ``os.walk`` would silently skip.
+
+    Holds :func:`sync_run_guard`: the scan walks the same directories a sync
+    is refilling, and a link is broken for the instant between ``symlink()``
+    and the point its target is written, so deleting mid-sync would remove
+    links that are about to be valid.
+
+    Args:
+        config: The application configuration dict.
+
+    Returns:
+        The number of broken symlinks deleted.
+
+    Raises:
+        SyncBusyError: If a sync or another cleanup run holds the lock.
+
+    """
+    with sync_run_guard():
+        return _run_cleanup_unlocked(config)
+
+
+def _run_cleanup_unlocked(config: dict[str, Any]) -> int:
+    """Implement :func:`run_cleanup_broken_symlinks`; the caller owns the lock.
 
     Args:
         config: The application configuration dict.
