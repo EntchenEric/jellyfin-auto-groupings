@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A `year` group with a comparison value (`>=2000`, `<=2010`, `>1990`, `<2000`)
+  silently linked the entire library. The value was forwarded verbatim to
+  Jellyfin's `years` filter, which only understands literal years and
+  comma-separated year lists, so the server ignored the unrecognised value and
+  answered with the unrestricted library. Comparisons are now evaluated in
+  memory by `_match_year`, which already implemented those operators, and the
+  preview route resolves them the same way so the preview count matches what
+  the sync links. Literal years and lists still use the server-side filter.
+
+- `year` is selectable in the source-type dropdown, and a year rule in the
+  complex-rule editor is a text field rather than a dropdown. The backend and
+  `docs/API.md` both accepted `year`, but the UI never offered it: the
+  dropdown had no entry, and the rule editor rendered an empty `<select>`
+  populated from the metadata endpoint, which has no year list, so a year rule
+  could not be entered at all. Year values accept a literal (`2000`), a list
+  (`1999,2000`), or a comparison (`>=2000`).
+
 - A bare string in `Tags`, `Genres`, or `Studios` is now read as one value
   instead of being iterated character by character. Jellyfin normally sends
   these fields as arrays, but a hand-edited payload, a proxy, or an older

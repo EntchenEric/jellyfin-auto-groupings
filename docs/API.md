@@ -223,7 +223,7 @@ Preview items matched by a single grouping rule.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `type` | string | yes | `genre`, `studio`, `tag`, `year`, `actor`, `general`, or `complex` |
-| `value` | string | yes | Filter value or complex query string |
+| `value` | string | yes | Filter value or complex query string (see note on `year` below) |
 | `watch_state` | string | no | `unwatched` or `watched` |
 | `item_type` | string | no | `movies` or `series` |
 
@@ -238,6 +238,12 @@ Preview items matched by a single grouping rule.
 ```
 
 Returns up to 15 preview titles.
+
+A `year` value may be a literal year (`2000`), a comma-separated list
+(`1999,2000`), or a comparison (`>=2000`, `<=2010`, `>1990`, `<2000`). Literal
+years and lists are passed to Jellyfin's `years` filter; comparisons are
+evaluated locally, because Jellyfin would otherwise ignore the unrecognised
+value and return the whole library.
 
 **Errors:** `400` when `type` is missing, unknown, or empty; when `value` is
 missing, empty, or not a string; or when `watch_state` / `item_type` is
