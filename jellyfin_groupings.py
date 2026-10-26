@@ -5,7 +5,7 @@ from typing import Any
 
 import requests
 
-from utils.helpers import items_from_body
+from utils.helpers import items_from_body, string_list
 
 logger = logging.getLogger(__name__)
 
@@ -220,9 +220,10 @@ def group_movies_by_tag(
             continue
         # Jellyfin serialises an empty tag list as ``null``, and a tag entry
         # can be a non-string; both used to raise from ``startswith`` and
-        # abort the grouping pass for the whole library.
-        for tag in movie.get("Tags") or []:
-            if isinstance(tag, str) and tag.startswith(tag_prefix):
+        # abort the grouping pass for the whole library. A bare string is one
+        # tag, not one tag per character.
+        for tag in string_list(movie.get("Tags")):
+            if tag.startswith(tag_prefix):
                 group_name = tag[len(tag_prefix) :].strip()
                 if group_name:
                     groups.setdefault(group_name, []).append(item_id)
@@ -247,9 +248,10 @@ def group_movies_by_genre(
         if not item_id:
             continue
         # ``null`` genres and non-string entries would create unusable group
-        # keys, so they are skipped.
-        for genre in movie.get("Genres") or []:
-            if isinstance(genre, str) and genre:
+        # keys, so they are skipped. A bare string is one genre, not one
+        # genre per character.
+        for genre in string_list(movie.get("Genres")):
+            if genre:
                 groups.setdefault(genre, []).append(item_id)
     return {g: ids for g, ids in groups.items() if len(ids) >= min_count}
 

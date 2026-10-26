@@ -199,7 +199,7 @@ def is_valid_uuid(uuid_str: str | None) -> bool:
     )
 
 
-def parse_media_tags(tags: list[Any]) -> list[str]:
+def parse_media_tags(tags: Any) -> list[str]:
     """Parse and normalize media tags.
 
     Strips whitespace, removes duplicates (case-insensitive), and filters empty tags.
@@ -207,10 +207,13 @@ def parse_media_tags(tags: list[Any]) -> list[str]:
     Jellyfin sends ``null`` for empty tag lists and may include non-string
     entries, so anything that is not a string is skipped instead of raising
     the :class:`AttributeError` that ``.strip()`` on ``None`` would produce.
+    A bare string is treated as a single tag rather than an iterable of
+    characters (see :func:`string_list`).
     The same rule is applied by :func:`jellyfin_auto_groupings.rules.group_by_tag`.
 
     Args:
-        tags: List of tag values; non-string entries are ignored.
+        tags: List of tag values, a single tag string, or ``None``;
+            non-string entries are ignored.
 
     Returns:
         Unique normalized tags in first-seen order. Deduplication keeps the
@@ -219,9 +222,7 @@ def parse_media_tags(tags: list[Any]) -> list[str]:
     seen = set()
     result = []
 
-    for tag in tags:
-        if not isinstance(tag, str):
-            continue
+    for tag in string_list(tags):
         stripped = tag.strip()
         if not stripped:
             continue
@@ -231,6 +232,59 @@ def parse_media_tags(tags: list[Any]) -> list[str]:
             result.append(stripped)
 
     return result
+
+
+def string_list(value: Any) -> list[str]:
+    """Return the strings in *value* as a list.
+
+    Jellyfin usually serialises ``Tags``, ``Genres``, and ``Studios`` as
+    arrays, but a hand-edited ``config.json``, a proxy, or an older server
+    can put a bare string there. Iterating that string yields one character
+    at a time, so ``"action"`` became six groups named ``a``, ``c``, ``t``,
+    ``i``, ``o``, ``n``. A single string is therefore treated as one value,
+    and ``null`` or any other shape yields no values at all.
+
+    Args:
+        value: A list/tuple/set of strings, a single string, or anything else.
+
+    Returns:
+        The contained strings, non-string entries removed. A bare string is
+        returned as a one-element list; unusable input yields ``[]``.
+    """
+    if isinstance(value, str):
+        return [value]
+    if not isinstance(value, (list, tuple, set, frozenset)):
+        return []
+    return [entry for entry in value if isinstance(entry, str)]
+
+
+def studio_names(value: Any) -> list[str]:
+    """Return the studio names in a Jellyfin ``Studios`` field.
+
+    Jellyfin serialises studios as an array of ``{"Name": ...}`` objects, but
+    a bare string or a single object also occurs in hand-edited or older
+    payloads. Iterating a bare string yields one character at a time, so a
+    studio rule could never match and a grouping pass produced one group per
+    letter. Anything that is not a studio object or a string is skipped.
+
+    Args:
+        value: The raw ``Studios`` field: a list of objects/strings, a single
+            object, a bare string, or anything else.
+
+    Returns:
+        The non-empty studio names as strings; empty when there are none.
+    """
+    if isinstance(value, (str, dict)):
+        value = [value]
+    elif not isinstance(value, (list, tuple, set, frozenset)):
+        return []
+
+    names: list[str] = []
+    for studio in value:
+        name = studio.get("Name") if isinstance(studio, dict) else studio
+        if isinstance(name, str) and name:
+            names.append(name)
+    return names
 
 
 def normalize_title(title: str | None, remove_articles: bool = True) -> str:

@@ -2,6 +2,8 @@ import logging
 import re
 from typing import Any
 
+from utils.helpers import string_list, studio_names
+
 logger = logging.getLogger(__name__)
 
 FRANCHISE_RULES = {
@@ -84,9 +86,10 @@ def group_by_tag(
     tag_groups: dict[str, list[dict[str, Any]]] = {}
     for item in items:
         # Jellyfin uses ``null`` for empty tag lists and may include
-        # non-string values; skip those rather than raising.
-        for tag in item.get("Tags") or []:
-            if isinstance(tag, str) and tag:
+        # non-string values; skip those rather than raising. A bare string is
+        # one tag, not an iterable of characters.
+        for tag in string_list(item.get("Tags")):
+            if tag:
                 tag_groups.setdefault(tag, []).append(item)
     return {k: v for k, v in tag_groups.items() if len(v) >= min_items}
 
@@ -97,8 +100,8 @@ def group_by_genre(
     """Group items by genre, keeping groups with at least ``min_items`` members."""
     genre_groups: dict[str, list[dict[str, Any]]] = {}
     for item in items:
-        for genre in item.get("Genres") or []:
-            if isinstance(genre, str) and genre:
+        for genre in string_list(item.get("Genres")):
+            if genre:
                 genre_groups.setdefault(genre, []).append(item)
     return {k: v for k, v in genre_groups.items() if len(v) >= min_items}
 
@@ -114,11 +117,8 @@ def group_by_studio(
     """
     studio_groups: dict[str, list[dict[str, Any]]] = {}
     for item in items:
-        studios = item.get("Studios") or []
-        for studio in studios:
-            s_name = studio.get("Name") if isinstance(studio, dict) else studio
-            if isinstance(s_name, str) and s_name:
-                studio_groups.setdefault(s_name, []).append(item)
+        for name in studio_names(item.get("Studios")):
+            studio_groups.setdefault(name, []).append(item)
     return {k: v for k, v in studio_groups.items() if len(v) >= min_items}
 
 
