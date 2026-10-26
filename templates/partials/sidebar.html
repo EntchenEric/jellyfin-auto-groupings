@@ -27,7 +27,7 @@
                 <div class="password-field-wrapper">
                     <input type="password" id="api_key" placeholder="Your Jellyfin API Key" required>
                     <button type="button" class="toggle-password-btn" data-target="api_key" title="Toggle visibility" aria-label="Toggle API key visibility">
-                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                     </button>
                 </div>
                 <small>Dashboard &rarr; API Keys. Can also be set via <code>JELLYFIN_API_KEY</code> env variable.</small>
@@ -49,14 +49,14 @@
                 <p class="sidebar-sub-text">
                     Only needed when Jellyfin paths differ from this machine's paths (e.g. Docker).</p>
                 <div class="form-group">
-                    <label class="sidebar-label-sm">Path in Jellyfin</label>
+                    <label class="sidebar-label-sm" for="media_path_in_jellyfin">Path in Jellyfin</label>
                     <div id="media_path_in_jellyfin_group" class="picker-row path-field-locked">
                         <input type="text" id="media_path_in_jellyfin" placeholder="/media" class="sidebar-input-sm" disabled>
                         <button type="button" class="browse-btn" data-path-field="media_path_in_jellyfin" disabled>Browse</button>
                     </div>
                 </div>
                 <div class="form-group mb-0">
-                    <label class="sidebar-label-sm">Same path on this machine</label>
+                    <label class="sidebar-label-sm" for="media_path_on_host">Same path on this machine</label>
                     <div id="media_path_on_host_group" class="picker-row path-field-locked">
                         <input type="text" id="media_path_on_host" placeholder="/home/user/media" class="sidebar-input-sm" disabled>
                         <button type="button" class="browse-btn" data-path-field="media_path_on_host" disabled>Browse</button>
@@ -83,7 +83,7 @@
                     Automatically upload the generated cover directly to the Jellyfin library upon sync.
                     Requires Library Creation above.</p>
 
-                <label class="sidebar-label-sm sidebar-label-muted">Target path as Jellyfin sees it (optional)</label>
+                <label class="sidebar-label-sm sidebar-label-muted" for="target_path_in_jellyfin">Target path as Jellyfin sees it (optional)</label>
                 <div id="target_path_in_jellyfin_group" class="picker-row path-field-locked">
                     <input type="text" id="target_path_in_jellyfin" placeholder="/groupings" class="sidebar-input-sm" disabled>
                     <button type="button" class="browse-btn" data-path-field="target_path_in_jellyfin" disabled>Browse</button>
