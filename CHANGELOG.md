@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Every external list fetcher (`imdb`, `trakt`, `tmdb`, `letterboxd`) could be
+  pointed at an arbitrary host. A group's `value` in `config.json` was checked
+  with `urllib.parse.urlparse`, which reads everything before the last `@` as
+  userinfo, so `https://evil.example\@letterboxd.com/u/list/x` reported the
+  Letterboxd host. `requests`/`urllib3` end the authority at the backslash and
+  connected to `evil.example`, so the server fetched an attacker-chosen URL on
+  the caller's behalf — a server-side request forgery primitive driven by
+  config. The validators now resolve the host with both parsers and reject the
+  URL when they disagree; they also reject embedded `user:pass@` credentials.
+  The shared helpers (`parse_outbound_url`, `split_outbound_url`,
+  `host_matches`) live in `_common.py` so all four fetchers validate the same
+  way.
 - An AniList or MyAnimeList group whose `source_value` was typed with padding
   (`jane / completed`, `jane/ completed`) failed with
   `Unknown MAL status: ' completed'`, listing values that looked identical to

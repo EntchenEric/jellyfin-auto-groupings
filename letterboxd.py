@@ -11,12 +11,16 @@ import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from http import HTTPStatus
-from urllib.parse import urlparse
 
 import requests
 
 import network
-from _common import DEFAULT_LIST_MAX_PAGES, DEFAULT_SCRAPING_HEADERS
+from _common import (
+    DEFAULT_LIST_MAX_PAGES,
+    DEFAULT_SCRAPING_HEADERS,
+    host_matches,
+    split_outbound_url,
+)
 
 __all__ = ["fetch_letterboxd_list"]
 
@@ -57,7 +61,7 @@ _PAGE_SEGMENT_PATTERN: re.Pattern[str] = re.compile(r"/page/\d+/?$")
 #: substring test on the raw input, so ``https://evil.example/?r=letterboxd.com``
 #: passed and the fetcher then requested pages from the attacker's host — a
 #: server-side request forgery primitive reachable from a group's ``value``.
-_LETTERBOXD_HOST: str = "letterboxd.com"
+_LETTERBOXD_HOSTS: frozenset[str] = frozenset({"letterboxd.com"})
 
 
 def _validate_list_url(list_url: str) -> str:
@@ -77,16 +81,17 @@ def _validate_list_url(list_url: str) -> str:
         ValueError: If *list_url* is not an HTTP(S) URL on ``letterboxd.com``.
 
     """
-    cleaned = list_url.strip()
-    # Tolerate a scheme-less input such as ``letterboxd.com/user/list/x``,
-    # which the old substring check accepted; requests needs a scheme.
-    if cleaned and "//" not in cleaned:
-        cleaned = f"https://{cleaned}"
-    parsed = urlparse(cleaned)
-    host = (parsed.hostname or "").lower()
-    if parsed.scheme not in ("http", "https") or not (
-        host == _LETTERBOXD_HOST or host.endswith("." + _LETTERBOXD_HOST)
-    ):
+    # ``split_outbound_url`` compares what ``urlparse`` and the HTTP client
+    # each see, and returns ``None`` when they disagree. That closes the
+    # ``https://evil.example\@letterboxd.com/...`` bypass, where ``urlparse``
+    # reported the Letterboxd host while ``requests`` connected to the host
+    # in front of the backslash.
+    split = split_outbound_url(list_url.strip())
+    if split is None:
+        msg = f"Invalid Letterboxd URL: {list_url!r}"
+        raise ValueError(msg)
+    base, host = split
+    if not host_matches(host, _LETTERBOXD_HOSTS, allow_subdomains=True):
         msg = f"Invalid Letterboxd URL: {list_url!r}"
         raise ValueError(msg)
 
@@ -97,8 +102,9 @@ def _validate_list_url(list_url: str) -> str:
     # ``…/x?utm_source=tw`` produced ``…/x?utm_source=tw/page/2/``, which the
     # server resolved back to page 1. The walk then re-fetched page 1 until
     # the page cap and silently returned just the first page's films.
-    path = _PAGE_SEGMENT_PATTERN.sub("", parsed.path).rstrip("/")
-    return f"{parsed.scheme}://{parsed.netloc}{path}"
+    # ``parse_outbound_url`` already dropped the query, fragment, and trailing
+    # slash; only an explicit page segment is stripped here.
+    return _PAGE_SEGMENT_PATTERN.sub("", base)
 
 
 # Ordered ID patterns for a single film's HTML segment. Higher-priority

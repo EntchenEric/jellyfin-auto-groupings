@@ -9,6 +9,9 @@ from __future__ import annotations
 import calendar
 import re
 from pathlib import Path
+from urllib.parse import urlparse
+
+from urllib3.util import parse_url as _urllib3_parse_url
 
 # ---------------------------------------------------------------------------
 # Source types
@@ -208,3 +211,146 @@ def normalize_group_relpath(name: str) -> str | None:
         return None
 
     return "/".join(cleaned)
+
+
+# ---------------------------------------------------------------------------
+# Outbound URL validation
+# ---------------------------------------------------------------------------
+
+
+def _authority_host(candidate: str) -> str | None:
+    """Return the host that an HTTP client would actually connect to.
+
+    ``urllib.parse.urlparse`` does not follow RFC 3986 for the authority
+    component: everything before the *last* ``@`` is treated as userinfo, so
+    ``https://evil.example\\@letterboxd.com/u/list/x`` reports
+    ``letterboxd.com``. ``requests``/``urllib3`` treat a backslash as the end
+    of the authority, so the same URL is actually fetched from
+    ``evil.example``. Validating with ``urlparse`` therefore let any host
+    through by prefixing it with ``https://<host>\\@``, and the fetchers
+    then made a request to an attacker-chosen server -- a server-side request
+    forgery primitive reachable from a group's ``value`` in ``config.json``.
+
+    Both parsers are consulted and the answer is only accepted when they
+    agree. A URL the two disagree about is ambiguous by definition, so it is
+    rejected rather than guessed at.
+
+    Args:
+        candidate: The URL to inspect.
+
+    Returns:
+        The lowercased host, or ``None`` when the two parsers disagree or
+        either one finds no usable host.
+
+    """
+    # Both parsers raise ``ValueError`` on some malformed authorities
+    # (``https://[abc/x`` is an unterminated IPv6 literal, and a netloc that
+    # fails NFKC normalisation raises too), so both calls belong under the
+    # guard. A parse failure must mean "reject", not crash — otherwise a bad
+    # config value surfaces as the library's generic message instead of the
+    # provider-specific "Invalid ... URL" error the callers document.
+    try:
+        stdlib_host = (urlparse(candidate).hostname or "").lower()
+        client_host = (_urllib3_parse_url(candidate).host or "").lower()
+    except (ValueError, TypeError):
+        return None
+    if not stdlib_host or not client_host or stdlib_host != client_host:
+        return None
+    return client_host
+
+
+def parse_outbound_url(candidate: str) -> str | None:
+    """Return the canonical base URL of a user-supplied list URL, or ``None``.
+
+    Shared by the list fetchers so every one of them validates the host the
+    same way. The returned URL carries only scheme, host, and path: a pasted
+    browser URL routinely has a query string, a fragment, and an explicit
+    page segment, and only the path names the list.
+
+    Args:
+        candidate: The raw URL from config.
+
+    Returns:
+        ``"<scheme>://<netloc><path>"`` with any trailing slash removed, or
+        ``None`` when the input is not an ``http(s)`` URL with an unambiguous
+        host or carries userinfo.
+
+    """
+    if not isinstance(candidate, str):
+        return None
+    cleaned = candidate.strip()
+    if not cleaned:
+        return None
+    # Tolerate a scheme-less input such as ``letterboxd.com/user/list/x``:
+    # ``requests`` needs a scheme, and ``urlparse`` reports an empty host
+    # without one. A protocol-relative ``//host/path`` gets the same
+    # treatment; both are pasted from a browser address bar.
+    if cleaned.startswith("//"):
+        cleaned = f"https:{cleaned}"
+    elif "//" not in cleaned:
+        cleaned = f"https://{cleaned}"
+
+    try:
+        parsed = urlparse(cleaned)
+    except ValueError:
+        return None
+    if parsed.scheme.lower() not in ("http", "https"):
+        return None
+    if _authority_host(cleaned) is None:
+        return None
+    # Credentials in the URL would be forwarded to the fetched host, and they
+    # also make the authority ambiguous; list URLs never need them.
+    if parsed.username or parsed.password:
+        return None
+    path = parsed.path.rstrip("/")
+    # Hosts are case-insensitive, so the canonical form is lowercased. That
+    # keeps two spellings of the same list from becoming two distinct
+    # fetches, and lets callers compare hosts without normalising again.
+    return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}{path}"
+
+
+def host_matches(host: str, allowed: frozenset[str], *, allow_subdomains: bool) -> bool:
+    """Return whether *host* is one of *allowed* (or one of their subdomains).
+
+    The suffix check is anchored on a ``.`` boundary so ``letterboxd.com.evil``
+    and ``letterboxdevil.com`` cannot masquerade as ``letterboxd.com``.
+
+    Args:
+        host: The lowercased host from :func:`_authority_host`.
+        allowed: The accepted apex hosts.
+        allow_subdomains: Whether ``<something>.<apex>`` is also accepted.
+
+    Returns:
+        ``True`` when the host is acceptable.
+
+    """
+    if host in allowed:
+        return True
+    if not allow_subdomains:
+        return False
+    return any(host.endswith(f".{apex}") for apex in allowed)
+
+
+def split_outbound_url(candidate: str) -> tuple[str, str] | None:
+    """Return ``(base_url, host)`` for a user-supplied list URL, or ``None``.
+
+    Combines :func:`parse_outbound_url` and :func:`_authority_host` so a
+    caller validating a list URL gets the host that will really be contacted
+    without re-parsing the canonical URL.
+
+    Args:
+        candidate: The raw URL from config.
+
+    Returns:
+        The canonical base URL and its lowercased host, or ``None`` when the
+        input is unusable.
+
+    """
+    base = parse_outbound_url(candidate)
+    if base is None:
+        return None
+    # ``base`` carries no userinfo, so both parsers agree on its host.
+    host = _authority_host(base)
+    if host is None:
+        return None
+    return base, host
