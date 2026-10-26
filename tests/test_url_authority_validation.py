@@ -92,6 +92,43 @@ def test_parse_outbound_url_rejects_non_http_schemes(supplied):
     assert parse_outbound_url(supplied) is None
 
 
+@pytest.mark.parametrize(
+    "supplied",
+    [
+        "https://[abc/x",  # unterminated IPv6 literal
+        "https://[::1/x",
+        "https://[(]/x",  # netloc that is neither IPv4 nor IPv6
+        "https://[::1]:99999/x",
+    ],
+)
+def test_helpers_return_none_for_authorities_that_fail_to_parse(supplied):
+    """``urlparse``/``urllib3`` raise on some netlocs; that must mean reject.
+
+    The helpers document ``or None``, but ``urlparse`` ran outside the guard,
+    so a malformed authority escaped as the library's raw ``ValueError``
+    ("Invalid IPv6 URL") instead of the provider-specific message the
+    validators promise.
+    """
+    assert _authority_host(supplied) is None
+    assert parse_outbound_url(supplied) is None
+    assert split_outbound_url(supplied) is None
+
+
+@pytest.mark.parametrize(
+    "supplied",
+    ["https://[abc/x", "https://[::1/x", "https://[(]/x"],
+)
+def test_malformed_authorities_raise_the_provider_message(supplied):
+    """Callers see "Invalid ... URL", not a bare parser error."""
+    for validator, expected in (
+        (letterboxd._validate_list_url, "Invalid Letterboxd URL"),
+        (imdb._normalize_list_id, "Invalid IMDb list ID"),
+        (trakt._parse_trakt_list_url, "Invalid Trakt list URL"),
+    ):
+        with pytest.raises(ValueError, match=expected):
+            validator(supplied)
+
+
 def test_host_matches_requires_a_dot_boundary_for_subdomains():
     """A lookalike suffix must not pass for the apex host."""
     allowed = frozenset({"letterboxd.com"})

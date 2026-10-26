@@ -243,11 +243,14 @@ def _authority_host(candidate: str) -> str | None:
         either one finds no usable host.
 
     """
-    stdlib_host = (urlparse(candidate).hostname or "").lower()
-    # urllib3 is the parser that ``requests`` ultimately connects with, so
-    # its answer is the one that matters. A lookup failure must mean
-    # "reject", not crash.
+    # Both parsers raise ``ValueError`` on some malformed authorities
+    # (``https://[abc/x`` is an unterminated IPv6 literal, and a netloc that
+    # fails NFKC normalisation raises too), so both calls belong under the
+    # guard. A parse failure must mean "reject", not crash — otherwise a bad
+    # config value surfaces as the library's generic message instead of the
+    # provider-specific "Invalid ... URL" error the callers document.
     try:
+        stdlib_host = (urlparse(candidate).hostname or "").lower()
         client_host = (_urllib3_parse_url(candidate).host or "").lower()
     except (ValueError, TypeError):
         return None
@@ -287,7 +290,10 @@ def parse_outbound_url(candidate: str) -> str | None:
     elif "//" not in cleaned:
         cleaned = f"https://{cleaned}"
 
-    parsed = urlparse(cleaned)
+    try:
+        parsed = urlparse(cleaned)
+    except ValueError:
+        return None
     if parsed.scheme.lower() not in ("http", "https"):
         return None
     if _authority_host(cleaned) is None:
