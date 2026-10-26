@@ -1,6 +1,9 @@
 # Config backups created by atomic save in config.py
 config/*.bak
 
+# Run-lock file created by sync.sync_run_guard (runtime state, not config)
+config/sync.lock
+
 # Local config – contains secrets (API key etc.), never commit
 config.json
 

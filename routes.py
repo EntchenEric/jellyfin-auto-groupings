@@ -60,10 +60,12 @@ from sync import (
     _LIST_ORDER_VALUES as _VALID_LIST_ORDER_VALUES,
 )
 from sync import (
+    SyncBusyError,
     clear_library_cache,
     get_cover_path,
     preview_group,
     run_sync,
+    sync_run_guard,
 )
 
 # Resolve the application version from package metadata.
@@ -1271,6 +1273,11 @@ def _run_sync_handler(dry_run: bool = False) -> ResponseReturnValue:
             "Synchronization complete",
             results=sync_results,
         )
+    except SyncBusyError as exc:
+        # 409 rather than 429: the request is well formed and not rate
+        # limited, it just cannot start while another run holds the lock.
+        # 409 tells the client the conflict is with current server state.
+        return _error(f"{exc!s}", 409)
     except ValueError as exc:
         return _error(f"{exc!s}", 400)
     except (RuntimeError, OSError) as exc:
@@ -1584,7 +1591,12 @@ def _prune_empty_parents(directory: Path, base: Path) -> None:
 
 @bp.route("/api/cleanup", methods=["POST"])
 def perform_cleanup() -> ResponseReturnValue:
-    """Delete the selected folders from the target directory."""
+    """Delete the selected folders from the target directory.
+
+    Holds the sync run lock: a folder is the directory a sync refills, so
+    deleting one mid-run strands that run's links and leaves a half-populated
+    directory behind. A conflicting run answers 409 instead of deleting.
+    """
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return _error("Request body must be JSON", 400)
@@ -1602,6 +1614,36 @@ def perform_cleanup() -> ResponseReturnValue:
     url: str = str(config.get("jellyfin_url") or "").rstrip("/")
     api_key: str = str(config.get("api_key") or "")
 
+    try:
+        with sync_run_guard():
+            return _delete_selected_folders(
+                folders,
+                target_base,
+                auto_create_libraries,
+                url,
+                api_key,
+            )
+    except SyncBusyError as exc:
+        return _error(f"{exc!s}", 409)
+
+
+def _delete_selected_folders(
+    folders: list[Any],
+    target_base: str,
+    auto_create_libraries: bool,
+    url: str,
+    api_key: str,
+) -> ResponseReturnValue:
+    """Delete *folders*, returning the aggregated JSON response.
+
+    Args:
+        folders: Folder names from the request body (untrusted types included).
+        target_base: Absolute base path for the target directory.
+        auto_create_libraries: Whether to also clean up Jellyfin libraries.
+        url: Jellyfin server URL.
+        api_key: Jellyfin API key.
+
+    """
     deleted: int = 0
     errors: list[str] = []
     seen: set[str] = set()

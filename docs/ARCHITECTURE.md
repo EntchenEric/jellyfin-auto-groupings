@@ -151,6 +151,22 @@ according to cron expressions:
 - **Per-group sync** — individual groups on their own schedule
 - **Cleanup** — removes broken symlinks on a schedule
 
+### Run lock
+
+`sync.sync_run_guard()` serialises every run that writes to the target
+directory: `POST /api/sync`, `POST /api/cleanup`, and the three scheduled jobs.
+It combines an in-process `threading.Lock` with an exclusive `flock` on
+`<config dir>/sync.lock`, because gunicorn runs several worker *processes*
+(two by default) and each would otherwise hold its own unrelated lock.
+
+This matters because each group directory is cleared and then refilled one
+symlink at a time. Two overlapping runs therefore delete each other's links
+mid-flight, leaving the directory with an arbitrary mix of both runs and a
+reported count that does not describe what is on disk. A run that cannot take
+the lock within `SYNC_LOCK_TIMEOUT` raises `SyncBusyError`; the HTTP routes
+answer `409`, and the scheduler logs a skip instead of queueing an unbounded
+backlog behind a long run. Dry runs write nothing, so they take no lock.
+
 ### Frontend (`static/js/`)
 
 Modular JavaScript (ES modules, no bundler):

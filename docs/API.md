@@ -200,7 +200,15 @@ A group whose own configuration is malformed (non-string `name`, `sort_order`,
 contributes an entry with `links: 0` and an `error` describing the bad field,
 and the remaining groups still sync.
 
-**Errors:** `400` validation errors; `429` rate limit (wait before retrying); `500` sync failure.
+**Errors:** `400` validation errors; `409` another sync or cleanup run is in
+progress (nothing was changed — retry after it finishes); `429` rate limit
+(wait before retrying); `500` sync failure.
+
+A real sync holds a run lock for its whole duration, so a scheduled sync, a
+sync from the UI, and a sync in another gunicorn worker cannot clear and refill
+the same group directory at the same time. Overlapping runs used to leave a
+directory holding a mix of both runs' links. `POST /api/sync/preview_all` takes
+no lock because a dry run writes nothing.
 
 ---
 
@@ -310,6 +318,10 @@ Delete selected folders from the target path. When `auto_create_libraries` is en
 **Response `200`:** `{ "status": "success", "deleted": 2 }`
 
 **Response `207`:** Partial success with `{ "status": "partial_success", "deleted": N, "errors": [...] }`
+
+**Response `409`:** A sync or cleanup run already holds the run lock, e.g.
+`{ "status": "error", "message": "Another sync or cleanup run is already in progress. Wait for it to finish and try again." }`
+Nothing is deleted. Retry once the other run has finished.
 
 A folder name the OS refuses to inspect (for example a component longer than
 `NAME_MAX`, or an I/O error on a damaged entry) fails only that entry: it is
