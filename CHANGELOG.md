@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A Letterboxd list URL pasted from a browser silently synced only its first
+  page. `_validate_list_url` kept the query string, fragment and any existing
+  `/page/N/` segment, and the page walk then appended the next-page segment
+  behind them, so `…/u/list/x?utm_source=tw` requested
+  `…/u/list/x?utm_source=tw/page/2/`. Letterboxd routes on the URL path, so
+  every "page" resolved back to page 1: the walk re-read the same 72 films
+  until the 50-page safety cap, returned only that first page, and logged a
+  truncation warning that blamed the list's length. The URL is now reduced to
+  scheme, host and path, so pagination resumes where the list actually
+  continues.
+
 - `utils/formatting.py` documented that every helper normalises its input
   before formatting, but four of them did not: `slugify()` and
   `format_release_date()` raised `AttributeError`/`TypeError` from an inner

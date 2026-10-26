@@ -175,7 +175,9 @@ knowing before you build a group on a long list:
 - **A list identifier must match its source exactly.** The IMDb source accepts
   a bare `ls000024390` ID or an `imdb.com` URL containing `/list/ls000024390`;
   the Letterboxd source accepts an HTTP(S) URL on `letterboxd.com` (a missing
-  scheme is filled in); the TMDb source accepts a numeric list ID or a
+  scheme is filled in, and a pasted URL's query string, fragment or existing
+  `/page/N/` segment is dropped so the page walk starts from page 1); the TMDb
+  source accepts a numeric list ID or a
   `themoviedb.org/list/<id>` URL, and reads the ID from the URL rather than its
   trailing name, so `…/list/8204231/my-list` uses `8204231`; the Trakt source
   accepts `username/list-slug` or a `trakt.tv/users/<user>/lists/<slug>` URL.
