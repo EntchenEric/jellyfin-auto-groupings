@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `jellyfin_groupings.JellyfinClient` and the root `main.JellyfinGroupings`
+  built their request URLs by interpolating values into the query string, so a
+  collection name that contained a URL metacharacter changed the request
+  instead of the name. `"Tom & Jerry"` was sent as `Name=Tom` plus a stray
+  `Jerry` parameter and created a collection called `"Tom "`; `"Best of 2024
+  #1"` put a `#` in the URL, which starts a fragment, so the `Ids` parameter
+  was never sent at all and Jellyfin created an empty collection while the sync
+  reported success; `"C++"` became `"C   "`. `Name`, `Ids`, and `ParentId` now
+  go through `params=`, which percent-encodes them.
+
 - `tmdb.get_tmdb_recommendations()` aborted the entire sync run when TMDb
   answered `"results": null` for an item with no recommendations. The looped
   value was iterated unguarded, so the `TypeError` escaped the caller's
