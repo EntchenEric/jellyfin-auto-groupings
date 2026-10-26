@@ -157,9 +157,13 @@ def normalize_group_relpath(name: str) -> str | None:
     ``"Anime/Action"``.
 
     The result is always relative and always stays inside the target
-    directory: absolute paths, ``.``/``..`` segments and NUL bytes are
-    rejected outright rather than sanitised, so a malformed name can never
-    be silently turned into a path that escapes the base directory.
+    directory: ``.``/``..`` segments and NUL bytes are rejected outright
+    rather than sanitised, so a malformed name can never be silently turned
+    into a path that escapes the base directory. A leading ``/`` (or ``\\``)
+    is dropped along with any other empty segment, so ``"/etc/passwd"``
+    becomes the relative ``"etc/passwd"`` inside the target directory rather
+    than being rejected — it names a nested folder there, never the absolute
+    path it resembles.
 
     Windows drive-letter absolute paths (e.g. ``"C:\\foo"`` or
     ``"C:/foo"``) are also rejected: after normalising separators they would

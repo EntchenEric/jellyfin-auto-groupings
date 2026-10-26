@@ -72,11 +72,18 @@ Replace the entire configuration with the JSON request body.
 **Validation:**
 
 - `groups` must be a list of at most 200 entries, each with a `name` that is
-  non-empty after trimming and unique across the list (comparison ignores
-  surrounding whitespace, since that is stripped when the target folder is
-  created; case is significant). Two groups sharing a name write into the
-  same directory and the per-group scheduler registers one job per name, so
-  the duplicate would silently never run.
+  non-empty after trimming and unique across the list. Uniqueness is compared
+  on the *folder path the name resolves to*, not on the raw string, so
+  `Action`, `Action/`, and ` Action ` collide, as do `Anime/Action` and
+  `Anime//Action`. Case is still significant (`Action` and `action` are
+  different folders). Two groups resolving to one directory overwrite each
+  other and the per-group scheduler registers one job per name, so the
+  duplicate would silently never run.
+- A `name` must describe a folder that stays inside `target_path`:
+  `.`/`..` segments, a NUL byte, and a Windows drive path (`C:/x`) are
+  rejected. Any segment longer than 255 bytes is also rejected, because the
+  filesystem cannot create it. A leading `/` is not an absolute path here —
+  it is dropped, so `/Anime` means the same nested folder as `Anime`.
 - Cron expressions in `scheduler` and per-group schedules are validated.
 - `seasonal_start` / `seasonal_end` must be `MM-DD` dates that exist in that
   month (`02-31` and `04-31` are rejected; `02-29` is accepted, since the
