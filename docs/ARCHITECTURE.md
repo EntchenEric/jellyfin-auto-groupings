@@ -127,6 +127,13 @@ Lower-level HTTP helpers for interacting with the Jellyfin API:
 - Library listing, user listing, recent item fetching
 - Sort-order mapping from friendly names to Jellyfin API values
 
+Every outbound request passes an explicit `timeout=`. `requests` has no
+default timeout, so an omitted value made a stalled Jellyfin server block the
+caller indefinitely rather than raising an error the sync layer could log and
+move past. The same rule applies to the legacy `JellyfinGroupings` client in
+`jellyfin_groupings/main.py`, which takes a `timeout` argument (default 30
+seconds).
+
 ### External List Fetchers
 
 Each fetcher module follows the same pattern: fetch IDs from an external
