@@ -81,6 +81,14 @@ _COMPLEX_QUERY_RE = re.compile(
     re.IGNORECASE,
 )
 
+# A ``year`` source value that needs local (in-memory) evaluation rather than
+# a Jellyfin ``years`` filter: either a comparison expression (``>=2000``), or
+# a ``year:``-prefixed rule as produced by the complex-query syntax.  Jellyfin
+# only accepts literal years and comma-separated year lists in ``years``, so
+# any other shape was silently returning the whole library.
+_YEAR_LOCAL_MATCH_RE = re.compile(r"^(?:<=|>=|<|>)|^year\s*:", re.IGNORECASE)
+
+
 # ``sort_order`` values that mean "keep the order from the external list"
 # rather than applying a Jellyfin / in-memory sort.
 _LIST_ORDER_VALUES: frozenset[str] = frozenset(
@@ -1131,6 +1139,32 @@ def _fetch_items_for_recommendations_group(
     )
 
 
+def _year_value_needs_local_match(source_type: str | None, val: str) -> bool:
+    """Return whether a ``year`` value must be evaluated in memory.
+
+    Jellyfin's ``years`` query parameter accepts literal years and
+    comma-separated year lists only.  A comparison expression (``>=2000``) was
+    forwarded verbatim, so the server ignored the unrecognised filter and
+    answered with the whole library — a group documented as "movies from 2000
+    onwards" silently linked every movie in it.  Those expressions, and
+    ``year:``-prefixed rules typed into the same field, are matched locally by
+    :func:`_match_year` instead, which is where the operator forms were
+    implemented in the first place.
+
+    Args:
+        source_type: The group's source type.
+        val: The group's source value.
+
+    Returns:
+        ``True`` when *val* is a year expression that the local matcher must
+        handle.
+
+    """
+    if source_type != "year":
+        return False
+    return _YEAR_LOCAL_MATCH_RE.search(val.strip()) is not None
+
+
 def _match_year(value: Any, rule_value: str) -> bool:
     """Match a production year, supporting range comparisons.
 
@@ -1712,7 +1746,11 @@ def preview_group(
 
     # Complex query (metadata-based). Mirrors _resolve_group_source so the
     # preview count matches what the sync will actually link.
-    if type_name == "complex" or _COMPLEX_QUERY_RE.search(val):
+    if (
+        type_name == "complex"
+        or _COMPLEX_QUERY_RE.search(val)
+        or _year_value_needs_local_match(type_name, val)
+    ):
         rules = parse_complex_query(
             val,
             "genre" if type_name == "complex" else type_name,
@@ -2399,8 +2437,13 @@ def _resolve_group_source(
     # A "complex" group always takes this path — even a single condition
     # ("genre:Action") is a rule expression, not a metadata filter value.
     is_complex_type = source_type == "complex"
-    if is_complex_type or (
-        source_type in _COMPLEX_QUERY_SOURCE_TYPES and _COMPLEX_QUERY_RE.search(val_str)
+    if (
+        is_complex_type
+        or (
+            source_type in _COMPLEX_QUERY_SOURCE_TYPES
+            and _COMPLEX_QUERY_RE.search(val_str)
+        )
+        or _year_value_needs_local_match(source_type, val_str)
     ):
         # A bare "complex" group has no implicit field, so rules must name
         # their own ("genre:Action"); default to genre for the rest.

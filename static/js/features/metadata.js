@@ -72,7 +72,7 @@ export function parseMetadataValue(valStr) {
     const rules = [];
     const parseRule = (s) => {
         const match = s.trim().match(/^(\w+):(.+)$/);
-        if (match) return { type: match[1], value: match[2].trim() };
+        if (match) return { type: match[1].toLowerCase(), value: match[2].trim() };
         return { value: s.trim() };
     };
     const first = parseRule(parts[0]);
@@ -109,7 +109,7 @@ export function renderMetadataRules() {
         if (type === 'complex') {
             const rowTypeSelect = document.createElement('select');
             rowTypeSelect.className = 'rule-type-select';
-            ['genre', 'actor', 'studio', 'tag'].forEach(t => {
+            ['genre', 'actor', 'studio', 'tag', 'year'].forEach(t => {
                 const o = document.createElement('option');
                 o.value = t; o.textContent = t.charAt(0).toUpperCase() + t.slice(1);
                 if (rule.type === t || (!rule.type && t === 'genre')) o.selected = true;
@@ -121,28 +121,44 @@ export function renderMetadataRules() {
         }
 
         const rowType = type === 'complex' ? rule.type : type;
-        const options = state.cachedMetadata[rowType] || [];
-        const valSelect = document.createElement('select');
-        valSelect.className = 'rule-value-select';
 
-        const defaultOpt = document.createElement('option');
-        defaultOpt.value = ''; defaultOpt.textContent = 'Select ' + rowType + '...'; defaultOpt.disabled = true; defaultOpt.selected = !rule.value;
-        valSelect.appendChild(defaultOpt);
+        // Years are free-form (a literal year, a comma-separated list, or a
+        // comparison like ">=2000"), and the metadata endpoint does not
+        // provide a year list to populate a dropdown from. Without this
+        // branch the row rendered an empty <select> that held only the
+        // disabled placeholder, so a year rule could not be entered at all.
+        if (rowType === 'year') {
+            const valInput = document.createElement('input');
+            valInput.type = 'text';
+            valInput.className = 'rule-value-input';
+            valInput.placeholder = 'e.g. 2000, 1999,2000, or >=2000';
+            valInput.value = rule.value || '';
+            valInput.oninput = (e) => { rule.value = e.target.value; };
+            row.appendChild(valInput);
+        } else {
+            const options = state.cachedMetadata[rowType] || [];
+            const valSelect = document.createElement('select');
+            valSelect.className = 'rule-value-select';
 
-        let foundMatch = false;
-        options.forEach(opt => {
-            const o = document.createElement('option');
-            o.value = opt; o.textContent = opt;
-            if (rule.value === opt) { o.selected = true; foundMatch = true; }
-            valSelect.appendChild(o);
-        });
-        if (rule.value && !foundMatch) {
-            const o = document.createElement('option');
-            o.value = rule.value; o.textContent = rule.value + " (Custom)"; o.selected = true;
-            valSelect.appendChild(o);
+            const defaultOpt = document.createElement('option');
+            defaultOpt.value = ''; defaultOpt.textContent = 'Select ' + rowType + '...'; defaultOpt.disabled = true; defaultOpt.selected = !rule.value;
+            valSelect.appendChild(defaultOpt);
+
+            let foundMatch = false;
+            options.forEach(opt => {
+                const o = document.createElement('option');
+                o.value = opt; o.textContent = opt;
+                if (rule.value === opt) { o.selected = true; foundMatch = true; }
+                valSelect.appendChild(o);
+            });
+            if (rule.value && !foundMatch) {
+                const o = document.createElement('option');
+                o.value = rule.value; o.textContent = rule.value + " (Custom)"; o.selected = true;
+                valSelect.appendChild(o);
+            }
+            valSelect.onchange = (e) => { rule.value = e.target.value; };
+            row.appendChild(valSelect);
         }
-        valSelect.onchange = (e) => { rule.value = e.target.value; };
-        row.appendChild(valSelect);
 
         if (index > 0) {
             const rmBtn = document.createElement('button');
@@ -188,11 +204,23 @@ export function updateSourceValueUI(preValue = null) {
                 state.lastRenderedType = type;
             }
             renderMetadataRules();
-            sourceValueHelp.textContent = `Select one or more ${type}s from your Jellyfin server.`;
+            if (type === 'year') {
+                sourceValueHelp.innerHTML = 'Enter years as a literal (<code>2000</code>), a list (<code>1999,2000</code>), or a comparison (<code>&gt;=2000</code>).';
+            } else {
+                sourceValueHelp.textContent = `Select one or more ${type}s from your Jellyfin server.`;
+            }
         } else {
             container.style.display = 'none';
             addBtn.style.display = 'none';
-            sourceValueHelp.innerHTML = `Connect Jellyfin for autocompletion. Or type manually: <code>Horror AND Action AND NOT Comedy</code>`;
+            if (type === 'year') {
+                sourceValueHelp.innerHTML = 'Enter years as a literal (<code>2000</code>), a list (<code>1999,2000</code>), or a comparison (<code>&gt;=2000</code>).';
+                sourceValueInput.placeholder = 'e.g. 2000  or  >=2000';
+            } else {
+                sourceValueHelp.innerHTML = `Connect Jellyfin for autocompletion. Or type manually: <code>Horror AND Action AND NOT Comedy</code>`;
+                // Clear the year hint, which would otherwise linger after
+                // switching away from `year` to another metadata type.
+                sourceValueInput.placeholder = '';
+            }
             if (preValue) sourceValueInput.value = preValue;
         }
     } else {

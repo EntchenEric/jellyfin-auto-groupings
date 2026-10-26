@@ -23,6 +23,7 @@ export const sourceOptions = {
         { value: 'actor', label: 'Actor' },
         { value: 'studio', label: 'Studio' },
         { value: 'tag', label: 'Jellyfin Tag' },
+        { value: 'year', label: 'Release Year' },
         { value: 'complex', label: 'Complex Rule-set (Mixed)' },
         { value: 'recommendations', label: 'User Recommendations', requiredKey: 'tmdb_api_key' }
     ],
@@ -36,7 +37,7 @@ export const sourceOptions = {
     ]
 };
 
-export const metadataTypes = ['genre', 'actor', 'studio', 'tag', 'complex'];
+export const metadataTypes = ['genre', 'actor', 'studio', 'tag', 'year', 'complex'];
 
 export const sortLabels = {
     'imdb_list_order': 'IMDb List Order',
