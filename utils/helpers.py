@@ -155,7 +155,9 @@ def sanitize_filename(filename: str) -> str:
 
     Returns:
         A single path segment safe for use as a file name, or ``"unnamed"``
-        when nothing usable remains.
+        when nothing usable remains. NUL and other control characters are
+        replaced with ``_``: a NUL byte makes every filesystem call raise
+        ``ValueError: embedded null byte``.
     """
     if not isinstance(filename, str) or not filename.strip():
         return "unnamed"
@@ -172,6 +174,13 @@ def sanitize_filename(filename: str) -> str:
     # Replace path separators and characters rejected by common filesystems.
     for char in '<>:"/\\|?*':
         name = name.replace(char, "_")
+
+    # A NUL byte cannot exist in a path: ``open()`` and every other
+    # filesystem call raise ``ValueError: embedded null byte``, which the
+    # sync layer does not expect from a name it already "sanitised". Other
+    # C0 control characters are legal on Linux but produce names that are
+    # invisible or unmanageable in a file manager, so both are replaced.
+    name = re.sub(r"[\x00-\x1f\x7f]", "_", name)
 
     # Collapse whitespace so the result stays a single path segment.
     name = re.sub(r"\s+", " ", name).strip()

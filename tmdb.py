@@ -15,6 +15,7 @@ from urllib.parse import urlparse
 import requests
 
 import network
+from _common import host_matches, split_outbound_url
 
 __all__ = ["fetch_tmdb_list", "get_tmdb_recommendations"]
 
@@ -149,15 +150,16 @@ def _normalize_tmdb_list_id(list_id: str) -> str:
         return ""
 
     if "themoviedb.org" in candidate:
-        # Tolerate a scheme-less input such as ``themoviedb.org/list/123``;
-        # without a scheme ``urlparse`` reports an empty hostname.
-        parsed = urlparse(candidate if "//" in candidate else f"https://{candidate}")
-        host = (parsed.hostname or "").lower()
-        if parsed.scheme in ("http", "https") and (
-            host in _TMDB_HOSTS or host.endswith(".themoviedb.org")
-        ):
-            path_match = _TMDB_LIST_PATH_PATTERN.search(parsed.path)
-            if path_match:
+        # A scheme-less input such as ``themoviedb.org/list/123`` is completed
+        # with ``https://``. ``split_outbound_url`` also rejects a URL whose
+        # apparent host differs between ``urlparse`` and the HTTP client, so
+        # ``https://evil.example\@themoviedb.org/list/1`` cannot pass as TMDb
+        # while the request goes to the attacker's server.
+        split = split_outbound_url(candidate)
+        if split is not None:
+            base, host = split
+            path_match = _TMDB_LIST_PATH_PATTERN.search(urlparse(base).path)
+            if host_matches(host, _TMDB_HOSTS, allow_subdomains=True) and path_match:
                 return path_match.group(1)
         msg = (
             f"Invalid TMDb list URL: {list_id!r}. "

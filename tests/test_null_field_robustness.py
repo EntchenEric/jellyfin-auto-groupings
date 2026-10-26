@@ -122,6 +122,22 @@ def test_sanitize_filename_rejects_names_without_alphanumerics():
     assert sanitize_filename("...") == "unnamed"
 
 
+def test_sanitize_filename_replaces_nul_and_control_characters():
+    """A NUL byte must never survive into a path.
+
+    ``sanitize_filename`` promises a path segment that is safe on disk, but
+    it passed NUL through: every filesystem call on the result raised
+    ``ValueError: embedded null byte``, from a name the caller believed was
+    already clean.
+    """
+    from utils.helpers import sanitize_filename
+
+    assert sanitize_filename("a\x00b.mkv") == "a_b.mkv"
+    assert sanitize_filename("a\tb.mkv") == "a_b.mkv"
+    assert sanitize_filename("a\x7fb") == "a_b"
+    assert sanitize_filename("\x00") == "unnamed"
+
+
 def test_process_groupings_skips_collections_without_id():
     class Client:
         def get_collections(self):

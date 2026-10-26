@@ -14,6 +14,7 @@ from urllib.parse import urlparse
 import requests  # keep for exception type references
 
 import network
+from _common import host_matches, split_outbound_url
 
 __all__ = ["fetch_trakt_list"]
 
@@ -89,11 +90,17 @@ def _parse_trakt_list_url(list_url: str) -> tuple[str, str]:
         candidate = markdown_url.group(0)
 
     if "//" in candidate or candidate.lower().startswith("http"):
-        parsed = urlparse(candidate)
-        host = (parsed.hostname or "").lower()
-        if parsed.scheme not in ("http", "https") or host not in _TRAKT_HOSTS:
+        # ``split_outbound_url`` rejects a URL whose apparent host differs
+        # between ``urlparse`` and the HTTP client, so
+        # ``https://evil.example\@trakt.tv/users/jane/lists/x`` cannot supply
+        # a username/slug while really naming someone else's server.
+        split = split_outbound_url(candidate)
+        if split is None:
             raise _trakt_error(list_url)
-        path_match = _TRAKT_LIST_PATH_PATTERN.search(parsed.path)
+        base, host = split
+        if not host_matches(host, _TRAKT_HOSTS, allow_subdomains=False):
+            raise _trakt_error(list_url)
+        path_match = _TRAKT_LIST_PATH_PATTERN.search(urlparse(base).path)
         if not path_match:
             raise _trakt_error(list_url)
         return path_match.group(1), path_match.group(2)

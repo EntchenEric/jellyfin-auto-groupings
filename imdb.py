@@ -14,7 +14,7 @@ import requests
 
 import network
 from _common import DEFAULT_LIST_FETCH_TIMEOUT as _REQUEST_TIMEOUT
-from _common import DEFAULT_LIST_MAX_PAGES
+from _common import DEFAULT_LIST_MAX_PAGES, host_matches, split_outbound_url
 from _common import DEFAULT_SCRAPING_HEADERS as _REQUEST_HEADERS
 
 __all__ = ["fetch_imdb_list"]
@@ -64,14 +64,16 @@ def _normalize_list_id(list_id: str) -> str:
     if _LIST_ID_PATTERN.match(candidate):
         return candidate
 
-    # Tolerate a scheme-less input such as ``imdb.com/list/ls123``; without a
-    # scheme ``urlparse`` reports an empty ``hostname`` and the URL would be
-    # rejected even though it names a real IMDb list.
-    parsed = urlparse(candidate if "//" in candidate else f"https://{candidate}")
-    host = (parsed.hostname or "").lower()
-    if parsed.scheme in ("http", "https") and host in _IMDB_HOSTS:
-        path_match = _LIST_PATH_PATTERN.search(parsed.path)
-        if path_match:
+    # A scheme-less input such as ``imdb.com/list/ls123`` is completed with
+    # ``https://``. ``split_outbound_url`` also rejects a URL whose apparent
+    # host differs between ``urlparse`` and the HTTP client, so
+    # ``https://evil.example\@imdb.com/list/ls1`` cannot pass as IMDb while
+    # the request goes to the attacker's server.
+    split = split_outbound_url(candidate)
+    if split is not None:
+        base, host = split
+        path_match = _LIST_PATH_PATTERN.search(urlparse(base).path)
+        if host_matches(host, _IMDB_HOSTS, allow_subdomains=False) and path_match:
             return path_match.group(1)
 
     msg = f"Invalid IMDb list ID: {list_id!r}. Expected format: ls000024390"

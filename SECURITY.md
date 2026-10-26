@@ -68,6 +68,29 @@ These headers are applied in the `_add_security_headers` Flask
 - The filesystem browser is restricted to whitelisted roots (home directory, `/media`, `/mnt`).
 - Symlinks are excluded from the browser to prevent path traversal.
 
+### Outbound List URLs
+
+Group sources such as `imdb_list`, `trakt_list`, `tmdb_list`, and
+`letterboxd_list` take a URL from `config.json` and fetch it server-side. That
+makes the value an attacker-influenced URL, so each fetcher validates it
+before any request:
+
+- Only `http`/`https` URLs are accepted, and embedded credentials (`user:pass@`)
+  are rejected so they can never be forwarded to the fetched host.
+- The host must be one of the provider's real apex hosts. Subdomain matching is
+  anchored on a `.` boundary, so `letterboxd.com.evil.tld` and
+  `notletterboxd.com` do not pass for `letterboxd.com`.
+- The host is resolved with **both** `urllib.parse.urlparse` and
+  `urllib3.util.parse_url`, and the URL is rejected when the two disagree.
+  `urlparse` reads everything before the last `@` as userinfo, while the HTTP
+  client ends the authority at a backslash, so
+  `https://evil.example\@letterboxd.com/list/x` looked like a Letterboxd URL
+  to a naive check while `requests` connected to `evil.example`. Comparing both
+  parsers closes that server-side request forgery gap.
+
+The shared helpers live in `_common.py` (`parse_outbound_url`,
+`split_outbound_url`, `host_matches`).
+
 ### Docker
 
 - The Docker image runs as a non-root user (`appuser`, UID 1000).
