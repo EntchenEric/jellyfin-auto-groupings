@@ -346,10 +346,69 @@ def normalize_title(title: str | None, remove_articles: bool = True) -> str:
     return cleaned
 
 
-def extract_year_from_title(title: str | None) -> tuple[str, int | None]:
-    """Extract a year from a title string.
+#: Range accepted as a release year. Mirrors the range that
+#: :func:`jellyfin_auto_groupings.rules.group_by_decade` uses, so a title that
+#: yields a year here also lands in a decade group instead of being dropped.
+_YEAR_MIN = 1800
+_YEAR_MAX = 2100
 
-    Looks for year in parentheses [YYYY] or (YYYY) at the end of the title.
+#: Trailing punctuation left behind once a year is split off the title.
+_SEPARATOR_CHARS = " \t:;,-_([|."
+
+
+#: A year wrapped in brackets or parentheses at the end of a title.
+_TRAILING_BRACKETED_YEAR = re.compile(r"[\[(]\s*(\d{4})\s*[)\]]$")
+
+#: A bare four-digit year at the end, provided the digit before it does not
+#: belong to a longer number (``"Movie 12345"`` must not yield 2345).
+_TRAILING_BARE_YEAR = re.compile(r"(?<!\d)(\d{4})$")
+
+
+def _plausible_year(text: str) -> int | None:
+    """Return *text* as a release year, or ``None`` when it is out of range."""
+    year = int(text)
+    if _YEAR_MIN <= year <= _YEAR_MAX:
+        return year
+    return None
+
+
+def _trim_title_separator(text: str, *, joined: bool) -> str:
+    """Strip the separator punctuation that used to join the title to its year.
+
+    Characters that are pure separators (a hyphen, a colon, an opening bracket)
+    are always removed, as is any punctuation that was glued straight onto the
+    year (``"Movie.2023"``). A period that ends a word is kept, because it can
+    belong to the name: ``"Dr. (2023)"`` must not become ``"Dr"``.
+
+    Args:
+        text: The title text preceding the year.
+        joined: Whether the year touched *text* directly, with no whitespace.
+
+    Returns:
+        The title with only separator punctuation removed.
+    """
+    text = text.rstrip()
+    while text and text[-1] in _SEPARATOR_CHARS:
+        if text[-1] == "." and not joined and len(text) > 1 and not text[-2].isspace():
+            break
+        text = text[:-1].rstrip()
+        joined = False
+    return text
+
+
+def extract_year_from_title(title: str | None) -> tuple[str, int | None]:
+    """Extract a release year from the end of a title string.
+
+    Recognises ``"Movie (2023)"``, ``"Movie [2023]"``, ``"Movie[2023]"``, and
+    ``"Movie 2023"``. The year must stand on its own: ``"Movie 12345"`` keeps
+    its 5-digit number instead of being split into ``"Movie 1"`` + ``2345``,
+    which used to produce a bogus year and a mangled title. Only years within
+    1800-2100 are returned, so a stray number is left in the title.
+
+    Surrounding whitespace is trimmed before matching and the returned title
+    is stripped as well: the patterns are anchored at the end of the value, so
+    a padded ``"  Movie (2023)  "`` previously matched nothing and came back
+    with its spaces intact.
 
     Args:
         title: The title string (or None). Non-string values are treated as
@@ -357,31 +416,40 @@ def extract_year_from_title(title: str | None) -> tuple[str, int | None]:
 
     Returns:
         A tuple of (title_without_year, extracted_year_or_None). A non-string
-        *title* yields ``("", None)``.
+        or blank *title* yields ``("", None)``.
     """
-    if not isinstance(title, str) or not title:
+    if not isinstance(title, str):
         return ("", None)
 
-    # Try to find year in parentheses/brackets at end: ... (2023) or ... [2023]
-    # Updated pattern to also match [YYYY]
-    match = re.search(r"[\s(][\[\]]?(\d{4})[)\]]$", title)
-    if match:
-        year = int(match.group(1))
-        # Remove the year portion from the title
-        before = title[: match.start()].rstrip()
-        # Clean up trailing colons, spaces, and brackets
-        before = before.rstrip(" :[]")
-        return (before, year)
+    stripped = title.strip()
+    if not stripped:
+        return ("", None)
 
-    # Try year without brackets at very end: "Movie 2023"
-    match = re.search(r"(\d{4})$", title)
+    match = _TRAILING_BRACKETED_YEAR.search(stripped)
     if match:
-        year = int(match.group(1))
-        # Check if the year is preceded by a space (not embedded in other text)
-        before = title[: match.start()].rstrip()
-        return (before, year)
+        year = _plausible_year(match.group(1))
+        if year is not None:
+            before = _trim_title_separator(
+                stripped[: match.start()],
+                joined=match.start() > 0 and not stripped[match.start() - 1].isspace(),
+            )
+            return (before, year)
 
-    return (title, None)
+    match = _TRAILING_BARE_YEAR.search(stripped)
+    if match:
+        year = _plausible_year(match.group(1))
+        if year is not None:
+            before = _trim_title_separator(
+                stripped[: match.start()],
+                joined=match.start() > 0 and not stripped[match.start() - 1].isspace(),
+            )
+            # A bare year is only split off when something precedes it. A
+            # title that is itself a year (the film "1917") must keep its
+            # text instead of becoming an empty name with a bogus year.
+            if before:
+                return (before, year)
+
+    return (stripped, None)
 
 
 def group_by_key(items: list[dict], key: str) -> dict:

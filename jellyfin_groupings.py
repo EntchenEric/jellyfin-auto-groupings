@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import sys
 from typing import Any
 
@@ -8,6 +9,11 @@ import requests
 from utils.helpers import items_from_body, string_list
 
 logger = logging.getLogger(__name__)
+
+#: A leading ``YYYY-MM-DD`` date, optionally followed by a time. Used to decide
+#: whether a ``PremiereDate`` value is a real date before it is allowed to take
+#: priority over the title in a sort key.
+_LEADING_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}")
 
 
 class JellyfinAPIError(Exception):
@@ -270,8 +276,8 @@ def process_groupings(client: JellyfinClient, dry_run: bool = True) -> list[tupl
     changes = []
 
     for col in collections:
-        col_name = col.get("Name", "Collection")
-        collection_id = col.get("Id", "")
+        col_name = col.get("Name") or "Collection"
+        collection_id = col.get("Id") or ""
         if not collection_id:
             continue
 
@@ -279,12 +285,34 @@ def process_groupings(client: JellyfinClient, dry_run: bool = True) -> list[tupl
         if not items:
             continue
 
-        # Sort items by PremiereDate (oldest first), fallback to Name if date missing
-        def get_sort_key(item: dict[str, Any]) -> str:
-            premiere_date = item.get("PremiereDate", "")
-            if premiere_date:
-                return premiere_date
-            return item.get("Name", "").lower()
+        # Sort items by PremiereDate (oldest first), fallback to Name if date
+        # missing. The key must be a single comparable type: Jellyfin sends
+        # PremiereDate as a string normally but as a number in some payloads,
+        # and mixing the two raised ``TypeError: '<' not supported between
+        # instances of 'str' and 'int'`` and aborted the whole pass. A missing
+        # or non-string Name likewise raised ``AttributeError`` from
+        # ``.lower()``.
+        #
+        # A string only ranks as a date when it actually starts with one. A
+        # placeholder such as ``"not-a-date"`` used to win the date rank and
+        # sort ahead of a genuinely dated item, shifting every later sort name.
+        def get_sort_key(item: dict[str, Any]) -> tuple[int, str]:
+            premiere_date = item.get("PremiereDate")
+            if isinstance(premiere_date, str):
+                if _LEADING_DATE.match(premiere_date.strip()):
+                    return (0, premiere_date.strip())
+            elif isinstance(premiere_date, (int, float)) and not isinstance(
+                premiere_date, bool
+            ):
+                # A numeric year sorts as that year's first day, so it still
+                # interleaves with the ISO strings instead of landing after
+                # every one of them. Values outside a plausible year range are
+                # not dates either.
+                year = int(premiere_date)
+                if 1 <= year <= 9999:
+                    return (0, f"{year:04d}-01-01")
+            name = item.get("Name")
+            return (1, name.lower() if isinstance(name, str) else "")
 
         sorted_items = sorted(items, key=get_sort_key)
 
@@ -295,7 +323,7 @@ def process_groupings(client: JellyfinClient, dry_run: bool = True) -> list[tupl
 
             if item_id and current_sort != expected_sort_name:
                 changes.append(
-                    (item_id, item.get("Name", "Unknown"), expected_sort_name)
+                    (item_id, item.get("Name") or "Unknown", expected_sort_name)
                 )
                 if not dry_run:
                     success = client.update_item_sort_name(item_id, expected_sort_name)

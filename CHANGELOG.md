@@ -9,6 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `jellyfin_groupings.process_groupings` aborted the whole collection pass when
+  one item carried a numeric `PremiereDate` next to items with ISO strings
+  (`TypeError: '<' not supported between instances of 'str' and 'int'`). The
+  sort key now normalises both shapes — a numeric year sorts as that year's
+  first day — and falls back to the title when neither is usable. A null
+  `Name`, and a collection whose own `Name` is null (which produced sort names
+  like `"None 01"`), are handled too.
+
+- `extract_year_from_title()` mis-parsed several everyday title shapes:
+  `"Movie[2023]"` (bracket touching the title) returned no year, padded values
+  such as `"  Movie (2023)  "` matched nothing and came back with their spaces
+  intact, and a five-digit number was split into a bogus year —
+  `"Movie 12345"` became `("Movie 1", 2345)`. A bare year is now only accepted
+  when it is not part of a longer number and falls within 1800-2100, the same
+  range `group_by_decade` uses. A title that is only a year (the film
+  `"1917"`) keeps its text instead of becoming an empty name. Trailing
+  separator punctuation is trimmed while a period that ends a name is kept, so
+  `"Dr. (2023)"` keeps its `"Dr."`.
+
+- The collection sort key treated any non-empty `PremiereDate` string as a
+  date, so a placeholder such as `"not-a-date"` ranked ahead of an undated item
+  and shifted every later sort name. A value only ranks as a date when it
+  starts with `YYYY-MM-DD`; an out-of-range numeric year is ignored the same
+  way.
+
 - Every external list fetcher (`imdb`, `trakt`, `tmdb`, `letterboxd`) could be
   pointed at an arbitrary host. A group's `value` in `config.json` was checked
   with `urllib.parse.urlparse`, which reads everything before the last `@` as
