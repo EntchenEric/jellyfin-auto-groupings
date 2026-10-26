@@ -320,8 +320,16 @@ def format_release_date(date_str: str | None) -> str:
     Returns:
         Date portion in YYYY-MM-DD format, or empty string when the value is
         missing, empty, or not a string.
+
     """
     date_str = _coerce_text(date_str)
+    if date_str is None:
+        return ""
+    # The patterns below are anchored at the start of the value, so padding
+    # defeated every one of them: ``"  2023-05-12  "`` fell through to the
+    # raw-input fallback and was rendered with its spaces intact, and a
+    # padded ``"2024"`` was not recognised as a year at all.
+    date_str = date_str.strip()
     if not date_str:
         return ""
 

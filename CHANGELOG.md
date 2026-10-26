@@ -9,6 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- An AniList or MyAnimeList group whose `source_value` was typed with padding
+  (`jane / completed`, `jane/ completed`) failed with
+  `Unknown MAL status: ' completed'`, listing values that looked identical to
+  the one the user had entered. Both halves of the `account/status` value are
+  now trimmed before they reach the provider, and an empty status becomes
+  "no status" instead of being looked up as one.
+
+- `group_by_key` used the raw field value as a dictionary key, so an item
+  whose field holds a list — Jellyfin's `Genres`, `Tags` and `Studios` all do —
+  raised `TypeError: unhashable type: 'list'` and aborted the whole grouping
+  pass. Unusable values are now skipped, leaving that item out of the result.
+
+- `chunk_list([], 0)` returned `[[]]`: one empty chunk instead of none, so a
+  caller that had nothing to do still saw a single work item. An empty input
+  now yields no chunks at any size.
+
+- `format_release_date()` matched its patterns from the start of the raw
+  value, so a padded date bypassed every one of them and was returned with its
+  whitespace intact (`"  2023-05-12  "` came back unchanged); a padded year was
+  not recognised at all. Surrounding whitespace is stripped first.
+
+- The post-save UI refresh aborted with
+  `Cannot read properties of null (reading 'style')` whenever
+  `updateSourceValueUI()` ran against a document without the grouping form —
+  which is the case after a config save and in the wizard. The saved config
+  was fine, but the group list and source-type select were left stale. The
+  function now returns early when the controls it drives are absent.
+
 - A Letterboxd list URL pasted from a browser silently synced only its first
   page. `_validate_list_url` kept the query string, fragment and any existing
   `/page/N/` segment, and the page walk then appended the next-page segment
