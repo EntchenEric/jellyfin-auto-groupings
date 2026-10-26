@@ -20,7 +20,12 @@ if TYPE_CHECKING:
 
 import requests
 from requests.adapters import HTTPAdapter
-from urllib3.exceptions import ConnectTimeoutError, MaxRetryError, ReadTimeoutError
+from urllib3.exceptions import (
+    ConnectTimeoutError,
+    MaxRetryError,
+    NewConnectionError,
+    ReadTimeoutError,
+)
 from urllib3.util.retry import Retry
 
 logger = logging.getLogger(__name__)
@@ -169,6 +174,14 @@ def _reraise_timeout(exc: requests.ConnectionError) -> None:
     - ``ReadTimeoutError`` -> :class:`requests.Timeout`
     - ``ConnectTimeoutError`` -> :class:`requests.ConnectionError`
 
+    :class:`urllib3.exceptions.NewConnectionError` is left alone: it inherits
+    from ``ConnectTimeoutError``, so the check below would relabel a refused
+    port or a failed DNS lookup as "Connection timed out." and drop the host,
+    the URL and the underlying ``errno``. Callers surface the exception text
+    in the UI (``/api/test-server`` answers with ``Connection error: …``), so
+    the original :class:`requests.ConnectionError` is more useful than a
+    rewritten one and is re-raised unchanged by the caller.
+
     Args:
         exc: The connection error to inspect.
 
@@ -181,6 +194,12 @@ def _reraise_timeout(exc: requests.ConnectionError) -> None:
     if isinstance(reason, ReadTimeoutError):
         msg = "Read timed out."
         raise requests.Timeout(msg) from reason
+    # Must precede the ConnectTimeoutError branch: NewConnectionError is a
+    # *subclass* of it, but means the connection never got established
+    # (``ECONNREFUSED``, ``ENETUNREACH``, ``EAI_AGAIN``), not that the
+    # handshake timed out.
+    if isinstance(reason, NewConnectionError):
+        return
     if isinstance(reason, ConnectTimeoutError):
         msg = "Connection timed out."
         raise requests.ConnectionError(msg) from reason

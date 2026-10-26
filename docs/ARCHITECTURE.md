@@ -107,7 +107,12 @@ via environment variables:
 - `NETWORK_RETRY_STATUS_FORCELIST` (default `429,500,502,503,504`)
 
 Properly re-raises `ReadTimeoutError` and `ConnectTimeoutError` as the
-expected exception types after all retries are exhausted.
+expected exception types after all retries are exhausted: a read timeout
+becomes `requests.Timeout`, a handshake timeout stays a
+`requests.ConnectionError` with "Connection timed out.". A
+`NewConnectionError` (refused port, unresolvable host) is re-raised
+unchanged, because urllib3 derives it from `ConnectTimeoutError` and
+relabelling it would hide the host and the `errno` from the caller.
 
 ### `jellyfin.py` — Jellyfin API Client
 

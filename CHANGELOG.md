@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A refused connection or a failed DNS lookup was reported as
+  "Connection timed out.", discarding the host, the URL and the underlying
+  `errno`. `urllib3.exceptions.NewConnectionError` subclasses
+  `ConnectTimeoutError`, so the `isinstance` check in `network._reraise_timeout`
+  matched a failure that had nothing to do with a timeout and replaced it with
+  a generic message. Every caller that prints the exception text inherited the
+  wrong diagnosis — most visibly `POST /api/test-server`, which answers
+  `{"message": "Connection error: Connection timed out."}` for a mistyped port
+  or an unresolvable hostname, pointing the user at a network timeout when the
+  server was simply not listening. `NewConnectionError` is now excluded from
+  the relabel, so the original message naming the host and the reason reaches
+  the user. Genuine handshake timeouts (`ConnectTimeoutError` without a nested
+  connection failure) still report "Connection timed out."
+
 - A `year` group with a comparison value (`>=2000`, `<=2010`, `>1990`, `<2000`)
   silently linked the entire library. The value was forwarded verbatim to
   Jellyfin's `years` filter, which only understands literal years and
