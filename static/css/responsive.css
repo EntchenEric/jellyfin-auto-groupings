@@ -254,6 +254,10 @@
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
+        /* Smooth scrolling is a viewport movement, not an animation, so the
+           resets above do not touch it. It is the most disorienting effect
+           for a user who asked the OS to reduce motion. */
+        scroll-behavior: auto !important;
     }
 }
 

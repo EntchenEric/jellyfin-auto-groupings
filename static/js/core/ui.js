@@ -140,18 +140,45 @@ function _notifyModalHidden(id) {
     }
 }
 
+// Element that had focus before each modal opened, keyed by modal id. The
+// reference is kept in memory rather than written to `data-previous-active`
+// because the trigger often has no id at all: every per-group "Cover" and
+// "Edit" button is created in a loop, so an id-based round trip stored ""
+// and `hideModal()` left focus on the closed dialog (WCAG 2.4.3). Holding the
+// node also survives a trigger that is re-rendered with the same id.
+const _previousFocus = new Map();
+
+/**
+ * Remember which element should get focus back when *id* closes.
+ * @param {string} id - Modal element id
+ * @param {Element|null} el - Element that opened the modal
+ * @returns {void}
+ */
+function _rememberFocus(id, el) {
+    if (el && el !== document.body && typeof el.focus === 'function') {
+        _previousFocus.set(id, el);
+    } else {
+        _previousFocus.delete(id);
+    }
+}
+
 export function showModal(id) {
     const el = document.getElementById(id);
     if (el) {
+        // Only record the trigger on a closed -> open transition. A modal that
+        // is already open can be shown again (showConfirmDialog() replaces its
+        // contents); at that point document.activeElement is inside the dialog,
+        // so re-recording would lose the original trigger and drop focus to
+        // <body> when the dialog finally closes.
+        const wasOpen = el.style.display === 'flex' || el.style.display === 'block';
         el.style.display = 'flex';
         // Mark the modal as visible for assistive technology
         el.removeAttribute('aria-hidden');
         // Remember the element that triggered the modal so focus can be
         // restored when it closes.
-        const previousActive = document.activeElement;
-        el.dataset.previousActive = previousActive && previousActive !== document.body
-            ? previousActive.id || ''
-            : '';
+        if (!wasOpen) {
+            _rememberFocus(id, document.activeElement);
+        }
         // Focus first focusable element
         const focusable = el.querySelector(_FOCUSABLE);
         if (focusable) {
@@ -169,11 +196,14 @@ export function hideModal(id) {
         el.style.display = 'none';
         // Hide modal from assistive technology when not visible
         el.setAttribute('aria-hidden', 'true');
-        // Return focus to the element that triggered the modal
-        const prevId = el.dataset.previousActive;
-        if (prevId) {
-            const prev = document.getElementById(prevId);
-            if (prev) prev.focus();
+        // Return focus to the element that triggered the modal. The trigger
+        // may have been removed by a re-render while the dialog was open, in
+        // which case focusing it would silently do nothing; drop the stale
+        // reference instead of keeping it forever.
+        const prev = _previousFocus.get(id);
+        _previousFocus.delete(id);
+        if (prev && document.contains(prev)) {
+            prev.focus();
         }
         // Remove body class when no more modals are visible
         const anyVisible = document.querySelectorAll('.modal');
@@ -206,11 +236,11 @@ document.addEventListener('keydown', (e) => {
             }
         }
         if (topmost) {
+            // `hideModal()` restores focus to the element that opened the
+            // dialog; looking up a `[onclick*="<modal-id>"]` trigger here
+            // never matched anything, because openers name the feature (Sync,
+            // Export) rather than the dialog.
             hideModal(topmost.id);
-            // Restore focus to trigger
-            const modalId = topmost.id;
-            const trigger = document.querySelector(`[onclick*="${modalId}"], [data-modal="${modalId}"]`);
-            if (trigger) trigger.focus();
         }
     }
 });
@@ -395,6 +425,7 @@ export function showLoadingOverlay(title, status, totalSteps = 0) {
 
     overlay.style.display = 'flex';
     overlay.removeAttribute('aria-hidden');
+    _rememberFocus('loading-overlay', document.activeElement);
 }
 
 export function updateLoadingStatus(status, advanceStep = false) {
@@ -412,6 +443,11 @@ export function hideLoadingOverlay() {
     if (overlay) {
         overlay.style.display = 'none';
         overlay.setAttribute('aria-hidden', 'true');
+        const prev = _previousFocus.get('loading-overlay');
+        _previousFocus.delete('loading-overlay');
+        if (prev && document.contains(prev)) {
+            prev.focus();
+        }
     }
     _progressTotal = 0;
     _progressStep = 0;
