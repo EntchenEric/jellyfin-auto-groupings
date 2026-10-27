@@ -2215,9 +2215,13 @@ def _prepare_group_directory(
     source_cover: str | None = get_cover_path(group_name, target_base)
 
     if not dry_run:
-        if Path(group_dir).exists():
+        group_path = Path(group_dir)
+        # ``exists()`` follows symlinks, so a *broken* link reports False while
+        # still occupying the name. Cleaning it is what lets the mkdir() below
+        # succeed: without this the sync crashed with FileExistsError.
+        if group_path.exists() or group_path.is_symlink():
             logger.info("Cleaning existing directory: %s", group_dir)
-            _clear_group_directory(Path(group_dir))
+            _clear_group_directory(group_path)
         Path(group_dir).mkdir(parents=True, exist_ok=True)
 
         if source_cover:

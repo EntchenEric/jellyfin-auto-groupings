@@ -295,3 +295,27 @@ def test_prepare_group_directory_does_not_clear_a_symlink_target(tmp_path):
     assert (media / "movie.mkv").is_file(), "the link target's files must survive"
     assert not (target / "Anime").is_symlink()
     assert (target / "Anime").is_dir()
+
+
+def test_prepare_group_directory_recovers_from_a_broken_symlink(tmp_path):
+    """A dangling link occupies the name even though ``exists()`` says no.
+
+    ``Path.exists()`` follows links, so a leftover ``<target>/<group>`` link
+    whose destination was deleted reported "not there". The cleanup was then
+    skipped and ``mkdir()`` failed with ``FileExistsError``, aborting the whole
+    sync for that group. The link must be cleared and a real directory made.
+    """
+    import sync
+
+    target = tmp_path / "target"
+    target.mkdir()
+    (target / "Anime").symlink_to(tmp_path / "deleted-media")
+
+    assert not (target / "Anime").exists()
+    assert (target / "Anime").is_symlink()
+
+    sync._prepare_group_directory(str(target / "Anime"), "Anime", str(target), False)
+
+    group_dir = target / "Anime"
+    assert not group_dir.is_symlink()
+    assert group_dir.is_dir()
