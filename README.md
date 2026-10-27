@@ -58,10 +58,58 @@ can be called in-process; the `python -m` entry point still exits with it.
 
 ## Configuration
 
-Set environment variables:
-- `JELLYFIN_URL` - Jellyfin server URL (default: `http://localhost:8096`)
+The web UI stores its settings in `config/config.json`. For a container
+deployment, copy [`.env.example`](.env.example) to `.env` and uncomment what you
+need — environment variables take precedence over `config.json` and are never
+persisted back to disk, so they are the right place for credentials.
+
+**Credentials and overrides** (these shadow the stored config value):
+
 - `JELLYFIN_API_KEY` - Jellyfin API key
+- `TRAKT_CLIENT_ID` - Trakt client ID
+- `TMDB_API_KEY` - TMDb API key
+- `MAL_CLIENT_ID` - MyAnimeList client ID
+- `ANILIST_API_URL` - AniList GraphQL endpoint
+
+**Web UI security:**
+
+- `APP_PASSWORD` - Enable HTTP Basic Auth on the UI. Any UTF-8 text works.
+  `GET /` and `/static/*` stay reachable so the SPA can prompt for the
+  password; `GET /api/health` stays unauthenticated so container healthchecks
+  keep working.
+- `ALLOWED_NON_CSRF_ENDPOINTS` - Comma-separated Flask *endpoint names*
+  (`blueprint.view`, not URL paths) exempted from the `X-Requested-With`
+  header check. Default: none.
+
+**Server and scheduler:**
+
+- `FLASK_PORT` - Port the app binds (default `5000`)
+- `FLASK_DEBUG` - Enable Flask debug mode
+- `SCHEDULER_ENABLED` - Set to `0` to disable the background scheduler
+  entirely (default `1`); useful when running several instances
+- `LOG_LEVEL` - `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`
+  (default `INFO`)
+- `GUNICORN_WORKERS` - Worker processes in the Docker image (default `2`).
+  The sync run lock spans processes, so raising this is safe.
+- `GUNICORN_TIMEOUT` - Worker timeout in seconds (default `120`); raise it if
+  a large library sync trips a gateway timeout
+
+**HTTP retries** (external API calls only, not Jellyfin):
+
+- `NETWORK_RETRY_TOTAL` - Retry attempts (default `3`; `0` disables retries)
+- `NETWORK_RETRY_BACKOFF_FACTOR` - Exponential backoff factor (default `1.0`)
+- `NETWORK_RETRY_STATUS_FORCELIST` - Retried status codes
+  (default `429,500,502,503,504`)
+
+**CLI (`python -m jellyfin_auto_groupings.cli`) only:**
+
+- `JELLYFIN_URL` - Jellyfin server URL (default `http://localhost:8096`)
 - `DRY_RUN` - Set to `true` to preview changes without applying them
+
+**Standalone `auto_group.py` only:**
+
+- `MIN_GROUP_SIZE` - Smallest group to keep (default `2`). A malformed value
+  logs a warning and falls back to the default instead of aborting the run.
 
 ## API
 
@@ -219,7 +267,14 @@ npm test
 # Lint
 python -m ruff check .
 python -m ruff format --check .
+
+# Integration tests without a real Jellyfin server
+python start_virtual_jellyfin.py
 ```
+
+`start_virtual_jellyfin.py` starts a mock Jellyfin API used by
+`tests/test_virtual_jellyfin_*.py`. It honours `VIRTUAL_JF_PORT` to override
+its listen port when `8096` is already taken.
 
 ## Documentation
 
