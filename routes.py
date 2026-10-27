@@ -1723,12 +1723,57 @@ def _delete_selected_folders(
 # ---------------------------------------------------------------------------
 
 
+class _DetectBudget:
+    """Walk budget shared by every filesystem search in one auto-detect call.
+
+    ``auto_detect_paths`` searches for the filename of up to
+    ``_AUTO_DETECT_SAMPLE_LIMIT`` sample items.  When each search owns its own
+    ``timeout`` and ``max_files`` allowance, the endpoint's worst case is the
+    sample count multiplied by that allowance — ten searches of thirty seconds
+    each, which outlives the 120 s gunicorn worker timeout and returns a 502
+    with no diagnostic instead of the "nothing detected" answer the caller can
+    act on.  One budget for the whole call keeps the endpoint inside a single
+    allowance.
+
+    Args:
+        timeout: Wall-clock seconds allowed for the whole call.
+        max_files: Directory entries that may be examined in the whole call.
+
+    """
+
+    def __init__(self, timeout: int, max_files: int) -> None:
+        self.timeout: int = timeout
+        self.deadline: float = time.monotonic() + timeout
+        self.max_files: int = max_files
+        self.files_scanned: int = 0
+        self.exhausted: bool = False
+
+    def expired(self) -> bool:
+        """Return whether the time allowance is used up."""
+        if time.monotonic() > self.deadline:
+            self.exhausted = True
+        return self.exhausted
+
+    def charge(self, count: int) -> bool:
+        """Record *count* examined files; return whether the file cap is exceeded.
+
+        Args:
+            count: Number of filenames in the directory just visited.
+
+        """
+        self.files_scanned += count
+        if self.files_scanned > self.max_files:
+            self.exhausted = True
+        return self.exhausted
+
+
 def _search_local_filesystem(
     filename: str,
     search_roots: list[str],
     *,
     timeout: int = _AUTO_DETECT_TIMEOUT,
     max_files: int = _AUTO_DETECT_MAX_FILES,
+    budget: _DetectBudget | None = None,
 ) -> str | None:
     """Walk *search_roots* looking for *filename*.
 
@@ -1741,11 +1786,19 @@ def _search_local_filesystem(
     Args:
         filename: The filename to search for.
         search_roots: List of root directories to search in.
+        timeout: Seconds allowed for this search when *budget* is omitted.
+        max_files: File cap for this search when *budget* is omitted.
+        budget: Shared allowance for a multi-search caller. When given,
+            *timeout* and *max_files* are ignored and the walk stops as soon
+            as the shared allowance is spent, so the caller cannot multiply
+            the allowance by its sample count.
 
     """
-    walk_start = time.monotonic()
-    files_scanned = 0
+    if budget is None:
+        budget = _DetectBudget(timeout, max_files)
     for root in search_roots:
+        if budget.expired():
+            return None
         if not Path(root).is_dir():
             continue
         # Measure depth relative to the search root so the _AUTO_DETECT_MAX_DEPTH
@@ -1757,6 +1810,29 @@ def _search_local_filesystem(
         for dirpath, dirnames, filenames in os.walk(root):
             # Compute depth once per directory entry
             dir_depth = len(Path(dirpath).parts) - root_depth
+            # Charge and check the budget before any branch can return or skip
+            # this directory. The mount-point branch used to run first, so a
+            # match below a mount was handed back without spending budget and
+            # the deadline was never consulted there — and a tree whose roots
+            # are mostly mount points (the usual shape of /media and /mnt) was
+            # therefore walked largely for free.
+            if budget.expired():
+                logger.warning(
+                    "auto-detect timed out after %ds, %d files scanned",
+                    budget.timeout,
+                    budget.files_scanned,
+                )
+                return None
+            if filename in filenames:
+                # Answer a hit here before charging for the directory: a match
+                # found at the cap is still the result the caller asked for.
+                return str(Path(dirpath) / filename)
+            if budget.charge(len(filenames)):
+                logger.warning(
+                    "auto-detect hit file limit (%d), stopping scan",
+                    budget.max_files,
+                )
+                return None
             try:
                 is_mount = os.path.ismount(dirpath)
             except OSError:
@@ -1764,28 +1840,10 @@ def _search_local_filesystem(
                 dirnames.clear()
                 continue
             if is_mount and dirpath != root:
-                # Check files in the mount point directory itself before
-                # pruning subdirectories from the walk.
-                if filename in filenames:
-                    return str(Path(dirpath) / filename)
+                # Prune subdirectories of a mount point so the walk cannot
+                # descend into another filesystem's tree.
                 dirnames.clear()
                 continue
-            if time.monotonic() - walk_start > timeout:
-                logger.warning(
-                    "auto-detect timed out after %ds, %d files scanned",
-                    timeout,
-                    files_scanned,
-                )
-                return None
-            files_scanned += len(filenames)
-            if files_scanned > max_files:
-                logger.warning(
-                    "auto-detect hit file limit (%d), stopping scan",
-                    max_files,
-                )
-                return None
-            if filename in filenames:
-                return str(Path(dirpath) / filename)
             if dir_depth > _AUTO_DETECT_MAX_DEPTH:
                 dirnames.clear()
     return None
@@ -1866,6 +1924,11 @@ def auto_detect_paths() -> ResponseReturnValue:
     detected_j_root: str | None = None
     detected_h_root: str | None = None
 
+    # One allowance for every sample search. Sharing it keeps the endpoint
+    # inside a single timeout/file-cap instead of multiplying both by the
+    # sample count, which outlived the gunicorn worker timeout.
+    budget = _DetectBudget(_AUTO_DETECT_TIMEOUT, _AUTO_DETECT_MAX_FILES)
+
     for item in items:
         j_path = item.get("Path")
         if not j_path:
@@ -1874,11 +1937,20 @@ def auto_detect_paths() -> ResponseReturnValue:
         match_found = _search_local_filesystem(
             Path(j_path).name,
             list(_DEFAULT_SEARCH_ROOTS),
+            budget=budget,
         )
         if match_found:
             detected_j_root, detected_h_root = _compute_common_root(j_path, match_found)
             if detected_j_root:
                 break
+        if budget.exhausted:
+            # Every remaining search would stop on the first directory, so
+            # finish with whatever was detected rather than paying for them.
+            logger.info(
+                "auto-detect stopped early after %d files scanned",
+                budget.files_scanned,
+            )
+            break
 
     suggested_target = str(Path(home_dir) / "jellyfin-groupings-virtual")
     if not os.access(home_dir, os.W_OK):

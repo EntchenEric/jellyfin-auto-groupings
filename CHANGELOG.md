@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `POST /api/jellyfin/auto-detect-paths` could outlive the gunicorn worker
+  timeout. The handler searches the local filesystem for the filename of up to
+  `_AUTO_DETECT_SAMPLE_LIMIT` (10) sample items, and every search was given its
+  own `_AUTO_DETECT_TIMEOUT` (30 s) and `_AUTO_DETECT_MAX_FILES` (50 000)
+  allowance — a worst case of ten times the budget, i.e. 300 s of walking
+  against the 120 s `GUNICORN_TIMEOUT`. A large or slow media tree therefore
+  answered the request by killing the worker (502, no diagnostic) instead of
+  returning the "nothing detected" result the UI can act on. A single
+  `_DetectBudget` is now shared by every search in one call: the deadline and
+  the file cap are spent once, later searches stop instead of restarting the
+  allowance, and the handler breaks out of the sample loop as soon as the
+  budget is gone. `tests/test_auto_detect_budget.py` pins the walk itself and
+  asserts that a request creates exactly one budget rather than one per item.
+
+- `docs/API.md` contradicted itself about authentication on `GET /api/health`.
+  The overview paragraph correctly said the route stays unauthenticated so
+  container probes keep working, while the route's own **Auth:** line claimed
+  auth was required whenever `APP_PASSWORD` is set. `routes._check_auth`
+  exempts `main.health_check`, so the section was wrong and a reader could not
+  tell which sentence to believe. The section now states the real behaviour,
+  and `tests/test_docs_accuracy.py` derives the exemptions from
+  `_check_auth` and requires the matching docs section to agree, so the prose
+  cannot drift from the code again.
+
 - Closing a dialog dropped keyboard focus instead of returning it to the
   button that opened it. `showModal()` remembered its trigger through the
   element's `id` (`data-previous-active`), but the per-group "Cover" and

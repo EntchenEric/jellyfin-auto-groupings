@@ -18,7 +18,7 @@ Error responses use `{ "status": "error", "message": "..." }` with an appropriat
 
 Health check for load balancers and orchestrators.
 
-**Auth:** Required when `APP_PASSWORD` is set (same as other `/api/*` routes).
+**Auth:** Not required. This route stays public even when `APP_PASSWORD` is set, so container healthchecks and orchestrator probes keep working without credentials.
 
 **Response `200`:**
 
