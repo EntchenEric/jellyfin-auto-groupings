@@ -123,8 +123,7 @@ function wireKeyboardShortcuts() {
                     e.preventDefault();
                     const topbarPreviewBtn = getEl('topbar-preview-btn');
                     if (topbarPreviewBtn) {
-                        setLoading(topbarPreviewBtn, true);
-                        previewSyncAll().finally(() => setLoading(topbarPreviewBtn, false));
+                        withLoading(topbarPreviewBtn, previewSyncAll);
                     }
                 }
                 break;
@@ -160,6 +159,32 @@ function wireKeyboardShortcuts() {
 }
 
 /**
+ * Run *fn* with a button's loading state held for the duration.
+ *
+ * `fn().finally(...)` looks equivalent but is not: `finally()` re-throws the
+ * rejection in the promise it returns, and nothing here awaits that promise,
+ * so a failed sync produced a second, unhandled rejection on top of the error
+ * dialog `apiRequest()` had already shown. The user saw a dialog *and* a
+ * duplicate error toast. Returning the settled promise keeps the rejection
+ * inside the caller that can act on it.
+ *
+ * @param {HTMLElement|null} btn Button whose loading class is toggled
+ * @param {() => Promise<unknown>} fn Work to run
+ * @returns {Promise<void>} Resolves once the work has finished, passing no
+ *   failure on to the caller.
+ */
+export async function withLoading(btn, fn) {
+    setLoading(btn, true);
+    try {
+        await fn();
+    } catch {
+        // `apiRequest()` has already reported the failure to the user.
+    } finally {
+        setLoading(btn, false);
+    }
+}
+
+/**
  * Wires click handlers for topbar action buttons (sync, preview, cleanup,
  * export, import, wizard). Each button dispatches its corresponding feature
  * module function with loading state management.
@@ -167,8 +192,7 @@ function wireKeyboardShortcuts() {
  */
 function requestSyncWithLoading(btn) {
     if (localStorage.getItem(CONFIRM_SYNC_SKIP_KEY) === 'true') {
-        setLoading(btn, true);
-        syncAll().finally(() => setLoading(btn, false));
+        withLoading(btn, syncAll);
     } else {
         showConfirmSyncDialog();
     }
@@ -186,11 +210,7 @@ function wireTopbarButtons() {
     // Preview button
     const topbarPreviewBtn = getEl('topbar-preview-btn');
     if (topbarPreviewBtn) {
-        topbarPreviewBtn.onclick = async () => {
-            setLoading(topbarPreviewBtn, true);
-            try { await previewSyncAll(); }
-            finally { setLoading(topbarPreviewBtn, false); }
-        };
+        topbarPreviewBtn.onclick = () => withLoading(topbarPreviewBtn, previewSyncAll);
     }
 
     // Cleanup button
@@ -235,16 +255,14 @@ function wireConfirmSyncDialog() {
             }
             hideModal('confirm-sync-modal');
             const topbarSyncBtn = getEl('topbar-sync-btn');
-            setLoading(topbarSyncBtn, true);
-            try { await syncAll(); }
-            finally { setLoading(topbarSyncBtn, false); }
+            await withLoading(topbarSyncBtn, syncAll);
         };
     }
 
     if (confirmPreviewBtn) {
         confirmPreviewBtn.onclick = async () => {
             hideModal('confirm-sync-modal');
-            await previewSyncAll();
+            await withLoading(null, previewSyncAll);
         };
     }
 }

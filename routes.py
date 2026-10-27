@@ -168,7 +168,7 @@ _TEST_RESULT_FILENAMES = (
 
 # Sync rate limiting (per client IP)
 _SYNC_RATE_LIMIT_SECONDS = 5
-_last_sync_by_ip: dict[str, float] = {}
+_last_sync_by_ip: dict[tuple[str, str], float] = {}
 
 _SENSITIVE_CONFIG_KEYS: tuple[str, ...] = (
     "api_key",
@@ -527,22 +527,31 @@ def get_config() -> ResponseReturnValue:
     return jsonify(_mask_config(config))
 
 
-def _check_sync_rate_limit() -> ResponseReturnValue | None:
-    """Enforce a per-IP rate limit on sync operations.
+def _check_sync_rate_limit(*, kind: str = "sync") -> ResponseReturnValue | None:
+    """Enforce a per-IP rate limit on sync and preview operations.
 
-    Returns a 429 error response if the client has called sync within
-    :data:`_SYNC_RATE_LIMIT_SECONDS`, otherwise records the current
-    timestamp and returns ``None``.
+    Returns a 429 error response if the client has performed the same *kind*
+    of operation within :data:`_SYNC_RATE_LIMIT_SECONDS`, otherwise records the
+    current timestamp and returns ``None``.
 
-    Stale entries (older than twice the rate-limit window) are pruned
-    on each call to prevent unbounded growth.
+    Args:
+        kind: ``"sync"`` for a write run, ``"preview"`` for a dry run. The two
+            keep separate budgets because a preview is read-only and normally
+            *precedes* the sync it describes: the confirmation dialog offers
+            "Preview First" and then "Sync Now" from the same client, and a
+            shared budget answered that two-click sequence with 429 — the
+            preview silently consumed the sync's window. Separate budgets keep
+            both paths rate limited against abuse without blocking the other.
+
+    Stale entries (older than twice the rate-limit window) are pruned on each
+    call to prevent unbounded growth from rotating/changing client IPs.
     """
     ip = request.remote_addr or "unknown"
     now = time.monotonic()
-    last = _last_sync_by_ip.get(ip, 0.0)
+    last = _last_sync_by_ip.get((kind, ip), 0.0)
     if now - last < _SYNC_RATE_LIMIT_SECONDS:
         return _error("Please wait before syncing again", 429)
-    _last_sync_by_ip[ip] = now
+    _last_sync_by_ip[(kind, ip)] = now
     # Prune entries older than twice the rate-limit window to prevent
     # unbounded growth from rotating/changing client IPs.
     cutoff = now - (2 * _SYNC_RATE_LIMIT_SECONDS)
@@ -1290,7 +1299,7 @@ def _run_sync_handler(dry_run: bool = False) -> ResponseReturnValue:
         dry_run: If True, perform a dry run without side effects.
 
     """
-    rate_limited = _check_sync_rate_limit()
+    rate_limited = _check_sync_rate_limit(kind="preview" if dry_run else "sync")
     if rate_limited is not None:
         return rate_limited
     try:

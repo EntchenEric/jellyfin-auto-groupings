@@ -109,6 +109,9 @@ export function showConfirmSyncDialog() {
     }
     const countEl = getEl('confirm-sync-group-count');
     if (countEl) countEl.textContent = groupCount;
+    // "1 groupings" reads as a bug to the user; the noun follows the count.
+    const nounEl = getEl('confirm-sync-group-noun');
+    if (nounEl) nounEl.textContent = groupCount === 1 ? 'grouping' : 'groupings';
     showModal('confirm-sync-modal');
 }
 

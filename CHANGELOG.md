@@ -9,6 +9,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- "Preview First" followed by "Sync Now" in the sync confirmation dialog
+  answered `429 Please wait before syncing again`. The preview and the sync
+  shared one per-IP rate-limit timestamp, so the dry run the dialog had just
+  offered consumed the budget for the write the user then confirmed: nothing
+  was written, and the only remedy was to click again after five seconds. A
+  dry run is read-only, so previews and syncs now keep separate budgets and
+  neither blocks the other, while repeated calls of the same kind are still
+  throttled.
+
+- The sync confirmation dialog promised an item count it never filled in.
+  `(<span id="confirm-sync-item-count">0</span> potential media items)` was
+  left behind when `showConfirmSyncDialog()` was rewritten, so every user was
+  told their sync would create "0 potential media items" no matter how many
+  groups were configured.
+
+- `renderCover()` threw `TypeError: Cannot read properties of null (reading
+  'getContext')` instead of doing nothing when the cover canvas was not in the
+  document. The function runs from `document.fonts.ready` and a `setTimeout`
+  fallback, both of which outlive the element they were scheduled against, so
+  a page rendered without the cover partial — or one whose dialog was torn
+  down before fonts settled — crashed in a timer. A canvas whose
+  `getContext('2d')` returns `null` threw one line later on `setTransform()`.
+  Both cases now return early; the dialog stays open with an empty preview.
+
+- A failed sync or preview produced `Uncaught (in promise)` in the console
+  together with a second error toast. The handlers ran
+  `syncAll().finally(...)` without awaiting the result, and `finally()` passes
+  the rejection on to the promise it returns, so an error that
+  `apiRequest()` had already reported escaped as an unhandled rejection into
+  the global listener. The loading state is now driven by an awaited helper
+  that absorbs the already-reported failure.
+
 - The folder picker rendered as an unstyled block inside the page instead of a
   dialog. Its overlay `<div id="path-picker-modal">` had lost `class="modal"`
   while keeping `role="dialog"`/`aria-modal`, and nothing in any stylesheet
