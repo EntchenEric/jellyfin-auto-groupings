@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Importing a *full* configuration file that had no `groups` key (an older
+  export, or a hand-written one) left `state.currentConfig.groups` undefined.
+  The `renderGroups()` that runs right after the import threw from
+  `updateGlobalSyncExclusionsUI()`'s `groups.map(...)`, so the dashboard went
+  blank and the groups list could not be recovered without a page reload.
+  The payload is now normalised: a non-list `groups` becomes `[]`, non-object
+  entries are dropped, and a missing or malformed `scheduler` becomes `{}`.
+
+- A rejected import left the in-memory config already mutated. `performImport()`
+  assigned the imported groups to `state.currentConfig` *before* awaiting
+  `saveConfig()`, so when the server answered 400 the UI kept showing groups it
+  had never stored, the import modal closed as if it had worked, and the next
+  save from anywhere in the UI failed again for a reason nothing pointed at.
+  The previous config is now restored on failure and the modal stays open so a
+  different file can be chosen.
+
 - A *broken* symlink left at `<target>/<group>` aborted the sync for that
   group with `FileExistsError`. `_prepare_group_directory()` guarded the
   cleanup with `Path.exists()`, which follows links, so a link whose
