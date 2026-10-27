@@ -1,8 +1,16 @@
 // api.js – Centralised API client with error handling
 
-import { showToast, showErrorDialog } from './ui.js';
+import { showErrorDialog } from './ui.js';
 
 const DEFAULT_TIMEOUT_MS = 60000;
+// A sync rebuilds every group directory link by link and walks the whole
+// Jellyfin library, so it routinely outlives the 60 s an ordinary read gets.
+// The server allows its worker 120 s by default and the README tells operators
+// of large libraries to raise that further, so aborting the client first only
+// threw away work the server was still doing: the user got "Request timed out"
+// while the sync kept filling directories in the background. Long-running
+// endpoints therefore get their own, much larger budget.
+const SYNC_TIMEOUT_MS = 15 * 60 * 1000;
 const AUTH_STORAGE_KEY = 'jfg_app_password';
 
 class ApiError extends Error {
@@ -116,7 +124,11 @@ async function apiRequest(url, options = {}, timeoutMs = DEFAULT_TIMEOUT_MS) {
         // top of the UI they are about to update.
         if (!_silent) {
             if (err.name === 'AbortError') {
-                showErrorDialog('Request timed out — server did not respond in time');
+                showErrorDialog(
+                    'Request timed out — the server did not finish in time. ' +
+                    'If this was a sync, it may still be running in the ' +
+                    'background; wait before retrying.'
+                );
             } else if (err instanceof ApiError) {
                 showErrorDialog(err.message);
             } else if (err instanceof TypeError) {
@@ -167,8 +179,9 @@ export const saveConfig = (cfg) => apiPost('/api/config', cfg);
 export const testServer = (url, key) => apiPost('/api/test-server', { jellyfin_url: url, api_key: key });
 export const fetchMetadata = () => apiGet('/api/jellyfin/metadata');
 export const fetchUsers = () => apiGet('/api/jellyfin/users');
-export const runSync = () => apiPost('/api/sync');
-export const previewSync = () => apiPost('/api/sync/preview_all');
+export const runSync = () => apiPost('/api/sync', undefined, SYNC_TIMEOUT_MS);
+export const previewSync = () =>
+    apiPost('/api/sync/preview_all', undefined, SYNC_TIMEOUT_MS);
 export const previewGroup = (type, value, watch_state, item_type) =>
     apiPost('/api/grouping/preview', { type, value, watch_state, item_type });
 export const uploadCover = (groupName, image) =>

@@ -51,6 +51,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The SPA aborted every request after 60 s, including a full sync.
+  `apiRequest()` applied one `DEFAULT_TIMEOUT_MS` to all calls, but a sync
+  rebuilds each group directory link by link and walks the whole Jellyfin
+  library: the server allows its worker 120 s by default (`GUNICORN_TIMEOUT`)
+  and the README tells operators of large libraries to raise that further. The
+  client therefore gave up on work the server was still doing and showed
+  "Request timed out", while the sync kept filling directories in the
+  background — so the user's retry answered `409` because the first run still
+  held the run lock, and the UI reported a failure for a run that eventually
+  succeeded. `runSync()` and `previewSync()` now use a 15-minute budget;
+  ordinary reads keep the 60 s one. The timeout dialog also says that a sync
+  may still be running and to wait before retrying, instead of implying the
+  request simply failed. `features/sync.js` now calls those wrappers rather
+  than posting to the endpoint itself, so the budget cannot drift between the
+  two. Pinned by `tests/frontend/sync-timeout.test.js`.
+
+- A run in which every group failed still reported "Sync complete!" in the
+  success colour. `syncAll()` rendered each group's `error` in the results
+  panel but built the toast from the link total alone, so a library-wide fetch
+  failure — or a config whose groups were all invalid — looked like a clean
+  run to anyone reading the toast. It now states how many groups failed and
+  uses the `warning` style, mirroring `cleanup.js`. The same function also
+  reduced over `result.results` without a guard, so a response without that key
+  threw a `TypeError` inside the click handler and left the button spinning
+  with no message; a missing or non-array `results` is now treated as an empty
+  run, and a non-numeric `links` value is skipped rather than producing
+  `NaN`. `previewSyncAll()` had the mirror problem: a malformed `results` fell
+  through to "No groupings configured.", pointing the user at a config problem
+  that did not exist. Pinned by `tests/frontend/sync-result-reporting.test.js`.
+
 - A group with `create_as_collection` enabled still went through
   `_prepare_group_directory` before its items were pushed into a Jellyfin
   Boxset. The group writes no symlinks, so the only effect was an empty

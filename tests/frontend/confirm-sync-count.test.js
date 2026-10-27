@@ -37,7 +37,10 @@ beforeEach(() => {
 
 /** Open the dialog with *n* configured groups. */
 async function openWith(n) {
-    vi.doMock('../../static/js/core/api.js', () => ({ apiPost: vi.fn() }));
+    vi.doMock('../../static/js/core/api.js', () => ({
+        runSync: vi.fn(),
+        previewSync: vi.fn(),
+    }));
     const { state } = await import('../../static/js/core/state.js');
     state.currentConfig = {
         groups: Array.from({ length: n }, (_, i) => ({ name: `G${i}` })),
