@@ -61,7 +61,15 @@ export async function browseDir(path) {
         // back to the status code or a generic hint.
         const detail = e && e.message ? e.message : 'directory could not be read';
         const status = e && e.status ? ` (HTTP ${e.status})` : '';
-        bodyEl.innerHTML = `<p class="picker-empty">Could not load directory${status}: ${detail}</p>`;
+        // Built with textContent, not innerHTML: the server echoes the
+        // rejected path back in its message, and a folder named
+        // `<img src=x onerror=...>` would otherwise run as markup in the
+        // dashboard origin (stored XSS from a filesystem name).
+        const p = document.createElement('p');
+        p.className = 'picker-empty';
+        p.textContent = `Could not load directory${status}: ${detail}`;
+        bodyEl.innerHTML = '';
+        bodyEl.appendChild(p);
         return;
     }
     if (result.status !== 'success') {

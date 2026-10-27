@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- The folder picker rendered the server's error message with `innerHTML`.
+  `GET /api/browse` echoes the rejected path in that message, and a directory
+  whose name contains markup (``<img src=x onerror=...>``) is an ordinary
+  filesystem entry — the app never creates it, but a mounted share can hold
+  one. Navigating into such a directory made the dashboard origin parse and
+  run the name, a stored XSS reachable by anyone who can write to the media
+  tree. The message is now assigned through `textContent`, so the name stays
+  visible text.
+
+- `POST /api/upload_cover` accepted a payload that was not an image at all.
+  The body went through `base64.b64decode(encoded)` without `validate=True`,
+  which silently drops characters it does not recognise: a body of ``"@@@"``
+  decoded to ``b""``, the handler wrote a zero-byte cover and answered
+  ``{"status": "success"}``. The declared MIME type was never compared with
+  the bytes either, so any content could be stored under a ``.png`` name. Both
+  are checked now — the payload must decode under strict base64, must be
+  non-empty, and must start with the signature of the MIME type it declares
+  (``RIFF`` alone is not enough for WebP; the ``WEBP`` form-type marker is
+  required too, since WAV and AVI share the container prefix). Line breaks in
+  the base64 body are still accepted. An empty or whitespace-only
+  ``group_name`` is rejected as well: covers are named ``md5(group_name)``, so
+  every unnamed group was writing to the same file.
+
 ### Fixed
 
 - `POST /api/jellyfin/auto-detect-paths` could outlive the gunicorn worker
