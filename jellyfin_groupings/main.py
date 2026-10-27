@@ -86,8 +86,22 @@ class JellyfinGroupings:
         response.raise_for_status()
 
 
+def _run(client: JellyfinGroupings) -> None:
+    """Fetch and report the collection and movie counts for *client*."""
+    collections = client.get_collections()
+    movies = client.get_movies()
+
+    print(f"Found {len(collections)} existing collections.")
+    print(f"Found {len(movies)} movies.")
+
+
 def main() -> None:
-    """Main entry point to execute grouping sync."""
+    """Main entry point to execute grouping sync.
+
+    Exits non-zero on a configuration or request failure so a scheduler can
+    tell a failed run from a successful one; the success path returns
+    normally.
+    """
     url = os.environ.get("JELLYFIN_URL", "http://localhost:8096")
     api_key = os.environ.get("JELLYFIN_API_KEY", "")
 
@@ -95,14 +109,33 @@ def main() -> None:
         print(
             "Error: JELLYFIN_API_KEY environment variable is required.", file=sys.stderr
         )
-        return
+        sys.exit(1)
 
     client = JellyfinGroupings(url, api_key)
-    collections = client.get_collections()
-    movies = client.get_movies()
-
-    print(f"Found {len(collections)} existing collections.")
-    print(f"Found {len(movies)} movies.")
+    try:
+        _run(client)
+    except requests.Timeout:
+        # Checked before ConnectionError: ConnectTimeout subclasses both, and
+        # "timed out" describes the failure better than "could not connect".
+        print(
+            f"Error: request to Jellyfin at {url} timed out after "
+            f"{client.timeout}s. The server may be busy or unreachable.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    except requests.ConnectionError:
+        print(
+            f"Error: could not connect to Jellyfin at {url}. "
+            "Check that the server is running and the URL is correct.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    except requests.HTTPError as exc:
+        print(f"Error: Jellyfin returned an error response: {exc}", file=sys.stderr)
+        sys.exit(1)
+    except (requests.RequestException, ValueError) as exc:
+        print(f"Error: could not read the Jellyfin response: {exc}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

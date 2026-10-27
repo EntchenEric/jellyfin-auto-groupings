@@ -132,7 +132,9 @@ default timeout, so an omitted value made a stalled Jellyfin server block the
 caller indefinitely rather than raising an error the sync layer could log and
 move past. The same rule applies to the legacy `JellyfinGroupings` client in
 `jellyfin_groupings/main.py`, which takes a `timeout` argument (default 30
-seconds).
+seconds). Its `main()` reports connection, timeout, HTTP-error, and
+unreadable-body failures on stderr and exits non-zero, so a scheduler can
+tell a failed run from a successful one.
 
 ### External List Fetchers
 
