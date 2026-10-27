@@ -235,39 +235,65 @@ def _run_global_sync_job(exclude_names: list[str]) -> None:
         exclude_names: Group names to exclude from the sync.
 
     """
-    config = load_config()
-    all_groups = config.get("groups", [])
+    try:
+        # ``load_config`` and the selection below both run inside the ``try``:
+        # an unreadable config used to raise before it, and a malformed
+        # ``groups`` value raised ``TypeError`` there too. Both escaped the job
+        # handler, which on a scheduler thread means the tick dies with no log
+        # beyond APScheduler's own. Everything the handler does must therefore
+        # be covered by the generic handler below.
+        config = load_config()
 
-    # Filter out excluded groups
-    sync_names: list[str] = []
-    for g in all_groups:
-        if isinstance(g, dict):
-            name = g.get("name")
-            if isinstance(name, str) and name not in exclude_names:
-                sync_names.append(name)
-
-    if sync_names:
-        logger.info("Background global sync starting for groups: %s", sync_names)
-        try:
-            # run_sync() takes the cross-process run lock itself, so a UI sync
-            # or another worker cannot overlap this one.
-            run_sync(config, group_names=sync_names)
-        except SyncBusyError as exc:
-            # Another run is in progress. Skipping this tick is the point of
-            # the lock — waiting would queue unbounded runs behind one long
-            # sync, and retrying immediately would only spin.
-            logger.warning("Background global sync skipped: %s", exc)
-        except Exception:
-            # Catch broadly so an unexpected error (e.g. a KeyError from a
-            # malformed config, or a requests exception from a fetcher)
-            # never silently kills the background job — it is always logged.
-            logger.exception(
-                "Background global sync failed",
+        # ``config.json`` is user-editable, so ``groups`` can be any JSON value
+        # (``null``, a number, a string). Normalise the container first, then
+        # treat each entry defensively.
+        all_groups = config.get("groups")
+        if not isinstance(all_groups, list):
+            logger.warning(
+                "Background global sync: ignoring malformed 'groups' config"
+                " (expected list, got %s)",
+                type(all_groups).__name__,
             )
-    else:
-        logger.info(
-            "Background global sync skipped: no groups to sync after exclusions",
-        )
+            all_groups = []
+
+        # The exclusion list is also job state that can arrive malformed when
+        # this handler is invoked directly (the scheduler builds it correctly,
+        # but a manual dispatch or a restored backup need not).
+        if not isinstance(exclude_names, list):
+            logger.warning(
+                "Background global sync: ignoring malformed exclusion list"
+                " (expected list, got %s)",
+                type(exclude_names).__name__,
+            )
+            exclude_names = []
+
+        sync_names: list[str] = []
+        for g in all_groups:
+            if isinstance(g, dict):
+                name = g.get("name")
+                if isinstance(name, str) and name not in exclude_names:
+                    sync_names.append(name)
+
+        if not sync_names:
+            logger.info(
+                "Background global sync skipped: no groups to sync after exclusions",
+            )
+            return
+
+        logger.info("Background global sync starting for groups: %s", sync_names)
+        # run_sync() takes the cross-process run lock itself, so a UI sync or
+        # another worker cannot overlap this one.
+        run_sync(config, group_names=sync_names)
+    except SyncBusyError as exc:
+        # Another run is in progress. Skipping this tick is the point of the
+        # lock — waiting would queue unbounded runs behind one long sync, and
+        # retrying immediately would only spin.
+        logger.warning("Background global sync skipped: %s", exc)
+    except Exception:
+        # Catch broadly so an unexpected error (e.g. a malformed config or a
+        # requests exception from a fetcher) never silently kills the
+        # background job — it is always logged.
+        logger.exception("Background global sync failed")
 
 
 def _run_group_sync_job(group_name: str) -> None:
@@ -277,9 +303,12 @@ def _run_group_sync_job(group_name: str) -> None:
         group_name: The group name to sync.
 
     """
-    config = load_config()
     logger.info("Background sync starting for group: %s", group_name)
     try:
+        # Inside the ``try`` so a failing ``load_config`` (an unreadable
+        # config directory, a corrupt file) is logged like any other job
+        # failure instead of escaping the scheduler thread.
+        config = load_config()
         run_sync(config, group_names=[group_name])
     except SyncBusyError as exc:
         logger.warning(
@@ -298,9 +327,11 @@ def _run_group_sync_job(group_name: str) -> None:
 
 def _run_cleanup_job() -> None:
     """Job handler for cleaning up broken symlinks."""
-    config = load_config()
     logger.info("Background cleanup job starting")
     try:
+        # Inside the ``try`` so a failing ``load_config`` is logged like any
+        # other job failure instead of escaping the scheduler thread.
+        config = load_config()
         deleted = run_cleanup_broken_symlinks(config)
     except SyncBusyError as exc:
         logger.warning("Background cleanup job skipped: %s", exc)

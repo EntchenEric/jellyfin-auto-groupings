@@ -62,6 +62,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   collection path (dry-run preview, extending an existing collection versus
   creating one, per-group error reporting, and cover upload failures).
 
+- The scheduled global sync aborted on a hand-edited `"groups": null` and left
+  no trace. `_run_global_sync_job` read `config.get("groups", [])` and
+  iterated the result *before* the `try` that guards `run_sync`, so a
+  `groups` value that was `null` (or a number, or a string) raised
+  `TypeError: 'NoneType' object is not iterable` outside every handler. On an
+  APScheduler worker thread nobody is watching that exception: the tick died,
+  the log held only APScheduler's own traceback, and the next scheduled run
+  repeated it — a config the UI happily saves could silently disable global
+  sync. The whole handler now runs inside the `try`, `groups` and the
+  exclusion list are normalised to lists first (each logged once when
+  malformed), and a config that lists no syncable group returns early
+  instead of falling through. The per-group and cleanup handlers had the
+  same shape — `load_config()` sat outside their `try` — so an unreadable
+  config directory escaped them too and is now logged like any other failure.
+  `tests/test_scheduler_jobs.py` covers all three handlers, the scheduling
+  guard clauses, and `validate_cron`; `scheduler.py` goes from 74.65 % to
+  100 % statement coverage.
+
 - `POST /api/jellyfin/auto-detect-paths` could outlive the gunicorn worker
   timeout. The handler searches the local filesystem for the filename of up to
   `_AUTO_DETECT_SAMPLE_LIMIT` (10) sample items, and every search was given its
