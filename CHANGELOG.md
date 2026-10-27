@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A group directory that is a symlink had the *link target's* contents
+  deleted. `_clear_group_directory()` walked `iterdir()`, which follows the
+  link, so a leftover `<target>/<group>` symlink pointing at a media folder
+  made every sync delete the real files there and then recreate the group as
+  an empty directory. The link is now removed on its own and a real directory
+  is created in its place, so the target is never written to.
+
+- A seasonal group that went out of season deleted the directories of the
+  nested groups below it. Cleanup called `shutil.rmtree()` on the group's
+  folder, so with both `Anime` (out of season) and `Anime/Action` (in season)
+  configured, the child's symlinks were removed along with the parent's and
+  only reappeared if the child happened to sync afterwards. Out-of-season
+  cleanup now removes only the group's own entries, exactly as a sync does
+  before refilling the folder, and drops the folder itself only when no nested
+  group still lives in it.
+
 - `jellyfin_auto_groupings.rules.group_by_decade()` and
   `jellyfin_groupings.process_groupings()` raised on a non-finite numeric
   `PremiereDate`. `int(float("nan"))` raises `ValueError` and
