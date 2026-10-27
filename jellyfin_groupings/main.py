@@ -6,13 +6,34 @@ import requests
 
 from utils.helpers import items_from_body
 
+#: Default per-request timeout in seconds. Without an explicit timeout
+#: ``requests`` waits forever, so an unresponsive Jellyfin server hung the
+#: CLI instead of failing with an error the caller could act on.
+_DEFAULT_TIMEOUT = 30
+
 
 class JellyfinGroupings:
     """Client for managing Jellyfin collection groupings automatically."""
 
-    def __init__(self, url: str, api_key: str) -> None:
+    def __init__(
+        self,
+        url: str,
+        api_key: str,
+        timeout: int = _DEFAULT_TIMEOUT,
+    ) -> None:
+        """Initialise the client.
+
+        Args:
+            url: Jellyfin server base URL; a trailing slash is trimmed so
+                endpoint paths do not double up.
+            api_key: Jellyfin API key sent as the ``X-Emby-Token`` header.
+            timeout: Per-request timeout in seconds. ``requests`` blocks
+                indefinitely when this is omitted, so a value is always sent.
+
+        """
         self.url = url.rstrip("/")
         self.api_key = api_key
+        self.timeout = timeout
         self.headers = {
             "X-Emby-Token": self.api_key,
             "Content-Type": "application/json",
@@ -22,7 +43,9 @@ class JellyfinGroupings:
         """Retrieve all existing collections (BoxSets) from Jellyfin."""
         endpoint = f"{self.url}/Collections"
         params: dict[str, str] = {"IncludeItemTypes": "BoxSet", "Recursive": "true"}
-        response = requests.get(endpoint, headers=self.headers, params=params)
+        response = requests.get(
+            endpoint, headers=self.headers, params=params, timeout=self.timeout
+        )
         response.raise_for_status()
         data: dict[str, Any] = response.json()
         return items_from_body(data)
@@ -35,7 +58,9 @@ class JellyfinGroupings:
             "Recursive": "true",
             "Fields": "ProviderIds",
         }
-        response = requests.get(endpoint, headers=self.headers, params=params)
+        response = requests.get(
+            endpoint, headers=self.headers, params=params, timeout=self.timeout
+        )
         response.raise_for_status()
         data: dict[str, Any] = response.json()
         return items_from_body(data)
@@ -44,7 +69,9 @@ class JellyfinGroupings:
         """Create a new collection with specified item IDs."""
         endpoint = f"{self.url}/Collections"
         params = {"Name": name, "Ids": ",".join(item_ids)}
-        response = requests.post(endpoint, headers=self.headers, params=params)
+        response = requests.post(
+            endpoint, headers=self.headers, params=params, timeout=self.timeout
+        )
         response.raise_for_status()
         data: dict[str, Any] = response.json()
         return data
@@ -53,7 +80,9 @@ class JellyfinGroupings:
         """Add items to an existing collection."""
         endpoint = f"{self.url}/Collections/{collection_id}/Items"
         params = {"Ids": ",".join(item_ids)}
-        response = requests.post(endpoint, headers=self.headers, params=params)
+        response = requests.post(
+            endpoint, headers=self.headers, params=params, timeout=self.timeout
+        )
         response.raise_for_status()
 
 
