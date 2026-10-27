@@ -25,8 +25,10 @@ class JellyfinGroupingManager:
     def __init__(self, client: JellyfinClient):
         self.client = client
 
-    def process(self, library_id: str = "") -> list[dict[str, Any]]:
-        return process_groupings(self.client, library_id)
+    def process(
+        self, library_id: str = "", dry_run: bool = True
+    ) -> list[dict[str, Any]]:
+        return process_groupings(self.client, library_id, dry_run=dry_run)
 
 
 def extract_collection_name(name: str | None) -> str | None:

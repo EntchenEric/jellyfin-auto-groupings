@@ -60,7 +60,25 @@ def test_jellyfin_grouping_manager_mock():
         result = manager.process("library123")
         assert result == [{"Id": "1", "Name": "Test"}]
         jellyfin_auto_groupings.process_groupings.assert_called_once_with(
-            mock_client, "library123"
+            mock_client, "library123", dry_run=True
+        )
+    finally:
+        jellyfin_auto_groupings.process_groupings = original_process_groupings
+
+
+def test_jellyfin_grouping_manager_dry_run_override():
+    mock_client = MagicMock()
+    manager = JellyfinGroupingManager(mock_client)
+
+    import jellyfin_auto_groupings
+
+    original_process_groupings = jellyfin_auto_groupings.process_groupings
+    jellyfin_auto_groupings.process_groupings = MagicMock(return_value=[])
+
+    try:
+        manager.process("lib1", dry_run=False)
+        jellyfin_auto_groupings.process_groupings.assert_called_once_with(
+            mock_client, "lib1", dry_run=False
         )
     finally:
         jellyfin_auto_groupings.process_groupings = original_process_groupings
