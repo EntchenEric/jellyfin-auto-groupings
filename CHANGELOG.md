@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `jellyfin_groupings.main.main()` returned normally when `JELLYFIN_API_KEY`
+  was unset, so the process exited 0 for a run that never contacted Jellyfin
+  and a scheduler recorded a failed configuration as a success. It now exits
+  1. The same entry point also let the errors newly reachable through the
+  request timeout escape as tracebacks; a refused connection, a timeout, an
+  HTTP error status, and a 200 response with a non-JSON body are now reported
+  on stderr as one line, with the configured timeout value named, and exit 1.
+
 - `jellyfin_groupings.JellyfinClient` and the root `main.JellyfinGroupings`
   built their request URLs by interpolating values into the query string, so a
   collection name that contained a URL metacharacter changed the request

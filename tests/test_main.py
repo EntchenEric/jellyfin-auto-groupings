@@ -1,6 +1,9 @@
 import sys
 from unittest.mock import MagicMock, patch
 
+import pytest
+import requests
+
 from jellyfin_groupings.main import JellyfinGroupings, main
 
 
@@ -125,8 +128,15 @@ def test_main_success(mock_get_movies, mock_get_collections):
 
 @patch.dict("os.environ", {}, clear=True)
 def test_main_missing_api_key():
+    """A missing API key must fail the run, not report success.
+
+    ``main()`` returned normally here, so a scheduler saw exit status 0 for a
+    run that never contacted the server.
+    """
     with patch("builtins.print") as mock_print:
-        main()
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
         mock_print.assert_called_once_with(
             "Error: JELLYFIN_API_KEY environment variable is required.",
             file=sys.stderr,
@@ -191,3 +201,78 @@ def test_add_to_collection_uses_configured_timeout(mock_post):
     jg.add_to_collection("col1", ["mov1"])
 
     assert mock_post.call_args.kwargs["timeout"] == 7
+
+
+# ---------------------------------------------------------------------------
+# CLI failure reporting
+# ---------------------------------------------------------------------------
+
+
+def _run_main_with(error):
+    """Run ``main()`` with a client whose first call raises *error*.
+
+    Returns the captured stderr.
+    """
+    client = MagicMock()
+    client.get_collections.side_effect = error
+
+    with (
+        patch.dict("os.environ", {"JELLYFIN_API_KEY": "key"}),
+        patch("jellyfin_groupings.main.JellyfinGroupings", return_value=client),
+        patch("builtins.print") as mock_print,
+        pytest.raises(SystemExit) as exc,
+    ):
+        main()
+
+    assert exc.value.code == 1
+    printed = " ".join(str(c.args[0]) for c in mock_print.call_args_list)
+    return printed, client
+
+
+def test_main_reports_connection_failure():
+    """A refused connection must exit non-zero with an actionable message.
+
+    Before the timeout was added this branch could not be reached from a
+    stalled server, and afterwards it escaped as a traceback.
+    """
+    printed, _ = _run_main_with(requests.ConnectionError("refused"))
+    assert "could not connect to Jellyfin" in printed
+    assert "http://localhost:8096" in printed
+
+
+def test_main_reports_timeout_with_configured_value():
+    printed, client = _run_main_with(requests.Timeout("timed out"))
+    assert "timed out after" in printed
+    assert f"{client.timeout}s" in printed
+
+
+def test_main_reports_http_error():
+    response = MagicMock()
+    response.status_code = 401
+    printed, _ = _run_main_with(
+        requests.HTTPError("401 Client Error", response=response)
+    )
+    assert "Jellyfin returned an error response" in printed
+
+
+def test_main_reports_unreadable_response():
+    """A 200 with a non-JSON body raises ValueError from ``response.json()``."""
+    printed, _ = _run_main_with(ValueError("Expecting value"))
+    assert "could not read the Jellyfin response" in printed
+
+
+def test_main_success_does_not_exit():
+    """The success path still returns instead of raising SystemExit."""
+    client = MagicMock()
+    client.get_collections.return_value = []
+    client.get_movies.return_value = []
+
+    with (
+        patch.dict("os.environ", {"JELLYFIN_API_KEY": "key"}),
+        patch("jellyfin_groupings.main.JellyfinGroupings", return_value=client),
+        patch("builtins.print") as mock_print,
+    ):
+        main()
+
+    mock_print.assert_any_call("Found 0 existing collections.")
+    mock_print.assert_any_call("Found 0 movies.")
