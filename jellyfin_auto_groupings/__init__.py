@@ -28,6 +28,17 @@ class JellyfinGroupingManager:
     def process(
         self, library_id: str = "", dry_run: bool = True
     ) -> list[dict[str, Any]]:
+        """Run the grouping pipeline for one library.
+
+        Args:
+            library_id: Jellyfin library to scan; an empty string scans every
+                library.
+            dry_run: When true (the default), report the planned changes
+                without creating collections or touching sort names.
+
+        Returns:
+            The per-group results reported by ``process_groupings``.
+        """
         return process_groupings(self.client, library_id, dry_run=dry_run)
 
 

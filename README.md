@@ -121,6 +121,13 @@ Main client for interacting with Jellyfin.
 client = JellyfinClient("http://localhost:8096", "api-key", user_id="optional-user-id")
 ```
 
+`timeout` sets the per-request timeout in seconds for every call the client
+makes (default `30`). Pass it when a server is slow to respond:
+
+```python
+client = JellyfinClient("http://localhost:8096", "api-key", timeout=60)
+```
+
 **Methods:**
 - `get_users()` - List all users
 - `get_first_admin_user_id()` - Get the first admin user's ID
@@ -147,6 +154,10 @@ client = JellyfinClient("http://localhost:8096", "api-key", user_id="optional-us
 - `group_movies_by_genre(items, min_group_size)` - Group items by genre
 - `process_groupings(client, library_id, items, dry_run)` - Main processing function
 - `create_groupings(client_or_items, library_id, items, min_group_size)` - Create groupings
+
+`JellyfinGroupingManager.process(library_id, dry_run=True)` wraps
+`process_groupings` and accepts the same `dry_run` override, so a manager
+created for a dry run can be switched to apply changes per call.
 
 All grouping helpers tolerate the shapes Jellyfin actually returns: a `null`
 `Tags`, `Genres`, or `Studios` value, non-string entries inside those lists,
