@@ -2153,6 +2153,25 @@ def _clear_group_directory(group_dir: Path) -> None:
         group_dir: The group's directory.
 
     """
+    # ``iterdir()`` follows a symlinked directory, so a target directory that
+    # holds a link named after the group (a leftover from a manual symlink, or
+    # a group whose folder was replaced) made this helper delete the contents
+    # of whatever the link pointed at — the user's real media files — instead
+    # of the group's own links. The link itself is the only entry here that
+    # belongs to the group, so it is removed and the caller creates a real
+    # directory in its place.
+    if group_dir.is_symlink():
+        logger.warning(
+            "Refusing to clear symlinked group directory %s — removing the "
+            "link itself so the target's contents stay untouched",
+            group_dir,
+        )
+        try:
+            group_dir.unlink()
+        except OSError:
+            logger.exception("Failed to remove symlinked group directory %s", group_dir)
+        return
+
     try:
         entries = list(group_dir.iterdir())
     except FileNotFoundError:
@@ -2821,12 +2840,21 @@ def _maybe_handle_seasonal(
             group_dir = str(Path(target_base).joinpath(*relpath.split("/")))
             if Path(group_dir).is_dir():
                 logger.info(
-                    "Seasonal group %r is out of season. Deleting directory: %s",
+                    "Seasonal group %r is out of season. Cleaning up: %s",
                     name,
                     group_dir,
                 )
+                # Remove only this group's own entries, exactly as a sync does
+                # before refilling the directory. An unconditional rmtree()
+                # also deleted the directories of nested child groups
+                # ("Anime" out of season wiped "Anime/Action"), discarding
+                # links the in-season child had just created.
                 try:
-                    shutil.rmtree(group_dir)
+                    _clear_group_directory(Path(group_dir))
+                    # The directory itself goes away only when nothing else
+                    # (e.g. a nested child group) still lives in it.
+                    with contextlib.suppress(OSError):
+                        Path(group_dir).rmdir()
                 except OSError:
                     logger.exception(
                         "Failed to delete directory for out-of-season group %r: %s",

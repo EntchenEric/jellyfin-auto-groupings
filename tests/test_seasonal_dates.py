@@ -190,3 +190,108 @@ def test_rejected_date_would_have_saved_before_the_fix():
     old_pattern = re.compile(r"^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")
     assert old_pattern.match("02-31") is not None
     assert is_valid_mmdd("02-31") is False
+
+
+# ---------------------------------------------------------------------------
+# Out-of-season cleanup must not wipe nested child groups
+# ---------------------------------------------------------------------------
+
+
+def test_out_of_season_parent_keeps_nested_child_group(tmp_path, monkeypatch):
+    """An out-of-season parent group must not delete a child group's folder.
+
+    ``Anime`` may hold its own links *and* the directory of the nested group
+    ``Anime/Action``.  Cleanup used ``shutil.rmtree`` on the whole tree, so the
+    in-season child's links were deleted and only came back if the child
+    happened to sync afterwards.
+    """
+    import sync
+
+    monkeypatch.setattr(sync, "_is_in_season", lambda start, end: False)
+
+    parent = tmp_path / "Anime"
+    child = parent / "Action"
+    child.mkdir(parents=True)
+    (parent / "01 - Parent Movie.mkv").symlink_to("/tmp/parent-movie")
+    (child / "01 - Child Movie.mkv").symlink_to("/tmp/child-movie")
+
+    result = sync._maybe_handle_seasonal(
+        {"seasonal_enabled": True, "seasonal_start": "01-01", "seasonal_end": "01-02"},
+        "Anime",
+        str(tmp_path),
+        dry_run=False,
+    )
+
+    assert result == {"group": "Anime", "links": 0, "status": "out_of_season"}
+    assert parent.is_dir(), "the parent directory still holds a nested group"
+    assert [entry.name for entry in parent.iterdir()] == ["Action"]
+    assert (child / "01 - Child Movie.mkv").is_symlink()
+
+
+def test_out_of_season_leaf_group_is_removed_entirely(tmp_path, monkeypatch):
+    """A group with no nested children still leaves nothing behind."""
+    import sync
+
+    monkeypatch.setattr(sync, "_is_in_season", lambda start, end: False)
+
+    leaf = tmp_path / "Winter"
+    leaf.mkdir()
+    (leaf / "01 - Movie.mkv").symlink_to("/tmp/movie")
+
+    sync._maybe_handle_seasonal(
+        {"seasonal_enabled": True, "seasonal_start": "01-01", "seasonal_end": "01-02"},
+        "Winter",
+        str(tmp_path),
+        dry_run=False,
+    )
+
+    assert not leaf.exists()
+
+
+def test_out_of_season_dry_run_touches_nothing(tmp_path, monkeypatch):
+    """A dry run resolves the window but never deletes files."""
+    import sync
+
+    monkeypatch.setattr(sync, "_is_in_season", lambda start, end: False)
+
+    group_dir = tmp_path / "Winter"
+    group_dir.mkdir()
+    (group_dir / "01 - Movie.mkv").symlink_to("/tmp/movie")
+
+    sync._maybe_handle_seasonal(
+        {"seasonal_enabled": True, "seasonal_start": "01-01", "seasonal_end": "01-02"},
+        "Winter",
+        str(tmp_path),
+        dry_run=True,
+    )
+
+    assert (group_dir / "01 - Movie.mkv").is_symlink()
+
+
+# ---------------------------------------------------------------------------
+# A symlinked group directory must never be cleared through
+# ---------------------------------------------------------------------------
+
+
+def test_prepare_group_directory_does_not_clear_a_symlink_target(tmp_path):
+    """The target directory's contents are the user's media, not our links.
+
+    ``_clear_group_directory`` walked ``iterdir()``, which follows a symlink,
+    so a group folder that was a link deleted every file at the other end and
+    then recreated the folder as an empty real directory.
+    """
+    import sync
+
+    media = tmp_path / "real-media"
+    media.mkdir()
+    (media / "movie.mkv").write_text("real media", encoding="utf-8")
+
+    target = tmp_path / "target"
+    target.mkdir()
+    (target / "Anime").symlink_to(media)
+
+    sync._prepare_group_directory(str(target / "Anime"), "Anime", str(target), False)
+
+    assert (media / "movie.mkv").is_file(), "the link target's files must survive"
+    assert not (target / "Anime").is_symlink()
+    assert (target / "Anime").is_dir()
