@@ -290,9 +290,18 @@ Save a base64-encoded cover image for a group.
 **Allowed MIME types:** `image/jpeg`, `image/png`, `image/webp`, `image/gif`.
 Only these four types are accepted; unsupported types return a `400` error.
 
+**Validation:** `group_name` must be non-empty after trimming (the cover file
+is named from `md5(group_name)`). The base64 body must decode under strict
+base64 — unrecognised characters are an error, not silently dropped — and the
+decoded bytes must start with the declared type's file signature, so the stored
+extension always matches the content. Line breaks inside the base64 body are
+tolerated.
+
 **Response `200`:** `{ "status": "success", "message": "Cover saved successfully" }`
 
-**Errors:** `400` invalid format; `413` payload too large (~4 MB).
+**Errors:** `400` invalid or empty `group_name`, malformed base64, empty payload,
+or content that does not match its declared MIME type; `413` payload too large
+(~4 MB).
 
 ---
 

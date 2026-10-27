@@ -145,6 +145,38 @@ _MIME_TO_EXT: dict[str, str] = {
     "image/gif": "gif",
 }
 
+#: Leading bytes that identify each accepted image format. The data URL's
+#: declared MIME type is client-supplied, so the payload itself is checked
+#: before it is stored under a file extension that claims to be that format.
+_IMAGE_MAGIC: dict[str, bytes] = {
+    "image/jpeg": b"\xff\xd8\xff",
+    "image/png": b"\x89PNG\r\n\x1a\n",
+    "image/webp": b"RIFF",
+    "image/gif": b"GIF8",
+}
+
+
+def _matches_image_magic(decoded: bytes, mime_type: str) -> bool:
+    """Return whether *decoded* begins with *mime_type*'s file signature.
+
+    Args:
+        decoded: The decoded image bytes.
+        mime_type: One of :data:`_ALLOWED_COVER_MIME_TYPES`.
+
+    Returns:
+        ``True`` when the leading bytes identify that format. WebP is a RIFF
+        container, so the ``WEBP`` form-type marker at offset 8 is required as
+        well — ``RIFF`` alone also matches WAV and AVI.
+
+    """
+    magic = _IMAGE_MAGIC.get(mime_type)
+    if magic is None or not decoded.startswith(magic):
+        return False
+    if mime_type == "image/webp":
+        return decoded[8:12] == b"WEBP"
+    return True
+
+
 # Max size for base64 encoded cover image (approx 4MB)
 MAX_B64_SIZE = 4 * 1024 * 1024
 
@@ -1225,7 +1257,9 @@ def upload_cover() -> ResponseReturnValue:
     """Save a base64-encoded cover image for a group.
 
     Expects a JSON body with ``group_name`` and ``image`` (data URL).
-    Decodes and saves the image to a location determined by
+    The data URL must declare one of the accepted image MIME types and its
+    decoded bytes must match that format's signature; ``group_name`` must be
+    non-empty. Decodes and saves the image to a location determined by
     :func:`sync.get_cover_path`: it saves to
     ``target_base/.covers/[md5(group_name)].jpg`` when the target directory
     exists, otherwise it falls back to ``config/covers/[md5(group_name)].jpg``.
@@ -1244,6 +1278,11 @@ def upload_cover() -> ResponseReturnValue:
     image_data = data.get("image")
     if not isinstance(group_name, str) or not isinstance(image_data, str):
         return _error("group_name and image must be strings", 400)
+
+    # The cover file is named md5(group_name), so an empty name silently
+    # overwrites the single cover shared by every unnamed group.
+    if not group_name.strip():
+        return _error("group_name must not be empty", 400)
 
     if not image_data.startswith("data:image/"):
         return _error("Invalid image format — must be a data URL", 400)
@@ -1265,7 +1304,26 @@ def upload_cover() -> ResponseReturnValue:
         if len(encoded) > MAX_B64_SIZE:
             return _error("Payload too large", 413)
 
-        decoded = base64.b64decode(encoded)
+        # ``b64decode`` without ``validate`` drops every character it does not
+        # recognise, so a payload of pure garbage (`"@@@"`) decodes to ``b""``
+        # without raising. The handler then wrote a zero-byte cover, answered
+        # "success", and the broken image only surfaced later in the UI.
+        # Line breaks are removed first: a wrapped base64 body is valid, while
+        # any other stray character still fails the strict decode.
+        stripped = "".join(encoded.split())
+        if not stripped:
+            return _error("Malformed image data", 400)
+        decoded = base64.b64decode(stripped, validate=True)
+        if not decoded:
+            return _error("Malformed image data", 400)
+        # The declared MIME type is just a string the client chose; check that
+        # the bytes really are that image format so the stored ``.png``/``.jpg``
+        # is not mislabelled and cannot carry arbitrary content.
+        if not _matches_image_magic(decoded, mime_type):
+            return _error(
+                f"Image data is not a valid {mime_type} file",
+                400,
+            )
 
         # Determine cover storage path using the shared helper
         cfg = load_config()

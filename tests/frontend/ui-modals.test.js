@@ -144,6 +144,41 @@ describe('folder picker', () => {
         // The picker owns the failure display; the error modal stays hidden.
         expect(document.getElementById('error-dialog-modal').style.display).not.toBe('flex');
     });
+
+    it('renders the server message as text, not as markup', async () => {
+        // The server echoes the rejected path inside its message. A folder
+        // named `<img src=x onerror=...>` therefore reached the picker as
+        // markup, and `innerHTML` made the dashboard origin execute it — a
+        // stored XSS whose payload is a filesystem name.
+        await mount(`
+          <div id="path-picker-modal" class="modal" aria-hidden="true" style="display: none">
+            <p id="picker-title"></p>
+            <div id="picker-breadcrumb"></div>
+            <div id="picker-footer-path"></div>
+            <div id="picker-body"></div>
+          </div>
+          <div id="status-msg"></div>
+        `);
+
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+            ok: false,
+            status: 400,
+            json: async () => ({
+                status: 'error',
+                message: 'cannot read <img src=x onerror="window.pwned=1">',
+            }),
+        }));
+
+        const { browseDir } = await import('../../static/js/features/path-picker.js');
+        await browseDir('/media');
+
+        const body = document.getElementById('picker-body');
+        // The angle brackets survive as visible text instead of becoming an
+        // element that the browser would then run.
+        expect(body.querySelector('img')).toBeNull();
+        expect(body.textContent).toContain('<img src=x onerror=');
+        expect(window.pwned).toBeUndefined();
+    });
 });
 
 describe('Basic auth header encoding', () => {
