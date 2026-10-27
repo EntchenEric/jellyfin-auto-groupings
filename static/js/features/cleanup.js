@@ -1,10 +1,10 @@
 // cleanup.js – Cleanup modal logic
 
 import { getCleanupItems, performCleanup } from '../core/api.js';
-import { showToast, showErrorDialog, getEl } from '../core/ui.js';
+import { showToast, showErrorDialog, getEl, showModal } from '../core/ui.js';
 
 export async function openCleanupModal() {
-    getEl('cleanup-modal').style.display = 'flex';
+    showModal('cleanup-modal');
     getEl('cleanup-loading').style.display = 'flex';
     getEl('cleanup-content').style.display = 'none';
     getEl('cleanup-error').style.display = 'none';

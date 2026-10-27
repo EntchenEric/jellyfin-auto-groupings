@@ -9,6 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The folder picker rendered as an unstyled block inside the page instead of a
+  dialog. Its overlay `<div id="path-picker-modal">` had lost `class="modal"`
+  while keeping `role="dialog"`/`aria-modal`, and nothing in any stylesheet
+  matched the `picker-*` classes at all — both were dropped when the single
+  `index.html` was split into partials and CSS modules in May. The overlay was
+  therefore never hidden before the first `showModal()`, so on every page load
+  the picker's title, breadcrumb and empty listing appeared in the document
+  flow, and once opened it had no backdrop, no fixed positioning and no
+  scrollable body. The class is restored and the rules live in
+  `components.css` again.
+
+- The cleanup, preview-sync, confirm-sync, export, import and cover-generator
+  dialogs opened by flipping `element.style.display` instead of calling
+  `showModal()`. They looked correct, but `aria-hidden` stayed `"true"` on a
+  visible `role="dialog"`, so screen readers skipped the whole dialog; focus
+  was never moved inside it; and `body.modal-open` was never added, so the
+  page behind the dialog still scrolled on a phone. Opening and closing now go
+  through the shared lifecycle helper.
+
+- The cover generator nested a second `role="dialog" aria-hidden="true"` on
+  its own card, inside the modal that `showModal()` un-hides. The inner
+  attribute was never cleared, so the entire dialog content stayed hidden from
+  assistive technology even while the outer overlay was open. The card is now
+  a plain content box.
+
+- The setup wizard's overlay was missing `aria-hidden="true"`, so it was
+  exposed to screen readers while closed.
+
 - Importing a *full* configuration file that had no `groups` key (an older
   export, or a hand-written one) left `state.currentConfig.groups` undefined.
   The `renderGroups()` that runs right after the import threw from

@@ -2,7 +2,7 @@
 
 import { state } from '../core/state.js';
 import { saveConfig, uploadCover } from '../core/api.js';
-import { showToast, showErrorDialog, hideModal, getEl } from '../core/ui.js';
+import { showToast, showErrorDialog, showModal, hideModal, getEl } from '../core/ui.js';
 
 let activeCoverIndex = -1;
 
@@ -271,7 +271,7 @@ export function openCoverGenerator(index) {
     getEl('cover-color-1').value = group.cover_color1 || '#4f46e5';
     getEl('cover-color-2').value = group.cover_color2 || '#9333ea';
 
-    getEl('cover-generator-modal').style.display = 'flex';
+    showModal('cover-generator-modal');
 
     if (document.fonts && document.fonts.ready) {
         document.fonts.ready.then(() => renderCover());

@@ -1712,6 +1712,121 @@ pre {
     overflow-wrap: anywhere;
 }
 
+/* ── Folder picker modal ─────────────────────────────────── */
+/* These rules were dropped when the SPA was split into modules: the markup
+   kept its ``picker-*`` classes but the stylesheet never received them, so the
+   dialog rendered as an unstyled flow-layout block with no overlay and no
+   scroll container. */
+#path-picker-modal {
+    z-index: var(--z-modal);
+}
+
+.picker-box {
+    background: var(--surface-color);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    width: min(600px, 95vw);
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+    overflow: hidden;
+}
+
+.picker-header {
+    padding: 1rem 1.25rem 0.7rem;
+    border-bottom: 1px solid var(--glass-border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.picker-title {
+    font-family: Outfit, sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.picker-breadcrumb {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    word-break: break-all;
+    font-family: monospace;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 0.3rem 0.6rem;
+    border-radius: 5px;
+    border: 1px solid var(--glass-border);
+}
+
+.picker-body {
+    overflow-y: auto;
+    flex: 1;
+    padding: 0.4rem 0;
+}
+
+.picker-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 1.25rem;
+    cursor: pointer;
+    font-size: 0.88rem;
+    color: var(--text-primary);
+    transition: background 0.12s;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+}
+
+.picker-item:hover {
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.picker-item.picker-up {
+    color: var(--text-secondary);
+    font-style: italic;
+    border-bottom: 1px solid var(--glass-border);
+    margin-bottom: 0.2rem;
+}
+
+.picker-item-icon {
+    font-size: 0.95rem;
+    flex-shrink: 0;
+}
+
+.picker-empty {
+    padding: 1.5rem;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    font-style: italic;
+}
+
+.picker-footer {
+    padding: 0.85rem 1.25rem;
+    border-top: 1px solid var(--glass-border);
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+}
+
+.picker-footer-path {
+    flex: 1;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-family: monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* The footer buttons carry ``btn-auto``, which already handles width and
+   margin; they only need to stop shrinking when the path is long. */
+.picker-footer button {
+    flex-shrink: 0;
+}
+
 /* ── JavaScript-disabled warning ──────────────────────────── */
 .nojs-warning {
     background: var(--error-color, #ef4444);

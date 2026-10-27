@@ -2,7 +2,7 @@
 
 import { state } from '../core/state.js';
 import { apiPost } from '../core/api.js';
-import { showToast, showErrorDialog, getEl } from '../core/ui.js';
+import { showToast, showErrorDialog, showModal, getEl } from '../core/ui.js';
 
 export async function syncAll() {
     const result = await apiPost('/api/sync');
@@ -95,7 +95,7 @@ export async function previewSyncAll() {
             container.appendChild(emptyDiv);
         }
 
-        getEl('preview-sync-modal').style.display = 'flex';
+        showModal('preview-sync-modal');
     } else {
         showErrorDialog(result.message || 'Preview failed');
     }
@@ -109,7 +109,7 @@ export function showConfirmSyncDialog() {
     }
     const countEl = getEl('confirm-sync-group-count');
     if (countEl) countEl.textContent = groupCount;
-    getEl('confirm-sync-modal').style.display = 'flex';
+    showModal('confirm-sync-modal');
 }
 
 export function initSync() {
