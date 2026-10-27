@@ -1,4 +1,5 @@
 import logging
+import math
 import re
 from typing import Any
 
@@ -143,12 +144,43 @@ def parse_grouping_rules(rules: dict[str, Any]) -> dict[str, Any]:
     return collections
 
 
+def _numeric_premiere_year(value: Any) -> int | None:
+    """Return the year of a numeric ``PremiereDate``, or ``None``.
+
+    A partially scanned item can report ``PremiereDate`` as ``NaN`` or
+    ``Infinity``. ``int()`` raises ``ValueError`` / ``OverflowError`` for
+    those, which aborted the whole grouping pass instead of skipping the one
+    corrupt item, so the value is checked for finiteness first.
+
+    Args:
+        value: The raw ``PremiereDate`` value; only non-``bool`` numbers are
+            considered.
+
+    Returns:
+        The year as an ``int``, or ``None`` when *value* is not a finite
+        number. Fractional years are truncated the same way the
+        leading-four-digits date-string path truncates them.
+
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    try:
+        return int(value)
+    except (ValueError, OverflowError):
+        # ``int()`` still refuses a float too large for the conversion, and an
+        # ``int`` subclass may override ``__int__``; neither is a year.
+        return None
+
+
 def group_by_decade(items: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     """Group items by release decade, keyed like ``"1990s Movies"``.
 
     The year comes from ``ProductionYear`` when it is a usable int or numeric
     string, otherwise from the leading four digits of ``PremiereDate``.
-    ``bool`` values and years outside 1800-2100 are ignored.
+    ``bool`` values, non-finite numbers, and years outside 1800-2100 are
+    ignored.
     """
     collections: dict[str, list[dict[str, Any]]] = {}
     for item in items:
@@ -167,8 +199,8 @@ def group_by_decade(items: list[dict[str, Any]]) -> dict[str, list[dict[str, Any
             pdate = item.get("PremiereDate")
             if isinstance(pdate, str) and len(pdate) >= 4 and pdate[:4].isdigit():
                 year = int(pdate[:4])
-            elif isinstance(pdate, (int, float)) and not isinstance(pdate, bool):
-                year = int(pdate)
+            else:
+                year = _numeric_premiere_year(pdate)
 
         if year and 1800 <= year <= 2100:
             decade = f"{(year // 10) * 10}s Movies"
