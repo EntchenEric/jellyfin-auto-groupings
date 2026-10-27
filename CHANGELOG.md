@@ -451,7 +451,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   page, the page cap, non-array `Items`, a missing `TotalRecordCount`, and the
   normal multi-page walk.
 
+### Changed
+
+- `docs/ARCHITECTURE.md` listed Jellyfin-proxy, export/import, and wizard
+  routes under "all HTTP endpoints". None of those exist: the blueprint serves
+  16 routes, and export, import, and the wizard are client-side features that
+  persist through `POST /api/config`. The section now names the real routes.
+
+- The README `## Configuration` section documented three environment variables
+  (`JELLYFIN_URL`, `JELLYFIN_API_KEY`, `DRY_RUN`) while `.env.example` — which
+  points at the README "for full documentation" — listed `APP_PASSWORD`,
+  `SCHEDULER_ENABLED`, the `NETWORK_RETRY_*` family, the gunicorn knobs, and
+  `ALLOWED_NON_CSRF_ENDPOINTS`. All of them are now documented and grouped by
+  which process reads them, including `VIRTUAL_JF_PORT` for the mock server.
+
 ### Added
+
+- `tests/test_docs_accuracy.py` compares the prose against the code, so the
+  documentation cannot drift silently again: every route the blueprint serves
+  must appear in `docs/API.md`, `docs/API.md` may not document a removed route,
+  `ARCHITECTURE.md` may not advertise an endpoint that was never written, and
+  every variable in `.env.example` must be described in the README.
 
 - `tests/frontend/confirm-dialog.test.js` covers all five close paths of the
   confirmation dialog (Confirm, Cancel, Escape, backdrop, ×), the outcome of

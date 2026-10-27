@@ -38,17 +38,29 @@ development server.
 
 A Flask Blueprint containing all HTTP endpoints:
 
-- **Configuration CRUD** — load, save, validate config (`/api/config`, etc.)
-- **Sync operations** — trigger sync, dry-run preview, cleanup broken symlinks
-- **Metadata browsing** — fetch genres, actors, studios, tags from Jellyfin
-- **Jellyfin proxy** — collections, libraries, virtual folders, health checks
-- **Filesystem browser** — auto-detect path mappings by scanning mounted volumes
-- **Cover upload & management** — upload, list, rotate cover images
-- **Export/Import** — JSON export and import of the full configuration
-- **Wizard** — guided setup endpoint
+- **Configuration CRUD** — `GET`/`POST /api/config`, `POST /api/test-server`
+- **Sync operations** — `POST /api/sync`, `POST /api/sync/preview_all`,
+  `POST /api/grouping/preview`
+- **Cleanup** — `GET`/`POST /api/cleanup` (report and remove broken symlinks)
+- **Metadata browsing** — `GET /api/jellyfin/metadata`
+- **Jellyfin users** — `GET /api/jellyfin/users`
+- **Filesystem browser** — `GET /api/browse`,
+  `POST /api/jellyfin/auto-detect-paths`
+- **Cover upload** — `POST /api/upload_cover`
+- **Diagnostics** — `GET /api/health`, `GET /api/version`,
+  `GET /api/test/results`
+
+`GET /` serves the single-page frontend; see [API.md](API.md) for the request
+and response shape of every route.
 
 Route handlers are intentionally thin: they validate inputs, delegate to
 service functions, and serialise the result back as JSON.
+
+Export/import and the setup wizard are **not** separate endpoints. Export
+serialises the in-memory config and downloads it as a file; import reads a
+file, merges it in the browser, and persists the result through
+`POST /api/config`. The wizard is likewise client-side and finishes by saving
+the collected settings through `POST /api/config`.
 
 ### `config.py` — Configuration Persistence
 
