@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A *broken* symlink left at `<target>/<group>` aborted the sync for that
+  group with `FileExistsError`. `_prepare_group_directory()` guarded the
+  cleanup with `Path.exists()`, which follows links, so a link whose
+  destination had been deleted reported "not there": the cleanup was skipped
+  and the following `mkdir()` failed because the name was still taken. The
+  dangling link is now detected with `is_symlink()` as well, removed, and
+  replaced with a real directory.
+
 - A group directory that is a symlink had the *link target's* contents
   deleted. `_clear_group_directory()` walked `iterdir()`, which follows the
   link, so a leftover `<target>/<group>` symlink pointing at a media folder
