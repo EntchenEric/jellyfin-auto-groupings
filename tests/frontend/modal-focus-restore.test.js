@@ -129,6 +129,24 @@ describe('focus restoration on modal close', () => {
         expect(document.activeElement).toBe(other);
     });
 
+    it('keeps the original trigger when the dialog is shown again while open', async () => {
+        const trigger = document.querySelector('.group-action-btn--cover');
+        trigger.focus();
+
+        ui.showModal('cover-generator-modal');
+        await tick();
+
+        // showConfirmDialog() can call showModal() a second time to replace the
+        // contents of the dialog that is already open. The active element is
+        // then inside the dialog, so re-recording it would forget the button
+        // the user actually pressed.
+        ui.showModal('cover-generator-modal');
+        await tick();
+        ui.hideModal('cover-generator-modal');
+
+        expect(document.activeElement).toBe(trigger);
+    });
+
     it('restores focus after the loading overlay is hidden', async () => {
         const trigger = document.querySelector('.group-action-btn--cover');
         trigger.focus();

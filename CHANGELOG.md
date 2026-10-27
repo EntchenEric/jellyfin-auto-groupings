@@ -20,7 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   correctly; a trigger removed by a re-render while the dialog was open is
   dropped instead of focused. The loading overlay records and restores focus
   the same way, and the `Escape` handler no longer runs a
-  `[onclick*="<modal-id>"]` lookup that could never match.
+  `[onclick*="<modal-id>"]` lookup that could never match. Showing a dialog
+  that is already open keeps the original trigger, so
+  `showConfirmDialog()` replacing its own contents no longer forgets the
+  button the user pressed.
 
 - The `prefers-reduced-motion` block in `variables.css` disabled only
   `animation`, so the buttons, cards, modal, and progress bar — all of which

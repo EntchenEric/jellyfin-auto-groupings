@@ -165,12 +165,20 @@ function _rememberFocus(id, el) {
 export function showModal(id) {
     const el = document.getElementById(id);
     if (el) {
+        // Only record the trigger on a closed -> open transition. A modal that
+        // is already open can be shown again (showConfirmDialog() replaces its
+        // contents); at that point document.activeElement is inside the dialog,
+        // so re-recording would lose the original trigger and drop focus to
+        // <body> when the dialog finally closes.
+        const wasOpen = el.style.display === 'flex' || el.style.display === 'block';
         el.style.display = 'flex';
         // Mark the modal as visible for assistive technology
         el.removeAttribute('aria-hidden');
         // Remember the element that triggered the modal so focus can be
         // restored when it closes.
-        _rememberFocus(id, document.activeElement);
+        if (!wasOpen) {
+            _rememberFocus(id, document.activeElement);
+        }
         // Focus first focusable element
         const focusable = el.querySelector(_FOCUSABLE);
         if (focusable) {
