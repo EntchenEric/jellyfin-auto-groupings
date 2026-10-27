@@ -151,6 +151,83 @@ def test_search_checks_each_root_only_until_the_budget_is_spent(tmp_path):
     assert budget.exhausted is True
 
 
+def test_files_below_a_mount_point_are_charged_to_the_budget(tmp_path, monkeypatch):
+    """A mount-point directory must not be inspected for free.
+
+    The mount branch used to run before the budget was consulted, so its
+    filenames were matched without being charged and a tree whose roots are
+    mostly mount points — the usual shape of ``/media`` and ``/mnt`` — was
+    walked without the cap ever applying.
+    """
+    root = tmp_path / "media"
+    mounted = root / "usb-disk"
+    mounted.mkdir(parents=True)
+    # The files live directly in the mount point: the branch that inspects a
+    # mount directory's own entries is the one that skipped charging.
+    for index in range(3):
+        (mounted / f"file{index}.mkv").write_text("", encoding="utf-8")
+
+    real_ismount = routes.os.path.ismount
+    monkeypatch.setattr(
+        routes.os.path,
+        "ismount",
+        lambda path: True if Path(path) == mounted else real_ismount(path),
+    )
+
+    budget = routes._DetectBudget(timeout=30, max_files=1)
+    found = routes._search_local_filesystem(
+        "missing.mkv",
+        [str(root)],
+        budget=budget,
+    )
+
+    assert found is None
+    # Three files in the mounted directory crossed the cap of one.
+    assert budget.files_scanned >= 3
+    assert budget.exhausted is True
+
+
+def test_a_match_below_a_mount_point_is_still_returned(tmp_path, monkeypatch):
+    """Moving the budget check must not stop the mount branch from matching."""
+    root = tmp_path / "media"
+    mounted = root / "usb-disk"
+    mounted.mkdir(parents=True)
+    target = mounted / "target.mkv"
+    target.write_text("", encoding="utf-8")
+
+    real_ismount = routes.os.path.ismount
+    monkeypatch.setattr(
+        routes.os.path,
+        "ismount",
+        lambda path: True if Path(path) == mounted else real_ismount(path),
+    )
+
+    found = routes._search_local_filesystem("target.mkv", [str(root)])
+
+    assert found == str(target)
+
+
+def test_subdirectories_of_a_mount_point_are_still_pruned(tmp_path, monkeypatch):
+    """Charging first must keep the pruning that stops cross-filesystem walks."""
+    root = tmp_path / "media"
+    mounted = root / "usb-disk"
+    deeper = mounted / "deeper"
+    deeper.mkdir(parents=True)
+    hidden = deeper / "target.mkv"
+    hidden.write_text("", encoding="utf-8")
+
+    real_ismount = routes.os.path.ismount
+    monkeypatch.setattr(
+        routes.os.path,
+        "ismount",
+        lambda path: True if Path(path) == mounted else real_ismount(path),
+    )
+
+    found = routes._search_local_filesystem("target.mkv", [str(root)])
+
+    assert found is None, "the walk descended into a mount point's subtree"
+
+
 # ---------------------------------------------------------------------------
 # The endpoint shares one budget
 # ---------------------------------------------------------------------------

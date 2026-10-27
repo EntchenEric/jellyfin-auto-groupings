@@ -1810,19 +1810,12 @@ def _search_local_filesystem(
         for dirpath, dirnames, filenames in os.walk(root):
             # Compute depth once per directory entry
             dir_depth = len(Path(dirpath).parts) - root_depth
-            try:
-                is_mount = os.path.ismount(dirpath)
-            except OSError:
-                # Permission denied or inaccessible — skip this directory
-                dirnames.clear()
-                continue
-            if is_mount and dirpath != root:
-                # Check files in the mount point directory itself before
-                # pruning subdirectories from the walk.
-                if filename in filenames:
-                    return str(Path(dirpath) / filename)
-                dirnames.clear()
-                continue
+            # Charge and check the budget before any branch can return or skip
+            # this directory. The mount-point branch used to run first, so a
+            # match below a mount was handed back without spending budget and
+            # the deadline was never consulted there — and a tree whose roots
+            # are mostly mount points (the usual shape of /media and /mnt) was
+            # therefore walked largely for free.
             if budget.expired():
                 logger.warning(
                     "auto-detect timed out after %ds, %d files scanned",
@@ -1830,14 +1823,27 @@ def _search_local_filesystem(
                     budget.files_scanned,
                 )
                 return None
+            if filename in filenames:
+                # Answer a hit here before charging for the directory: a match
+                # found at the cap is still the result the caller asked for.
+                return str(Path(dirpath) / filename)
             if budget.charge(len(filenames)):
                 logger.warning(
                     "auto-detect hit file limit (%d), stopping scan",
                     budget.max_files,
                 )
                 return None
-            if filename in filenames:
-                return str(Path(dirpath) / filename)
+            try:
+                is_mount = os.path.ismount(dirpath)
+            except OSError:
+                # Permission denied or inaccessible — skip this directory
+                dirnames.clear()
+                continue
+            if is_mount and dirpath != root:
+                # Prune subdirectories of a mount point so the walk cannot
+                # descend into another filesystem's tree.
+                dirnames.clear()
+                continue
             if dir_depth > _AUTO_DETECT_MAX_DEPTH:
                 dirnames.clear()
     return None
