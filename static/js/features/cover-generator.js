@@ -2,9 +2,17 @@
 
 import { state } from '../core/state.js';
 import { saveConfig, uploadCover } from '../core/api.js';
-import { showToast, showErrorDialog, showModal, hideModal, getEl } from '../core/ui.js';
+import { showToast, showErrorDialog, showModal, hideModal, getEl, onModalHide } from '../core/ui.js';
 
 let activeCoverIndex = -1;
+
+//: Timer for the deferred first render, and whether one is still expected.
+let _renderTimer = null;
+let _renderPending = false;
+
+// Closing the dialog — ×, Escape, or backdrop — drops a render that has not
+// run yet, so it cannot touch a document the dialog no longer owns.
+onModalHide('cover-generator-modal', () => cancelPendingRender());
 
 function mulberry32(a) {
     return function () {
@@ -273,16 +281,65 @@ export function openCoverGenerator(index) {
 
     showModal('cover-generator-modal');
 
+    scheduleRender();
+}
+
+/**
+ * Render once the web fonts have settled, so the cover is not drawn with the
+ * fallback face and then never redrawn.
+ *
+ * Both paths are deferred, so both can outlive the dialog: a reopened dialog
+ * would otherwise leave the previous open's callback queued behind it, and a
+ * page torn down before the callback runs would render into a document that no
+ * longer exists. One pending render is therefore tracked and superseded, and
+ * {@link cancelPendingRender} lets the close path drop it.
+ */
+function scheduleRender() {
+    cancelPendingRender();
+    _renderPending = true;
+
+    const run = () => {
+        if (!_renderPending) return;
+        _renderPending = false;
+        _renderTimer = null;
+        renderCover();
+    };
+
     if (document.fonts && document.fonts.ready) {
-        document.fonts.ready.then(() => renderCover());
+        // `ready` never rejects, but a thenable from a partial polyfill can; a
+        // rejected handler would skip the render entirely.
+        document.fonts.ready.then(run, run);
     } else {
-        setTimeout(() => renderCover(), 100);
+        _renderTimer = setTimeout(run, 100);
+    }
+}
+
+/** Drop a render that has been scheduled but has not run yet. */
+export function cancelPendingRender() {
+    _renderPending = false;
+    if (_renderTimer !== null) {
+        clearTimeout(_renderTimer);
+        _renderTimer = null;
     }
 }
 
 export function renderCover() {
+    // A deferred callback can outlive the page it was scheduled from (a test
+    // environment torn down mid-run, a bfcache restore). There is nothing to
+    // draw into at that point, and touching `document` would throw from a
+    // timer where no caller can catch it.
+    if (typeof document === 'undefined') return;
     const canvas = getEl('cover-canvas');
+    // The modal is rendered by a Jinja partial, and `renderCover()` also runs
+    // from a `document.fonts.ready` callback and from inline `oninput`
+    // handlers. Both outlive the element they were scheduled against: a page
+    // rendered without the partial, or a modal torn down before the font
+    // promise settles, used to throw `Cannot read properties of null` here.
+    // A canvas whose 2D context is unavailable (`getContext()` returns null on
+    // an unsupported environment) crashed the same way on `setTransform()`.
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
+    if (!ctx) return;
     const text = getEl('cover-text')?.value?.trim() || 'Group Name';
     const theme = getEl('cover-theme')?.value || 'modern-dark';
     const color1 = getEl('cover-color-1')?.value || '#4f46e5';

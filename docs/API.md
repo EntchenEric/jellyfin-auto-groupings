@@ -227,6 +227,15 @@ Dry-run sync — returns what would be synced without writing symlinks or callin
 
 **Response `200`:** Same shape as `/api/sync`, with preview item lists where applicable.
 
+**Errors:** `409` another sync or cleanup run is in progress; `429` preview
+rate limit (wait before retrying); `500` preview failure.
+
+Previews and syncs are rate limited separately, each per client IP. A dry run
+is read-only and normally precedes the sync it describes — the confirmation
+dialog offers "Preview First" and then "Sync Now" — so the two share no
+budget. Charging a preview against the sync window used to answer that
+sequence with `429` even though the sync had never run.
+
 ---
 
 ## `POST /api/grouping/preview`
