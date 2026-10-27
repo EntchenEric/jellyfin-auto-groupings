@@ -2,7 +2,7 @@
 
 import { state } from '../core/state.js';
 import { saveConfig } from '../core/api.js';
-import { showToast, showErrorDialog, getEl } from '../core/ui.js';
+import { showToast, showErrorDialog, showModal, hideModal, getEl } from '../core/ui.js';
 import { renderGroups } from './groupings.js';
 
 export function openExportModal() {
@@ -46,7 +46,7 @@ export function openExportModal() {
         radio.onchange = toggleExportSelection;
     });
 
-    getEl('export-modal').style.display = 'flex';
+    showModal('export-modal');
 }
 
 export function toggleExportSelection() {
@@ -75,7 +75,7 @@ export function execExport() {
     }
 
     downloadJSON(dataToExport, filename);
-    getEl('export-modal').style.display = 'none';
+    hideModal('export-modal');
 }
 
 export function openImportModal() {
@@ -83,7 +83,7 @@ export function openImportModal() {
     getEl('import-step-1').style.display = 'block';
     getEl('import-step-2').style.display = 'none';
     getEl('cancel-import-top').style.display = 'block';
-    getEl('import-modal').style.display = 'flex';
+    showModal('import-modal');
 }
 
 export function handleFileSelected(event) {
@@ -172,7 +172,7 @@ function setupImportStep2(data) {
         confirmBtn.onclick = () => performImport('groups', groups);
     } else {
         showErrorDialog('Incompatible file structure');
-        getEl('import-modal').style.display = 'none';
+        hideModal('import-modal');
     }
 }
 
@@ -249,7 +249,7 @@ async function performImport(type, sourceGroups = null) {
         return;
     }
 
-    getEl('import-modal').style.display = 'none';
+    hideModal('import-modal');
     state.pendingImportData = null;
     showToast('Import successful!', 'success');
     renderGroups();
