@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Closing a dialog dropped keyboard focus instead of returning it to the
+  button that opened it. `showModal()` remembered its trigger through the
+  element's `id` (`data-previous-active`), but the per-group "Cover" and
+  "Edit" buttons are created in a loop in `groupings.js` and have no `id`, so
+  the stored value was always the empty string and `hideModal()` restored
+  nothing. Focus stayed on the now-hidden `role="dialog"`, which left the
+  next Tab press restarting from the top of the document (WCAG 2.4.3). The
+  trigger is now held by reference, so an element without an `id` restores
+  correctly; a trigger removed by a re-render while the dialog was open is
+  dropped instead of focused. The loading overlay records and restores focus
+  the same way, and the `Escape` handler no longer runs a
+  `[onclick*="<modal-id>"]` lookup that could never match.
+
+- The `prefers-reduced-motion` block in `variables.css` disabled only
+  `animation`, so the buttons, cards, modal, and progress bar — all of which
+  move through `var(--transition)` — kept animating for users who asked their
+  OS to reduce motion. It now also resets `transition`, covers
+  `::before`/`::after`, and turns off smooth scrolling.
+
 - "Preview First" followed by "Sync Now" in the sync confirmation dialog
   answered `429 Please wait before syncing again`. The preview and the sync
   shared one per-IP rate-limit timestamp, so the dry run the dialog had just

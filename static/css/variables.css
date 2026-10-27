@@ -50,8 +50,22 @@
     }
 }
 
+/*
+ * Honour the OS "reduce motion" setting. `animation` alone is not enough:
+ * the buttons, cards and progress bars animate through `transition`, and
+ * `--transition` (0.25s cubic-bezier) is applied to 13 rules in
+ * components.css alone. Without the `transition` override those hover and
+ * focus effects kept animating for users who asked them not to. The same
+ * block in responsive.css carries the full reset; this one is the fallback
+ * for pages that load variables.css without responsive.css.
+ */
 @media (prefers-reduced-motion: reduce) {
-    * {
+    *,
+    *::before,
+    *::after {
         animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
     }
 }
