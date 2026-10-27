@@ -625,12 +625,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   variables, which measure 5.87:1, 4.18:1, 6.80:1, and 3.48:1 respectively —
   and the toast body is 0.85rem at weight 500, below the 18.66px-bold
   large-text threshold, so the applicable ratio is 4.5:1 and not 3:1. Each
-  variant now sets its own lighter tint on the dark surface (5.0:1 or better)
-  and a darker one inside `prefers-color-scheme: light`, leaving the shared
-  variables untouched for icons, borders, and headings.
-  `tests/frontend/toast-variants.test.js` derives the toast types from the
-  `showToast()` call sites in `static/js`, fails when one has no CSS rule,
-  and computes the contrast ratios from the real stylesheet.
+  variant now sets its own lighter tint on the dark page and a darker one
+  inside `prefers-color-scheme: light`, leaving the shared variables untouched
+  for icons, borders, and headings. All four variants measure at least 5.2:1
+  in both themes. `tests/frontend/toast-variants.test.js` derives the toast
+  types from the `showToast()` call sites in `static/js`, fails when one has
+  no CSS rule, resolves the real cascade in jsdom, and recomputes the ratios
+  against the page background from `variables.css` — the toast is a fixed
+  overlay, so it sits on `--bg-color` and not on a card surface.
 
 ### Changed
 

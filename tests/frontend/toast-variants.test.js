@@ -220,16 +220,47 @@ function toastContrast(type, surface, textColor = null) {
     return contrast(color, composite(background, surface));
 }
 
-describe('toast contrast', () => {
-    const SURFACES = {
-        dark: '#1a1a24',
-        light: '#ffffff',
+/**
+ * The two surfaces a toast can float over, taken from variables.css.
+ *
+ * The toast is a fixed overlay at the bottom-right of the viewport, so it sits
+ * on the page background (`--bg-color`), not on a card surface. Checking only
+ * `#ffffff` understated nothing in the dark theme but over-reported contrast
+ * in the light one, where the page is `#f1f5f9` and the tinted toast
+ * background therefore lands darker.
+ *
+ * @returns {{dark: string, light: string}} Hex background colours.
+ */
+function pageSurfaces() {
+    const root = VARIABLES_CSS.slice(0, VARIABLES_CSS.indexOf('@media'));
+    const light = VARIABLES_CSS.slice(VARIABLES_CSS.indexOf('@media'));
+    const pick = (source, name) => {
+        const match = source.match(new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`));
+        if (!match) throw new Error(`--${name} is not defined in variables.css`);
+        return match[1];
     };
+    return {
+        dark: pick(root, 'bg-color'),
+        light: pick(light, 'bg-color'),
+    };
+}
 
-    it.each(KNOWN_TYPES)('%s toast meets WCAG AA on the dark surface', (type) => {
+describe('toast contrast', () => {
+    const SURFACES = pageSurfaces();
+
+    it('reads both page backgrounds from variables.css', () => {
+        // Guards the helper above: a regex miss would make every contrast
+        // assertion compare two identical colours.
+        expect(SURFACES.dark).toBe('#0d0d12');
+        expect(SURFACES.light).toBe('#f1f5f9');
+    });
+
+    it.each(KNOWN_TYPES)('%s toast meets WCAG AA on the dark page', (type) => {
         // Toast body text is 0.85rem/500 — below the 18.66px-bold large-text
         // threshold, so AA requires 4.5:1, not 3:1.
-        expect(toastContrast(type, SURFACES.dark)).toBeGreaterThanOrEqual(4.5);
+        const ratio = toastContrast(type, SURFACES.dark);
+        expect(ratio, `${type} toast on the dark page is ${ratio.toFixed(2)}:1`)
+            .toBeGreaterThanOrEqual(4.5);
     });
 
     it('darkens every toast variant for the light surface', () => {
@@ -252,7 +283,7 @@ describe('toast contrast', () => {
         for (const type of KNOWN_TYPES) {
             expect(overrides[type], `${type} has no light-mode text colour`).toBeDefined();
             const ratio = toastContrast(type, SURFACES.light, overrides[type]);
-            expect(ratio, `${type} toast on white is ${ratio.toFixed(2)}:1`)
+            expect(ratio, `${type} toast on the light page is ${ratio.toFixed(2)}:1`)
                 .toBeGreaterThanOrEqual(4.5);
         }
     });

@@ -429,8 +429,9 @@ button:disabled {
  * (info) — and the body text is 0.85rem at weight 500, below the 18.66px bold
  * threshold, so WCAG AA requires 4.5:1 rather than the 3:1 large-text
  * allowance. Each variant now uses a lighter tint of its hue on the dark
- * surface (5.0:1 or better) and a darker one on the light surface, while the
- * shared variables stay unchanged for icons, borders, and headings.
+ * page and a darker one on the light page, while the shared variables stay
+ * unchanged for icons, borders, and headings. The toast is a fixed overlay,
+ * so both are measured against `--bg-color`, not a card surface.
  */
 .status-msg.success {
     display: block;
@@ -460,10 +461,11 @@ button:disabled {
     border: 1px solid rgba(99, 102, 241, 0.25);
 }
 
-/* On a white surface the light tints above are far too pale to read. */
+/* On the light page background the light tints above are far too pale to
+ * read; see the contrast note above. */
 @media (prefers-color-scheme: light) {
     .status-msg.success {
-        color: #047857;
+        color: #065f46;
     }
 
     .status-msg.error {
@@ -471,7 +473,7 @@ button:disabled {
     }
 
     .status-msg.warning {
-        color: #b45309;
+        color: #92400e;
     }
 
     .status-msg.info {
