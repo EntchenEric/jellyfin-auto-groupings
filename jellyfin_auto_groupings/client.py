@@ -43,6 +43,19 @@ def _items_from_body(body: Any) -> list[dict[str, Any]]:
 
 
 class JellyfinClient:
+    """HTTP client for one Jellyfin server.
+
+    Args:
+        server_url: Base URL such as ``http://localhost:8096``. A trailing
+            slash is stripped so endpoint paths concatenate cleanly.
+        api_key: Jellyfin API key, sent as the ``X-Emby-Token`` header.
+        user_id: Optional user id; when omitted, calls that need one resolve
+            the first admin user.
+        timeout: Per-request timeout in seconds for every outbound call.
+            ``requests`` has no default timeout, so an explicit value keeps a
+            stalled server from blocking the caller forever.
+    """
+
     def __init__(
         self,
         server_url: str,
