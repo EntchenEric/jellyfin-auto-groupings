@@ -2603,15 +2603,26 @@ def _process_group(
         sort_order,
     )
 
-    try:
-        source_cover = _prepare_group_directory(
-            group_dir,
-            group_name,
-            target_base,
-            dry_run,
-        )
-    except OSError as exc:
-        return {"group": group_name, "links": 0, "error": f"Directory error: {exc!s}"}
+    create_as_collection = bool(group.get("create_as_collection"))
+
+    # A collection group never writes symlinks, so preparing its directory
+    # would only leave an empty folder in the library root for Jellyfin to
+    # scan. The cover is resolved inside _process_collection_group instead.
+    source_cover: str | None = None
+    if not create_as_collection:
+        try:
+            source_cover = _prepare_group_directory(
+                group_dir,
+                group_name,
+                target_base,
+                dry_run,
+            )
+        except OSError as exc:
+            return {
+                "group": group_name,
+                "links": 0,
+                "error": f"Directory error: {exc!s}",
+            }
 
     # --- Resolve items ---
     watch_state = _optional_group_str(group, "watch_state")
@@ -2649,7 +2660,7 @@ def _process_group(
         items = _sort_items_in_memory(items, sort_order)
 
     # --- Collection (Boxset) path ---
-    if group.get("create_as_collection"):
+    if create_as_collection:
         return _process_collection_group(
             group_name,
             items,

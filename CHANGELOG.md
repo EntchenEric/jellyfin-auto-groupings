@@ -51,6 +51,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A group with `create_as_collection` enabled still went through
+  `_prepare_group_directory` before its items were pushed into a Jellyfin
+  Boxset. The group writes no symlinks, so the only effect was an empty
+  `<target>/<group>` folder left behind in the library root, which Jellyfin
+  then scanned on every library refresh as an extra, permanently empty folder.
+  The collection branch now skips directory preparation entirely and lets
+  `_process_collection_group` resolve the cover itself. Pinned by
+  `tests/test_collection_groups.py`, which also covers the previously untested
+  collection path (dry-run preview, extending an existing collection versus
+  creating one, per-group error reporting, and cover upload failures).
+
 - `POST /api/jellyfin/auto-detect-paths` could outlive the gunicorn worker
   timeout. The handler searches the local filesystem for the filename of up to
   `_AUTO_DETECT_SAMPLE_LIMIT` (10) sample items, and every search was given its
