@@ -126,3 +126,51 @@ def test_readme_configuration_section_covers_security():
     config_section = readme.split("## Configuration", 1)[1].split("\n## ", 1)[0]
     assert "APP_PASSWORD" in config_section
     assert "Basic Auth" in config_section
+
+
+def _auth_exempt_endpoints() -> set[str]:
+    """Return the endpoint names ``_check_auth`` lets through unauthenticated."""
+    source = ROUTES_PY.read_text(encoding="utf-8")
+    handler = source.split("def _check_auth", 1)[1].split("\ndef ", 1)[0]
+    return set(re.findall(r'request\.endpoint == "([^"]+)"', handler))
+
+
+def test_api_md_auth_notes_match_the_enforced_exemptions():
+    """Documented auth must match ``_check_auth``, which exemptions silently break.
+
+    ``/api/health`` is exempted in ``routes.py`` so container probes work without
+    credentials, but its API.md section claimed auth was required while the
+    overview paragraph said it was public — a contradiction a reader cannot
+    resolve. Derive the truth from the code instead of trusting the prose.
+    """
+    exempt = _auth_exempt_endpoints()
+    assert exempt, "no exemptions parsed from _check_auth — the regex is stale"
+
+    # ``main.index`` serves the SPA at ``/``; the rest are ``/api/*`` routes.
+    doc = API_DOC.read_text(encoding="utf-8")
+    route_functions = dict(
+        re.findall(
+            r'@\w+\.route\(\s*"(/api/[^"]+)"[^)]*\)\s*\ndef (\w+)',
+            ROUTES_PY.read_text(encoding="utf-8"),
+        )
+    )
+
+    for endpoint in exempt:
+        function_name = endpoint.removeprefix("main.")
+        path = next(
+            (p for p, f in route_functions.items() if f == function_name),
+            None,
+        )
+        if path is None:
+            continue
+        section = doc.split(f"## `GET {path}`", 1)
+        assert len(section) == 2, f"docs/API.md has no section for public {path}"
+        auth_line = next(
+            (line for line in section[1].splitlines() if line.startswith("**Auth:**")),
+            "",
+        )
+        assert auth_line, f"docs/API.md section for {path} has no **Auth:** note"
+        assert "Not required" in auth_line, (
+            f"{path} is exempt from auth in routes.py but docs/API.md still "
+            f"claims auth is required: {auth_line!r}"
+        )
