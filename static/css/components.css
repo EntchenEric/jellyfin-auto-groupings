@@ -408,18 +408,75 @@ button:disabled {
     }
 }
 
+/*
+ * Toast variants.
+ *
+ * Every type `showToast()` can receive needs a rule here. A type without one
+ * falls through to the bare `.status-msg` rule above — transparent
+ * background, no border, inherited text colour — and renders as unstyled
+ * text in the corner instead of a notification. `cleanup.js` reports a
+ * partially successful delete with `showToast(msg, 'warning')`, which had no
+ * rule at all: the message naming the folders that could NOT be deleted was
+ * effectively invisible.
+ *
+ * `tests/frontend/toast-variants.test.js` fails when a type the frontend
+ * passes has no rule, and checks the contrast of all of them.
+ *
+ * Text colours are set per variant rather than taken from the shared
+ * `--success-color`/`--error-color`/`--warning-color`/`--accent-color`
+ * variables. Against its own 10%-tinted background, the shared value only
+ * reached 5.87:1 (success), 4.18:1 (error), 6.80:1 (warning) and 3.48:1
+ * (info) — and the body text is 0.85rem at weight 500, below the 18.66px bold
+ * threshold, so WCAG AA requires 4.5:1 rather than the 3:1 large-text
+ * allowance. Each variant now uses a lighter tint of its hue on the dark
+ * surface (5.0:1 or better) and a darker one on the light surface, while the
+ * shared variables stay unchanged for icons, borders, and headings.
+ */
 .status-msg.success {
     display: block;
     background: rgba(16, 185, 129, 0.1);
-    color: var(--success-color);
+    color: #34d399;
     border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
 .status-msg.error {
     display: block;
     background: rgba(239, 68, 68, 0.1);
-    color: var(--error-color);
+    color: #f87171;
     border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.status-msg.warning {
+    display: block;
+    background: rgba(245, 158, 11, 0.1);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.status-msg.info {
+    display: block;
+    background: rgba(99, 102, 241, 0.1);
+    color: #818cf8;
+    border: 1px solid rgba(99, 102, 241, 0.25);
+}
+
+/* On a white surface the light tints above are far too pale to read. */
+@media (prefers-color-scheme: light) {
+    .status-msg.success {
+        color: #047857;
+    }
+
+    .status-msg.error {
+        color: #b91c1c;
+    }
+
+    .status-msg.warning {
+        color: #b45309;
+    }
+
+    .status-msg.info {
+        color: #4338ca;
+    }
 }
 
 /* fixed toast at bottom right */
