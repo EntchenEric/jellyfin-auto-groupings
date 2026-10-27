@@ -92,7 +92,9 @@ persisted back to disk, so they are the right place for credentials.
 - `GUNICORN_WORKERS` - Worker processes in the Docker image (default `2`).
   The sync run lock spans processes, so raising this is safe.
 - `GUNICORN_TIMEOUT` - Worker timeout in seconds (default `120`); raise it if
-  a large library sync trips a gateway timeout
+  a large library sync trips a gateway timeout. The web UI allows a sync 15
+  minutes before it stops waiting, so raising this above that value only helps
+  scheduler and CLI runs.
 
 **HTTP retries** (external API calls only, not Jellyfin):
 

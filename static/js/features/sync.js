@@ -1,20 +1,43 @@
 // sync.js – Sync and preview sync logic
 
 import { state } from '../core/state.js';
-import { apiPost } from '../core/api.js';
+import { runSync, previewSync } from '../core/api.js';
 import { showToast, showErrorDialog, showModal, getEl } from '../core/ui.js';
 
 export async function syncAll() {
-    const result = await apiPost('/api/sync');
+    const result = await runSync();
     if (result.status === 'success') {
-        const totalLinks = result.results.reduce((acc, r) => acc + r.links, 0);
-        showToast(`Sync complete! Created ${totalLinks} symbolic links.`, 'success');
+        // A missing or non-array `results` would throw on `.reduce` and leave
+        // the button spinning with no explanation; treat it as an empty run.
+        const results = Array.isArray(result.results) ? result.results : [];
+        const totalLinks = results.reduce(
+            (acc, r) => acc + (Number(r && r.links) || 0),
+            0,
+        );
+        // Per-group failures are reported in the results panel, but the toast
+        // used to say "Sync complete!" in green whatever happened, so a run
+        // where every group errored looked like a success. Mirror cleanup.js:
+        // name the failure count and use the warning colour.
+        const failed = results.filter(r => r && r.error).length;
+        if (failed > 0) {
+            const noun = failed === 1 ? 'group' : 'groups';
+            showToast(
+                `Sync finished with ${failed} ${noun} failed — ` +
+                `created ${totalLinks} symbolic links.`,
+                'warning',
+            );
+        } else {
+            showToast(
+                `Sync complete! Created ${totalLinks} symbolic links.`,
+                'success',
+            );
+        }
 
         const resultsPanel = getEl('sync-results-panel');
         const resultsContent = getEl('sync-results-content');
-        if (resultsPanel && resultsContent && result.results) {
+        if (resultsPanel && resultsContent && results.length > 0) {
             resultsContent.innerHTML = '';
-            result.results.forEach(r => {
+            results.forEach(r => {
                 const entry = document.createElement('div');
                 entry.className = 'sync-result-entry';
                 const groupSpan = document.createElement('span');
@@ -40,13 +63,18 @@ export async function syncAll() {
 }
 
 export async function previewSyncAll() {
-    const result = await apiPost('/api/sync/preview_all');
+    const result = await previewSync();
     if (result.status === 'success') {
         const container = getEl('preview-sync-results');
+        if (!container) return;
         container.innerHTML = '';
 
-        if (result.results && result.results.length > 0) {
-            result.results.forEach(groupResult => {
+        // Previously a non-array `results` fell through to the "no groupings"
+        // branch, telling the user their config was empty after a run that
+        // had returned something else entirely.
+        const results = Array.isArray(result.results) ? result.results : [];
+        if (results.length > 0) {
+            results.forEach(groupResult => {
                 const groupCard = document.createElement('div');
                 groupCard.className = 'sync-preview-card';
 
@@ -91,7 +119,12 @@ export async function previewSyncAll() {
         } else {
             const emptyDiv = document.createElement('div');
             emptyDiv.className = 'sync-preview-empty';
-            emptyDiv.textContent = 'No groupings configured.';
+            // Only an array answers the question the user asked. Anything else
+            // is a malformed response, and saying "No groupings configured"
+            // there sent them looking for a config problem that does not exist.
+            emptyDiv.textContent = Array.isArray(result.results)
+                ? 'No groupings configured.'
+                : 'The preview response was malformed. Please try again.';
             container.appendChild(emptyDiv);
         }
 

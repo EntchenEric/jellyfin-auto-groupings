@@ -217,6 +217,11 @@ the same group directory at the same time. Overlapping runs used to leave a
 directory holding a mix of both runs' links. `POST /api/sync/preview_all` takes
 no lock because a dry run writes nothing.
 
+The UI waits up to 15 minutes for either endpoint before it stops waiting on
+the response. That is longer than the 120 s default `GUNICORN_TIMEOUT` on
+purpose: a large library sync legitimately outlives a worker, and aborting the
+request client-side never stopped the server-side run.
+
 ---
 
 ## `POST /api/sync/preview_all`

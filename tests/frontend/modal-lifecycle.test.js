@@ -154,7 +154,7 @@ describe('feature modals use the shared lifecycle', () => {
 
     it('opens the preview sync dialog through showModal()', async () => {
         vi.doMock('../../static/js/core/api.js', () => ({
-            apiPost: async () => ({
+            previewSync: async () => ({
                 status: 'success',
                 results: [{ group: 'G', links: 1, items: [] }],
             }),
@@ -172,7 +172,7 @@ describe('feature modals use the shared lifecycle', () => {
 
     it('opens the confirm sync dialog through showModal()', async () => {
         vi.doMock('../../static/js/core/api.js', () => ({
-            apiPost: vi.fn(),
+            runSync: vi.fn(),
         }));
         const { state } = await import('../../static/js/core/state.js');
         state.currentConfig = { groups: [{ name: 'G' }], scheduler: {} };
