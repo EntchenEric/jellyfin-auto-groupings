@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Accessibility
+
+- The sidebar could only be resized by dragging. `#sidebar-resizer` was a bare
+  `<div>` with mousedown/touch handlers: no `role`, no `tabindex`, no
+  `aria-valuenow`, and no key handler. A keyboard-only or screen-reader user
+  was stuck with the default width and had no way to discover that resizing
+  existed. It now follows the ARIA window-splitter pattern — `role="separator"`,
+  `tabindex="0"`, `aria-orientation="vertical"`, `aria-controls="sidebar"`,
+  `aria-valuemin`/`aria-valuemax`, and an `aria-valuenow` kept in step with the
+  applied width. ArrowLeft/ArrowRight resize by 16 px (64 px with Shift),
+  Home/End jump to the 200 px/800 px bounds, and every change persists to
+  `localStorage` exactly as a drag did. Unrelated keys and arrow keys combined
+  with Alt/Ctrl/Meta are left alone, so the sidebar still scrolls normally. The
+  separator also gets a `:focus-visible` fill, since its transparent 8 px gutter
+  made the global outline trace nothing visible. Covered by
+  `tests/frontend/sidebar-resizer.test.js` (13 cases).
+
 ### Security
 
 - The folder picker rendered the server's error message with `innerHTML`.

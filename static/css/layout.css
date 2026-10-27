@@ -289,3 +289,12 @@
 #sidebar-resizer.active {
     background: rgba(99, 102, 241, 0.5);
 }
+
+/* The separator is transparent until hovered, so the global focus-visible
+   outline would trace an invisible 8px gutter. Filling it makes the keyboard
+   focus target visible, matching the hover treatment. */
+#sidebar-resizer:focus-visible {
+    background: var(--accent-color);
+    outline: 2px solid var(--accent-color);
+    outline-offset: -1px;
+}
