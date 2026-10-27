@@ -207,7 +207,7 @@ Modular JavaScript (ES modules, no bundler):
 | `features/cover-generator.js` | Cover image upload and management |
 | `features/cleanup.js` | Broken symlink cleanup |
 | `features/path-picker.js` | Filesystem path browser |
-| `features/sidebar-resizer.js` | Draggable sidebar resize |
+| `features/sidebar-resizer.js` | Draggable and keyboard-resizable sidebar width |
 | `features/test-connection.js` | Connection test utility |
 
 ## Data Flow — A Sync Run
@@ -276,3 +276,16 @@ and fails when:
 Labels that only exist for assistive technology use the `.sr-only` class from
 `static/css/components.css` rather than being omitted; a visually implied
 label (the day dropdown beside a month dropdown) still needs a name.
+
+### Mouse-only controls
+
+A control that only responds to a pointer is invisible to that same template
+test, because it is a `<div>` with a listener rather than a form field. The
+sidebar separator (`#sidebar-resizer`) is the one such control: it follows the
+ARIA window-splitter pattern, so it carries `role="separator"`, `tabindex="0"`,
+`aria-orientation`, `aria-controls`, and `aria-valuemin`/`aria-valuemax`.
+`initSidebarResizer()` keeps `aria-valuenow` in step with the applied width and
+implements ArrowLeft/ArrowRight (Shift for a larger step) plus Home/End. When
+you add another pointer-driven control, give it the same treatment: a focus
+stop, an accessible name, and a key handler that performs the same action.
+`tests/frontend/sidebar-resizer.test.js` pins the behaviour.
