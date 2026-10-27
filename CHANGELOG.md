@@ -610,6 +610,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   page, the page cap, non-array `Items`, a missing `TotalRecordCount`, and the
   normal multi-page walk.
 
+- A partially successful cleanup reported itself with an invisible toast.
+  `cleanup.js` calls `showToast(msg, 'warning')` when `POST /api/cleanup`
+  answers `207 partial_success`, but `components.css` only defined
+  `.status-msg.success` and `.status-msg.error`. The warning toast kept the
+  bare `.status-msg` rule — no background, no border, inherited text colour —
+  so instead of a notification the user got unstyled text in the corner while
+  the message named exactly which folders could NOT be deleted. The `.warning`
+  and `.info` variants now have rules of their own.
+
+- The toast text in every variant missed WCAG AA against its own tinted
+  background. The rules took their colour from the shared
+  `--success-color`/`--error-color`/`--warning-color`/`--accent-color`
+  variables, which measure 5.87:1, 4.18:1, 6.80:1, and 3.48:1 respectively —
+  and the toast body is 0.85rem at weight 500, below the 18.66px-bold
+  large-text threshold, so the applicable ratio is 4.5:1 and not 3:1. Each
+  variant now sets its own lighter tint on the dark page and a darker one
+  inside `prefers-color-scheme: light`, leaving the shared variables untouched
+  for icons, borders, and headings. All four variants measure at least 5.2:1
+  in both themes. `tests/frontend/toast-variants.test.js` derives the toast
+  types from the `showToast()` call sites in `static/js`, fails when one has
+  no CSS rule, resolves the real cascade in jsdom, and recomputes the ratios
+  against the page background from `variables.css` — the toast is a fixed
+  overlay, so it sits on `--bg-color` and not on a card surface.
+
 ### Changed
 
 - `docs/ARCHITECTURE.md` listed Jellyfin-proxy, export/import, and wizard
