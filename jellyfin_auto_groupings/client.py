@@ -43,10 +43,17 @@ def _items_from_body(body: Any) -> list[dict[str, Any]]:
 
 
 class JellyfinClient:
-    def __init__(self, server_url: str, api_key: str, user_id: str | None = None):
+    def __init__(
+        self,
+        server_url: str,
+        api_key: str,
+        user_id: str | None = None,
+        timeout: int = 30,
+    ):
         self.server_url = server_url.rstrip("/")
         self.api_key = api_key
         self.user_id = user_id
+        self.timeout = timeout
         self.session = requests.Session()
         self.headers = {
             "X-Emby-Token": self.api_key,
@@ -62,7 +69,7 @@ class JellyfinClient:
     def _get(self, endpoint: str, params: dict[str, Any] | None = None) -> Any:
         url = f"{self.server_url}{endpoint}"
         try:
-            resp = self.session.get(url, params=params, timeout=30)
+            resp = self.session.get(url, params=params, timeout=self.timeout)
             resp.raise_for_status()
             return resp.json()
         except requests.RequestException:
@@ -77,7 +84,9 @@ class JellyfinClient:
     ) -> Any:
         url = f"{self.server_url}{endpoint}"
         try:
-            resp = self.session.post(url, params=params, json=data, timeout=30)
+            resp = self.session.post(
+                url, params=params, json=data, timeout=self.timeout
+            )
             resp.raise_for_status()
             if not resp.text.strip():
                 return None
@@ -92,7 +101,7 @@ class JellyfinClient:
     def _delete(self, endpoint: str, params: dict[str, Any] | None = None) -> Any:
         url = f"{self.server_url}{endpoint}"
         try:
-            resp = self.session.delete(url, params=params, timeout=30)
+            resp = self.session.delete(url, params=params, timeout=self.timeout)
             resp.raise_for_status()
             if not resp.text.strip():
                 return None
@@ -279,7 +288,7 @@ class JellyfinClient:
         url = f"{self.server_url}/Items/{item_id}"
         try:
             resp = self.session.post(
-                url, json={"ForcedSortName": sort_name}, timeout=30
+                url, json={"ForcedSortName": sort_name}, timeout=self.timeout
             )
             # Without this the caller cannot tell a rejected update (401/404)
             # from a successful one, and every item would look re-sorted.

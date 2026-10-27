@@ -18,6 +18,23 @@ def test_jellyfin_client_initialization():
     assert client.server_url == "http://localhost:8096"
     assert client.headers["X-Emby-Token"] == "testkey"
     assert client.user_id == "user123"
+    assert client.timeout == 30
+
+
+def test_jellyfin_client_custom_timeout():
+    client = JellyfinClient(
+        "http://localhost:8096", "testkey", user_id="user123", timeout=60
+    )
+    assert client.timeout == 60
+
+    mock_resp = MagicMock()
+    mock_resp.raise_for_status.return_value = None
+    mock_resp.json.return_value = {"Items": [{"Id": "item1", "Name": "Movie 1"}]}
+
+    with patch.object(client.session, "get", return_value=mock_resp) as mock_get:
+        items = client.get_all_items()
+        assert len(items) == 1
+        assert mock_get.call_args.kwargs["timeout"] == 60
 
 
 def test_jellyfin_client_get_users():
