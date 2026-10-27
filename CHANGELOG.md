@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `jellyfin_auto_groupings.rules.group_by_decade()` and
+  `jellyfin_groupings.process_groupings()` raised on a non-finite numeric
+  `PremiereDate`. `int(float("nan"))` raises `ValueError` and
+  `int(float("inf"))` raises `OverflowError`, so a single partially scanned
+  item aborted the whole grouping pass — in `process_groupings()` the failure
+  happened inside `sorted()`, discarding the sort names for every *other*
+  item in the collection. Non-finite numbers are now treated as an unusable
+  date and the item is skipped. A finite numeric year, including a fractional
+  one, keeps its existing date-ranking behaviour.
+
 - `jellyfin_groupings.main.main()` returned normally when `JELLYFIN_API_KEY`
   was unset, so the process exited 0 for a run that never contacted Jellyfin
   and a scheduler recorded a failed configuration as a success. It now exits

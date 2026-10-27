@@ -1,4 +1,5 @@
 import logging
+import math
 import os
 import re
 import sys
@@ -310,8 +311,10 @@ def process_groupings(client: JellyfinClient, dry_run: bool = True) -> list[tupl
             if isinstance(premiere_date, str):
                 if _LEADING_DATE.match(premiere_date.strip()):
                     return (0, premiere_date.strip())
-            elif isinstance(premiere_date, (int, float)) and not isinstance(
-                premiere_date, bool
+            elif (
+                isinstance(premiere_date, (int, float))
+                and not isinstance(premiere_date, bool)
+                and math.isfinite(premiere_date)
             ):
                 # A numeric year sorts as that year's first day, so it still
                 # interleaves with the ISO strings instead of landing after
