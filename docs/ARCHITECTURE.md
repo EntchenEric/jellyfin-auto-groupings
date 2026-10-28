@@ -208,7 +208,7 @@ Modular JavaScript (ES modules, no bundler):
 | `features/cleanup.js` | Broken symlink cleanup |
 | `features/path-picker.js` | Filesystem path browser |
 | `features/sidebar-resizer.js` | Draggable and keyboard-resizable sidebar width |
-| `features/test-connection.js` | Connection test utility |
+| `features/test-connection.js` | Connection test utility and the sidebar Test button handler |
 
 ## Data Flow — A Sync Run
 
@@ -289,3 +289,19 @@ implements ArrowLeft/ArrowRight (Shift for a larger step) plus Home/End. When
 you add another pointer-driven control, give it the same treatment: a focus
 stop, an accessible name, and a key handler that performs the same action.
 `tests/frontend/sidebar-resizer.test.js` pins the behaviour.
+
+### Controls with no handler
+
+A `<button>` in a partial renders, carries an accessible name, and passes the
+template test even when no module ever assigns it a listener — it simply does
+nothing when clicked. This is how `#test-btn` and `#auto-detect-btn` became
+inert during the frontend modularisation: the inline `onclick` attributes were
+dropped along with the rest of the monolithic script, and the modules that
+still exported the handlers were never imported by `app.js`. Nothing failed,
+because only the wiring was missing.
+
+Every interactive control therefore needs either an `onclick` in the template
+or an assignment in `app.js`'s `bootstrap()`. `wireConnectionButtons()` handles
+these two; `tests/frontend/connection-buttons.test.js` asserts that bootstrap
+gives both buttons a handler, so a future refactor that drops the call fails a
+test instead of silently disabling connection setup.

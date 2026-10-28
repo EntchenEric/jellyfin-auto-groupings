@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The sidebar **Test** and **Auto-Detect** buttons did nothing at all. Both
+  were left without a handler when the frontend was modularised: the inline
+  `onclick` attributes went away with the monolithic script, and
+  `testConnectionFromSidebar()` (`features/test-connection.js`) and
+  `autoDetectPaths()` (`features/path-picker.js`) were exported but never
+  imported by `app.js`, so nothing ever bound them. `#test-btn` is the only
+  control that verifies the entered URL and API key before saving, and
+  `#auto-detect-btn` the only one that fills the four path fields from a live
+  server, so the whole connection-setup flow was unreachable from the UI
+  unless the setup wizard was used. `wireConnectionButtons()` now binds both
+  during `bootstrap()`. Covered by
+  `tests/frontend/connection-buttons.test.js`, which asserts that bootstrap
+  leaves a click handler on each button.
+
+- The Test button stayed in its loading state forever when the metadata
+  refresh after a successful connection raised. `testConnectionFromSidebar()`
+  cleared the loading class only on the success path's normal exit, and
+  `refreshMetadata()` throws whenever Jellyfin refuses the request, so the
+  button spun until the page was reloaded. The work now runs inside
+  `try`/`finally`, and a metadata failure after a good connection is reported
+  as "Connected, but loading metadata failed: …" instead of escaping as an
+  unhandled rejection the global handler turned into a bare, context-free
+  toast.
+
+- Auto-Detect threw `Cannot read properties of undefined (reading
+  'media_path_on_host')` on a `{"status": "success"}` body that carried no
+  `detected` object — an older server, or a proxy answering 200 with its own
+  error page. The button then reported nothing at all: no toast, no dialog, no
+  changed field. The response is now type-checked, and a success without a
+  usable `detected` payload reports "could not find matching host paths". A
+  body that is not an object at all is handled the same way.
+
+- A failed automatic path fill could erase the message that explained the
+  real problem. After a successful connection test the handler reports a
+  metadata-loading failure, then calls `autoDetectIfEmpty()`, which used the
+  non-silent auto-detect request: when that request also failed, `apiRequest()`
+  opened an "Auto-detection failed" dialog on top of the metadata error the
+  user had just been shown. `apiAutoDetectSilent()` now serves the automatic
+  fill, so a failed background attempt leaves the fields empty and the earlier
+  message intact. The manual Auto-Detect button keeps the non-silent request
+  and still reports its own API error.
+
 ### Accessibility
 
 - The sidebar could only be resized by dragging. `#sidebar-resizer` was a bare

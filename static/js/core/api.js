@@ -189,6 +189,18 @@ export const uploadCover = (groupName, image) =>
 export const getCleanupItems = () => apiGet('/api/cleanup');
 export const performCleanup = (folders) => apiPost('/api/cleanup', { folders });
 export const autoDetectPaths = () => apiPost('/api/jellyfin/auto-detect-paths');
+// Silent variant for the automatic fill that runs after a successful
+// connection test: it must not raise its own error dialog over the one the
+// caller has already shown, or over the metadata failure it reports.
+export const autoDetectPathsSilent = () =>
+    apiRequest('/api/jellyfin/auto-detect-paths', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        _silent: true
+    });
 export const browsePath = (path) => {
     const url = new URL('/api/browse', window.location.origin);
     url.searchParams.set('path', path);

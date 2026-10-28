@@ -17,7 +17,8 @@ import { initSync, syncAll, previewSyncAll, showConfirmSyncDialog } from './feat
 import { initCleanup, openCleanupModal } from './features/cleanup.js';
 import { initExportImport, openExportModal, openImportModal, handleFileSelected } from './features/export-import.js';
 import { initCoverGenerator } from './features/cover-generator.js';
-import { initPathPicker, openPathPicker, closePicker, confirmPicker, pickerOutsideClick } from './features/path-picker.js';
+import { initPathPicker, openPathPicker, closePicker, confirmPicker, pickerOutsideClick, autoDetectPaths } from './features/path-picker.js';
+import { testConnectionFromSidebar } from './features/test-connection.js';
 import { initSidebarResizer } from './features/sidebar-resizer.js';
 import { renderGroups, cancelEdit, toggleSortOrder, toggleSeasonal, toggleGroupScheduler, populateSeasonalDays, resetFormUI, initGroupSearch, clearAllGroups } from './features/groupings.js';
 
@@ -323,6 +324,27 @@ function wireBrowseButtons() {
 }
 
 /**
+ * Wires the sidebar "Auto-Detect" and "Test" buttons.
+ *
+ * Both were left without a handler when the inline `onclick` attributes were
+ * dropped during the frontend modularisation: `test-connection.js` exported
+ * `testConnectionFromSidebar()` and `path-picker.js` exported
+ * `autoDetectPaths()`, but nothing called them, so clicking either button did
+ * nothing at all. `#test-btn` is the only control in the UI that verifies the
+ * entered URL and API key, and `#auto-detect-btn` the only one that fills the
+ * path fields from a live server, so both features were unreachable.
+ *
+ * @returns {void}
+ */
+function wireConnectionButtons() {
+    const testBtn = getEl('test-btn');
+    if (testBtn) testBtn.onclick = testConnectionFromSidebar;
+
+    const autoDetectBtn = getEl('auto-detect-btn');
+    if (autoDetectBtn) autoDetectBtn.onclick = autoDetectPaths;
+}
+
+/**
  * Wires the global and cleanup scheduler enable/disable toggles.
  * @returns {void}
  */
@@ -454,6 +476,7 @@ async function bootstrap() {
     wireMiscButtons();
     wireHamburgerButton();
     wireBrowseButtons();
+    wireConnectionButtons();
     wireSchedulerToggles();
     wireGroupFormEvents();
 

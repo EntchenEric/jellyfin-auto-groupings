@@ -1,7 +1,7 @@
 // path-picker.js – Folder path picker and auto-detect logic
 
 import { state } from '../core/state.js';
-import { autoDetectPaths as apiAutoDetect, browsePath } from '../core/api.js';
+import { autoDetectPaths as apiAutoDetect, autoDetectPathsSilent as apiAutoDetectSilent, browsePath } from '../core/api.js';
 import { showModal, hideModal, showToast, showErrorDialog, getEl } from '../core/ui.js';
 
 /** @type {string|null} ID of the form input field being picked for */
@@ -180,20 +180,26 @@ export async function autoDetectPaths() {
     detectBtn.classList.add('btn-loading');
     try {
         const result = await apiAutoDetect();
-        if (result.status === 'success' && result.detected.media_path_on_host) {
-            getEl('media_path_in_jellyfin').value = result.detected.media_path_in_jellyfin;
-            getEl('media_path_on_host').value = result.detected.media_path_on_host;
-            getEl('target_path').value = result.detected.target_path;
-            getEl('target_path_in_jellyfin').value = result.detected.target_path_in_jellyfin;
-            state.currentConfig.media_path_in_jellyfin = result.detected.media_path_in_jellyfin;
-            state.currentConfig.media_path_on_host = result.detected.media_path_on_host;
-            state.currentConfig.target_path = result.detected.target_path;
-            state.currentConfig.target_path_in_jellyfin = result.detected.target_path_in_jellyfin;
+        // ``detected`` is read only after this guard: a success body without
+        // it (an older server, a proxy error page answering 200), or a body
+        // that is not an object at all, threw ``Cannot read properties of
+        // undefined`` and the Auto-Detect button then reported nothing.
+        const detected = result && typeof result === 'object' ? result.detected : null;
+        const ok = !!result && result.status === 'success';
+        if (ok && detected && detected.media_path_on_host) {
+            getEl('media_path_in_jellyfin').value = detected.media_path_in_jellyfin;
+            getEl('media_path_on_host').value = detected.media_path_on_host;
+            getEl('target_path').value = detected.target_path;
+            getEl('target_path_in_jellyfin').value = detected.target_path_in_jellyfin;
+            state.currentConfig.media_path_in_jellyfin = detected.media_path_in_jellyfin;
+            state.currentConfig.media_path_on_host = detected.media_path_on_host;
+            state.currentConfig.target_path = detected.target_path;
+            state.currentConfig.target_path_in_jellyfin = detected.target_path_in_jellyfin;
             showToast('Paths auto-detected! Remember to Save.', 'success');
-        } else if (result.status === 'success') {
+        } else if (ok) {
             showErrorDialog('Auto-detection finished but could not find matching host paths.');
         } else {
-            showErrorDialog(result.message || 'Auto-detection failed');
+            showErrorDialog((result && result.message) || 'Auto-detection failed');
         }
     } catch (err) {
         showErrorDialog('Auto-detection failed - API unreachable');
@@ -208,9 +214,14 @@ export async function autoDetectIfEmpty() {
     const hostEl = getEl('media_path_on_host');
     if (targetEl.value && jfEl.value && hostEl.value) return;
     try {
-        const result = await apiAutoDetect();
-        if (result.status !== 'success') return;
+        // Silent: this run follows the connection test automatically, so a
+        // failed request here must not open an error dialog that replaces the
+        // message the caller has already shown (including a metadata-loading
+        // failure). The empty fields simply stay empty.
+        const result = await apiAutoDetectSilent();
+        if (!result || result.status !== 'success') return;
         const d = result.detected;
+        if (!d || typeof d !== 'object') return;
         if (!targetEl.value && d.target_path) {
             targetEl.value = d.target_path;
             state.currentConfig.target_path = d.target_path;
