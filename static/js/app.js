@@ -11,7 +11,7 @@ import { getEl, showToast, showErrorDialog, setLoading, showLoadingOverlay, upda
 
 import { initConfig, loadConfig, saveAllConfig, toggleGlobalScheduler, toggleCleanupScheduler } from './features/config.js';
 import { initWizard, openWizardManual } from './features/wizard.js';
-import { initMetadata, addMetadataRule, previewGrouping, getFilterValue, refreshMetadata } from './features/metadata.js';
+import { initMetadata, previewGrouping, getFilterValue, refreshMetadata } from './features/metadata.js';
 import { fetchUsers } from './core/api.js';
 import { initSync, syncAll, previewSyncAll, showConfirmSyncDialog } from './features/sync.js';
 import { initCleanup, openCleanupModal } from './features/cleanup.js';
@@ -389,11 +389,11 @@ function wireGroupFormEvents() {
         previewBtn.addEventListener('click', () => previewGrouping());
     }
 
-    // Wire add condition button
-    const addRuleBtn = getEl('add-rule-btn');
-    if (addRuleBtn) {
-        addRuleBtn.addEventListener('click', () => addMetadataRule());
-    }
+    // The "+ Add Condition" button is wired in `initMetadata()` (via
+    // `.onclick`). Binding it here as well made one click run
+    // `addMetadataRule()` twice, so every click appended two empty condition
+    // rows. Leave the single binding where the module that owns the rule
+    // list puts it.
 
     // Wire cancel edit button
     const cancelEditBtn = getEl('cancel-edit-btn');
