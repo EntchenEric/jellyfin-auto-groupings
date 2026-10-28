@@ -1081,14 +1081,30 @@ def _build_letterboxd_items(
 
     """
     items: list[dict[str, Any]] = []
-    seen_jf_ids: set[str] = set()
+    # Dedupe key per Jellyfin item. Normally the item's ``Id``, which is what
+    # tells apart two *different* titles; the same item reached through both
+    # provider indexes is the same dict object, so its identity is an equally
+    # valid key.
+    seen: set[tuple[str, Any]] = set()
     for eid in external_ids:
         match = _match_letterboxd_id(eid, items_by_imdb, items_by_tmdb)
         if not match:
             continue
-        if match["Id"] not in seen_jf_ids:
+        # ``Id`` is not guaranteed: Jellyfin omits it on some entries, and a
+        # proxy or an older server can answer without it. Subscripting it
+        # raised ``KeyError``, which escaped this helper and failed the whole
+        # group — every other code path in the sync reads the id with
+        # ``.get("Id")`` and skips when it is unusable. A matched item without
+        # an id is still linkable (symlinks are built from ``Path``), so keep
+        # it and fall back to object identity so a title matched through both
+        # the IMDb and the TMDb index is still only emitted once.
+        jf_id = match.get("Id")
+        key: tuple[str, Any] = (
+            ("id", jf_id) if isinstance(jf_id, str) and jf_id else ("obj", id(match))
+        )
+        if key not in seen:
             items.append(match)
-            seen_jf_ids.add(match["Id"])
+            seen.add(key)
     return items
 
 
