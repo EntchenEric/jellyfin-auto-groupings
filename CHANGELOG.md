@@ -51,6 +51,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The cover generator's controls were inert. Its template wired six inputs
+  with inline `oninput="renderCover()"` / `onchange="renderCover()"`
+  attributes, but inline handlers resolve their names on `window` and
+  `cover-generator.js` only *exports* `renderCover`. Every keystroke in the
+  "Cover Text" field therefore threw `ReferenceError: renderCover is not
+  defined` and the preview stayed frozen at whatever `openCoverGenerator()`
+  had drawn — changing the theme, border, or any of the three colours never
+  redrew it. "Apply Cover" and "Download" were dead for a different reason:
+  nothing had ever bound them, so clicking either did nothing at all. The
+  inline attributes are gone and `initCoverGenerator()` binds the six inputs
+  plus both buttons, once per element so a re-init cannot stack duplicate
+  renders. Pinned by `tests/frontend/cover-controls-wiring.test.js`.
+
 - The SPA aborted every request after 60 s, including a full sync.
   `apiRequest()` applied one `DEFAULT_TIMEOUT_MS` to all calls, but a sync
   rebuilds each group directory link by link and walks the whole Jellyfin

@@ -10,6 +10,10 @@ let activeCoverIndex = -1;
 let _renderTimer = null;
 let _renderPending = false;
 
+//: Controls that already carry their listeners, so re-initialising does not
+//: stack a second handler that renders twice per keystroke.
+const boundControls = new WeakSet();
+
 // Closing the dialog — ×, Escape, or backdrop — drops a render that has not
 // run yet, so it cannot touch a document the dialog no longer owns.
 onModalHide('cover-generator-modal', () => cancelPendingRender());
@@ -559,6 +563,50 @@ export async function applyCover() {
     }
 }
 
+/**
+ * Wire the dialog's controls to the renderer.
+ *
+ * These listeners cannot live in the template as inline `oninput` /
+ * `onchange` / `onclick` attributes: those resolve names on `window`, and
+ * this module only exports them. The inline `oninput="renderCover()"`
+ * therefore threw `ReferenceError: renderCover is not defined` on every
+ * keystroke, so the preview never updated and the console filled with
+ * errors. Applying or downloading a cover did nothing at all — nothing had
+ * ever bound those two buttons.
+ *
+ * Binding happens once per element, so calling this again after a re-init
+ * cannot stack duplicate renders.
+ */
 export function initCoverGenerator() {
-    // Cover buttons wired via HTML onclicks; renderCover() triggered by openCoverGenerator()
+    const renderInputs = [
+        'cover-text',
+        'cover-theme',
+        'cover-border-style',
+        'cover-border-color',
+        'cover-color-1',
+        'cover-color-2',
+    ];
+    for (const id of renderInputs) {
+        const el = getEl(id);
+        if (!el || boundControls.has(el)) continue;
+        boundControls.add(el);
+        // `input` covers both typing and colour-picker drags, and fires on
+        // <select> as well, so one event name serves every control.
+        el.addEventListener('input', renderCover);
+        el.addEventListener('change', renderCover);
+    }
+
+    const applyBtn = getEl('apply-cover-btn');
+    if (applyBtn && !boundControls.has(applyBtn)) {
+        boundControls.add(applyBtn);
+        applyBtn.addEventListener('click', () => {
+            void applyCover();
+        });
+    }
+
+    const downloadBtn = getEl('download-cover-btn');
+    if (downloadBtn && !boundControls.has(downloadBtn)) {
+        boundControls.add(downloadBtn);
+        downloadBtn.addEventListener('click', downloadCover);
+    }
 }
