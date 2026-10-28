@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The **Download Export** button in the Export Settings dialog did nothing
+  at all. `execExport()` was exported from `features/export-import.js` but no
+  module ever called it, and `initExportImport()` was an empty stub, so the
+  dialog's only action was unreachable: the user could pick a full or
+  selective export and then had to close the modal by hand with no file
+  written. `initExportImport()` now binds the button (guarded with a
+  `WeakSet` so a second bootstrap cannot stack a duplicate handler), matching
+  how the cover dialog wires its own buttons. Covered by
+  `tests/frontend/export-download-wiring.test.js`.
+
+- The **Delete Selected** button in the Clean Up Folders dialog did nothing
+  at all, for the same reason: `execCleanup()` was exported but never called
+  and `initCleanup()` was an empty stub, so no folder could be deleted from
+  the UI. `initCleanup()` now binds it, and
+  `tests/frontend/cleanup-delete-wiring.test.js` covers the delete, the
+  empty-selection guard, the failure report, and the button-restore path.
+
 - The sidebar **Test** and **Auto-Detect** buttons did nothing at all. Both
   were left without a handler when the frontend was modularised: the inline
   `onclick` attributes went away with the monolithic script, and
