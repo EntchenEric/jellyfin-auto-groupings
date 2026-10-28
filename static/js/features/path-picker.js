@@ -11,6 +11,43 @@ let _pickerCurrentPath = null;
 
 
 /**
+ * Forget the currently browsed directory.
+ *
+ * ``_pickerCurrentPath`` used to be write-only on success. Opening the
+ * picker for another field after a failed browse left the *previous* run's
+ * directory selectable: the breadcrumb and footer still named it, and
+ * "Select" wrote it into the other field. A wrong target path silently
+ * scatters symlink folders into the media tree.
+ *
+ * @returns {void}
+ */
+function clearPickerSelection() {
+    _pickerCurrentPath = null;
+    const pathEl = getEl('picker-footer-path');
+    if (pathEl) pathEl.textContent = 'No folder selected';
+    const crumbEl = getEl('picker-breadcrumb');
+    if (crumbEl) crumbEl.textContent = '/';
+    // A disabled "Select" is the visible signal that there is nothing to
+    // confirm; leaving it enabled let the button answer with a directory the
+    // user is no longer looking at.
+    const selectBtn = getEl('picker-select-btn');
+    if (selectBtn) selectBtn.disabled = true;
+}
+
+/**
+ * Record the directory currently on screen as the selectable one.
+ *
+ * @param {string} path Absolute path just listed.
+ * @returns {void}
+ */
+function setPickerSelection(path) {
+    _pickerCurrentPath = path;
+    const selectBtn = getEl('picker-select-btn');
+    if (selectBtn) selectBtn.disabled = false;
+}
+
+
+/**
  * Join a base path with a name, handling the root case correctly.
  *
  * When *base* is ``"/"``, ``base + name`` would produce ``"/dirname"``, so
@@ -39,6 +76,9 @@ export async function openPathPicker(fieldId) {
     } else {
         titleEl.textContent = 'Select Media Path (this machine)';
     }
+    // Every opening starts with nothing selectable: the field being picked is
+    // new, so a path left over from the previous one must not answer for it.
+    clearPickerSelection();
     showModal('path-picker-modal');
     await browseDir(currentVal || '');
 }
@@ -46,6 +86,9 @@ export async function openPathPicker(fieldId) {
 
 export async function browseDir(path) {
     const bodyEl = getEl('picker-body');
+    // No path is selectable until this browse succeeds; the previous
+    // directory is not what the user is about to look at.
+    clearPickerSelection();
     bodyEl.innerHTML =
         '<p style="padding:1.5rem; text-align:center; color:var(--text-secondary);">Loading...</p>';
     let result;
@@ -80,7 +123,7 @@ export async function browseDir(path) {
         bodyEl.appendChild(p);
         return;
     }
-    _pickerCurrentPath = result.current;
+    setPickerSelection(result.current);
     getEl('picker-breadcrumb').textContent = result.current;
     getEl('picker-footer-path').textContent = result.current;
 

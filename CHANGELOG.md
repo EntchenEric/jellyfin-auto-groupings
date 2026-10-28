@@ -51,6 +51,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The folder picker could write a path from a *previous* use into the field
+  being edited. `_pickerCurrentPath` was only assigned on a successful
+  `browseDir()`, never cleared. Open the picker for "Path in Jellyfin", reach
+  `/media`, cancel, then open it for "Base Target Path": if the server refuses
+  to list that field's own directory, `browseDir()` renders the error and
+  returns early, so the module still held `/media` — and the breadcrumb and
+  footer still named it, so pressing "Select" looked correct while writing
+  `/media` into the *target path*. A wrong target path silently scatters
+  symlink folders into the media tree, which is exactly what the dialog exists
+  to prevent. Every opening and every browse now starts with nothing
+  selectable: `#picker-select-btn` ships `disabled`, is enabled only once a
+  directory loads, and is disabled again if the next browse fails. A failed
+  browse leaves the footer reading "No folder selected" instead of the stale
+  path. Covered by `tests/frontend/path-picker-stale-path.test.js` (3 cases).
+
 - Importing a malformed groupings file showed an internal error and left the
   dialog half-converted. `setupImportStep2()` picked its branch with
   `data.groups || (Array.isArray(data) ? data : null)`, so any truthy value took
