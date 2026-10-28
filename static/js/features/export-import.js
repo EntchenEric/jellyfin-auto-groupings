@@ -5,6 +5,11 @@ import { saveConfig } from '../core/api.js';
 import { showToast, showErrorDialog, showModal, hideModal, getEl } from '../core/ui.js';
 import { renderGroups } from './groupings.js';
 
+//: Copy the template shows for a full-config import; restored on every visit
+//: because the same element also carries the "entries skipped" note.
+const OVERWRITE_WARNING =
+    'WARNING: This will overwrite your entire current configuration!';
+
 export function openExportModal() {
     const container = getEl('export-groups-container');
     container.innerHTML = '';
@@ -116,11 +121,67 @@ export function handleFileSelected(event) {
     event.target.value = '';
 }
 
-function setupImportStep2(data) {
+/**
+ * Decide what an import payload offers, before any of the modal is rewritten.
+ *
+ * `data.groups || ...` accepted any truthy value, so a file with
+ * `"groups": "not-a-list"` entered the selective branch and threw
+ * `groups.forEach is not a function` — after step 2 had already been shown and
+ * before the confirm button was wired. The user got a raw `TypeError` in the
+ * dialog and a modal whose "Import Selected" button did nothing. Entries in a
+ * real list can be malformed the same way: `"groups": [null]` threw while
+ * reading `.name`.
+ *
+ * @param {unknown} data Parsed import payload.
+ * @returns {{kind: 'full'} | {kind: 'groups', groups: object[], skipped: number} | {kind: 'invalid', reason: string}}
+ */
+function classifyImportPayload(data) {
     if (!data || typeof data !== 'object') {
-        showErrorDialog('Incompatible file structure');
+        return { kind: 'invalid', reason: 'Incompatible file structure' };
+    }
+
+    // A full config is recognised by its connection keys, and is accepted
+    // whatever its `groups` value holds — normalizeImportedConfig() repairs it.
+    if (data.jellyfin_url !== undefined && data.api_key !== undefined) {
+        return { kind: 'full' };
+    }
+
+    const raw = Array.isArray(data) ? data : data.groups;
+    if (!Array.isArray(raw)) {
+        return {
+            kind: 'invalid',
+            reason: 'Incompatible file structure — "groups" must be a list',
+        };
+    }
+
+    const groups = raw.filter(
+        (group) => group && typeof group === 'object' && !Array.isArray(group)
+    );
+    if (groups.length === 0) {
+        return {
+            kind: 'invalid',
+            reason: 'No groupings found in this file',
+        };
+    }
+
+    return { kind: 'groups', groups, skipped: raw.length - groups.length };
+}
+
+function setupImportStep2(data) {
+    // Classify first: the previous code switched to step 2 and only then read
+    // the payload, so a malformed file left the modal half-converted.
+    const payload = classifyImportPayload(data);
+    if (payload.kind === 'invalid') {
+        // Do not leave a rejected payload staged: the file input is reset for
+        // the next attempt, and a lingering pendingImportData is a config the
+        // user never confirmed.
+        state.pendingImportData = null;
+        showErrorDialog(payload.reason);
+        // Stay on step 1 so the user can pick another file without reopening
+        // the Import modal.
         return;
     }
+
     getEl('import-step-1').style.display = 'none';
     getEl('import-step-2').style.display = 'flex';
     getEl('cancel-import-top').style.display = 'none';
@@ -132,16 +193,29 @@ function setupImportStep2(data) {
 
     container.innerHTML = '';
 
-    const isFullConfig = data.jellyfin_url !== undefined && data.api_key !== undefined;
-    const groups = data.groups || (Array.isArray(data) ? data : null);
+    const isFullConfig = payload.kind === 'full';
+    const groups = isFullConfig ? null : payload.groups;
 
+    // `#import-warning` carries the overwrite copy in the template and is
+    // reused for the "some entries were skipped" note, so each branch states
+    // its own text instead of inheriting whatever the previous import left.
     if (isFullConfig) {
+        warning.textContent = OVERWRITE_WARNING;
         warning.style.display = 'block';
         selectionList.style.display = 'none';
         confirmBtn.textContent = 'Overwrite All';
         confirmBtn.onclick = () => performImport('full');
-    } else if (groups) {
-        warning.style.display = 'none';
+    } else {
+        if (payload.skipped > 0) {
+            // Silently importing fewer groupings than the file lists would
+            // look like the import dropped data.
+            warning.textContent =
+                `${payload.skipped} entr${payload.skipped === 1 ? 'y was' : 'ies were'} ` +
+                'not a valid grouping and will not be imported.';
+            warning.style.display = 'block';
+        } else {
+            warning.style.display = 'none';
+        }
         selectionList.style.display = 'block';
         confirmBtn.textContent = 'Import Selected';
 
@@ -170,9 +244,6 @@ function setupImportStep2(data) {
             container.appendChild(item);
         });
         confirmBtn.onclick = () => performImport('groups', groups);
-    } else {
-        showErrorDialog('Incompatible file structure');
-        hideModal('import-modal');
     }
 }
 

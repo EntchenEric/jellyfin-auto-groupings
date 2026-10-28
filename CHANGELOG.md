@@ -51,6 +51,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Importing a malformed groupings file showed an internal error and left the
+  dialog half-converted. `setupImportStep2()` picked its branch with
+  `data.groups || (Array.isArray(data) ? data : null)`, so any truthy value took
+  the selective path, which then ran `groups.forEach(...)`: a file with
+  `"groups": "not-a-list"` threw `groups.forEach is not a function` and one
+  with `"groups": [null]` threw while reading `.name`. Both reached the user as
+  "Failed to process import file: …" *after* step 2 had already been revealed
+  and before `#confirm-import` had a handler, so the visible "Import Selected"
+  button did nothing and the only way out was Cancel. The payload is now
+  classified before any of the modal is rewritten: a non-list `groups`, a list
+  with no usable object, and a payload that is not an object are rejected on
+  step 1 with a message naming the problem, and `state.pendingImportData` is
+  cleared so a rejected file is never left staged for a later save. Usable
+  entries in an otherwise valid list are imported and the count of skipped ones
+  is stated in `#import-warning`. That element also carries the overwrite
+  warning in the template, so each branch now sets its own text — otherwise a
+  later full-config import inherited the previous run's "entries skipped" note.
+  Covered by `tests/frontend/import-payload-validation.test.js` (10 cases).
+
 - The cover generator's controls were inert. Its template wired six inputs
   with inline `oninput="renderCover()"` / `onchange="renderCover()"`
   attributes, but inline handlers resolve their names on `window` and
