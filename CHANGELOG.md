@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A Letterboxd-list group aborted the entire sync run when one of its matched
+  titles had no `Id`. `_build_letterboxd_items()` deduplicated matches with
+  `match["Id"]`, while every other code path in the sync reads the id as
+  `.get("Id")` and skips an unusable value. Jellyfin omits `Id` on some
+  entries, so the subscript raised `KeyError`; `_process_group()` only turns
+  its own error tuples into a per-group `{"error": ...}` result, so the
+  exception escaped `run_sync()` and every group after the broken one was
+  never synced — the route answered 500 instead of the partial per-group
+  results the dashboard renders. The helper now keeps an id-less match (it is
+  still linkable, because symlinks are built from `Path`) and falls back to
+  object identity for de-duplication, so a title reached through both the
+  IMDb and the TMDb index is still emitted once.
+  `tests/test_letterboxd_item_dedupe.py` covers the missing, `null`, shared,
+  and id-less cases.
+
 - The dashboard stopped loading when the stored config had no usable `groups`
   list. `GET /api/config` serves the file as it is on disk, and `config.py`
   only repairs a `groups` value that is present but not a list, so a config
