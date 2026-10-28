@@ -5,11 +5,11 @@
         <div class="cover-controls-grid">
             <div class="cover-text-col">
                 <label for="cover-text" class="cover-label">Cover Text</label>
-                <input type="text" id="cover-text" oninput="renderCover()" placeholder="Enter group name...">
+                <input type="text" id="cover-text" placeholder="Enter group name...">
             </div>
             <div class="cover-col">
                 <label for="cover-theme" class="cover-label">Theme</label>
-                <select id="cover-theme" onchange="renderCover()">
+                <select id="cover-theme">
                     <option value="modern-dark">Dark Gradient (Modern)</option>
                     <option value="vibrant-glow">Vibrant Glow</option>
                     <option value="minimal-glass">Minimal Glassmorphism</option>
@@ -21,7 +21,7 @@
             </div>
             <div class="cover-col">
                 <label for="cover-border-style" class="cover-label">Border Style</label>
-                <select id="cover-border-style" onchange="renderCover()">
+                <select id="cover-border-style">
                     <option value="none">None</option>
                     <option value="elegant">Elegant Thin</option>
                     <option value="bold-frame">Bold Frame</option>
@@ -36,15 +36,15 @@
             <div class="cover-color-picker-group">
                 <div>
                     <label for="cover-border-color" class="cover-color-label">Border</label>
-                    <input type="color" id="cover-border-color" value="#ffffff" onchange="renderCover()" class="cover-color-input">
+                    <input type="color" id="cover-border-color" value="#ffffff" class="cover-color-input">
                 </div>
                 <div>
                     <label for="cover-color-1" class="cover-color-label">Color 1</label>
-                    <input type="color" id="cover-color-1" value="#4f46e5" onchange="renderCover()" class="cover-color-input">
+                    <input type="color" id="cover-color-1" value="#4f46e5" class="cover-color-input">
                 </div>
                 <div>
                     <label for="cover-color-2" class="cover-color-label">Color 2</label>
-                    <input type="color" id="cover-color-2" value="#9333ea" onchange="renderCover()" class="cover-color-input">
+                    <input type="color" id="cover-color-2" value="#9333ea" class="cover-color-input">
                 </div>
             </div>
         </div>  <!-- end cover-controls-grid -->
