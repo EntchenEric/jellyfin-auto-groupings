@@ -245,3 +245,36 @@ def test_js_generated_checkboxes_have_an_accessible_name() -> None:
         "These JavaScript-generated checkboxes have no accessible name; give "
         "the row a wrapping <label> or set aria-label:\n  " + "\n  ".join(problems)
     )
+
+
+def test_js_generated_form_controls_have_an_accessible_name() -> None:
+    """Every runtime-built ``input``/``select``/``textarea`` needs a name.
+
+    The guard above only looks at checkboxes, because that was the defect at
+    the time. The metadata rule editor builds a whole row of *other* controls
+    per condition (operator, field, value), and each of them sat in the DOM
+    with no ``<label>`` and no ``aria-label`` at all — a screen reader walked
+    the row announcing "combo box", "combo box", "combo box" with no way to
+    tell the operator from the value. This check covers every control a
+    script creates, so the next one cannot ship unnamed either.
+    """
+    problems: list[str] = []
+    for path in _js_files():
+        lines = path.read_text(encoding="utf-8").splitlines()
+        for index, line in enumerate(lines):
+            if not re.search(
+                r"createElement\(\s*['\"](?:input|select|textarea)['\"]", line
+            ):
+                continue
+            # The name is usually set a few lines below the creation, and the
+            # wrapping <label> is created a few lines above it.
+            block = "\n".join(lines[max(0, index - 15) : index + 22])
+            if "aria-label" in block or "aria-labelledby" in block:
+                continue
+            if re.search(r"createElement\(\s*['\"]label['\"]", block):
+                continue
+            problems.append(f"{path.name}:{index + 1}")
+    assert problems == [], (
+        "These JavaScript-generated controls have no accessible name; give "
+        "them an aria-label or wrap them in a <label>:\n  " + "\n  ".join(problems)
+    )

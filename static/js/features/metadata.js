@@ -109,9 +109,20 @@ export function renderMetadataRules() {
         const row = document.createElement('div');
         row.className = 'rule-row';
 
+        // Each control in a rule row is created at runtime and sits next to
+        // other look-alike controls, so a screen reader otherwise announced
+        // every one of them as an unnamed "combo box"/"edit text". The number
+        // is the condition's position in the row list (1-based), which is what
+        // the visible order shows.
+        const position = index + 1;
+
         if (index > 0) {
             const opSelect = document.createElement('select');
             opSelect.className = 'rule-operator-select';
+            opSelect.setAttribute(
+                'aria-label',
+                `Condition ${position} operator`,
+            );
             ['AND', 'OR', 'AND NOT', 'OR NOT'].forEach(op => {
                 const o = document.createElement('option');
                 o.value = op; o.textContent = op;
@@ -125,6 +136,10 @@ export function renderMetadataRules() {
         if (type === 'complex') {
             const rowTypeSelect = document.createElement('select');
             rowTypeSelect.className = 'rule-type-select';
+            rowTypeSelect.setAttribute(
+                'aria-label',
+                `Condition ${position} field`,
+            );
             ['genre', 'actor', 'studio', 'tag', 'year'].forEach(t => {
                 const o = document.createElement('option');
                 o.value = t; o.textContent = t.charAt(0).toUpperCase() + t.slice(1);
@@ -147,6 +162,10 @@ export function renderMetadataRules() {
             const valInput = document.createElement('input');
             valInput.type = 'text';
             valInput.className = 'rule-value-input';
+            valInput.setAttribute(
+                'aria-label',
+                `Condition ${position} ${rowType} value`,
+            );
             valInput.placeholder = 'e.g. 2000, 1999,2000, or >=2000';
             valInput.value = rule.value || '';
             valInput.oninput = (e) => { rule.value = e.target.value; };
@@ -155,6 +174,10 @@ export function renderMetadataRules() {
             const options = state.cachedMetadata[rowType] || [];
             const valSelect = document.createElement('select');
             valSelect.className = 'rule-value-select';
+            valSelect.setAttribute(
+                'aria-label',
+                `Condition ${position} ${rowType} value`,
+            );
 
             const defaultOpt = document.createElement('option');
             defaultOpt.value = ''; defaultOpt.textContent = 'Select ' + rowType + '...'; defaultOpt.disabled = true; defaultOpt.selected = !rule.value;
@@ -281,6 +304,9 @@ export function updateSourceValueUI(preValue = null) {
                 userSel = document.createElement('select');
                 userSel.id = 'source_value_user_select';
                 userSel.className = 'user-select';
+                // Built at runtime next to the hidden filter input, so without
+                // an explicit name it was announced as a bare "combo box".
+                userSel.setAttribute('aria-label', 'Jellyfin user');
                 userSel.onchange = (e) => { sourceValueInput.value = e.target.value; };
                 getEl('source_value_container').insertBefore(userSel, sourceValueInput);
             }

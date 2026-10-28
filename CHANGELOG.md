@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The metadata rule editor's controls had no accessible name. Every condition
+  row builds its operator, field, and value controls at runtime in
+  `features/metadata.js`, and none of them carried a `<label>` or an
+  `aria-label`, so a screen reader read a row as "combo box, combo box, combo
+  box" — with several conditions there was no way to tell the operator from
+  the field from the value, or one row from the next (WCAG 1.3.1 Info and
+  Relationships, 4.1.2 Name, Role, Value). Each control is now named after
+  its position and role, e.g. "Condition 2 operator", "Condition 2 field",
+  "Condition 1 genre value". The recommendations user picker, which is also
+  built at runtime, now announces itself as "Jellyfin user".
+
 - The grouping checkboxes in the Export Settings and Import Settings dialogs
   had no accessible name. Both dialogs build one row per grouping in
   `features/export-import.js`, and the row was a plain `<div>`, so a screen
@@ -32,10 +43,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Accessibility guards for the JavaScript-generated half of the dashboard.
   `tests/test_template_accessibility.py` only read the Jinja partials, so the
   group cards, metadata rule rows, and export/import lists — and every icon
-  they inject — were never checked. Three new tests scan `static/js` for
-  `<svg>` string literals without `aria-hidden` and for `type = 'checkbox'`
-  inputs with neither a wrapping `<label>` nor an `aria-label`, so the defects
-  above cannot return unnoticed.
+  they inject — were never checked. Four tests now scan `static/js` for
+  `<svg>` string literals without `aria-hidden`, for `type = 'checkbox'`
+  inputs with neither a wrapping `<label>` nor an `aria-label`, and for any
+  runtime-created `input`/`select`/`textarea` with no accessible name, so the
+  defects above cannot return unnoticed. The last check is why the unnamed
+  metadata rule controls below were found: the checkbox-only version passed
+  while a whole row of unnamed combo boxes shipped. Three of those tests run
+  against the source text; `tests/frontend/metadata-rule-labels.test.js`
+  asserts the names a user actually gets, including the condition number and
+  the type switch.
 
 - The **Download Export** button in the Export Settings dialog did nothing
   at all. `execExport()` was exported from `features/export-import.js` but no
