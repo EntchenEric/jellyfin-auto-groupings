@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- One click on "+ Add Condition" appended **two** empty rule rows. The button
+  was bound twice: `initMetadata()` assigns `.onclick = addMetadataRule`, and
+  `wireGroupFormEvents()` in `app.js` also registered
+  `addEventListener('click', ...)` on the same element. Assigning a property
+  handler does not remove an already-registered listener, so both ran and
+  `addMetadataRule()` executed twice per click. Every extra row also got its
+  own operator/field/value controls named "Condition N ...", so the numbering
+  skipped ahead and the user had to delete rows they never asked for. The
+  duplicate registration is gone; the button keeps the single binding in the
+  module that owns the rule list. `tests/test_frontend_double_bindings.py`
+  fails when any control gains both a property handler and a listener for the
+  same event, and when `app.js` wires a control a feature module already
+  owns; `tests/frontend/add-condition-single-binding.test.js` asserts one
+  click adds exactly one row (previously two).
+
 - A Letterboxd-list group aborted the entire sync run when one of its matched
   titles had no `Id`. `_build_letterboxd_items()` deduplicated matches with
   `match["Id"]`, while every other code path in the sync reads the id as
