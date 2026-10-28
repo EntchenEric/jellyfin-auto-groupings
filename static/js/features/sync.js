@@ -135,7 +135,13 @@ export async function previewSyncAll() {
 }
 
 export function showConfirmSyncDialog() {
-    const groupCount = state.currentConfig.groups.length;
+    // `GET /api/config` serves the stored file as-is, so `groups` can be
+    // missing or a non-list. Reading `.length` on it threw out of the topbar
+    // Sync button, which then looked dead instead of reporting an empty config.
+    const groups = Array.isArray(state.currentConfig?.groups)
+        ? state.currentConfig.groups
+        : [];
+    const groupCount = groups.length;
     if (groupCount === 0) {
         showErrorDialog('No groups to sync.');
         return;

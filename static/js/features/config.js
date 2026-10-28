@@ -113,7 +113,15 @@ export async function saveAllConfig() {
         const err = validateCronField(state.currentConfig.scheduler.cleanup_schedule);
         if (err) { showErrorDialog(`Cleanup schedule: ${err}`); return false; }
     }
+    // `groups` is normalised by `loadConfig()`, but a config assembled
+    // elsewhere (an import, a test) can arrive without the list; iterating
+    // `undefined` here threw a TypeError out of the save path before the
+    // request was ever sent.
+    if (!Array.isArray(state.currentConfig.groups)) {
+        state.currentConfig.groups = [];
+    }
     for (const g of state.currentConfig.groups) {
+        if (!g || typeof g !== 'object') continue;
         if (g.schedule_enabled && g.schedule) {
             const err = validateCronField(g.schedule);
             if (err) { showErrorDialog(`Group '${g.name}': ${err}`); return false; }

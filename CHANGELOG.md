@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The dashboard stopped loading when the stored config had no usable `groups`
+  list. `GET /api/config` serves the file as it is on disk, and `config.py`
+  only repairs a `groups` value that is present but not a list, so a config
+  written by hand or truncated by a failed write reached the browser with no
+  `groups` key at all. `renderGroups()` guarded that case and then called
+  `updateGlobalSyncExclusionsUI()`, which read `state.currentConfig.groups.map()`
+  unguarded: the `TypeError` escaped into `loadConfig()`'s catch and the page
+  reported "Failed to load configuration" with no groups — the exact failure
+  the guard existed to prevent. A `null` entry in the list was rendered as a
+  card and counted in the badge, and Export, Sync, and the cron validation in
+  `saveAllConfig()` each read the list unguarded too. Every entry point now
+  normalises the list through one helper, skips malformed entries, and the
+  badge counts only entries that actually render.
+  `tests/frontend/missing-groups-list.test.js` covers all of them.
+
 - The metadata rule editor's controls had no accessible name. Every condition
   row builds its operator, field, and value controls at runtime in
   `features/metadata.js`, and none of them carried a `<label>` or an
