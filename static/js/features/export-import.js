@@ -10,6 +10,13 @@ import { renderGroups, groupNameText } from './groupings.js';
 const OVERWRITE_WARNING =
     'WARNING: This will overwrite your entire current configuration!';
 
+/**
+ * Controls this module has already bound, so repeated init calls do not stack
+ * duplicate listeners.
+ * @type {WeakSet<Element>}
+ */
+const boundExportControls = new WeakSet();
+
 export function openExportModal() {
     const container = getEl('export-groups-container');
     container.innerHTML = '';
@@ -339,6 +346,23 @@ function downloadJSON(data, filename) {
     setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
+/**
+ * Binds the export dialog's Download button.
+ *
+ * The button used to be inert: `execExport()` was exported but never called
+ * from anywhere, so the dialog's primary action did nothing and the modal had
+ * to be closed by hand. `initExportImport()` now runs from `bootstrap()` and
+ * binds it, matching how the cover dialog wires its own buttons.
+ *
+ * The `bound` set keeps a second bootstrap (e.g. after a hot reload) from
+ * stacking a duplicate handler, which would run the export twice.
+ *
+ * @returns {void}
+ */
 export function initExportImport() {
-    // Modal buttons wired via HTML onclicks; init registers if needed
+    const downloadBtn = getEl('export-download-btn');
+    if (downloadBtn && !boundExportControls.has(downloadBtn)) {
+        boundExportControls.add(downloadBtn);
+        downloadBtn.addEventListener('click', execExport);
+    }
 }

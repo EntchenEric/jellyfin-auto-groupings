@@ -113,6 +113,23 @@ export async function execCleanup() {
     }
 }
 
+/**
+ * Controls this module has already bound, so repeated init calls do not stack
+ * duplicate listeners.
+ * @type {WeakSet<Element>}
+ */
+const boundCleanupControls = new WeakSet();
+
 export function initCleanup() {
-    // Cleanup button wired in topbar HTML
+    // `execCleanup()` was exported but never called: the modal's Delete button
+    // lost its inline `onclick` when the frontend was modularised, so the only
+    // action in the Clean Up Folders dialog did nothing at all. Bootstrap calls
+    // this, which is where the cover and folder-picker dialogs wire theirs.
+    const confirmBtn = getEl('confirm-cleanup-btn');
+    if (confirmBtn && !boundCleanupControls.has(confirmBtn)) {
+        boundCleanupControls.add(confirmBtn);
+        confirmBtn.addEventListener('click', () => {
+            void execCleanup();
+        });
+    }
 }
