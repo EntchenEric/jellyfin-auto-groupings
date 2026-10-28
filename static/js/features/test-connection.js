@@ -60,11 +60,20 @@ export async function testConnection(url, apiKey) {
 export async function testConnectionFromSidebar() {
     const testBtn = getEl('test-btn');
     setLoading(testBtn, true);
-    const url = getEl('jellyfin_url').value;
-    const apiKey = getEl('api_key').value;
+    // The loading class is cleared in a ``finally``: the work below reaches the
+    // network and ``refreshMetadata`` raises when Jellyfin refuses the request,
+    // so a failure used to leave the Test button spinning until reload.
+    try {
+        const url = getEl('jellyfin_url').value;
+        const apiKey = getEl('api_key').value;
 
-    const result = await testConnection(url, apiKey);
-    if (result.success) {
+        const result = await testConnection(url, apiKey);
+        if (!result.success) {
+            showErrorDialog(result.message);
+            updateValidationUI(false);
+            return;
+        }
+
         showToast(result.message, 'success');
         updateValidationUI(true);
         state.currentConfig.jellyfin_url = url;
@@ -74,11 +83,19 @@ export async function testConnectionFromSidebar() {
         // reported by saveAllConfig itself; the metadata refresh below still
         // runs because the server settings were accepted independently.
         await saveAllConfig();
-        await refreshMetadata();
+        // The connection succeeded, so a metadata failure is reported as
+        // exactly that instead of escaping as an unhandled rejection that the
+        // global handler renders as a bare, context-free error toast.
+        try {
+            await refreshMetadata();
+        } catch (err) {
+            showErrorDialog(
+                'Connected, but loading metadata failed: ' +
+                (err && err.message ? err.message : 'unknown error')
+            );
+        }
         await autoDetectIfEmpty();
-    } else {
-        showErrorDialog(result.message);
-        updateValidationUI(false);
+    } finally {
+        setLoading(testBtn, false);
     }
-    setLoading(testBtn, false);
 }
