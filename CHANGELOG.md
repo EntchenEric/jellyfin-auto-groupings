@@ -14,11 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `features/metadata.js`, and none of them carried a `<label>` or an
   `aria-label`, so a screen reader read a row as "combo box, combo box, combo
   box" — with several conditions there was no way to tell the operator from
-  the field from the value, or one row from the next (WCAG 1.3.1 / 4.1.2 /
-  4.1.2 Name, Role, Value). Each control is now named after its position and
-  role, e.g. "Condition 2 operator", "Condition 2 field", "Condition 1 genre
-  value". The recommendations user picker, which is also built at runtime,
-  now announces itself as "Jellyfin user".
+  the field from the value, or one row from the next (WCAG 1.3.1 Info and
+  Relationships, 4.1.2 Name, Role, Value). Each control is now named after
+  its position and role, e.g. "Condition 2 operator", "Condition 2 field",
+  "Condition 1 genre value". The recommendations user picker, which is also
+  built at runtime, now announces itself as "Jellyfin user".
 
 - The grouping checkboxes in the Export Settings and Import Settings dialogs
   had no accessible name. Both dialogs build one row per grouping in
