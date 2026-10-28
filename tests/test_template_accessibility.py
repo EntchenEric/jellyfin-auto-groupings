@@ -190,9 +190,7 @@ def _svg_string_literals() -> list[tuple[Path, int, str]]:
             # other way, and a comment mentioning one is harmless.
             found.extend(
                 (path, lineno, literal)
-                for literal in re.findall(
-                    r"""['"`]([^'"`]*<svg\b[^'"`]*)['"`]""", line
-                )
+                for literal in re.findall(r"""['"`]([^'"`]*<svg\b[^'"`]*)['"`]""", line)
             )
     return found
 
