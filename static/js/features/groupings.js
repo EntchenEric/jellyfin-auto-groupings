@@ -32,11 +32,36 @@ export function groupNameText(name) {
     return '';
 }
 
+/**
+ * The groups list as an iterable array.
+ *
+ * `renderGroups()` already tolerated a missing or non-list `groups` value, but
+ * it then called `updateGlobalSyncExclusionsUI()`, which reads
+ * `state.currentConfig.groups.map(...)` unguarded. `GET /api/config` serves the
+ * stored file, so a config without a `groups` key (or with `"groups": null`)
+ * threw `Cannot read properties of undefined (reading 'map')` from inside the
+ * exclusions helper. The throw escaped `renderGroups()` and blanked the whole
+ * dashboard on "Failed to load configuration" — the very failure the guard in
+ * `renderGroups()` was added to prevent.
+ *
+ * @returns {object[]} Usable group objects; never `undefined`.
+ */
+function currentGroups() {
+    if (!state.currentConfig || typeof state.currentConfig !== 'object') {
+        state.currentConfig = {};
+    }
+    if (!Array.isArray(state.currentConfig.groups)) {
+        state.currentConfig.groups = [];
+    }
+    return state.currentConfig.groups;
+}
+
 export function renderGroups() {
     const groupsList = getEl('groups-list');
+    if (!groupsList) return;
     groupsList.innerHTML = '';
 
-    if (!state.currentConfig.groups || state.currentConfig.groups.length === 0) {
+    if (currentGroups().length === 0) {
         groupsList.innerHTML = '<div class="groups-empty-state"><p class="groups-empty-icon">📁</p><p class="groups-empty-title">No groupings defined yet</p><p class="groups-empty-desc">Create your first grouping above, or use the <strong>Wizard</strong> for a guided setup.</p></div>';
         updateGlobalSyncExclusionsUI();
         updateGroupCount();
@@ -49,7 +74,8 @@ export function renderGroups() {
     let visibleCount = 0;
     const filter = _searchFilter.toLowerCase().trim();
 
-    state.currentConfig.groups.forEach((group, index) => {
+    currentGroups().forEach((group, index) => {
+        if (!group || typeof group !== 'object') return;
         const groupName = groupNameText(group.name).toLowerCase();
         if (filter && !groupName.includes(filter)) {
             return;
@@ -142,7 +168,12 @@ export function renderGroups() {
 function updateGroupCount(visibleCount) {
     const badge = getEl('groups-count-badge');
     if (!badge) return;
-    const total = state.currentConfig.groups?.length || 0;
+    // Count only entries that render as cards: a hand-edited `null` in the
+    // list is not a grouping, and counting it made the badge disagree with the
+    // number of cards on screen.
+    const total = currentGroups().filter(
+        (group) => group && typeof group === 'object',
+    ).length;
     if (visibleCount !== undefined) {
         badge.textContent = visibleCount === total ? `${total}` : `${visibleCount}/${total}`;
     } else {
@@ -160,8 +191,15 @@ export function initGroupSearch() {
 }
 
 export function editGroup(index) {
+    const group = currentGroups()[index];
+    // An out-of-range index is reachable from a stale "Edit" button after the
+    // list changed underneath it; without this the form threw on
+    // `group.name` and the click silently did nothing.
+    if (!group || typeof group !== 'object') {
+        showToast('That grouping is no longer available', 'error');
+        return;
+    }
     state.editingIndex = index;
-    const group = state.currentConfig.groups[index];
 
     getEl('group_name').value = groupNameText(group.name);
     // Resolve the category from the group's own source type: a stored value
@@ -239,27 +277,29 @@ export function resetFormUI() {
 }
 
 export async function deleteGroup(index) {
-    if (typeof index !== 'number' || index < 0 || index >= state.currentConfig.groups.length) {
+    const groups = currentGroups();
+    if (typeof index !== 'number' || index < 0 || index >= groups.length) {
         showToast('Invalid group index', 'error');
         return;
     }
     if (!await showConfirmDialog('Delete Grouping', 'Permanently remove this grouping?', 'Delete', 'Cancel')) return;
-    const groupName = state.currentConfig.groups[index]?.name;
+    const groupName = groups[index]?.name;
     // Only a string names a directory the cleanup endpoint can delete; any
     // other stored type is rejected there with an error the user cannot act
     // on after the group is already gone.
     const removableName = typeof groupName === 'string' && groupName ? groupName : '';
     if (state.editingIndex === index) cancelEdit();
-    const removedGroup = state.currentConfig.groups.splice(index, 1)[0];
+    const removedGroup = groups.splice(index, 1)[0];
     try {
         await saveConfig(state.currentConfig);
     } catch (e) {
         // Re-insert at the original position. If the array was modified
         // between the splice and the save failure, append at the end.
-        if (index <= state.currentConfig.groups.length) {
-            state.currentConfig.groups.splice(index, 0, removedGroup);
+        const current = currentGroups();
+        if (index <= current.length) {
+            current.splice(index, 0, removedGroup);
         } else {
-            state.currentConfig.groups.push(removedGroup);
+            current.push(removedGroup);
         }
         showToast('Failed to save after deleting group', 'error');
         return;
@@ -277,10 +317,11 @@ export async function deleteGroup(index) {
 
 export async function clearAllGroups() {
     if (!await showConfirmDialog('Clear All Groupings', 'Are you sure you want to remove ALL groupings? This cannot be undone.', 'Clear All', 'Cancel')) return;
-    const groupNames = state.currentConfig.groups
-        .map(g => g.name)
+    const groups = currentGroups();
+    const groupNames = groups
+        .map(g => (g && typeof g === 'object' ? g.name : undefined))
         .filter(name => typeof name === 'string' && name);
-    const backup = state.currentConfig.groups;
+    const backup = groups;
     state.currentConfig.groups = [];
     try {
         await saveConfig(state.currentConfig);
@@ -467,14 +508,15 @@ export function updateGlobalSyncExclusionsUI() {
     // Only real strings can be an exclusion id: the same value is a group
     // name in the scheduler, and a number or object there would never match
     // `group.name` in the checkbox comparison below.
-    const validGroupNames = state.currentConfig.groups
-        .map(g => g.name)
+    const validGroupNames = currentGroups()
+        .map(g => (g && typeof g === 'object' ? g.name : undefined))
         .filter(name => typeof name === 'string' && name);
     state.currentConfig.scheduler.global_exclude_ids = state.currentConfig.scheduler.global_exclude_ids.filter(id => validGroupNames.includes(id));
 
     const excludedIds = state.currentConfig.scheduler.global_exclude_ids;
 
-    state.currentConfig.groups.forEach((group) => {
+    currentGroups().forEach((group) => {
+        if (!group || typeof group !== 'object') return;
         const name = group.name;
         if (typeof name !== 'string' || !name) return;
         const label = document.createElement('label');
@@ -497,7 +539,7 @@ export function updateGlobalSyncExclusionsUI() {
         container.appendChild(label);
     });
 
-    if (state.currentConfig.groups.length === 0) {
+    if (currentGroups().length === 0) {
         container.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.8rem; font-style: italic;">No groups defined yet.</p>';
     }
 }

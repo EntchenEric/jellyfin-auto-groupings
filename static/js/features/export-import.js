@@ -21,6 +21,13 @@ export function openExportModal() {
     const container = getEl('export-groups-container');
     container.innerHTML = '';
 
+    // Same normalisation as renderGroups(): an export of a config whose
+    // `groups` is missing (or not a list) must open with an empty selection
+    // instead of throwing out of the topbar button.
+    if (!Array.isArray(state.currentConfig?.groups)) {
+        state.currentConfig = { ...state.currentConfig, groups: [] };
+    }
+
     if (state.currentConfig.groups.length === 0) {
         container.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.9rem;">No groups available to export.</p>';
     } else {
