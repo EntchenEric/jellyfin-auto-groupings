@@ -51,7 +51,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- The folder picker could write a path from a *previous* use into the field
+- A group whose `source_category` was present but unusable broke the whole
+  dashboard. `updateSourceTypeOptions()` read the select's value and indexed
+  `sourceOptions` with it, so a value this build does not offer — `"External"`
+  (capitalised) from a hand-edited `config.json` or an import, a trailing
+  space, a number, or a category from a newer release — matched no `<option>`.
+  The select then reported `selectedIndex` -1 and `sourceOptions[value]` was
+  `undefined`; the `.forEach` on it threw `TypeError: Cannot read properties of
+  undefined (reading 'forEach')`. Because the migration in `loadConfig()` only
+  filled a *missing* category and copied a bogus one through, the throw escaped
+  into the loader's `catch`: the page reported "Failed to load configuration"
+  and rendered no groups at all, and the same call made every group's Edit
+  button do nothing. The category is now resolved against the group's own
+  `source_type` — `tmdb_list` only exists in the External list, so a broken
+  category beside it means External, not Jellyfin — and a `loadConfig()` that
+  receives a non-list `groups` or non-object entries normalises them instead of
+  failing. `editGroup()` re-derives the pairing when the stored category
+  contradicts the stored type, so the form cannot silently save the wrong
+  category. Covered by `tests/frontend/source-category-normalisation.test.js`
+  (9 cases) and `tests/frontend/source-category-load.test.js` (6 cases).
+
   being edited. `_pickerCurrentPath` was only assigned on a successful
   `browseDir()`, never cleared. Open the picker for "Path in Jellyfin", reach
   `/media`, cancel, then open it for "Base Target Path": if the server refuses

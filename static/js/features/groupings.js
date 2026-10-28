@@ -1,6 +1,6 @@
 // groupings.js – CRUD operations for groupings
 
-import { state, sourceOptions, sortLabels } from '../core/state.js';
+import { state, sourceOptions, sortLabels, resolveSourceCategory } from '../core/state.js';
 import { saveConfig, apiPost } from '../core/api.js';
 import { showToast, getEl, showErrorDialog, showConfirmDialog } from '../core/ui.js';
 import { updateSourceTypeOptions, updateSourceValueUI, getFilterValue } from './metadata.js';
@@ -137,9 +137,24 @@ export function editGroup(index) {
     const group = state.currentConfig.groups[index];
 
     getEl('group_name').value = group.name;
-    getEl('source_category').value = group.source_category || 'jellyfin';
-    updateSourceTypeOptions();
-    getEl('source_type').value = group.source_type;
+    // Resolve the category from the group's own source type: a stored value
+    // this build does not know, or a `source_type` that belongs to the other
+    // category, would otherwise leave one of the two selects on no option and
+    // the form would save whichever value the select happened to fall back to.
+    getEl('source_category').value = resolveSourceCategory(
+        group.source_category,
+        group.source_type,
+    );
+    updateSourceTypeOptions(group.source_type);
+    getEl('source_type').value = group.source_type || '';
+    if (group.source_type && getEl('source_type').value !== group.source_type) {
+        // The type belongs to the other category (or the option is missing
+        // because its API key is unset). Rebuild against the category that
+        // actually offers it so the pairing stays consistent.
+        getEl('source_category').value = resolveSourceCategory(null, group.source_type);
+        updateSourceTypeOptions(group.source_type);
+        getEl('source_type').value = group.source_type;
+    }
     const hasSortOrder = !!(group.sort_order);
     getEl('sort_order_enabled').checked = hasSortOrder;
     getEl('sort_order_panel').style.display = hasSortOrder ? 'block' : 'none';

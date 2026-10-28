@@ -1,6 +1,6 @@
 // metadata.js – Metadata fetching and source type UI logic
 
-import { state, sourceOptions, metadataTypes } from '../core/state.js';
+import { state, sourceOptions, metadataTypes, resolveSourceCategory } from '../core/state.js';
 import { fetchMetadata, fetchUsers, apiPost } from '../core/api.js';
 import { getEl } from '../core/ui.js';
 
@@ -15,9 +15,21 @@ export async function refreshMetadata(onStatus) {
     }
 }
 
-export function updateSourceTypeOptions() {
-    const category = getEl('source_category').value;
+export function updateSourceTypeOptions(sourceTypeHint = null) {
+    const categoryEl = getEl('source_category');
+    if (!categoryEl) return;
+
+    // A stored or imported group can name a category this build does not
+    // know; the select then holds no valid option and the lookup below is
+    // undefined. Normalise it against the group's own source type first, so
+    // one bad value cannot blank the dropdown (and abort the caller).
+    const category = resolveSourceCategory(categoryEl.value, sourceTypeHint ?? '');
+    if (categoryEl.value !== category) {
+        categoryEl.value = category;
+    }
+
     const typeSelect = getEl('source_type');
+    if (!typeSelect) return;
     const currentValue = typeSelect.value;
 
     typeSelect.innerHTML = '';
@@ -25,8 +37,12 @@ export function updateSourceTypeOptions() {
         const o = document.createElement('option');
         o.value = opt.value;
         let isDisabled = false;
-        if (opt.requiredKey && (!state.currentConfig[opt.requiredKey] || state.currentConfig[opt.requiredKey].trim() === '')) {
-            isDisabled = true;
+        if (opt.requiredKey) {
+            // A hand-edited config.json can hold a number or null here; a bare
+            // `.trim()` on those threw and emptied the whole dropdown.
+            const rawKey = state.currentConfig[opt.requiredKey];
+            const keyText = typeof rawKey === 'string' ? rawKey.trim() : '';
+            isDisabled = keyText === '';
         }
         if (isDisabled) {
             let missingName = 'Key';

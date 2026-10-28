@@ -1,6 +1,6 @@
 // config.js – Configuration loading, saving, form bindings
 
-import { state, sourceOptions, setState } from '../core/state.js';
+import { state, sourceOptions, setState, resolveSourceCategory } from '../core/state.js';
 import { apiGet, apiPost, loadConfig as apiLoadConfig, saveConfig as apiSaveConfig, fetchMetadata } from '../core/api.js';
 import { showToast, showErrorDialog, setLoading, showModal, hideModal, getEl, showLoadingOverlay, updateLoadingStatus, hideLoadingOverlay } from '../core/ui.js';
 import { updateSourceTypeOptions, updateSourceValueUI, refreshMetadata } from './metadata.js';
@@ -10,8 +10,17 @@ import { updateValidationUI } from './test-connection.js';
 export async function loadConfig() {
     try {
         const cfg = await apiLoadConfig();
-        state.currentConfig = cfg;
-        state.currentConfig.groups = state.currentConfig.groups || [];
+        state.currentConfig = cfg && typeof cfg === 'object' ? cfg : {};
+        // A malformed or hand-edited response can carry a non-list here (or a
+        // list with non-object entries). `renderGroups()` and every migration
+        // step below iterate it, so normalise once instead of throwing
+        // "forEach is not a function" out of the loader.
+        const rawGroups = Array.isArray(state.currentConfig.groups)
+            ? state.currentConfig.groups
+            : [];
+        state.currentConfig.groups = rawGroups.filter(
+            (g) => g && typeof g === 'object' && !Array.isArray(g),
+        );
 
         // Backwards compatibility / Data Migration
         state.currentConfig.groups.forEach(g => {
@@ -26,6 +35,12 @@ export async function loadConfig() {
             } else if (g.source_type === 'people') {
                 g.source_type = 'actor';
             }
+            // Normalise in place: config.json is user-editable and an import
+            // can come from a build with a different set of categories, so an
+            // unusable value would otherwise be carried into the form and
+            // into the next save. The group's own source_type decides when
+            // the stored category does not name a known one.
+            g.source_category = resolveSourceCategory(g.source_category, g.source_type);
             if (g.create_as_collection === undefined) {
                 g.create_as_collection = false;
             }
