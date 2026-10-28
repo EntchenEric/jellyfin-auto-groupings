@@ -9,6 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The grouping checkboxes in the Export Settings and Import Settings dialogs
+  had no accessible name. Both dialogs build one row per grouping in
+  `features/export-import.js`, and the row was a plain `<div>`, so a screen
+  reader announced each checkbox as just "checkbox" with no hint of which
+  grouping it would export or import (WCAG 1.3.1 / 4.1.2). Clicking the group
+  name did nothing either — only the 18px box was a target. Each row is now a
+  `<label>` wrapping its checkbox, and the checkbox carries an
+  `aria-label` naming the grouping ("Export grouping Action"), because the
+  label's own text would otherwise read as "Action genre".
+  `tests/frontend/export-import-checkbox-labels.test.js` covers both dialogs.
+
+- The delete and remove-condition buttons built at runtime injected an `<svg>`
+  icon with no `aria-hidden`, so the icon was announced as an unnamed graphic
+  before the button's own text (`features/groupings.js`, `features/metadata.js`,
+  and the password reveal toggles in `app.js`). The remove-condition button
+  also relied on `title` alone for its name, which not every screen reader
+  exposes, and now sets `aria-label` too.
+
+### Added
+
+- Accessibility guards for the JavaScript-generated half of the dashboard.
+  `tests/test_template_accessibility.py` only read the Jinja partials, so the
+  group cards, metadata rule rows, and export/import lists — and every icon
+  they inject — were never checked. Three new tests scan `static/js` for
+  `<svg>` string literals without `aria-hidden` and for `type = 'checkbox'`
+  inputs with neither a wrapping `<label>` nor an `aria-label`, so the defects
+  above cannot return unnoticed.
+
 - The **Download Export** button in the Export Settings dialog did nothing
   at all. `execExport()` was exported from `features/export-import.js` but no
   module ever called it, and `initExportImport()` was an empty stub, so the

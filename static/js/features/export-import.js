@@ -25,7 +25,13 @@ export function openExportModal() {
         container.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.9rem;">No groups available to export.</p>';
     } else {
         state.currentConfig.groups.forEach((g, i) => {
-            const item = document.createElement('div');
+            // A <label> rather than a <div>: the checkbox it wraps then has an
+            // accessible name (the group it selects) and clicking the name
+            // toggles it. As a bare <div> the checkbox was announced by screen
+            // readers as just "checkbox", with no hint of which grouping it
+            // would export (WCAG 1.3.1 / 4.1.2), and only the 18px box itself
+            // was clickable.
+            const item = document.createElement('label');
             item.className = 'modal-item';
 
             const cb = document.createElement('input');
@@ -33,6 +39,12 @@ export function openExportModal() {
             cb.checked = true;
             cb.className = 'export-check item-checkbox';
             cb.dataset.index = i;
+            // Name the checkbox after the grouping alone; the label's text
+            // content would otherwise read as "Action genre".
+            cb.setAttribute(
+                'aria-label',
+                `Export grouping ${groupNameText(g.name) || 'Unnamed Group'}`,
+            );
             item.appendChild(cb);
 
             const labelDiv = document.createElement('div');
@@ -227,7 +239,9 @@ function setupImportStep2(data) {
         confirmBtn.textContent = 'Import Selected';
 
         groups.forEach((g, i) => {
-            const item = document.createElement('div');
+            // See openExportModal(): a <label> gives the checkbox its
+            // accessible name and makes the whole row clickable.
+            const item = document.createElement('label');
             item.className = 'modal-item';
 
             const cb = document.createElement('input');
@@ -235,6 +249,10 @@ function setupImportStep2(data) {
             cb.checked = true;
             cb.className = 'import-check item-checkbox';
             cb.dataset.index = i;
+            cb.setAttribute(
+                'aria-label',
+                `Import grouping ${groupNameText(g.name) || 'Unnamed Group'}`,
+            );
             item.appendChild(cb);
 
             const labelDiv = document.createElement('div');

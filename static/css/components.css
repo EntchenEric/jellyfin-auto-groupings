@@ -811,12 +811,23 @@ button:disabled {
 }
 
 /* ── Modal items (for export/import lists) ──────────────── */
+/* The row is a <label> wrapping its checkbox, so the pointer cursor advertises
+   that clicking the name toggles the selection too. The typography resets undo
+   the global `label` rule (uppercase, 0.72rem, secondary colour), which would
+   otherwise restyle every group name in these two lists. */
 .modal-item {
     padding: 0.7rem 0.5rem;
     border-bottom: 1px solid var(--glass-border);
     display: flex;
     align-items: center;
     gap: 0.85rem;
+    margin-bottom: 0;
+    font-weight: normal;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    text-transform: none;
+    letter-spacing: normal;
+    cursor: pointer;
 }
 
 .modal-item:last-child {
