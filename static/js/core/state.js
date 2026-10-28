@@ -39,6 +39,42 @@ export const sourceOptions = {
 
 export const metadataTypes = ['genre', 'actor', 'studio', 'tag', 'year', 'complex'];
 
+/** Category keys the source picker understands. */
+export const sourceCategories = Object.keys(sourceOptions);
+
+/**
+ * Coerce a stored or selected source category to a key of `sourceOptions`.
+ *
+ * `config.json` is user-editable and an import can come from an older build,
+ * so a group can carry a category this frontend does not know — a capitalised
+ * `"External"`, a trailing space, a number, or a value from a future release.
+ * Assigning such a value to the `<select>` leaves the element on no option at
+ * all, and `sourceOptions[category]` is then `undefined`: `.forEach` threw from
+ * `updateSourceTypeOptions()`, which aborted `loadConfig()` (the dashboard
+ * reported "Failed to load configuration" and rendered no groups) and made
+ * every group's Edit button die on the same call.
+ *
+ * The group's own `source_type` is the reliable hint for the intent: a
+ * `tmdb_list` only exists in the External list, so a broken category next to
+ * it means External, not Jellyfin.
+ *
+ * @param {unknown} category Category value from config or the select.
+ * @param {unknown} [sourceType] The group's source type, used to infer.
+ * @returns {string} A key of `sourceOptions`; `'jellyfin'` when nothing fits.
+ */
+export function resolveSourceCategory(category, sourceType = '') {
+    if (typeof category === 'string' && Object.hasOwn(sourceOptions, category)) {
+        return category;
+    }
+    const wanted = typeof sourceType === 'string' ? sourceType.trim().toLowerCase() : '';
+    if (wanted) {
+        for (const key of sourceCategories) {
+            if (sourceOptions[key].some(opt => opt.value === wanted)) return key;
+        }
+    }
+    return 'jellyfin';
+}
+
 export const sortLabels = {
     'imdb_list_order': 'IMDb List Order',
     'trakt_list_order': 'Trakt List Order',
