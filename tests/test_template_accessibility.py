@@ -152,3 +152,96 @@ def test_screen_reader_utility_class_is_defined() -> None:
         encoding="utf-8"
     )
     assert ".sr-only {" in css
+
+
+# ---------------------------------------------------------------------------
+# JavaScript-generated markup
+# ---------------------------------------------------------------------------
+#
+# The checks above only read the Jinja partials. A large part of the dashboard
+# is built at runtime — the group cards, the metadata rule rows, the export and
+# import selection lists — so an icon or a checkbox created in JavaScript was
+# never checked at all. Both of the following had already shipped broken:
+#
+#  * the export/import checkboxes were appended to a plain <div>, so a screen
+#    reader announced them as just "checkbox" with no hint of which grouping
+#    they would export or import;
+#  * the delete and remove-condition buttons injected an <svg> with no
+#    aria-hidden, so the icon was announced as an unnamed graphic before the
+#    button's own text.
+#
+# These tests read `static/js` directly. They are intentionally simple
+# pattern checks: the goal is to catch the defect at review time, not to parse
+# JavaScript.
+
+JS_ROOT = TEMPLATES.parent / "static" / "js"
+
+
+def _js_files() -> list[Path]:
+    return sorted(JS_ROOT.rglob("*.js"))
+
+
+def _svg_string_literals() -> list[tuple[Path, int, str]]:
+    """Return ``(file, line, literal)`` for every ``<svg`` in a JS string."""
+    found: list[tuple[Path, int, str]] = []
+    for path in _js_files():
+        for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            # Only string literals: an `<svg>` token cannot appear in JS any
+            # other way, and a comment mentioning one is harmless.
+            found.extend(
+                (path, lineno, literal)
+                for literal in re.findall(r"""['"`]([^'"`]*<svg\b[^'"`]*)['"`]""", line)
+            )
+    return found
+
+
+def test_js_string_svgs_are_hidden_from_assistive_technology() -> None:
+    """Every ``<svg>`` written from JavaScript must be aria-hidden or roled."""
+    problems = [
+        f"{path.name}:{lineno}"
+        for path, lineno, literal in _svg_string_literals()
+        if "aria-hidden" not in literal and "role=" not in literal
+    ]
+    assert problems == [], (
+        "These <svg> icons are injected from JavaScript and are exposed as "
+        'unnamed graphics; add aria-hidden="true":\n  ' + "\n  ".join(problems)
+    )
+
+
+def test_the_svg_scanner_finds_the_known_icons() -> None:
+    """A scanner matching nothing would make the check above vacuous."""
+    sources = {path.name for path, _, _ in _svg_string_literals()}
+    assert "groupings.js" in sources
+    assert "metadata.js" in sources
+
+
+def test_js_generated_checkboxes_have_an_accessible_name() -> None:
+    """A checkbox built in JavaScript needs ``aria-label`` or a wrapping label.
+
+    The export and import dialogs build one checkbox per grouping. Appending
+    it to a ``<div>`` left it unnamed; each row must be a ``<label>`` (or the
+    control needs an explicit ``aria-label``).
+    """
+    problems: list[str] = []
+    for path in _js_files():
+        text = path.read_text(encoding="utf-8")
+        lines = text.splitlines()
+        for index, line in enumerate(lines):
+            if "type = 'checkbox'" not in line and 'type = "checkbox"' not in line:
+                continue
+            # The row is often created a few lines *above* the input (a
+            # `const row = document.createElement('label')` followed by the
+            # checkbox), and the name may be set a few lines below, so scan a
+            # window in both directions rather than the single line.
+            before = max(0, index - 15)
+            block = "\n".join(lines[before : index + 20])
+            if "aria-label" in block or "aria-labelledby" in block:
+                continue
+            # Otherwise the row must be a <label> element wrapping the input.
+            if re.search(r"createElement\(\s*['\"]label['\"]", block):
+                continue
+            problems.append(f"{path.name}:{index + 1}")
+    assert problems == [], (
+        "These JavaScript-generated checkboxes have no accessible name; give "
+        "the row a wrapping <label> or set aria-label:\n  " + "\n  ".join(problems)
+    )

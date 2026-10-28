@@ -179,9 +179,14 @@ export function renderMetadataRules() {
         if (index > 0) {
             const rmBtn = document.createElement('button');
             rmBtn.type = 'button';
-            rmBtn.innerHTML = '<svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>';
+            // The button holds only an icon, so it needs its own accessible
+            // name; `title` alone is not reliably exposed by every screen
+            // reader. The <svg> is decorative and must not be announced as an
+            // unnamed graphic before the label (WCAG 1.1.1 / 4.1.2).
+            rmBtn.innerHTML = '<svg aria-hidden="true" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>';
             rmBtn.className = 'delete-btn rule-remove-btn';
             rmBtn.title = 'Remove condition';
+            rmBtn.setAttribute('aria-label', 'Remove condition');
             rmBtn.onclick = () => { window._currentMetadataRules.splice(index, 1); renderMetadataRules(); };
             row.appendChild(rmBtn);
         }

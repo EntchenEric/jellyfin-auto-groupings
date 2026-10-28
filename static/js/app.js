@@ -409,8 +409,11 @@ function wireGroupFormEvents() {
  * @returns {void}
  */
 function wirePasswordToggles() {
-    const eyeSvg = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
-    const eyeSlashSvg = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+    // Decorative eye icons: the button already carries an aria-label naming
+    // the field it reveals, so the glyph must not be announced as a separate
+    // unnamed graphic (WCAG 1.1.1).
+    const eyeSvg = '<svg aria-hidden="true" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+    const eyeSlashSvg = '<svg aria-hidden="true" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
     document.querySelectorAll('.toggle-password-btn').forEach(btn => {
         const targetId = btn.getAttribute('data-target');
         const input = document.getElementById(targetId);
