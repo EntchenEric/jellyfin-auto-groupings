@@ -51,6 +51,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- One group with a non-string `name` blanked the whole dashboard. `POST
+  /api/config` rejects the value (`'groups[0].name' must be a str`), but `GET
+  /api/config` serves the stored file as written — `load_config()` only drops
+  group entries that are not *objects* — so a hand-edited `config.json` or an
+  imported file carrying `"name": 42`, `{}`, or `[]` reached the browser. The
+  filter in `renderGroups()` ran `(group.name || '').toLowerCase()`, which threw
+  `TypeError: ….toLowerCase is not a function`; the throw escaped through
+  `updateGlobalSyncExclusionsUI()` into `loadConfig()`'s `catch`, so the page
+  said "Failed to load configuration" and rendered *no* groups. Every other
+  group became unreachable, including the Edit button that would have let the
+  user repair the bad name. Names are now read through one helper: a string is
+  used as-is, a number or boolean renders as its text form so the group stays
+  visible and editable, and any other type reads as unnamed. The paths that
+  need a real string — the cleanup call that names a directory and the
+  scheduler exclusion ids — check the type first instead of sending or storing
+  a value the server rejects. The same function also normalised `scheduler`
+  only when it was *falsy*, so a stored `"scheduler": "nope"` or `42` threw
+  `Cannot create property 'global_exclude_ids' on string`; it now replaces any
+  non-object, and any `global_exclude_ids` that is not a list, because the
+  next line calls `.filter()` on it. Covered by
+  `tests/frontend/group-name-type-robustness.test.js` (20 cases).
+
 - A group whose `source_category` was present but unusable broke the whole
   dashboard. `updateSourceTypeOptions()` read the select's value and indexed
   `sourceOptions` with it, so a value this build does not offer — `"External"`
@@ -71,6 +93,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   category. Covered by `tests/frontend/source-category-normalisation.test.js`
   (9 cases) and `tests/frontend/source-category-load.test.js` (6 cases).
 
+- The folder picker could write a path from a *previous* use into the field
   being edited. `_pickerCurrentPath` was only assigned on a successful
   `browseDir()`, never cleared. Open the picker for "Path in Jellyfin", reach
   `/media`, cancel, then open it for "Base Target Path": if the server refuses

@@ -8,6 +8,30 @@ import { openCoverGenerator } from './cover-generator.js';
 
 let _searchFilter = '';
 
+/**
+ * Text to show for a group's ``name``.
+ *
+ * ``config.json`` is user-editable and an import can come from any source, so
+ * a group can carry ``"name": 42``, an object, or an array. `renderGroups()`
+ * called `.toLowerCase()` on the value while filtering, which threw
+ * `TypeError: (group.name || "").toLowerCase is not a function`; the throw
+ * escaped into `loadConfig()`'s catch, so the dashboard reported "Failed to
+ * load configuration" and rendered no groups at all. Numbers and booleans are
+ * shown as their text form — that is what a hand-edited file most plausibly
+ * meant, and it keeps the group visible so it can be repaired through Edit.
+ * Any other type has no sensible text form and reads as unnamed.
+ *
+ * @param {unknown} name The stored group name.
+ * @returns {string} The name as display text, or ``""`` when unusable.
+ */
+export function groupNameText(name) {
+    if (typeof name === 'string') return name;
+    if (typeof name === 'number' || typeof name === 'boolean') {
+        return String(name);
+    }
+    return '';
+}
+
 export function renderGroups() {
     const groupsList = getEl('groups-list');
     groupsList.innerHTML = '';
@@ -26,7 +50,7 @@ export function renderGroups() {
     const filter = _searchFilter.toLowerCase().trim();
 
     state.currentConfig.groups.forEach((group, index) => {
-        const groupName = (group.name || '').toLowerCase();
+        const groupName = groupNameText(group.name).toLowerCase();
         if (filter && !groupName.includes(filter)) {
             return;
         }
@@ -42,7 +66,7 @@ export function renderGroups() {
         infoDiv.className = 'group-info';
 
         const h4 = document.createElement('h4');
-        h4.textContent = group.name || 'Unnamed Group';
+        h4.textContent = groupNameText(group.name) || 'Unnamed Group';
         if (group.sort_order) {
             const badge = document.createElement('span');
             badge.className = 'badge badge-sort';
@@ -136,7 +160,7 @@ export function editGroup(index) {
     state.editingIndex = index;
     const group = state.currentConfig.groups[index];
 
-    getEl('group_name').value = group.name;
+    getEl('group_name').value = groupNameText(group.name);
     // Resolve the category from the group's own source type: a stored value
     // this build does not know, or a `source_type` that belongs to the other
     // category, would otherwise leave one of the two selects on no option and
@@ -218,6 +242,10 @@ export async function deleteGroup(index) {
     }
     if (!await showConfirmDialog('Delete Grouping', 'Permanently remove this grouping?', 'Delete', 'Cancel')) return;
     const groupName = state.currentConfig.groups[index]?.name;
+    // Only a string names a directory the cleanup endpoint can delete; any
+    // other stored type is rejected there with an error the user cannot act
+    // on after the group is already gone.
+    const removableName = typeof groupName === 'string' && groupName ? groupName : '';
     if (state.editingIndex === index) cancelEdit();
     const removedGroup = state.currentConfig.groups.splice(index, 1)[0];
     try {
@@ -235,9 +263,9 @@ export async function deleteGroup(index) {
     }
     renderGroups();
 
-    if (groupName) {
+    if (removableName) {
         try {
-            await apiPost('/api/cleanup', { folders: [groupName] });
+            await apiPost('/api/cleanup', { folders: [removableName] });
         } catch (e) {
             showToast('Failed to clean up folder from disk: ' + e.message, 'error');
         }
@@ -246,7 +274,9 @@ export async function deleteGroup(index) {
 
 export async function clearAllGroups() {
     if (!await showConfirmDialog('Clear All Groupings', 'Are you sure you want to remove ALL groupings? This cannot be undone.', 'Clear All', 'Cancel')) return;
-    const groupNames = state.currentConfig.groups.map(g => g.name).filter(Boolean);
+    const groupNames = state.currentConfig.groups
+        .map(g => g.name)
+        .filter(name => typeof name === 'string' && name);
     const backup = state.currentConfig.groups;
     state.currentConfig.groups = [];
     try {
@@ -394,42 +424,73 @@ export function populateSeasonalDays() {
     });
 }
 
+/**
+ * Render the scheduler exclusion checkboxes and prune stale ids.
+ *
+ * An exclusion id is a group *name*, so an id that no longer names a group is
+ * dropped rather than kept forever in the saved config.
+ *
+ * Both structures this reads are user-editable in `config.json` and arrive
+ * unchanged from `GET /api/config`, so each is normalised before use: a
+ * `scheduler` that is not an object is replaced with defaults, and a
+ * `global_exclude_ids` that is not a list with an empty one. The previous code
+ * only replaced a *falsy* scheduler and a *falsy* id list, so a string, a
+ * number, or an object survived — and the assignment then threw
+ * `Cannot create property 'global_exclude_ids' on string 'nope'`, or
+ * `global_exclude_ids.filter is not a function`. Both escaped
+ * `renderGroups()` and blanked the dashboard.
+ *
+ * @returns {void}
+ */
 export function updateGlobalSyncExclusionsUI() {
     const container = getEl('global_sync_exclusions');
     if (!container) return;
     container.innerHTML = '';
 
-    if (!state.currentConfig.scheduler) {
-        state.currentConfig.scheduler = { global_enabled: false, global_schedule: '', global_exclude_ids: [] };
+    // `config.json` is user-editable and an import can carry any shape here.
+    if (
+        !state.currentConfig.scheduler ||
+        typeof state.currentConfig.scheduler !== 'object' ||
+        Array.isArray(state.currentConfig.scheduler)
+    ) {
+        state.currentConfig.scheduler = {};
     }
-    if (!state.currentConfig.scheduler.global_exclude_ids) {
+    // A falsy check is not enough: a stored string, number, or object has no
+    // `.filter()` either, and the next line calls it.
+    if (!Array.isArray(state.currentConfig.scheduler.global_exclude_ids)) {
         state.currentConfig.scheduler.global_exclude_ids = [];
     }
 
-    const validGroupNames = state.currentConfig.groups.map(g => g.name).filter(Boolean);
+    // Only real strings can be an exclusion id: the same value is a group
+    // name in the scheduler, and a number or object there would never match
+    // `group.name` in the checkbox comparison below.
+    const validGroupNames = state.currentConfig.groups
+        .map(g => g.name)
+        .filter(name => typeof name === 'string' && name);
     state.currentConfig.scheduler.global_exclude_ids = state.currentConfig.scheduler.global_exclude_ids.filter(id => validGroupNames.includes(id));
 
     const excludedIds = state.currentConfig.scheduler.global_exclude_ids;
 
     state.currentConfig.groups.forEach((group) => {
-        if (!group.name) return;
+        const name = group.name;
+        if (typeof name !== 'string' || !name) return;
         const label = document.createElement('label');
         label.className = 'exclusion-checkbox-label';
 
         const cb = document.createElement('input');
         cb.type = 'checkbox';
-        cb.checked = excludedIds.includes(group.name);
+        cb.checked = excludedIds.includes(name);
         cb.onchange = (e) => {
-            const idx = excludedIds.indexOf(group.name);
+            const idx = excludedIds.indexOf(name);
             if (e.target.checked) {
-                if (idx === -1) excludedIds.push(group.name);
+                if (idx === -1) excludedIds.push(name);
             } else {
                 if (idx !== -1) excludedIds.splice(idx, 1);
             }
         };
 
         label.appendChild(cb);
-        label.appendChild(document.createTextNode(group.name));
+        label.appendChild(document.createTextNode(name));
         container.appendChild(label);
     });
 

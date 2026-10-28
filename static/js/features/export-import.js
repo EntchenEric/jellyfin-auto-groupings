@@ -3,7 +3,7 @@
 import { state } from '../core/state.js';
 import { saveConfig } from '../core/api.js';
 import { showToast, showErrorDialog, showModal, hideModal, getEl } from '../core/ui.js';
-import { renderGroups } from './groupings.js';
+import { renderGroups, groupNameText } from './groupings.js';
 
 //: Copy the template shows for a full-config import; restored on every visit
 //: because the same element also carries the "entries skipped" note.
@@ -31,7 +31,7 @@ export function openExportModal() {
             const labelDiv = document.createElement('div');
             const nameDiv = document.createElement('div');
             nameDiv.className = 'item-name';
-            nameDiv.textContent = g.name || 'Unnamed Group';
+            nameDiv.textContent = groupNameText(g.name) || 'Unnamed Group';
             const typeDiv = document.createElement('div');
             typeDiv.className = 'item-type';
             typeDiv.textContent = g.source_type || '';
@@ -233,7 +233,7 @@ function setupImportStep2(data) {
             const labelDiv = document.createElement('div');
             const nameDiv = document.createElement('div');
             nameDiv.className = 'item-name';
-            nameDiv.textContent = g.name || 'Unnamed Group';
+            nameDiv.textContent = groupNameText(g.name) || 'Unnamed Group';
             const typeDiv = document.createElement('div');
             typeDiv.className = 'item-type';
             typeDiv.textContent = `${g.source_type || ''}: ${g.source_value || ''}`;
