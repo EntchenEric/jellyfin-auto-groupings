@@ -41,6 +41,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   usable `detected` payload reports "could not find matching host paths". A
   body that is not an object at all is handled the same way.
 
+- A failed automatic path fill could erase the message that explained the
+  real problem. After a successful connection test the handler reports a
+  metadata-loading failure, then calls `autoDetectIfEmpty()`, which used the
+  non-silent auto-detect request: when that request also failed, `apiRequest()`
+  opened an "Auto-detection failed" dialog on top of the metadata error the
+  user had just been shown. `apiAutoDetectSilent()` now serves the automatic
+  fill, so a failed background attempt leaves the fields empty and the earlier
+  message intact. The manual Auto-Detect button keeps the non-silent request
+  and still reports its own API error.
+
 ### Accessibility
 
 - The sidebar could only be resized by dragging. `#sidebar-resizer` was a bare

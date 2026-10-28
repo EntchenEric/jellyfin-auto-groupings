@@ -99,9 +99,16 @@ describe('sidebar connection buttons', () => {
         await bootstrap();
 
         // Without these assignments the buttons are inert: a click does
-        // nothing and the user has no way to validate the settings.
-        expect(typeof testBtn().onclick).toBe('function');
-        expect(typeof detectBtn().onclick).toBe('function');
+        // nothing and the user has no way to validate the settings. Identity
+        // is asserted, not just the type, so a swapped or no-op mapping fails.
+        const { testConnectionFromSidebar } = await import(
+            '../../static/js/features/test-connection.js'
+        );
+        const { autoDetectPaths } = await import(
+            '../../static/js/features/path-picker.js'
+        );
+        expect(testBtn().onclick).toBe(testConnectionFromSidebar);
+        expect(detectBtn().onclick).toBe(autoDetectPaths);
     });
 
     it('clears the Test button loading state when the metadata refresh fails', async () => {
@@ -130,6 +137,42 @@ describe('sidebar connection buttons', () => {
         // The connection succeeded, so the failure must not escape as an
         // unhandled rejection, and the button must not stay spinning.
         expect(testBtn().classList.contains('btn-loading')).toBe(false);
+        expect(document.getElementById('error-dialog-message').textContent)
+            .toContain('loading metadata failed');
+    });
+
+    it('keeps the metadata error when the automatic path fill fails', async () => {
+        // ``autoDetectIfEmpty()`` runs after the metadata failure reported
+        // above. Its own request is silent, so a rejected auto-detect must not
+        // replace that message with an Auto-Detect error.
+        vi.stubGlobal('fetch', vi.fn(async (url) => {
+            if (String(url).includes('/api/test-server')) {
+                return {
+                    ok: true, status: 200,
+                    json: async () => ({ status: 'success', message: 'Connected' }),
+                };
+            }
+            if (String(url).includes('/api/jellyfin/metadata')) {
+                return {
+                    ok: true, status: 200,
+                    json: async () => ({ status: 'error', message: 'Server refused' }),
+                };
+            }
+            if (String(url).includes('/api/jellyfin/auto-detect-paths')) {
+                return {
+                    ok: false, status: 500,
+                    json: async () => ({ status: 'error', message: 'Auto-detect broke' }),
+                };
+            }
+            return { ok: true, status: 200, json: async () => ({ status: 'success' }) };
+        }));
+
+        const { testConnectionFromSidebar } = await import(
+            '../../static/js/features/test-connection.js'
+        );
+
+        await testConnectionFromSidebar();
+
         expect(document.getElementById('error-dialog-message').textContent)
             .toContain('loading metadata failed');
     });

@@ -1,7 +1,7 @@
 // path-picker.js – Folder path picker and auto-detect logic
 
 import { state } from '../core/state.js';
-import { autoDetectPaths as apiAutoDetect, browsePath } from '../core/api.js';
+import { autoDetectPaths as apiAutoDetect, autoDetectPathsSilent as apiAutoDetectSilent, browsePath } from '../core/api.js';
 import { showModal, hideModal, showToast, showErrorDialog, getEl } from '../core/ui.js';
 
 /** @type {string|null} ID of the form input field being picked for */
@@ -214,9 +214,14 @@ export async function autoDetectIfEmpty() {
     const hostEl = getEl('media_path_on_host');
     if (targetEl.value && jfEl.value && hostEl.value) return;
     try {
-        const result = await apiAutoDetect();
-        if (result.status !== 'success') return;
+        // Silent: this run follows the connection test automatically, so a
+        // failed request here must not open an error dialog that replaces the
+        // message the caller has already shown (including a metadata-loading
+        // failure). The empty fields simply stay empty.
+        const result = await apiAutoDetectSilent();
+        if (!result || result.status !== 'success') return;
         const d = result.detected;
+        if (!d || typeof d !== 'object') return;
         if (!targetEl.value && d.target_path) {
             targetEl.value = d.target_path;
             state.currentConfig.target_path = d.target_path;
