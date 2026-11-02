@@ -78,7 +78,9 @@ def main(args: Sequence[str] | None = None) -> int:
     """CLI entry point.
 
     Returns:
-        An exit code: ``0`` on success, ``1`` on any failure. Every failure
+        An exit code: ``0`` on success, ``1`` on any failure (a missing API
+        key, an invalid ``--pattern`` regex, a connection/timeout failure, or
+        a sync error), and ``2`` for a malformed command line. Every failure
         path returns rather than raising ``SystemExit`` so that callers can
         invoke :func:`main` in-process and inspect the code. The module guard
         forwards the result to :func:`sys.exit`, so the process still exits
