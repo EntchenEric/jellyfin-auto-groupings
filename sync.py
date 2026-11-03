@@ -3106,8 +3106,19 @@ def _run_sync_unlocked(
     trakt_client_id: str = str(config.get("trakt_client_id") or "").strip()
     tmdb_api_key: str = str(config.get("tmdb_api_key") or "").strip()
     mal_client_id: str = str(config.get("mal_client_id") or "").strip()
+    # A hand-edited config.json can hold a non-string here; ``str(None)``
+    # produced the text "None", which the AniList URL validator then rejected
+    # and failed every anilist group over a value that meant "unset". Treat a
+    # non-string as unset, matching the preview route's handling.
+    _raw_anilist_url = config.get("anilist_api_url")
+    if _raw_anilist_url is not None and not isinstance(_raw_anilist_url, str):
+        logger.warning(
+            "Ignoring malformed 'anilist_api_url' config (expected string, got %s)",
+            type(_raw_anilist_url).__name__,
+        )
+        _raw_anilist_url = None
     anilist_api_url: str | None = (
-        str(config.get("anilist_api_url") or "").strip() or None
+        _raw_anilist_url.strip() or None if isinstance(_raw_anilist_url, str) else None
     )
     auto_create_libraries: bool = bool(config.get("auto_create_libraries", False))
     auto_set_library_covers: bool = bool(config.get("auto_set_library_covers", False))

@@ -115,6 +115,31 @@ def test_preview_ignores_non_string_anilist_url_in_config(
     assert stubbed_preview[0]["kwargs"]["anilist_api_url"] is None
 
 
+def test_run_sync_ignores_non_string_anilist_url_in_config(tmp_path):
+    """A non-string anilist_api_url must reach an anilist group as unset.
+
+    ``_run_sync_unlocked`` used to apply ``str(...)`` to the value, so the
+    number ``42`` arrived as the text "42" and the text of ``None`` arrived
+    as "None"; the endpoint validator (or the server) then rejected both and
+    every anilist group reported a fetch error over a value that meant
+    "unset".
+    """
+    cfg = _sync_config(
+        tmp_path,
+        [{"name": "Anime", "source_type": "anilist_list", "source_value": "user"}],
+    )
+    cfg["anilist_api_url"] = 42
+
+    with (
+        patch("sync.fetch_anilist_list", return_value=[]) as fetch,
+        patch("sync._match_jellyfin_items_by_provider", return_value=([], None, 200)),
+    ):
+        results = sync.run_sync(cfg, dry_run=True)
+
+    assert results[0].get("error") is None
+    fetch.assert_called_once_with("user", None, api_url=None)
+
+
 def _sync_config(tmp_path, groups):
     return {
         "jellyfin_url": "http://jellyfin.invalid",
