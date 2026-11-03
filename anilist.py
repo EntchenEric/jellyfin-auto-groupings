@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 import requests
 
 import network
+from _common import parse_outbound_url
 
 __all__ = ["fetch_anilist_list"]
 
@@ -17,6 +19,16 @@ ANILIST_API_URL = "https://graphql.anilist.co"
 
 # Request timeout (seconds)
 _REQUEST_TIMEOUT: int = 15
+
+# A host is letters/digits/hyphens/dots (or an IP literal); anything else
+# means ``parse_outbound_url`` coerced plain prose such as "not a url" into a
+# "host". Posting to that can only fail with an opaque InvalidURL, so reject
+# it here with the fetcher's own message.
+_HOSTNAME_PATTERN: re.Pattern[str] = re.compile(
+    r"^(?:[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?\.)+[A-Za-z0-9-]+$"
+    r"|^\d{1,3}(?:\.\d{1,3}){3}$"
+    r"|^\[[0-9a-fA-F:]+\]$",
+)
 
 
 _ANILIST_STATUS_MAP: dict[str, str] = {
@@ -102,6 +114,46 @@ def _extract_media_ids(data: dict[str, Any]) -> list[int]:
     return ids
 
 
+def _resolve_anilist_api_url(api_url: str | None) -> str:
+    """Validate the AniList endpoint override, returning the usable URL.
+
+    ``anilist_api_url`` is user-controlled input (``config.json`` or the
+    ``ANILIST_API_URL`` environment variable) that reaches ``network.post``
+    directly, so it is validated with the same authority check the list
+    fetchers apply to their URLs: on an authority where ``urlparse`` and the
+    HTTP client disagree (``https://evil.example\\@graphql.anilist.co``) the
+    two parsers report different hosts, so posting verbatim sent the request
+    to whichever host the client resolved — a server-side request forgery
+    primitive driven from config. A custom self-hosted endpoint stays
+    allowed; only unusable or ambiguous URLs are rejected.
+
+    Args:
+        api_url: The configured override, or ``None`` for the built-in default.
+
+    Returns:
+        The canonical URL to post to (scheme, host, path; no query, fragment,
+        or credentials).
+
+    Raises:
+        ValueError: If the override is not an http(s) URL with an unambiguous
+            authority and no userinfo.
+
+    """
+    if api_url is None:
+        return ANILIST_API_URL
+    base = parse_outbound_url(api_url)
+    if base is None:
+        msg = f"Invalid AniList API URL: {api_url!r}"
+        raise ValueError(msg)
+    # ``parse_outbound_url`` coerces scheme-less prose ("not a url") into a
+    # "host"; require the result to actually look like a hostname.
+    host = base.split("//", 1)[-1].split("/", 1)[0]
+    if not _HOSTNAME_PATTERN.match(host):
+        msg = f"Invalid AniList API URL: {api_url!r}"
+        raise ValueError(msg)
+    return base
+
+
 def fetch_anilist_list(
     username: str,
     status: str | None = None,
@@ -126,7 +178,7 @@ def fetch_anilist_list(
     if normalized_status:
         variables["status"] = normalized_status
 
-    resolved_url = api_url or ANILIST_API_URL
+    resolved_url = _resolve_anilist_api_url(api_url)
 
     logger.debug(
         "Fetching AniList list for user=%r status=%s",

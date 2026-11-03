@@ -442,6 +442,7 @@ def test_anilist_rejects_unknown_status():
 
 
 def test_anilist_sends_normalized_status_and_custom_url():
+    """A same-host override still reaches the network layer untouched."""
     resp = MagicMock()
     resp.raise_for_status.return_value = None
     resp.json.return_value = {"data": {"MediaListCollection": {"lists": []}}}
@@ -808,3 +809,80 @@ def test_trakt_rejected_reference_fails_before_any_request():
         )
 
     assert mock_get.call_count == 0
+
+
+# --- anilist endpoint override validation ---------------------------------
+
+
+# Every provider that fetches a user-supplied URL validates its authority
+# (see tests/test_url_authority_validation.py); fetch_anilist_list was the
+# only one posting the raw string. An ambiguous authority would be fetched
+# from evil.example rather than the host the config appears to name.
+_AMBIGUOUS_OR_UNUSABLE_URLS = (
+    # urlparse reports graphql.anilist.co; the HTTP client connects to
+    # evil.example. Ambiguous authorities are rejected outright.
+    "https://evil.example\\@graphql.anilist.co",
+    # Not an http(s) URL at all, or no usable host.
+    "file:///etc/passwd",
+    "gopher://graphql.anilist.co",
+    "",
+    # Credentials would be forwarded to the fetched host; list fetchers
+    # reject userinfo, and the endpoint override gets the same treatment.
+    "https://user:pass graphql.anilist.co".replace(" ", "@"),
+    # A space in the authority: urlparse reports the host "not a url",
+    # which urllib3 cannot mean; the parse result must not be posted.
+    "not a url",
+    # The text "None" from a broken config that stringified the value.
+    "None",
+)
+
+
+@pytest.mark.parametrize("supplied", _AMBIGUOUS_OR_UNUSABLE_URLS)
+def test_anilist_rejects_unsafe_endpoint_override(supplied):
+    """Ambiguous or unusable override URLs are rejected, never posted."""
+    with (
+        patch("anilist.network.post") as mock_post,
+        pytest.raises(ValueError, match="Invalid AniList API URL"),
+    ):
+        anilist.fetch_anilist_list("user", api_url=supplied)
+    assert mock_post.call_count == 0
+
+
+def test_anilist_rejects_non_string_endpoint_override():
+    """A number from a hand-edited config is an error, not an TypeError."""
+    with (
+        patch("anilist.network.post") as mock_post,
+        pytest.raises(ValueError, match="Invalid AniList API URL"),
+    ):
+        anilist.fetch_anilist_list("user", api_url=42)  # type: ignore[arg-type]
+    assert mock_post.call_count == 0
+
+
+def test_anilist_accepts_canonical_endpoint_forms():
+    """Same-host and self-hosted overrides are normalised and sent."""
+    resp = MagicMock()
+    resp.raise_for_status.return_value = None
+    resp.json.return_value = {"data": {"MediaListCollection": {"lists": []}}}
+
+    for supplied, expected in (
+        ("https://graphql.anilist.co/x", "https://graphql.anilist.co/x"),
+        ("graphql.anilist.co", "https://graphql.anilist.co"),
+        (
+            "https://anilist.example/graphql?token=x#frag",
+            "https://anilist.example/graphql",
+        ),
+    ):
+        with patch("anilist.network.post", return_value=resp) as mock_post:
+            anilist.fetch_anilist_list("user", api_url=supplied)
+        args, _kwargs = mock_post.call_args
+        assert args[0] == expected, supplied
+
+
+def test_anilist_rejects_none_like_string_override():
+    """The text "None" from a broken config is rejected, not posted."""
+    with (
+        patch("anilist.network.post") as mock_post,
+        pytest.raises(ValueError, match="Invalid AniList API URL"),
+    ):
+        anilist.fetch_anilist_list("user", api_url="None")
+    assert mock_post.call_count == 0
