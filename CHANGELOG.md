@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Tests
+
+- Raised `config.py` to 100% statement coverage and `auto_group.py` to 98.5%:
+  new `tests/test_config_and_auto_group_gaps.py` exercises the legacy-key
+  migration that `load_config()` persists back to disk, the OSError fallback
+  when the config file is unreadable, quarantine when the backup rename fails,
+  the `_prune_config_backups()` iterdir error guard, the `save_config()`
+  temp-file cleanup on failure, and `_env_flag()` raw parsing. The new
+  coverage for `auto_group.main()` drives the full CLI path with mocks: the
+  missing-API-key exit, dry-run without creating anything, collection
+  creation with usable IDs, the no-usable-IDs skip, multiple libraries, an
+  empty library list, and `--verbose`.
+
 ### Fixed
 
 - One click on "+ Add Condition" appended **two** empty rule rows. The button
