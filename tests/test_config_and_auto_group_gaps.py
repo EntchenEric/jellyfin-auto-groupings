@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 from pathlib import Path
 from unittest import mock
 from unittest.mock import patch
@@ -276,3 +277,42 @@ def test_main_verbose_flag_turns_on_debug_logging():
         auto_group.main()
     assert gi.call_count == 0
     assert cc.call_count == 0
+
+
+def test_main_dry_run_flag_forces_dry_run_over_config():
+    """``--dry-run`` must win even when the loaded config says dry-run is off."""
+    cfg = _cfg(dry_run=False)
+    with (
+        patch.object(auto_group, "load_config", return_value=cfg) as lc,
+        patch.object(auto_group, "get_libraries", return_value=[]),
+        patch.object(auto_group, "get_library_items") as gi,
+        patch.object(auto_group, "create_collection") as cc,
+        patch("sys.argv", ["auto_group.py", "--dry-run"]),
+    ):
+        auto_group.main()
+    assert lc.call_count == 1
+    assert cfg["DRY_RUN"] is True
+    assert gi.call_count == 0
+    assert cc.call_count == 0
+
+
+def test_dunder_main_invokes_main(monkeypatch, tmp_path):
+    """Executing the module as a script runs ``main()``.
+
+    ``runpy`` executes the file in a fresh module namespace, so we can't
+    monkeypatch the attribute — instead we make ``load_config`` (called
+    before ``main()``) exit via ``SystemExit`` to prove the ``__main__``
+    guard invoked the real CLI path.
+    """
+    import runpy
+
+    config_file = tmp_path / "config.json"
+    config_file.write_text(json.dumps({"JELLYFIN_API_KEY": ""}), encoding="utf-8")
+    argv = sys.argv
+    sys.argv = ["auto_group.py", "--config", str(config_file)]
+    try:
+        with pytest.raises(SystemExit) as exc:
+            runpy.run_path(str(Path(auto_group.__file__)), run_name="__main__")
+    finally:
+        sys.argv = argv
+    assert exc.value.code == 1

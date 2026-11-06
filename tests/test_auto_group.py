@@ -382,3 +382,38 @@ def test_get_libraries_trims_padded_url(mock_get):
     get_libraries("  http://localhost:8096/  ", "key")
 
     assert mock_get.call_args.args[0] == "http://localhost:8096/Views"
+
+
+def test_group_items_skips_non_string_names():
+    """Non-string (e.g. numeric) names are skipped, not stringified into a group."""
+    items = [
+        {"Id": "1", "Name": 42},
+        {"Id": "2", "Name": 3.14},
+        {"Id": "3", "Name": ["list"]},
+        {"Id": "4", "Name": "Real Movie"},
+    ]
+    groups = group_items(items, [r"^(.*)$"], min_group_size=1)
+    assert groups == {"Real Movie": [{"Id": "4", "Name": "Real Movie"}]}
+
+
+def test_group_items_skips_items_with_no_pattern_match():
+    """An item whose name doesn't match any pattern is skipped (line 284)."""
+    items = [
+        {"Id": "1", "Name": "Totally Unrelated"},
+        {"Id": "2", "Name": "Foo (2019)"},
+        {"Id": "3", "Name": "Foo (2020)"},
+    ]
+    groups = group_items(items, [r"^(.+?)\s*\(\d{4}\)$"], min_group_size=2)
+    assert list(groups) == ["Foo"]
+    assert [i["Id"] for i in groups["Foo"]] == ["2", "3"]
+
+
+def test_group_items_skips_item_whose_name_cleans_to_empty():
+    """A name that only contains bracket junk strips to '' and is skipped."""
+    items = [
+        {"Id": "1", "Name": "( )"},
+        {"Id": "2", "Name": "Foo (2019)"},
+        {"Id": "3", "Name": "Foo (2020)"},
+    ]
+    groups = group_items(items, [r"^(.+)$"], min_group_size=2)
+    assert list(groups) == ["Foo"]
