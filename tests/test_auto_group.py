@@ -403,9 +403,7 @@ def test_group_items_skips_items_with_no_pattern_match():
         {"Id": "2", "Name": "Foo (2019)"},
         {"Id": "3", "Name": "Foo (2020)"},
     ]
-    groups = group_items(
-        items, [r"^(.+?)\s*\(\d{4}\)$"], min_group_size=2
-    )
+    groups = group_items(items, [r"^(.+?)\s*\(\d{4}\)$"], min_group_size=2)
     assert list(groups) == ["Foo"]
     assert [i["Id"] for i in groups["Foo"]] == ["2", "3"]
 
