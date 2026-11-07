@@ -8,6 +8,7 @@ route's own handling of fully-failed lookups) was previously only covered
 by the e2e suite, which requires a live server.
 """
 
+import logging
 import sys
 from pathlib import Path
 
@@ -49,9 +50,10 @@ def test_fetch_endpoint_collects_all_pages(monkeypatch):
 
     monkeypatch.setattr(routes, "_paginate_jellyfin", fake_paginate)
 
-    assert routes._fetch_jellyfin_endpoint(
-        "http://jf", "key", "Genres"
-    ) == [{"Name": "Action"}, {"Name": "Drama"}]
+    assert routes._fetch_jellyfin_endpoint("http://jf", "key", "Genres") == [
+        {"Name": "Action"},
+        {"Name": "Drama"},
+    ]
 
 
 def test_fetch_endpoint_returns_empty_when_no_pages(monkeypatch):
@@ -64,13 +66,20 @@ def test_fetch_endpoint_returns_empty_when_no_pages(monkeypatch):
     assert routes._fetch_jellyfin_endpoint("http://jf", "key", "Tags") == []
 
 
+_ERR_WALK = "server exploded mid-walk"
+_ERR_REFUSED = "connection refused"
+_ERR_NETWORK = "network dropped"
+_ERR_UNREACHABLE = "unreachable"
+_ERR_TAGS = "tags endpoint broken"
+_ERR_DOWN = "down"
+
+
 def test_fetch_endpoint_keeps_partial_data_on_walk_failure(monkeypatch, caplog):
     """An error after some data is fetched returns what we have."""
-    import logging
 
     def fake_paginate(*_args, **_kwargs):
         yield [{"Name": "Action"}]
-        raise RuntimeError("server exploded mid-walk")
+        raise RuntimeError(_ERR_WALK)
 
     monkeypatch.setattr(routes, "_paginate_jellyfin", fake_paginate)
 
@@ -83,31 +92,29 @@ def test_fetch_endpoint_keeps_partial_data_on_walk_failure(monkeypatch, caplog):
 
 def test_fetch_endpoint_reraises_when_nothing_fetched(monkeypatch):
     def fake_paginate(*_args, **_kwargs):
-        raise RuntimeError("connection refused")
+        raise RuntimeError(_ERR_REFUSED)
         yield  # pragma: no cover
 
     monkeypatch.setattr(routes, "_paginate_jellyfin", fake_paginate)
 
-    with pytest.raises(RuntimeError, match="connection refused"):
+    with pytest.raises(RuntimeError, match=_ERR_REFUSED):
         routes._fetch_jellyfin_endpoint("http://jf", "key", "Genres")
 
 
 def test_fetch_endpoint_partial_data_survives_request_errors(monkeypatch):
     def fake_paginate(*_args, **_kwargs):
         yield [{"Name": "Fox"}]
-        raise requests.RequestException("network dropped")
+        raise requests.RequestException(_ERR_NETWORK)
 
     monkeypatch.setattr(routes, "_paginate_jellyfin", fake_paginate)
 
-    result = routes._fetch_jellyfin_endpoint(
-        "http://jf", "key", "Studios", timeout=3
-    )
+    result = routes._fetch_jellyfin_endpoint("http://jf", "key", "Studios", timeout=3)
     assert result == [{"Name": "Fox"}]
 
 
 def test_fetch_endpoint_request_error_without_data_reraises(monkeypatch):
     def fake_paginate(*_args, **_kwargs):
-        raise requests.ConnectionError("unreachable")
+        raise requests.ConnectionError(_ERR_UNREACHABLE)
         yield  # pragma: no cover
 
     monkeypatch.setattr(routes, "_paginate_jellyfin", fake_paginate)
@@ -157,11 +164,10 @@ def test_metadata_route_marks_failed_keys_and_returns_them_empty(
     client, jellyfin_config, monkeypatch
 ):
     """One failed lookup downgrades to an empty list, not an error."""
-    import logging
 
     def fake_fetch(_base, _key, endpoint, **_kwargs):
         if endpoint == "Tags":
-            raise RuntimeError("tags endpoint broken")
+            raise RuntimeError(_ERR_TAGS)
         return [{"Name": "x"}]
 
     monkeypatch.setattr(routes, "_fetch_jellyfin_endpoint", fake_fetch)
@@ -183,7 +189,7 @@ def test_metadata_route_rejects_when_every_lookup_fails(
     client, jellyfin_config, monkeypatch
 ):
     def fake_fetch(*_args, **_kwargs):
-        raise RuntimeError("down")
+        raise RuntimeError(_ERR_DOWN)
 
     monkeypatch.setattr(routes, "_fetch_jellyfin_endpoint", fake_fetch)
 
@@ -192,11 +198,9 @@ def test_metadata_route_rejects_when_every_lookup_fails(
     assert resp.get_json()["message"] == "Failed to fetch metadata from Jellyfin"
 
 
-def test_metadata_route_unexpected_error_is_500(
-    client, jellyfin_config, monkeypatch
-):
+def test_metadata_route_unexpected_error_is_500(client, jellyfin_config, monkeypatch):
     def boom(*_args, **_kwargs):
-        raise OSError("no route to host")
+        raise OSError(_ERR_UNREACHABLE)
 
     monkeypatch.setattr(routes, "_get_jellyfin_config", boom)
 
