@@ -1174,12 +1174,12 @@ def get_jellyfin_metadata() -> ResponseReturnValue:
         ``studio``, ``tag``, and ``actor`` lists.
 
     """
-    url, api_key = _get_jellyfin_config()
-
-    result: dict[str, list[str]] = {}
-    failed = 0
-
     try:
+        url, api_key = _get_jellyfin_config()
+
+        result: dict[str, list[str]] = {}
+        failed = 0
+
         with ThreadPoolExecutor(max_workers=4) as pool:
             futures: dict[str, Any] = {
                 "genre": pool.submit(_fetch_jellyfin_endpoint, url, api_key, "Genres"),
