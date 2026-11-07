@@ -385,8 +385,13 @@ def test_recommendations_group_no_recs_returned():
 def test_full_library_cache_expired_entry_is_refetched():
     sync.clear_library_cache()
     key = ("http://jf", "k", False)
+    stale_time = sync.time.monotonic() - sync._LIBRARY_CACHE_TTL - 1
     with (
-        patch.object(sync, "_LIBRARY_CACHE", {key: (0.0, [{"stale": True}])}),
+        patch.object(
+            sync,
+            "_LIBRARY_CACHE",
+            {key: (stale_time, [{"stale": True}])},
+        ),
         patch.object(
             sync,
             "fetch_all_jellyfin_items",
