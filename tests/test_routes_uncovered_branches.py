@@ -22,7 +22,6 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -113,7 +112,9 @@ def test_config_rejects_a_file_target_path(client, tmp_path):
     file_target = tmp_path / "file.txt"
     file_target.write_text("", encoding="utf-8")
 
-    response = _post_config(client, _valid_config(tmp_path, target_path=str(file_target)))
+    response = _post_config(
+        client, _valid_config(tmp_path, target_path=str(file_target))
+    )
 
     assert response.status_code == 400
     assert any("is not a directory" in e for e in response.get_json()["errors"])
@@ -126,7 +127,10 @@ def test_config_rejects_a_missing_media_path_on_host(client, tmp_path):
     )
 
     assert response.status_code == 400
-    assert any("media_path_on_host" in e and "does not exist" in e for e in response.get_json()["errors"])
+    assert any(
+        "media_path_on_host" in e and "does not exist" in e
+        for e in response.get_json()["errors"]
+    )
 
 
 def test_config_accepts_unset_optional_paths(client, tmp_path):
@@ -310,7 +314,9 @@ def test_delete_folder_prunes_empty_nested_parents(target_dir):
     nested = target_dir / "Anime" / "Action"
     nested.mkdir(parents=True)
 
-    removed, error = routes._delete_folder("Anime/Action", str(target_dir), False, "", "")
+    removed, _error = routes._delete_folder(
+        "Anime/Action", str(target_dir), False, "", ""
+    )
 
     assert removed is True
     # The now-empty structural parents are pruned, but the target itself stays.
