@@ -1525,6 +1525,17 @@ def get_cleanup_items() -> ResponseReturnValue:
     max_depth = max((len(g.split("/")) for g in configured_groups), default=1)
 
     def _walk(directory: Path, prefix: str, depth: int) -> list[dict[str, Any]]:
+        """Collect deletable folder entries below *directory*, recursing into parents.
+
+        Args:
+            directory: The filesystem directory to inspect.
+            prefix: Relative path prefix accumulated so far ("" at the root).
+            depth: Current nesting depth, compared against ``max_depth``.
+
+        Returns:
+            A list of ``{"name", "is_configured"}`` entries; unreadable subtrees are skipped.
+
+        """
         found: list[dict[str, Any]] = []
         # A directory this process may not read (a root-owned library folder, a
         # mount that dropped away mid-walk) raised out of ``iterdir()`` and the
@@ -1800,6 +1811,13 @@ class _DetectBudget:
     """
 
     def __init__(self, timeout: int, max_files: int) -> None:
+        """Initialise the budget with *timeout* seconds and a *max_files* scan cap.
+
+        Args:
+            timeout: Wall-clock seconds allowed for the whole call.
+            max_files: Directory entries that may be examined in the whole call.
+
+        """
         self.timeout: int = timeout
         self.deadline: float = time.monotonic() + timeout
         self.max_files: int = max_files

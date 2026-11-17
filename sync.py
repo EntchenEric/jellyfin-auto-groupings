@@ -635,6 +635,16 @@ def _sort_items_in_memory(
         """
 
         def _compare(left: dict[str, Any], right: dict[str, Any]) -> int:
+            """Compare two items by ``key`` direction and missing-field rules.
+
+            Args:
+                left: The first item dict.
+                right: The second item dict.
+
+            Returns:
+                Negative if left sorts first, positive if right sorts first, 0 if equal.
+
+            """
             left_value = left.get(key)
             right_value = right.get(key)
             left_missing = _is_missing(left_value)
