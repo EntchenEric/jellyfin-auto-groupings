@@ -131,6 +131,7 @@ def flatten_dict(nested: dict, sep: str = ".") -> dict:
     result = {}
 
     def _flatten(current: dict, prefix: str = ""):
+        """Recursively flatten *current* into ``result`` with prefixed keys."""
         for key, value in current.items():
             new_key = f"{prefix}{sep}{key}" if prefix else key
             if isinstance(value, dict):

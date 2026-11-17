@@ -9,11 +9,13 @@ class JellyfinAPI:
     """Wrapper client for Jellyfin REST API."""
 
     def __init__(self, server_url: str, api_key: str, timeout: int = 30) -> None:
+        """Configure the wrapper with a server URL, key, and timeout."""
         self.server_url = server_url.rstrip("/")
         self.api_key = api_key
         self.timeout = timeout
 
     def _get_headers(self) -> dict[str, str]:
+        """Return the auth headers for Jellyfin requests."""
         return {
             "X-Emby-Token": self.api_key,
             "Content-Type": "application/json",

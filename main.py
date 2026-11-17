@@ -32,6 +32,11 @@ class JellyfinGroupings:
         self.session = requests.Session()
 
     def _get_headers(self) -> dict[str, str]:
+        """Return the auth headers for Jellyfin requests.
+
+        Raises:
+            ValueError: If no API key is configured.
+        """
         if not self.api_key:
             err_msg = "API key is missing."
             raise ValueError(err_msg)

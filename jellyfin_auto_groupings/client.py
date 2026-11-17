@@ -63,6 +63,7 @@ class JellyfinClient:
         user_id: str | None = None,
         timeout: int = 30,
     ):
+        """Configure the client with connection details and a session."""
         self.server_url = server_url.rstrip("/")
         self.api_key = api_key
         self.user_id = user_id
@@ -80,6 +81,7 @@ class JellyfinClient:
         return self.server_url
 
     def _get(self, endpoint: str, params: dict[str, Any] | None = None) -> Any:
+        """GET *endpoint*, raising on HTTP or transport errors."""
         url = f"{self.server_url}{endpoint}"
         try:
             resp = self.session.get(url, params=params, timeout=self.timeout)
@@ -95,6 +97,7 @@ class JellyfinClient:
         params: dict[str, Any] | None = None,
         data: dict[str, Any] | None = None,
     ) -> Any:
+        """POST to *endpoint*, raising on HTTP or transport errors."""
         url = f"{self.server_url}{endpoint}"
         try:
             resp = self.session.post(
@@ -112,6 +115,7 @@ class JellyfinClient:
             raise
 
     def _delete(self, endpoint: str, params: dict[str, Any] | None = None) -> Any:
+        """DELETE *endpoint*, raising on HTTP or transport errors."""
         url = f"{self.server_url}{endpoint}"
         try:
             resp = self.session.delete(url, params=params, timeout=self.timeout)

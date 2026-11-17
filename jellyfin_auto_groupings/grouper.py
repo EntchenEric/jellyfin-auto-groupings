@@ -10,6 +10,7 @@ class CollectionGrouper:
     """
 
     def __init__(self, pattern: str = r"^(.*)"):
+        """Store the regex *pattern* used to name collections."""
         self.pattern = pattern
 
     def group(self, items: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
