@@ -367,6 +367,12 @@ def _post_or_raise(
 
     Args:
         url: The URL to request.
+        headers: Optional HTTP headers to include.
+        params: Optional query-string parameters.
+        data: Optional request body (string or bytes).
+        json: Optional JSON-serialisable request body.
+        timeout: Request timeout in seconds (default ``_DEFAULT_TIMEOUT``).
+        error_prefix: Prefix added to the raised error message.
 
     """
     return _request_or_raise(
@@ -395,6 +401,12 @@ def _post_json(
 
     Args:
         url: The URL to request.
+        headers: Optional HTTP headers to include.
+        params: Optional query-string parameters.
+        data: Optional request body (string or bytes).
+        json: Optional JSON-serialisable request body.
+        timeout: Request timeout in seconds (default ``_DEFAULT_TIMEOUT``).
+        error_prefix: Prefix added to the raised error message.
 
     """
     return _parse_json(
@@ -422,6 +434,10 @@ def _delete_or_raise(
 
     Args:
         url: The URL to request.
+        headers: Optional HTTP headers to include.
+        params: Optional query-string parameters.
+        timeout: Request timeout in seconds (default ``_DEFAULT_TIMEOUT``).
+        error_prefix: Prefix added to the raised error message.
 
     """
     return _request_or_raise(

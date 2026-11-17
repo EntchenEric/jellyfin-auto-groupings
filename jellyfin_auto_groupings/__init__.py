@@ -23,6 +23,7 @@ class JellyfinGroupingManager:
     """Manager for orchestrating groupings across Jellyfin libraries."""
 
     def __init__(self, client: JellyfinClient):
+        """Store the Jellyfin client used by the manager."""
         self.client = client
 
     def process(

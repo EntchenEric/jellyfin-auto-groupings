@@ -307,6 +307,12 @@ def process_groupings(client: JellyfinClient, dry_run: bool = True) -> list[tupl
         # placeholder such as ``"not-a-date"`` used to win the date rank and
         # sort ahead of a genuinely dated item, shifting every later sort name.
         def get_sort_key(item: dict[str, Any]) -> tuple[int, str]:
+            """Return a sortable ``(rank, value)`` key for *item*.
+
+            Dated items rank 0 (ordered by their date); everything else ranks 1
+            (ordered by name). Mixing the two ranks keeps dated and undated
+            items in separate groups without comparing incompatible types.
+            """
             premiere_date = item.get("PremiereDate")
             if isinstance(premiere_date, str):
                 if _LEADING_DATE.match(premiere_date.strip()):
