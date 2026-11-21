@@ -1,3 +1,12 @@
+"""Synchronize Jellyfin collections by grouping movies with shared titles.
+
+This is the legacy root-level module kept for backwards compatibility: the
+installable library lives in :mod:`jellyfin_auto_groupings`.  Provides
+:class:`JellyfinClient` for raw API access plus helpers
+(:func:`group_movies_by_tag`, :func:`group_movies_by_genre`,
+:func:`process_groupings`) that create boxsets from item metadata.
+"""
+
 import logging
 import math
 import os
@@ -22,6 +31,17 @@ class JellyfinAPIError(Exception):
 
 
 class JellyfinClient:
+    """Low-level HTTP client for the Jellyfin REST API.
+
+    Authenticates every request with the ``X-Emby-Token`` header and keeps
+    the token out of URLs so it does not appear in server access logs.
+
+    Args:
+        server_url: Jellyfin server URL (e.g., ``http://localhost:8096``).
+        api_key: Jellyfin API key for authentication.
+        user_id: Optional user ID for user-specific operations.
+    """
+
     def __init__(self, server_url: str, api_key: str, user_id: str | None = None):
         """Initialize Jellyfin client.
 

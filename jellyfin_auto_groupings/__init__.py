@@ -1,3 +1,10 @@
+"""Installable Jellyfin Auto Groupings library.
+
+Exposes :class:`JellyfinGroupingManager` for orchestrating groupings across
+libraries and re-exports the client and grouping helpers from
+:mod:`jellyfin_auto_groupings.client`.
+"""
+
 import logging
 import re
 from typing import Any

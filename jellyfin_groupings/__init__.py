@@ -1,3 +1,10 @@
+"""Backwards-compatible package that loads the legacy root-level module.
+
+``import jellyfin_groupings`` re-exports names from the on-disk
+``jellyfin_groupings.py`` (loaded via :mod:`importlib`) when present; new
+code should depend on :mod:`jellyfin_auto_groupings` instead.
+"""
+
 import importlib
 import importlib.util
 import sys

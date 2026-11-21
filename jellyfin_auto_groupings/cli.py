@@ -1,3 +1,10 @@
+"""Command-line interface for Jellyfin Auto Groupings.
+
+Groups movies by a regex pattern applied to their names and creates Jellyfin
+collections for each group.  See ``python -m jellyfin_auto_groupings.cli
+--help`` for the available flags; exit codes are documented in the README.
+"""
+
 import argparse
 import logging
 import os

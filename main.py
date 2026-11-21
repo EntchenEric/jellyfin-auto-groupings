@@ -1,3 +1,10 @@
+"""Standalone Jellyfin grouping client used by the root-level entry point.
+
+Wraps the raw REST calls (libraries, items, collections) in
+:class:`JellyfinGroupings` with sane timeouts and error handling so callers
+can synchronize collections without touching the HTTP layer directly.
+"""
+
 import logging
 import os
 from typing import Any
@@ -13,6 +20,12 @@ logger = logging.getLogger(__name__)
 
 
 class JellyfinGroupings:
+    """Standalone client for Jellyfin collection grouping operations.
+
+    Connection details fall back to the ``JELLYFIN_URL`` and
+    ``JELLYFIN_API_KEY`` environment variables when not passed explicitly.
+    """
+
     def __init__(
         self,
         server_url: str | None = None,
