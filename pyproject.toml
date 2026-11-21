@@ -65,3 +65,4 @@ markers = [
     "e2e: marks tests as end-to-end tests that require a running Jellyfin instance and app server (deselect with '-m \"not e2e\"')",
 ]
 addopts = "-q"
+pythonpath = ["."]
