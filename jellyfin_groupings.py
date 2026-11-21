@@ -6,6 +6,7 @@ installable library lives in :mod:`jellyfin_auto_groupings`.  Provides
 (:func:`group_movies_by_tag`, :func:`group_movies_by_genre`,
 :func:`process_groupings`) that create boxsets from item metadata.
 """
+
 import logging
 import math
 import os
@@ -40,6 +41,7 @@ class JellyfinClient:
         api_key: Jellyfin API key for authentication.
         user_id: Optional user ID for user-specific operations.
     """
+
     def __init__(self, server_url: str, api_key: str, user_id: str | None = None):
         """Initialize Jellyfin client.
 

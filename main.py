@@ -4,6 +4,7 @@ Wraps the raw REST calls (libraries, items, collections) in
 :class:`JellyfinGroupings` with sane timeouts and error handling so callers
 can synchronize collections without touching the HTTP layer directly.
 """
+
 import logging
 import os
 from typing import Any
@@ -24,6 +25,7 @@ class JellyfinGroupings:
     Connection details fall back to the ``JELLYFIN_URL`` and
     ``JELLYFIN_API_KEY`` environment variables when not passed explicitly.
     """
+
     def __init__(
         self,
         server_url: str | None = None,

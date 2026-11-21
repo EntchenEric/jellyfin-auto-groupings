@@ -1,4 +1,5 @@
 """Thin wrapper around the Jellyfin REST API used by the library."""
+
 from typing import Any
 
 import requests

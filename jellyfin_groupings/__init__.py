@@ -4,6 +4,7 @@
 ``jellyfin_groupings.py`` (loaded via :mod:`importlib`) when present; new
 code should depend on :mod:`jellyfin_auto_groupings` instead.
 """
+
 import importlib
 import importlib.util
 import sys

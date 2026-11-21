@@ -1,4 +1,5 @@
 """Regex-based collection grouping strategy."""
+
 from typing import Any
 
 

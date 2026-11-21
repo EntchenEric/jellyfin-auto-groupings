@@ -6,6 +6,7 @@ queries the Jellyfin server for items, derives group names from the
 Jellyfin collections for each group above the minimum group size.  Run with
 ``--dry-run`` to preview the collections that would be created.
 """
+
 import argparse
 import json
 import logging
