@@ -1,3 +1,4 @@
+"""Configuration loading for the Jellyfin Auto Groupings CLI."""
 import os
 from dataclasses import dataclass
 

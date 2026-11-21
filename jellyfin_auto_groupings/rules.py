@@ -1,3 +1,11 @@
+"""Rule-based grouping strategies driven by franchise, tag, genre, studio,
+and decade rules.
+
+:meth:`create_groupings` applies the built-in ``FRANCHISE_RULES`` regular
+expressions; :func:`group_by_tag`, :func:`group_by_genre`,
+:func:`group_by_studio`, and :func:`group_by_decade` group on item metadata;
+:func:`parse_grouping_rules` reads user-supplied rule dictionaries.
+"""
 import logging
 import math
 import re

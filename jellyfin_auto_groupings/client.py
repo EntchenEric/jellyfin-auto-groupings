@@ -1,3 +1,10 @@
+"""Jellyfin HTTP client and grouping/synchronization helpers.
+
+The central module of the library: :class:`JellyfinClient` implements the
+REST calls (items, collections, users), while the module-level functions
+implement the grouping strategies (pattern, year, decade, tag, genre) and
+:func:`sync_groupings` / :func:`process_groupings` apply them idempotently.
+"""
 import logging
 import re
 from typing import Any

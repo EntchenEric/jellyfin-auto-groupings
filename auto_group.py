@@ -1,3 +1,11 @@
+"""CLI entry point that groups Jellyfin items by title patterns.
+
+Reads configuration from environment variables and an optional JSON file,
+queries the Jellyfin server for items, derives group names from the
+``DEFAULT_PATTERNS`` regular expressions (first match wins), and creates
+Jellyfin collections for each group above the minimum group size.  Run with
+``--dry-run`` to preview the collections that would be created.
+"""
 import argparse
 import json
 import logging

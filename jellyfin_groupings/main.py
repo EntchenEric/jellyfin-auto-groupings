@@ -1,3 +1,4 @@
+"""Legacy client module re-exported through the ``jellyfin_groupings`` package."""
 import os
 import sys
 from typing import Any
