@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Tests
 
+- Raised the legacy root module `jellyfin_groupings.py` to 100% statement
+  coverage: new tests in `tests/test_package_coverage_gaps.py` exercise the
+  success path of `JellyfinClient.update_item_sort_name()` (post body,
+  endpoint URL, debug log, `True` return), the success path of
+  `create_collection()` returning the parsed payload with the name sent
+  through query params, and the module's `if __name__ == "__main__"` entry
+  via `runpy` with the HTTP layer mocked.
+
+### Tests
+
 - Raised `config.py` to 100% statement coverage and `auto_group.py` to 98.5%:
   new `tests/test_config_and_auto_group_gaps.py` exercises the legacy-key
   migration that `load_config()` persists back to disk, the OSError fallback

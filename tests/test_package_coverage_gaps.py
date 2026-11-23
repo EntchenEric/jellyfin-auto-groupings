@@ -1058,3 +1058,72 @@ def test_cli_applied_mode_does_not_say_would(monkeypatch, capsys):
     assert rc == 0
     out = capsys.readouterr().out
     assert out.strip() == "Synced 1 collection(s)."
+
+
+def test_legacy_client_update_sort_name_success_returns_true(caplog):
+    """Success path of the legacy client's sort-name update.
+
+    The failure-path test only exercises the ``RequestException`` branch, so
+    lines ``resp.raise_for_status()``, the debug log, and ``return True``
+    were never covered.
+    """
+    client = _legacy_client()
+    mock_resp = MagicMock()
+    mock_resp.raise_for_status.return_value = None
+    with patch.object(client.session, "post", return_value=mock_resp) as mock_post:
+        assert client.update_item_sort_name("m1", "Name 01") is True
+    assert mock_post.call_args.args[0] == "http://localhost:8096/Items/m1"
+    assert mock_post.call_args.kwargs == {
+        "json": {"ForcedSortName": "Name 01"},
+        "timeout": 30,
+    }
+    assert mock_resp.raise_for_status.called
+
+
+def test_legacy_client_create_collection_success_returns_payload():
+    """Success path of the legacy client's create_collection.
+
+    Only the empty-ids ``None``, the request-failure ``None``, and (via
+    mocks elsewhere) the non-``None`` return were exercised; the
+    ``raise_for_status()`` + ``resp.json()`` return lines were uncovered.
+    """
+    client = _legacy_client()
+    mock_resp = MagicMock()
+    mock_resp.raise_for_status.return_value = None
+    mock_resp.json.return_value = {"Id": "col1", "Name": "Best of 2024 #1"}
+    with patch.object(client.session, "post", return_value=mock_resp) as mock_post:
+        result = client.create_collection("Best of 2024 #1", ["1", "2"])
+    assert result == {"Id": "col1", "Name": "Best of 2024 #1"}
+    assert mock_post.call_args.args[0] == "http://localhost:8096/Collections"
+    assert mock_post.call_args.kwargs["params"] == {
+        "Name": "Best of 2024 #1",
+        "Ids": "1,2",
+    }
+    assert mock_resp.raise_for_status.called
+
+
+def test_legacy_module_dunder_main_invokes_main(monkeypatch):
+    """Executing the legacy root module as a script reaches ``main()``.
+
+    Line 393 (``main()`` under ``if __name__ == "__main__"``) only runs when
+    the module is executed via :mod:`runpy`, which no test did.
+    """
+    import runpy
+
+    import requests
+
+    # runpy re-executes the module source, so patching the loaded module has
+    # no effect; instead patch the HTTP layer that the fresh ``main()`` uses.
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"Items": [{"Id": "1", "Tags": ["Group:Hero"]}]}
+    mock_resp.raise_for_status.return_value = None
+    with (
+        monkeypatch.context() as m,
+        patch.object(requests.Session, "get", return_value=mock_resp),
+        patch.object(requests.Session, "post", return_value=mock_resp),
+    ):
+        m.setenv("JELLYFIN_API_KEY", "key")
+        runpy.run_path(
+            str(Path(__file__).resolve().parent.parent / "jellyfin_groupings.py"),
+            run_name="__main__",
+        )

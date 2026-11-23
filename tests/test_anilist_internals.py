@@ -10,7 +10,6 @@ import requests
 
 import anilist
 
-
 # ---------------------------------------------------------------------------
 # _resolve_anilist_status
 # ---------------------------------------------------------------------------
@@ -76,7 +75,14 @@ def test_extract_ids_skips_malformed_entries():
         "data": {
             "MediaListCollection": {
                 "lists": [
-                    {"entries": ["not-a-dict", {"mediaId": "nope"}, None, {"mediaId": 7}]},
+                    {
+                        "entries": [
+                            "not-a-dict",
+                            {"mediaId": "nope"},
+                            None,
+                            {"mediaId": 7},
+                        ]
+                    },
                     "not-a-list-dict",
                     {"entries": "not-a-list"},
                 ]
@@ -113,7 +119,9 @@ def test_resolve_url_accepts_custom_https_endpoint():
 
 
 def test_resolve_url_strips_query_and_fragment():
-    resolved = anilist._resolve_anilist_api_url("https://proxy.example.com/gql?key=1#frag")
+    resolved = anilist._resolve_anilist_api_url(
+        "https://proxy.example.com/gql?key=1#frag"
+    )
     assert resolved == "https://proxy.example.com/gql"
 
 
@@ -150,24 +158,30 @@ def _ok_response(payload):
 
 
 def test_fetch_wraps_request_exception():
-    with patch_network_post(None, side_effect=requests.ConnectionError("boom")):
-        with pytest.raises(RuntimeError, match="Failed to fetch AniList list"):
-            anilist.fetch_anilist_list("user")
+    with (
+        patch_network_post(None, side_effect=requests.ConnectionError("boom")),
+        pytest.raises(RuntimeError, match="Failed to fetch AniList list"),
+    ):
+        anilist.fetch_anilist_list("user")
 
 
 def test_fetch_wraps_invalid_json():
     resp = requests.Response()
     resp.status_code = 200
     resp._content = b"definitely-not-json{"
-    with patch_network_post(resp):
-        with pytest.raises(RuntimeError, match="Invalid JSON response"):
-            anilist.fetch_anilist_list("user")
+    with (
+        patch_network_post(resp),
+        pytest.raises(RuntimeError, match="Invalid JSON response"),
+    ):
+        anilist.fetch_anilist_list("user")
 
 
 def test_fetch_wraps_bare_list_payload():
-    with patch_network_post(_ok_response([1, 2, 3])):
-        with pytest.raises(RuntimeError, match="Unexpected AniList API response shape"):
-            anilist.fetch_anilist_list("user")
+    with (
+        patch_network_post(_ok_response([1, 2, 3])),
+        pytest.raises(RuntimeError, match="Unexpected AniList API response shape"),
+    ):
+        anilist.fetch_anilist_list("user")
 
 
 def test_fetch_bare_object_payload_returns_no_ids():
