@@ -10,17 +10,15 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
-import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import routes
-import sync
 from werkzeug.exceptions import ServiceUnavailable
 
+import routes
+import sync
 
 # ---------------------------------------------------------------------------
 # routes._handle_http_error
@@ -159,7 +157,8 @@ def test_get_test_results_read_error_is_reported(client, tmp_path, monkeypatch):
 
     def broken_open(self, *args, **kwargs):
         if self.name == "test_results.txt":
-            raise OSError("permission denied")
+            msg = "permission denied"
+            raise OSError(msg)
         return original_open(self, *args, **kwargs)
 
     monkeypatch.setattr(Path, "open", broken_open)
@@ -179,7 +178,11 @@ def test_get_cover_path_save_prefers_library_local_when_target_is_dir(tmp_path):
         target_base=str(tmp_path),
         check_exists=False,
     )
-    assert path == str(tmp_path / ".covers" / f"{sync.hashlib.md5(b'My Group', usedforsecurity=False).hexdigest()}.jpg")
+    assert path == str(
+        tmp_path
+        / ".covers"
+        / f"{sync.hashlib.md5(b'My Group', usedforsecurity=False).hexdigest()}.jpg"
+    )
 
 
 def test_get_cover_path_save_falls_back_legacy_without_target_dir(tmp_path):
@@ -214,7 +217,10 @@ def test_get_cover_path_check_exists_prefers_lib_then_legacy(tmp_path):
 
 
 def test_get_cover_path_missing_everywhere_returns_none(tmp_path):
-    assert sync.get_cover_path("Nope", target_base=str(tmp_path), check_exists=True) is None
+    assert (
+        sync.get_cover_path("Nope", target_base=str(tmp_path), check_exists=True)
+        is None
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -287,7 +293,9 @@ def test_preview_group_dispatches_list_source(monkeypatch):
         return [{"Id": "1"}], None, 200
 
     monkeypatch.setattr(sync, "_dispatch_list_source", fake_dispatch)
-    items, error, code = sync.preview_group("trakt_list", "http://x/1", "http://jf", "key")
+    items, error, code = sync.preview_group(
+        "trakt_list", "http://x/1", "http://jf", "key"
+    )
     assert called["type"] == "trakt_list"
     assert items == [{"Id": "1"}]
     assert (error, code) == (None, 200)
@@ -297,21 +305,31 @@ def test_preview_group_filters_by_item_type(monkeypatch):
     monkeypatch.setattr(
         sync,
         "_dispatch_list_source",
-        lambda *a, **k: ([{"Id": "1", "Type": "Movie"}, {"Id": "2", "Type": "Series"}], None, 200),
+        lambda *a, **k: (
+            [{"Id": "1", "Type": "Movie"}, {"Id": "2", "Type": "Series"}],
+            None,
+            200,
+        ),
     )
-    items, _, _ = sync.preview_group("tmdb_list", "x", "http://jf", "key", item_type="series")
+    items, _, _ = sync.preview_group(
+        "tmdb_list", "x", "http://jf", "key", item_type="series"
+    )
     assert items == [{"Id": "2", "Type": "Series"}]
 
 
 def test_preview_group_complex_query_uses_complex_fetcher(monkeypatch):
     sent = {}
 
-    def fake_complex(name, rules, sort_order, url, api_key, watch_state="", item_type=""):
+    def fake_complex(
+        name, rules, sort_order, url, api_key, watch_state="", item_type=""
+    ):
         sent.update(rules=rules, item_type=item_type)
         return [{"Id": "9"}], None, 200
 
     monkeypatch.setattr(sync, "_fetch_items_for_complex_group", fake_complex)
-    items, _, _ = sync.preview_group("complex", "genre:action OR year:2000", "http://jf", "key", item_type="movies")
+    items, _, _ = sync.preview_group(
+        "complex", "genre:action OR year:2000", "http://jf", "key", item_type="movies"
+    )
     assert items == [{"Id": "9"}]
     assert sent["item_type"] == "movies"
     assert any(r["type"] == "genre" for r in sent["rules"])
@@ -320,12 +338,16 @@ def test_preview_group_complex_query_uses_complex_fetcher(monkeypatch):
 def test_preview_group_metadata_path_falls_back(monkeypatch):
     sent = {}
 
-    def fake_metadata(kind, type_name, val, sort_order, url, api_key, watch_state="", item_type=""):
+    def fake_metadata(
+        kind, type_name, val, sort_order, url, api_key, watch_state="", item_type=""
+    ):
         sent.update(type_name=type_name, val=val, item_type=item_type)
         return [{"Id": "5"}], "gone", 200
 
     monkeypatch.setattr(sync, "_fetch_items_for_metadata_group", fake_metadata)
-    items, error, _ = sync.preview_group("genre", "Comedy", "http://jf", "key", item_type="movies")
+    items, error, _ = sync.preview_group(
+        "genre", "Comedy", "http://jf", "key", item_type="movies"
+    )
     assert items == [{"Id": "5"}]
     assert error == "gone"
     assert sent == {"type_name": "genre", "val": "Comedy", "item_type": "movies"}
@@ -352,7 +374,9 @@ def test_cleanup_broken_symlinks_deletes_and_reports(tmp_path, caplog):
 
 
 def test_cleanup_broken_symlinks_aborts_on_bad_target(tmp_path, caplog):
-    assert sync.run_cleanup_broken_symlinks({"target_path": str(tmp_path / "nope")}) == 0
+    assert (
+        sync.run_cleanup_broken_symlinks({"target_path": str(tmp_path / "nope")}) == 0
+    )
     assert "Cleanup aborted" in caplog.text
 
 
@@ -360,7 +384,9 @@ def test_cleanup_broken_symlinks_empty_target_string(tmp_path):
     assert sync.run_cleanup_broken_symlinks({"target_path": ""}) == 0
 
 
-def test_cleanup_broken_symlinks_unlink_error_is_swallowed(tmp_path, monkeypatch, caplog):
+def test_cleanup_broken_symlinks_unlink_error_is_swallowed(
+    tmp_path, monkeypatch, caplog
+):
     target = tmp_path / "lib"
     target.mkdir()
     (target / "broken").symlink_to(tmp_path / "nowhere")
@@ -369,7 +395,8 @@ def test_cleanup_broken_symlinks_unlink_error_is_swallowed(tmp_path, monkeypatch
 
     def fail_unlink(self, *a, **kw):
         if self.name == "broken":
-            raise OSError("busy")
+            msg = "busy"
+            raise OSError(msg)
         return real_unlink(self, *a, **kw)
 
     monkeypatch.setattr(Path, "unlink", fail_unlink)
